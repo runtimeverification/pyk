@@ -41,8 +41,8 @@ jobs:
         if: always()
         run: |
           docker stop pyk-ci
-  run-tests-nix:
-    name: 'Run Tests Nix'
+  build-on-nix:
+    name: 'Build on Nix'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-11]
