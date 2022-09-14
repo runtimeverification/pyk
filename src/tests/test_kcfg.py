@@ -4,9 +4,9 @@ from unittest import TestCase
 from pyk.cterm import CTerm
 from pyk.kast import KApply, KInner, KVariable
 from pyk.kcfg import KCFG
-from pyk.prelude import token
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.ml import mlEquals
+from pyk.prelude.utils import token
 from pyk.utils import shorten_hash
 
 from .mock_kprint import MockKPrint

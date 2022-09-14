@@ -2,8 +2,8 @@ from typing import Final, List, Tuple
 from unittest import TestCase
 
 from pyk.kast import KApply, KDefinition, KFlatModule, KInner, KLabel, KSequence, build_assoc
-from pyk.prelude import token
 from pyk.prelude.sorts import BOOL, INT, STRING
+from pyk.prelude.utils import token
 
 from .utils import f, x, y, z
 
