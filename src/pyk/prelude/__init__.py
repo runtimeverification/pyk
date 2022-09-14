@@ -4,6 +4,7 @@ from ..kast import KToken
 from .kbool import boolToken
 from .kint import intToken
 from .sorts import STRING, K
+from .string import stringToken
 
 
 def token(x: Union[bool, int, str]) -> KToken:
@@ -14,7 +15,3 @@ def token(x: Union[bool, int, str]) -> KToken:
     if type(x) is str:
         return stringToken(x)
     raise AssertionError()
-
-
-def stringToken(s: str) -> KToken:  # noqa: N802
-    return KToken(f'"{s}"', STRING)
