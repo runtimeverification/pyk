@@ -8,7 +8,6 @@ from typing import Callable, Dict, Final, Iterable, Optional
 
 from ..cli_utils import check_dir_path, run_process
 from ..kast import (
-    DOTS,
     KApply,
     KAs,
     KAst,
@@ -41,7 +40,7 @@ from ..kast import (
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
 from ..kore.syntax import Kore
-from ..prelude import Labels
+from ..prelude import DOTS, Labels
 from ..prelude.kbool import TRUE
 from ..prelude.sorts import K
 

@@ -5,6 +5,8 @@ from ..utils import unique
 from .kbool import TRUE, boolToken
 from .sorts import BOOL, INT, STRING, K
 
+DOTS: Final = KToken('...', K)
+
 
 @final
 class Labels:

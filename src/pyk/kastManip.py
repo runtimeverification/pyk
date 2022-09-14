@@ -4,7 +4,6 @@ from collections import Counter
 from typing import Any, Callable, Collection, Final, Iterable, List, Mapping, Optional, Sequence, Tuple, Type, TypeVar
 
 from .kast import (
-    DOTS,
     KApply,
     KAtt,
     KDefinition,
@@ -21,7 +20,7 @@ from .kast import (
     collect,
     top_down,
 )
-from .prelude import Labels, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlOr, mlTop
+from .prelude import DOTS, Labels, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlOr, mlTop
 from .prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
 from .prelude.sorts import GENERATED_TOP_CELL
 from .utils import find_common_items, hash_str

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from pyk.kast import DOTS, KApply, KLabel, KRewrite, KSequence, KSort, KVariable
+from pyk.kast import KApply, KLabel, KRewrite, KSequence, KSort, KVariable
 from pyk.kastManip import (
     bool_to_ml_pred,
     collapse_dots,
@@ -12,7 +12,7 @@ from pyk.kastManip import (
     split_config_from,
     substitute,
 )
-from pyk.prelude import intToken, mlEqualsTrue, mlTop
+from pyk.prelude import DOTS, intToken, mlEqualsTrue, mlTop
 from pyk.prelude.kbool import FALSE, TRUE, andBool, notBool
 from pyk.prelude.sorts import BOOL, GENERATED_TOP_CELL, INT, K
 
