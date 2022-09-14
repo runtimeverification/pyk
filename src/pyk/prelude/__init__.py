@@ -3,6 +3,7 @@ from typing import Final, Iterable, Optional, Union, final
 from ..kast import KApply, KInner, KLabel, KSort, KToken, build_assoc
 from ..utils import unique
 from .kbool import TRUE, boolToken
+from .kint import intToken
 from .sorts import BOOL, INT, STRING, K
 
 DOTS: Final = KToken('...', K)
@@ -27,20 +28,8 @@ def token(x: Union[bool, int, str]) -> KToken:
     raise AssertionError()
 
 
-def intToken(i: int) -> KToken:  # noqa: N802
-    return KToken(str(i), INT)
-
-
 def stringToken(s: str) -> KToken:  # noqa: N802
     return KToken(f'"{s}"', STRING)
-
-
-def ltInt(i1, i2):  # noqa: N802
-    return KApply('_<Int_', i1, i2)
-
-
-def leInt(i1, i2):  # noqa: N802
-    return KApply('_<=Int_', i1, i2)
 
 
 # TODO default sort K can be tightened using basic type inference
