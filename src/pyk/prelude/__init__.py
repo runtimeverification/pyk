@@ -1,7 +1,7 @@
 from typing import Final, Iterable, Optional, Union, final
 
-from .kast import FALSE, TRUE, KApply, KInner, KLabel, KSort, KToken
-from .utils import unique
+from ..kast import FALSE, TRUE, KApply, KInner, KLabel, KSort, KToken
+from ..utils import unique
 
 
 @final
