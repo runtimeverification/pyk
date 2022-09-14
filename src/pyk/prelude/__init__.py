@@ -1,6 +1,6 @@
 from typing import Final, Iterable, Optional, Union, final
 
-from ..kast import FALSE, TRUE, KApply, KInner, KLabel, KSort, KToken
+from ..kast import FALSE, TRUE, KApply, KInner, KLabel, KSort, KToken, build_assoc
 from ..utils import unique
 
 
@@ -53,28 +53,6 @@ class Bool:
     @staticmethod
     def impliesBool(antecedent: KInner, consequent: KInner) -> KApply:  # noqa: N802
         return KApply(KLabel('_impliesBool_'), [antecedent, consequent])
-
-
-def build_assoc(unit: KInner, label: Union[str, KLabel], terms: Iterable[KInner]) -> KInner:
-    _label = label if type(label) is KLabel else KLabel(label)
-    res: Optional[KInner] = None
-    for term in reversed(list(terms)):
-        if term == unit:
-            continue
-        if not res:
-            res = term
-        else:
-            res = _label(term, res)
-    return res or unit
-
-
-def build_cons(unit: KInner, label: Union[str, KLabel], terms: Iterable[KInner]) -> KInner:
-    it = iter(terms)
-    try:
-        fst = next(it)
-        return KApply(label, (fst, build_cons(unit, label, it)))
-    except StopIteration:
-        return unit
 
 
 def token(x: Union[bool, int, str]) -> KToken:
