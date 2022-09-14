@@ -41,7 +41,8 @@ from ..kast import (
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
 from ..kore.syntax import Kore
-from ..prelude import Bool, Labels, Sorts
+from ..prelude import Labels, Sorts
+from ..prelude.kbool import TRUE
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -260,12 +261,12 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable, debug=False):
             rule_str = rule_str + '[' + kast.att['label'] + ']:'
         rule_str = rule_str + ' ' + body
         atts_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
-        if kast.requires != Bool.true:
+        if kast.requires != TRUE:
             requires_str = 'requires ' + '\n  '.join(
                 pretty_print_kast_bool(kast.requires, symbol_table, debug=debug).split('\n')
             )
             rule_str = rule_str + '\n  ' + requires_str
-        if kast.ensures != Bool.true:
+        if kast.ensures != TRUE:
             ensures_str = 'ensures ' + '\n  '.join(
                 pretty_print_kast_bool(kast.ensures, symbol_table, debug=debug).split('\n')
             )
@@ -276,7 +277,7 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable, debug=False):
         context_str = 'context alias ' + body
         requires_str = ''
         atts_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
-        if kast.requires != Bool.true:
+        if kast.requires != TRUE:
             requires_str = pretty_print_kast(kast.requires, symbol_table, debug=debug)
             requires_str = 'requires ' + indent(requires_str)
         return context_str + '\n  ' + requires_str + '\n  ' + atts_str

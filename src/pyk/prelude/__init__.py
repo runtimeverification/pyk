@@ -1,7 +1,8 @@
 from typing import Final, Iterable, Optional, Union, final
 
-from ..kast import FALSE, TRUE, KApply, KInner, KLabel, KSort, KToken, build_assoc
+from ..kast import KApply, KInner, KLabel, KSort, KToken, build_assoc
 from ..utils import unique
+from .kbool import TRUE, boolToken
 
 
 @final
@@ -25,39 +26,9 @@ class Labels:
         raise ValueError('Class Labels should not be instantiated')
 
 
-@final
-class Bool:
-
-    true: Final = TRUE
-    false: Final = FALSE
-
-    def __init__(self):
-        raise ValueError('Class Bool should not be instantiated')
-
-    @staticmethod
-    def of(b: bool) -> KToken:
-        return Bool.true if b else Bool.false
-
-    @staticmethod
-    def andBool(items: Iterable[KInner]) -> KInner:  # noqa: N802
-        return build_assoc(Bool.true, KLabel('_andBool_'), unique(items))
-
-    @staticmethod
-    def orBool(items: Iterable[KInner]) -> KInner:  # noqa: N802
-        return build_assoc(Bool.false, KLabel('_orBool_'), unique(items))
-
-    @staticmethod
-    def notBool(item: KInner) -> KApply:  # noqa: N802
-        return KApply(KLabel('notBool_'), [item])
-
-    @staticmethod
-    def impliesBool(antecedent: KInner, consequent: KInner) -> KApply:  # noqa: N802
-        return KApply(KLabel('_impliesBool_'), [antecedent, consequent])
-
-
 def token(x: Union[bool, int, str]) -> KToken:
     if type(x) is bool:
-        return Bool.of(x)
+        return boolToken(x)
     if type(x) is int:
         return intToken(x)
     if type(x) is str:
@@ -92,7 +63,7 @@ def mlEquals(  # noqa: N802
 
 
 def mlEqualsTrue(term: KInner) -> KApply:  # noqa: N802
-    return mlEquals(Bool.true, term, Sorts.BOOL)
+    return mlEquals(TRUE, term, Sorts.BOOL)
 
 
 def mlTop(sort: Union[str, KSort] = Sorts.K) -> KApply:  # noqa: N802
