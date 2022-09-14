@@ -1,7 +1,7 @@
 from pyk.kast import KApply
 from pyk.kore.syntax import DV, App, SortApp, String
 from pyk.ktool import KompileBackend
-from pyk.prelude import intToken
+from pyk.prelude.kint import intToken
 
 from .kprove_test import KProveTest
 

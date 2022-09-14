@@ -3,8 +3,9 @@ from unittest import TestCase
 
 from pyk.kast import KApply, KInner, KLabel, KVariable, Subst
 from pyk.kastManip import extract_subst
-from pyk.prelude import intToken, mlAnd, mlEquals, mlEqualsTrue, mlTop, token
 from pyk.prelude.kbool import TRUE
+from pyk.prelude.kint import intToken
+from pyk.prelude.ml import mlAnd, mlEquals, mlEqualsTrue, mlTop
 
 from .mock_kprint import MockKPrint
 from .utils import a, b, c, f, g, h, x, y, z
@@ -124,7 +125,7 @@ class SubstTest(TestCase):
 
 
 class ExtractSubstTest(TestCase):
-    _0 = token(0)
+    _0 = intToken(0)
     _EQ = KLabel('_==Int_')
 
     TEST_DATA: Final[Tuple[Tuple[KInner, Dict[str, KInner], KInner], ...]] = (

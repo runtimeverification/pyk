@@ -11,8 +11,8 @@ from ..kast import KApply, KDefinition, KFlatModuleList, KInner, KSequence, KTok
 from ..kastManip import free_vars, get_cell, is_top, minimize_term
 from ..kcfg import KCFG
 from ..ktool import KProve
-from ..prelude import mlAnd, mlEqualsTrue, mlOr, mlTop
 from ..prelude.kbool import FALSE
+from ..prelude.ml import mlAnd, mlEqualsTrue, mlOr, mlTop
 from ..utils import add_indent, shorten_hashes
 
 _LOGGER: Final = logging.getLogger(__name__)

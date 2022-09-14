@@ -12,7 +12,7 @@ from .kast import KAst, read_kast_definition
 from .kastManip import flatten_label, minimize_rule, minimize_term, propagate_up_constraints, remove_source_map
 from .ktool import KPrint, KProve
 from .ktool.kprint import build_symbol_table, pretty_print_kast
-from .prelude import mlAnd, mlOr, mlTop
+from .prelude.ml import mlAnd, mlOr, mlTop
 from .prelude.sorts import GENERATED_TOP_CELL
 
 _LOG_FORMAT: Final = '%(levelname)s %(asctime)s %(name)s - %(message)s'

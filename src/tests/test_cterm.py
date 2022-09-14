@@ -3,7 +3,8 @@ from unittest import TestCase
 
 from pyk.cterm import CTerm, build_claim, build_rule
 from pyk.kast import KApply, KAtt, KClaim, KInner, KLabel, KRewrite, KSequence, KVariable
-from pyk.prelude import intToken, mlAnd, mlEqualsTrue
+from pyk.prelude.kint import intToken
+from pyk.prelude.ml import mlAnd, mlEqualsTrue
 from pyk.prelude.sorts import GENERATED_TOP_CELL
 
 from .utils import a, b, c, f, g, h, k, x, y, z
