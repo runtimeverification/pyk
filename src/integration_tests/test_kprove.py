@@ -2,7 +2,7 @@ from pyk.cterm import CTerm
 from pyk.kast import KApply, KAtt, KClaim, KRule, KToken
 from pyk.kastManip import get_cell
 from pyk.ktool import KompileBackend
-from pyk.prelude.sorts import BOOL
+from pyk.prelude.kbool import BOOL
 
 from .kprove_test import KProveTest
 

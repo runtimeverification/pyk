@@ -16,8 +16,8 @@ from .kastManip import (
     split_config_and_constraints,
     substitute,
 )
+from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import mlAnd, mlImplies, mlTop
-from .prelude.sorts import GENERATED_TOP_CELL
 from .utils import unique
 
 

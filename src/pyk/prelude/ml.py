@@ -1,8 +1,8 @@
 from typing import Iterable, Union
 
 from ..kast import KApply, KInner, KLabel, KSort, build_assoc
-from .kbool import TRUE
-from .sorts import BOOL, K
+from .k import K
+from .kbool import BOOL, TRUE
 
 
 # TODO default sort K can be tightened using basic type inference

@@ -1,5 +1,8 @@
-from ..kast import KApply, KToken
-from .sorts import INT
+from typing import Final
+
+from ..kast import KApply, KSort, KToken
+
+INT: Final = KSort('Int')
 
 
 def intToken(i: int) -> KToken:  # noqa: N802

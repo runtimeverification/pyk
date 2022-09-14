@@ -2,7 +2,7 @@ from pyk.kast import KApply, KClaim, KRewrite, KSort, KToken, KVariable
 from pyk.kastManip import push_down_rewrites
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import assoc_with_unit
-from pyk.prelude.sorts import GENERATED_TOP_CELL
+from pyk.prelude.k import GENERATED_TOP_CELL
 
 from .kprove_test import KProveTest
 

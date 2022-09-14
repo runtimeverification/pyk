@@ -1,10 +1,12 @@
 from typing import Final, Iterable
 
+from ..kast import BOOL as KAST_BOOL
 from ..kast import FALSE as KAST_FALSE
 from ..kast import TRUE as KAST_TRUE
 from ..kast import KApply, KInner, KLabel, KToken, build_assoc
 from ..utils import unique
 
+BOOL: Final = KAST_BOOL
 TRUE: Final = KAST_TRUE
 FALSE: Final = KAST_FALSE
 

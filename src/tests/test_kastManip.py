@@ -12,11 +12,10 @@ from pyk.kastManip import (
     split_config_from,
     substitute,
 )
-from pyk.prelude.k import DOTS
-from pyk.prelude.kbool import FALSE, TRUE, andBool, notBool
-from pyk.prelude.kint import intToken
+from pyk.prelude.k import DOTS, GENERATED_TOP_CELL, K
+from pyk.prelude.kbool import BOOL, FALSE, TRUE, andBool, notBool
+from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlEqualsTrue, mlTop
-from pyk.prelude.sorts import BOOL, GENERATED_TOP_CELL, INT, K
 
 from .utils import a, b, c, f, k, x
 
