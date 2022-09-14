@@ -1,20 +1,9 @@
-from typing import Final, Union, final
+from typing import Union
 
-from ..kast import KLabel, KToken
+from ..kast import KToken
 from .kbool import boolToken
 from .kint import intToken
 from .sorts import STRING, K
-
-DOTS: Final = KToken('...', K)
-
-
-@final
-class Labels:
-    K_CELLS: Final = KLabel('#KCells')
-    EMPTY_K: Final = KLabel('#EmptyK')
-
-    def __init__(self):
-        raise ValueError('Class Labels should not be instantiated')
 
 
 def token(x: Union[bool, int, str]) -> KToken:

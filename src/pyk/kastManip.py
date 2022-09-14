@@ -20,7 +20,7 @@ from .kast import (
     collect,
     top_down,
 )
-from .prelude import DOTS, Labels
+from .prelude.k import DOTS, EMPTY_K
 from .prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
 from .prelude.ml import mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlOr, mlTop
 from .prelude.sorts import GENERATED_TOP_CELL
@@ -336,7 +336,7 @@ def push_down_rewrites(kast):
                 and type(rhs) is KVariable
                 and lhs.items[-1] == rhs
             ):
-                return KSequence([KRewrite(KSequence(lhs.items[0:-1]), KApply(Labels.EMPTY_K)), rhs])
+                return KSequence([KRewrite(KSequence(lhs.items[0:-1]), KApply(EMPTY_K)), rhs])
         return _kast
 
     return top_down(_push_down_rewrites, kast)

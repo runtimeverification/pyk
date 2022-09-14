@@ -12,7 +12,7 @@ from pyk.kastManip import (
     split_config_from,
     substitute,
 )
-from pyk.prelude import DOTS
+from pyk.prelude.k import DOTS
 from pyk.prelude.kbool import FALSE, TRUE, andBool, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlEqualsTrue, mlTop
