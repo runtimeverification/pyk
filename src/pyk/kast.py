@@ -353,8 +353,9 @@ class KToken(KInner):
         return None
 
 
-TRUE: Final = KToken('true', 'Bool')
-FALSE: Final = KToken('false', 'Bool')
+BOOL: Final = KSort('Bool')
+TRUE: Final = KToken('true', BOOL)
+FALSE: Final = KToken('false', BOOL)
 DOTS: Final = KToken('...', 'K')
 
 
