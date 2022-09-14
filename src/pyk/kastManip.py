@@ -21,8 +21,9 @@ from .kast import (
     collect,
     top_down,
 )
-from .prelude import Labels, Sorts, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlOr, mlTop
+from .prelude import Labels, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlOr, mlTop
 from .prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
+from .prelude.sorts import GENERATED_TOP_CELL
 from .utils import find_common_items, hash_str
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -240,7 +241,7 @@ def split_config_and_constraints(kast: KInner) -> Tuple[KInner, KInner]:
             constraints.append(c)
     if not term:
         raise ValueError(f'Could not find configuration for: {kast}')
-    return (term, mlAnd(constraints, Sorts.GENERATED_TOP_CELL))
+    return (term, mlAnd(constraints, GENERATED_TOP_CELL))
 
 
 def split_config_from(configuration):

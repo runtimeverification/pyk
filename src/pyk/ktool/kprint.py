@@ -41,8 +41,9 @@ from ..kast import (
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
 from ..kore.syntax import Kore
-from ..prelude import Labels, Sorts
+from ..prelude import Labels
 from ..prelude.kbool import TRUE
+from ..prelude.sorts import K
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def _kast(
     profile: bool = False,
     input: str = 'program',
     output: str = 'json',
-    sort: KSort = Sorts.K,
+    sort: KSort = K,
     args: Iterable[str] = (),
 ) -> str:
     kast_command = ['kast', '--definition', str(definition)]

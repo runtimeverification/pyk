@@ -2,7 +2,7 @@ from typing import Final, List, Tuple
 from unittest import TestCase
 
 from pyk.kast import KApply, KDefinition, KFlatModule, KInner, KLabel, KSequence, KVariable
-from pyk.prelude import Sorts
+from pyk.prelude.sorts import BOOL, INT, STRING
 
 x, y, z = (KVariable(name) for name in ['x', 'y', 'z'])
 
@@ -10,9 +10,9 @@ x, y, z = (KVariable(name) for name in ['x', 'y', 'z'])
 class KLabelTest(TestCase):
     TEST_DATA: Final[Tuple[List[KInner], ...]] = (
         [],
-        [Sorts.BOOL],
-        [Sorts.BOOL, Sorts.INT],
-        [Sorts.BOOL, Sorts.INT, Sorts.STRING],
+        [BOOL],
+        [BOOL, INT],
+        [BOOL, INT, STRING],
     )
 
     def test_init(self):

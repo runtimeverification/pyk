@@ -3,18 +3,7 @@ from typing import Final, Iterable, Optional, Union, final
 from ..kast import KApply, KInner, KLabel, KSort, KToken, build_assoc
 from ..utils import unique
 from .kbool import TRUE, boolToken
-
-
-@final
-class Sorts:
-    BOOL: Final = KSort('Bool')
-    INT: Final = KSort('Int')
-    STRING: Final = KSort('String')
-    K: Final = KSort('K')
-    GENERATED_TOP_CELL: Final = KSort('GeneratedTopCell')
-
-    def __init__(self):
-        raise ValueError('Class Sorts should not be instantiated')
+from .sorts import BOOL, INT, STRING, K
 
 
 @final
@@ -37,11 +26,11 @@ def token(x: Union[bool, int, str]) -> KToken:
 
 
 def intToken(i: int) -> KToken:  # noqa: N802
-    return KToken(str(i), Sorts.INT)
+    return KToken(str(i), INT)
 
 
 def stringToken(s: str) -> KToken:  # noqa: N802
-    return KToken(f'"{s}"', Sorts.STRING)
+    return KToken(f'"{s}"', STRING)
 
 
 def ltInt(i1, i2):  # noqa: N802
@@ -56,35 +45,35 @@ def leInt(i1, i2):  # noqa: N802
 def mlEquals(  # noqa: N802
     term1: KInner,
     term2: KInner,
-    arg_sort: Union[str, KSort] = Sorts.K,
-    sort: Union[str, KSort] = Sorts.K,
+    arg_sort: Union[str, KSort] = K,
+    sort: Union[str, KSort] = K,
 ) -> KApply:
     return KLabel('#Equals', arg_sort, sort)(term1, term2)
 
 
 def mlEqualsTrue(term: KInner) -> KApply:  # noqa: N802
-    return mlEquals(TRUE, term, Sorts.BOOL)
+    return mlEquals(TRUE, term, BOOL)
 
 
-def mlTop(sort: Union[str, KSort] = Sorts.K) -> KApply:  # noqa: N802
+def mlTop(sort: Union[str, KSort] = K) -> KApply:  # noqa: N802
     return KLabel('#Top', sort)()
 
 
-def mlBottom(sort: Union[str, KSort] = Sorts.K) -> KApply:  # noqa: N802
+def mlBottom(sort: Union[str, KSort] = K) -> KApply:  # noqa: N802
     return KLabel('#Top', sort)()
 
 
-def mlNot(term: KInner, sort: Union[str, KSort] = Sorts.K) -> KApply:  # noqa: N802
+def mlNot(term: KInner, sort: Union[str, KSort] = K) -> KApply:  # noqa: N802
     return KLabel('#Not', sort)(term)
 
 
-def mlAnd(conjuncts: Iterable[KInner], sort: Union[str, KSort] = Sorts.K) -> KInner:  # noqa: N802
+def mlAnd(conjuncts: Iterable[KInner], sort: Union[str, KSort] = K) -> KInner:  # noqa: N802
     return build_assoc(mlTop(sort), KLabel('#And', sort), conjuncts)
 
 
-def mlOr(disjuncts: Iterable[KInner], sort: Union[str, KSort] = Sorts.K) -> KInner:  # noqa: N802
+def mlOr(disjuncts: Iterable[KInner], sort: Union[str, KSort] = K) -> KInner:  # noqa: N802
     return build_assoc(mlBottom(sort), KLabel('#Or', sort), disjuncts)
 
 
-def mlImplies(antecedent: KInner, consequent: KInner, sort: Union[str, KSort] = Sorts.K) -> KApply:  # noqa: N802
+def mlImplies(antecedent: KInner, consequent: KInner, sort: Union[str, KSort] = K) -> KApply:  # noqa: N802
     return KLabel('#Implies', sort)(antecedent, consequent)

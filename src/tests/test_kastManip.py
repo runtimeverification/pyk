@@ -12,8 +12,9 @@ from pyk.kastManip import (
     split_config_from,
     substitute,
 )
-from pyk.prelude import Sorts, intToken, mlEqualsTrue, mlTop
+from pyk.prelude import intToken, mlEqualsTrue, mlTop
 from pyk.prelude.kbool import FALSE, TRUE, andBool, notBool
+from pyk.prelude.sorts import BOOL, GENERATED_TOP_CELL, INT, K
 
 from .utils import a, b, c, f, k, x
 
@@ -63,10 +64,10 @@ class BoolMlPredConversionsTest(TestCase):
         (
             'equals-true',
             False,
-            KApply(KLabel('#Equals', [Sorts.BOOL, Sorts.GENERATED_TOP_CELL]), [TRUE, f(a)]),
+            KApply(KLabel('#Equals', [BOOL, GENERATED_TOP_CELL]), [TRUE, f(a)]),
             f(a),
         ),
-        ('top-sort-bool', False, KApply(KLabel('#Top', [Sorts.BOOL])), TRUE),
+        ('top-sort-bool', False, KApply(KLabel('#Top', [BOOL])), TRUE),
         ('top-no-sort', False, KApply('#Top'), TRUE),
         ('top-no-sort', False, mlTop(), TRUE),
         ('equals-variabl', False, KApply(KLabel('#Equals'), [x, f(a)]), KApply('_==K_', [x, f(a)])),
@@ -74,22 +75,22 @@ class BoolMlPredConversionsTest(TestCase):
         (
             'equals-token',
             False,
-            KApply(KLabel('#Equals', [KSort('Int'), Sorts.GENERATED_TOP_CELL]), [intToken(3), f(a)]),
+            KApply(KLabel('#Equals', [KSort('Int'), GENERATED_TOP_CELL]), [intToken(3), f(a)]),
             KApply('_==K_', [intToken(3), f(a)]),
         ),
-        ('not-top', False, KApply(KLabel('#Not', [Sorts.GENERATED_TOP_CELL]), [mlTop()]), notBool(TRUE)),
+        ('not-top', False, KApply(KLabel('#Not', [GENERATED_TOP_CELL]), [mlTop()]), notBool(TRUE)),
         ('equals-term', True, KApply(KLabel('#Equals'), [f(a), f(x)]), KApply('_==K_', [f(a), f(x)])),
         (
             'simplify-and-true',
             False,
-            KApply(KLabel('#And', [Sorts.GENERATED_TOP_CELL]), [mlEqualsTrue(TRUE), mlEqualsTrue(TRUE)]),
+            KApply(KLabel('#And', [GENERATED_TOP_CELL]), [mlEqualsTrue(TRUE), mlEqualsTrue(TRUE)]),
             TRUE,
         ),
         (
             'ceil-set-concat-no-sort',
             True,
             KApply(
-                KLabel('#Ceil', [KSort('Set'), Sorts.GENERATED_TOP_CELL]),
+                KLabel('#Ceil', [KSort('Set'), GENERATED_TOP_CELL]),
                 [KApply(KLabel('_Set_'), [KVariable('_'), KVariable('_')])],
             ),
             KVariable('Ceil_0f9c9997'),
@@ -98,10 +99,10 @@ class BoolMlPredConversionsTest(TestCase):
             'ceil-set-concat-sort',
             True,
             KApply(
-                KLabel('#Not', [Sorts.GENERATED_TOP_CELL]),
+                KLabel('#Not', [GENERATED_TOP_CELL]),
                 [
                     KApply(
-                        KLabel('#Ceil', [KSort('Set'), Sorts.GENERATED_TOP_CELL]),
+                        KLabel('#Ceil', [KSort('Set'), GENERATED_TOP_CELL]),
                         [KApply(KLabel('_Set_'), [KVariable('_'), KVariable('_')])],
                     )
                 ],
@@ -112,7 +113,7 @@ class BoolMlPredConversionsTest(TestCase):
             'exists-equal-int',
             True,
             KApply(
-                KLabel('#Exists', [Sorts.INT, Sorts.BOOL]),
+                KLabel('#Exists', [INT, BOOL]),
                 [KVariable('X'), KApply('_==Int_', [KVariable('X'), KVariable('Y')])],
             ),
             KVariable('Exists_6acf2557'),
@@ -125,7 +126,7 @@ class BoolMlPredConversionsTest(TestCase):
                 bool_actual = ml_pred_to_bool(ml_pred, unsafe=unsafe)
                 self.assertEqual(bool_actual, bool_expected)
 
-    test_data_bool_to_ml_pred = (('equals-true', KApply(KLabel('#Equals', [Sorts.BOOL, Sorts.K]), [TRUE, f(a)]), f(a)),)
+    test_data_bool_to_ml_pred = (('equals-true', KApply(KLabel('#Equals', [BOOL, K]), [TRUE, f(a)]), f(a)),)
 
     def test_bool_to_ml_pred(self):
         for name, ml_pred_expected, bool_in in self.test_data_bool_to_ml_pred:
