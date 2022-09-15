@@ -5,7 +5,7 @@ from pyk.ktool.kompile import KompileBackend, _build_arg_list
 
 
 class BuildArgsTest(TestCase):
-    def test_all_args(self):
+    def test_all_args(self) -> None:
         actual = _build_arg_list(
             main_module='MAIN-MODULE',
             syntax_module='SYNTAX-MODULE',

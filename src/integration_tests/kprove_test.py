@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Iterable
 
 from pyk.ktool import KProve
+from pyk.ktool.kprint import SymbolTable
 
 from .kompiled_test import KompiledTest
 
@@ -14,7 +15,7 @@ class KProveTest(KompiledTest, ABC):
     KPROVE_USE_DIR: str = '.kprove'
     KPROVE_INCLUDE_DIRS: Iterable[str] = []
 
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
 
         shutil.rmtree(self.KPROVE_USE_DIR, ignore_errors=True)
@@ -30,11 +31,11 @@ class KProveTest(KompiledTest, ABC):
         self.kprove.prover_args += list(chain.from_iterable(['-I', include_dir] for include_dir in kprove_include_dirs))
         self._update_symbol_table(self.kprove.symbol_table)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         shutil.rmtree(self.KPROVE_USE_DIR, ignore_errors=True)
         super().tearDown()
 
     @staticmethod
     @abstractmethod
-    def _update_symbol_table(symbol_table):
+    def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass

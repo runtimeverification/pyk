@@ -8,7 +8,7 @@ class ParseKAstTest(KompiledTest):
     COMPILED_JSON_PATH: str
     MODULE_NAME: str
 
-    def setUp(self):
+    def setUp(self) -> None:
         super().setUp()
         self.definition = read_kast_definition(self.COMPILED_JSON_PATH)
         modules = [module for module in self.definition if module.name == self.MODULE_NAME]
@@ -25,7 +25,7 @@ class KSortSynonymTest(ParseKAstTest):
     COMPILED_JSON_PATH = 'definitions/sort-synonym/compiled.json'
     MODULE_NAME = 'SORT-SYNONYM-SYNTAX'
 
-    def test(self):
+    def test(self) -> None:
         sort_synonym = [sentence for sentence in self.module if type(sentence) is KSortSynonym][0]
         self.assertEqual(sort_synonym.new_sort, KSort('NewInt'))
         self.assertEqual(sort_synonym.old_sort, KSort('Int'))
@@ -40,7 +40,7 @@ class KAsTest(ParseKAstTest):
     COMPILED_JSON_PATH = 'definitions/contextual-function/compiled.json'
     MODULE_NAME = 'CONTEXTUAL-FUNCTION'
 
-    def test(self):
+    def test(self) -> None:
         rule = [sentence for sentence in self.module if sentence.att.get('label') == 'def-get-ctx'][0]
         rewrite = rule.body
         lhs = rewrite.lhs

@@ -7,7 +7,7 @@ from .utils import a, b, c, f, g, h, x, y, z
 
 
 class MatchTest(TestCase):
-    def test_match_and_subst(self):
+    def test_match_and_subst(self) -> None:
         # Given
         test_data: Final[Tuple[Tuple[KInner, KInner], ...]] = (
             (a, a),
@@ -31,7 +31,7 @@ class MatchTest(TestCase):
                 self.assertIsNotNone(subst)
                 self.assertEqual(subst(pattern), term)
 
-    def test_no_match(self):
+    def test_no_match(self) -> None:
         # Given
         test_data: Final[Tuple[Tuple[KInner, KInner], ...]] = ((f(x, x), f(x, a)),)
 
