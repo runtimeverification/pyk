@@ -335,7 +335,7 @@ def push_down_rewrites(kast):
                 and type(rhs) is KVariable
                 and lhs.items[-1] == rhs
             ):
-                return KSequence([KRewrite(KSequence(lhs.items[0:-1]), KApply(EMPTY_K)), rhs])
+                return KSequence([KRewrite(KSequence(lhs.items[0:-1]), EMPTY_K), rhs])
         return _kast
 
     return top_down(_push_down_rewrites, kast)

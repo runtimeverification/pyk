@@ -200,7 +200,7 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable, debug=False):
         return '( ' + lhs_str + ' => ' + rhs_str + ' )'
     if type(kast) is KSequence:
         if kast.arity == 0:
-            return pretty_print_kast(KApply(EMPTY_K), symbol_table, debug=debug)
+            return pretty_print_kast(EMPTY_K, symbol_table, debug=debug)
         if kast.arity == 1:
             return pretty_print_kast(kast.items[0], symbol_table, debug=debug)
         unparsed_k_seq = '\n~> '.join([pretty_print_kast(item, symbol_table, debug=debug) for item in kast.items[0:-1]])

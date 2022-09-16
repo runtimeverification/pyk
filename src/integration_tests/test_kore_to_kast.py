@@ -29,7 +29,7 @@ class KoreToKastTest(KProveTest):
                 ),
                 KApply('pred1', [intToken(3)]),
             ),
-            # TODO: ('cells-conversion', App("Lbl'-LT-'k'-GT-'", [], [App('EmptyK', [], [])]), KApply('<k>', [KApply(Labels.EMPTY_K)])),
+            # TODO: ('cells-conversion', App("Lbl'-LT-'k'-GT-'", [], [App('EmptyK', [], [])]), KApply('<k>', [EMPTY_K])),
         )
         for (name, kore, kast) in kore_kast_pairs:
             with self.subTest(name):
