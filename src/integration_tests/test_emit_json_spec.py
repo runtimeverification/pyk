@@ -27,11 +27,13 @@ class EmitJsonSpecTest(KProveTest):
         super().setUp()
 
         spec_file = Path(self.SPEC_FILE)
+        kompiled_dir = Path(self.KOMPILE_OUTPUT_DIR)
         emit_json_spec = Path(self.SPEC_JSON_FILE)
-        _kprove(spec_file, kompiled_dir=self.KOMPILE_OUTPUT_DIR, emit_json_spec=emit_json_spec, dry_run=True)
+        _kprove(spec_file, kompiled_dir=kompiled_dir, emit_json_spec=emit_json_spec, dry_run=True)
 
         with open(self.SPEC_JSON_FILE, 'r') as f:
-            kfml: KFlatModuleList = KAst.from_dict(json.load(f)['term'])
+            kfml = KAst.from_dict(json.load(f)['term'])
+            assert type(kfml) is KFlatModuleList
 
         module = list(kfml.modules)[0]
         claim = module.claims[0]

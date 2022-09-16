@@ -58,6 +58,7 @@ class SubstTest(TestCase):
                     self.assertIsNone(actual)
                 else:
                     self.assertIsNotNone(actual)
+                    assert actual is not None  # https://github.com/python/mypy/issues/4063
                     self.assertDictEqual(dict(actual), expected)
 
     def test_apply(self) -> None:

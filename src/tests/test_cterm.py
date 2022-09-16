@@ -48,6 +48,7 @@ class CTermTest(TestCase):
 
                 # Then
                 self.assertIsNotNone(subst_cterm)
+                assert subst_cterm is not None  # https://github.com/python/mypy/issues/4063
                 self.assertEqual(subst_cterm(pattern), term)
 
     def test_no_cterm_match(self) -> None:

@@ -1,4 +1,4 @@
-from pyk.kast import KAs, KSort, KSortSynonym, read_kast_definition
+from pyk.kast import KApply, KAs, KRewrite, KSort, KSortSynonym, read_kast_definition
 from pyk.ktool import KompileBackend
 
 from .kompiled_test import KompiledTest
@@ -41,8 +41,10 @@ class KAsTest(ParseKAstTest):
     MODULE_NAME = 'CONTEXTUAL-FUNCTION'
 
     def test(self) -> None:
-        rule = [sentence for sentence in self.module if sentence.att.get('label') == 'def-get-ctx'][0]
+        rule = [rule for rule in self.module.rules if rule.att.get('label') == 'def-get-ctx'][0]
         rewrite = rule.body
+        assert type(rewrite) is KRewrite
         lhs = rewrite.lhs
+        assert type(lhs) is KApply
         kas = lhs.args[0]
         self.assertIsInstance(kas, KAs)

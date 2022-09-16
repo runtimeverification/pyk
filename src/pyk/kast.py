@@ -4,7 +4,7 @@ from dataclasses import InitVar, dataclass, fields
 from enum import Enum
 from functools import cached_property, reduce
 from itertools import chain
-from pathlib import Path
+from os import PathLike
 from typing import (
     Any,
     Callable,
@@ -1744,12 +1744,12 @@ def build_cons(unit: KInner, label: Union[str, KLabel], terms: Iterable[KInner])
         return unit
 
 
-def read_kast(ifile: Path) -> KAst:
-    with open(ifile, 'r') as _f:
+def read_kast(path: Union[str, PathLike]) -> KAst:
+    with open(path, 'r') as _f:
         return KAst.from_dict(json.loads(_f.read())['term'])
 
 
-def read_kast_definition(ifile: Path) -> KDefinition:
-    _defn = read_kast(ifile)
+def read_kast_definition(path: Union[str, PathLike]) -> KDefinition:
+    _defn = read_kast(path)
     assert isinstance(_defn, KDefinition)
     return _defn

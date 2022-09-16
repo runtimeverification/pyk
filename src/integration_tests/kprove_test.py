@@ -24,7 +24,7 @@ class KProveTest(KompiledTest, ABC):
         self.assertTrue(all(Path(include_dir).is_dir() for include_dir in self.KPROVE_INCLUDE_DIRS))
 
         kompiled_main_file = Path(self.KOMPILE_MAIN_FILE)
-        kprove_main_file = kompiled_main_file.name
+        kprove_main_file = Path(kompiled_main_file.name)
         kprove_include_dirs = [str(kompiled_main_file.parent)] + list(self.KPROVE_INCLUDE_DIRS)
 
         self.kprove = KProve(self.kompiled_dir, kprove_main_file, Path(self.KPROVE_USE_DIR))

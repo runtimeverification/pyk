@@ -29,6 +29,7 @@ class MatchTest(TestCase):
 
                 # Then
                 self.assertIsNotNone(subst)
+                assert subst is not None  # https://github.com/python/mypy/issues/4063
                 self.assertEqual(subst(pattern), term)
 
     def test_no_match(self) -> None:
