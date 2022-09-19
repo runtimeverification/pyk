@@ -23,6 +23,7 @@ def _kprove(
     check: bool = True,
     profile: bool = False,
     kompiled_dir: Optional[Path] = None,
+    spec_module_name: Optional[str] = None,
     include_dirs: Iterable[Path] = (),
     emit_json_spec: Optional[Path] = None,
     dry_run: bool = False,
@@ -34,6 +35,7 @@ def _kprove(
 
     args = _build_arg_list(
         kompiled_dir=kompiled_dir,
+        spec_module_name=spec_module_name,
         include_dirs=include_dirs,
         dry_run=dry_run,
         emit_json_spec=emit_json_spec,
@@ -51,6 +53,7 @@ def _kprove(
 def _build_arg_list(
     *,
     kompiled_dir: Optional[Path],
+    spec_module_name: Optional[str],
     include_dirs: Iterable[Path],
     emit_json_spec: Optional[Path],
     dry_run: bool,
@@ -59,6 +62,9 @@ def _build_arg_list(
 
     if kompiled_dir:
         args += ['--definition', str(kompiled_dir)]
+
+    if spec_module_name:
+        args += ['--spec-module', spec_module_name]
 
     for include_dir in include_dirs:
         args += ['-I', str(include_dir)]
