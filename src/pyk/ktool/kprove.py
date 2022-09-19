@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from enum import Enum
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
@@ -17,6 +18,17 @@ from .kprint import KPrint
 _LOGGER: Final = logging.getLogger(__name__)
 
 
+class KProveOutput(Enum):
+    PRETTY = 'pretty'
+    PROGAM = 'program'
+    KAST = 'KAST'
+    BINARY = 'binary'
+    JSON = 'json'
+    LATEX = 'latex'
+    KORE = 'kore'
+    NONE = 'none'
+
+
 def _kprove(
     spec_file: Path,
     *,
@@ -25,6 +37,7 @@ def _kprove(
     spec_module_name: Optional[str] = None,
     include_dirs: Iterable[Path] = (),
     emit_json_spec: Optional[Path] = None,
+    output: Optional[KProveOutput] = None,
     dry_run: bool = False,
     args: Iterable[str] = (),
     env: Optional[Mapping[str, str]] = None,
@@ -40,8 +53,9 @@ def _kprove(
         kompiled_dir=kompiled_dir,
         spec_module_name=spec_module_name,
         include_dirs=include_dirs,
-        dry_run=dry_run,
         emit_json_spec=emit_json_spec,
+        output=output,
+        dry_run=dry_run,
     )
 
     try:
@@ -59,6 +73,7 @@ def _build_arg_list(
     spec_module_name: Optional[str],
     include_dirs: Iterable[Path],
     emit_json_spec: Optional[Path],
+    output: Optional[KProveOutput],
     dry_run: bool,
 ) -> List[str]:
     args = []
@@ -74,6 +89,9 @@ def _build_arg_list(
 
     if emit_json_spec:
         args += ['--emit-json-spec', str(emit_json_spec)]
+
+    if output:
+        args += ['--output', output.value]
 
     if dry_run:
         args.append('--dry-run')
