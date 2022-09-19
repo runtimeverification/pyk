@@ -43,7 +43,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y curl
-          curl -sSL https://install.python-poetry.org | POETRY_HOME=/usr python3 -
+          curl -sSL https://install.python-poetry.org | POETRY_HOME=/usr sudo python3 -
           poetry --version
       - name: 'Run code checks and tests'
         run: make test-unit
