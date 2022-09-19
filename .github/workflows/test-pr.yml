@@ -7,11 +7,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  version-bump:
+    name: 'Version Bump'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Check out code'
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.JENKINS_GITHUB_PAT }}
+          # fetch-depth 0 means deep clone the repo
+          fetch-depth: 0
+      - name: 'Update Version'
+        run: |
+          set -x
+          git config user.name devops
+          git config user.email devops@runtimeverification.com
+          if git diff --exit-code origin/${GITHUB_BASE_REF} origin/${GITHUB_HEAD_REF} -- package/version; then
+            ./package/version.sh bump $(git show origin/${GITHUB_BASE_REF}:package/version)
+          fi
+          ./package/version.sh sub
+          git add --update
+          if git commit --message "Set Version: $(cat package/version)"; then
+            git push origin HEAD:${GITHUB_HEAD_REF}
+          fi
+
   unit-tests:
+    needs: version-bump
     name: 'Unit Tests'
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
@@ -26,8 +50,8 @@ jobs:
         run: make test-unit
 
   integration-tests:
-    name: 'Integration Tests'
     needs: unit-tests
+    name: 'Integration Tests'
     runs-on: [self-hosted, linux]
     strategy:
       matrix:
@@ -62,8 +86,8 @@ jobs:
           docker stop pyk-ci
 
   build-on-nix:
-    name: 'Build on Nix'
     needs: unit-tests
+    name: 'Build on Nix'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-11]
