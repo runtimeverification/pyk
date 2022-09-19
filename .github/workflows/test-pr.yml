@@ -42,7 +42,6 @@ jobs:
       - name: 'Install dependencies'
         run: |
           sudo apt update
-          sudo apt upgrade -y
           sudo apt install -y curl
           curl -sSL https://install.python-poetry.org | POETRY_HOME=/usr python3 -
           poetry --version
