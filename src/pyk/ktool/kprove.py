@@ -170,7 +170,7 @@ class KProve(KPrint):
             raise RuntimeError('kprove failed!')
 
         if dry_run:
-            return mlTop()
+            return mlBottom()
 
         debug_log = _get_rule_log(log_file)
         final_state = KInner.from_dict(json.loads(proc_result.stdout)['term'])
