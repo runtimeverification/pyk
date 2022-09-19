@@ -100,7 +100,6 @@ def _build_arg_list(
 
 
 class KProve(KPrint):
-
     main_file: Optional[Path]
     prover: List[str]
     prover_args: List[str]
@@ -148,20 +147,25 @@ class KProve(KPrint):
             '--log-entries',
             ','.join(haskell_log_entries),
         ]
-        command = list(self.prover)
-        command += [str(spec_file)]
-        command += ['--definition', str(self.definition_dir), '--output', 'json']
-        command += ['--spec-module', spec_module_name] if spec_module_name is not None else []
-        command += ['--dry-run'] if dry_run else []
-        command += self.prover_args
-        command += list(args)
 
         kore_exec_opts = ' '.join(list(haskell_args) + haskell_log_args)
         _LOGGER.debug(f'export KORE_EXEC_OPTS="{kore_exec_opts}"')
-        command_env = os.environ.copy()
-        command_env['KORE_EXEC_OPTS'] = kore_exec_opts
+        env = os.environ.copy()
+        env['KORE_EXEC_OPTS'] = kore_exec_opts
 
-        proc_result = run_process(command, logger=_LOGGER, env=command_env, check=False, profile=self._profile)
+        proc_result = _kprove(
+            spec_file=spec_file,
+            command=self.prover,
+            kompiled_dir=self.definition_dir,
+            spec_module_name=spec_module_name,
+            output=KProveOutput.JSON,
+            dry_run=dry_run,
+            args=self.prover_args + list(args),
+            env=env,
+            check=False,
+            profile=self._profile,
+        )
+
         if proc_result.returncode not in (0, 1):
             raise RuntimeError('kprove failed!')
 
