@@ -28,13 +28,14 @@ def _kprove(
     include_dirs: Iterable[Path] = (),
     emit_json_spec: Optional[Path] = None,
     dry_run: bool = False,
+    args: Iterable[str] = (),
 ) -> CompletedProcess:
     check_file_path(spec_file)
 
     for include_dir in include_dirs:
         check_dir_path(include_dir)
 
-    args = _build_arg_list(
+    typed_args = _build_arg_list(
         kompiled_dir=kompiled_dir,
         spec_module_name=spec_module_name,
         include_dirs=include_dirs,
@@ -43,7 +44,7 @@ def _kprove(
     )
 
     try:
-        run_args = tuple(chain(command, [str(spec_file)], args))
+        run_args = tuple(chain(command, [str(spec_file)], typed_args, args))
         return run_process(run_args, logger=_LOGGER, check=check, profile=profile)
     except CalledProcessError as err:
         raise RuntimeError(
