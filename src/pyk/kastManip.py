@@ -149,10 +149,6 @@ def simplify_bool(k: KInner) -> KInner:
     return new_k
 
 
-def is_top(term: KInner) -> bool:
-    return isinstance(term, KApply) and term.label.name == '#Top'
-
-
 def extract_lhs(term: KInner) -> KInner:
     return top_down(if_ktype(KRewrite, lambda rw: rw.lhs), term)
 

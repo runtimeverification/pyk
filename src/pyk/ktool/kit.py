@@ -8,11 +8,11 @@ from typing import Any, Callable, Dict, Final, Iterable, List, Mapping, Optional
 from ..cfg_manager import CFGManager
 from ..cterm import CTerm, build_claim
 from ..kast import KApply, KDefinition, KFlatModuleList, KInner, KSequence, KToken, Subst
-from ..kastManip import free_vars, get_cell, is_top, minimize_term
+from ..kastManip import free_vars, get_cell, minimize_term
 from ..kcfg import KCFG
 from ..ktool import KProve
 from ..prelude.kbool import FALSE
-from ..prelude.ml import mlAnd, mlEqualsTrue, mlOr, mlTop
+from ..prelude.ml import is_top, mlAnd, mlEqualsTrue, mlOr, mlTop
 from ..utils import add_indent, shorten_hashes
 
 T = TypeVar('T')
