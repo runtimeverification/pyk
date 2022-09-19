@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
 from typing import Final, Iterable, List, Optional, Tuple
@@ -39,7 +40,7 @@ def _kprove(
     )
 
     try:
-        run_args = [str(_a) for _a in ['kprove', spec_file] + list(args)]
+        run_args = tuple(chain(['kprove', str(spec_file)], args))
         return run_process(run_args, logger=_LOGGER, check=check, profile=profile)
     except CalledProcessError as err:
         raise RuntimeError(
