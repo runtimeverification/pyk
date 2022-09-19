@@ -4,7 +4,7 @@ import os
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
-from typing import Final, Iterable, List, Optional, Tuple
+from typing import Final, Iterable, List, Mapping, Optional, Tuple
 
 from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
 from ..cterm import CTerm, build_claim
@@ -21,14 +21,15 @@ def _kprove(
     spec_file: Path,
     *,
     command: Iterable[str] = ('kprove',),
-    check: bool = True,
-    profile: bool = False,
     kompiled_dir: Optional[Path] = None,
     spec_module_name: Optional[str] = None,
     include_dirs: Iterable[Path] = (),
     emit_json_spec: Optional[Path] = None,
     dry_run: bool = False,
     args: Iterable[str] = (),
+    env: Optional[Mapping[str, str]] = None,
+    check: bool = True,
+    profile: bool = False,
 ) -> CompletedProcess:
     check_file_path(spec_file)
 
@@ -45,7 +46,7 @@ def _kprove(
 
     try:
         run_args = tuple(chain(command, [str(spec_file)], typed_args, args))
-        return run_process(run_args, logger=_LOGGER, check=check, profile=profile)
+        return run_process(run_args, logger=_LOGGER, env=env, check=check, profile=profile)
     except CalledProcessError as err:
         raise RuntimeError(
             f'Command kprove exited with code {err.returncode} for: {spec_file}', err.stdout, err.stderr
