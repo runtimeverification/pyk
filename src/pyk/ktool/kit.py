@@ -378,7 +378,7 @@ def verify_edges(manager: CFGManager, kprove: KProve, args: Mapping[str, Any], c
         _LOGGER.info(f'Verifying edge: {shorten_hashes((edge.source.id, edge.target.id))}')
         basic_block_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
         kprove_result = _edge_prove(edge, min_depth=args.get('min_depth'))
-        if len(kprove_result) == 1 and kprove_result[0] == mlTop():
+        if len(kprove_result) == 1 and is_top(kprove_result[0]):
             cfg.add_verified(edge.source.id, edge.target.id)
             manager.write_cfg(cfg_id, cfg)
             _LOGGER.info(f'Verified claim: {basic_block_id}')
