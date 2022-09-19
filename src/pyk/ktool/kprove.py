@@ -20,6 +20,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 def _kprove(
     spec_file: Path,
     *,
+    command: Iterable[str] = ('kprove',),
     check: bool = True,
     profile: bool = False,
     kompiled_dir: Optional[Path] = None,
@@ -42,7 +43,7 @@ def _kprove(
     )
 
     try:
-        run_args = tuple(chain(['kprove', str(spec_file)], args))
+        run_args = tuple(chain(command, [str(spec_file)], args))
         return run_process(run_args, logger=_LOGGER, check=check, profile=profile)
     except CalledProcessError as err:
         raise RuntimeError(
