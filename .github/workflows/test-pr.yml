@@ -7,8 +7,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run-tests:
-    name: 'Run Tests'
+  unit-tests:
+    name: 'Unit Tests'
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - name: 'Check out code'
+        uses: actions/checkout@v3
+      - name: 'Install dependencies'
+        run: |
+          sudo apt update
+          sudo apt upgrade -y
+          sudo apt install -y curl
+          curl -sSL https://install.python-poetry.org | POETRY_HOME=/usr python3 -
+          poetry --version
+      - name: 'Run code checks and tests'
+        run: make test-unit
+
+  integration-tests:
+    name: 'Integration Tests'
+    needs: unit-tests
     runs-on: [self-hosted, linux]
     strategy:
       matrix:
@@ -41,8 +60,10 @@ jobs:
         if: always()
         run: |
           docker stop pyk-ci
+
   build-on-nix:
     name: 'Build on Nix'
+    needs: unit-tests
     strategy:
       matrix:
         os: [ubuntu-latest, macos-11]
