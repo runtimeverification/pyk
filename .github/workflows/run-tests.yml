@@ -9,10 +9,10 @@ concurrency:
 jobs:
   run-tests:
     name: 'Run Tests'
+    runs-on: [self-hosted, linux]
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-20.04]
-    runs-on: ${{ matrix.os }}
+        distro: ['focal', 'jammy']
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
