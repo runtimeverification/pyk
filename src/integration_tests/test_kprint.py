@@ -1,7 +1,7 @@
-from pyk.kast import KApply, KToken, KVariable
+from pyk.kast import KApply, KSequence, KToken, KVariable
+from pyk.kastManip import remove_attrs
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
-from pyk.prelude.k import EMPTY_K
 from pyk.prelude.kint import intToken
 
 from .kprove_test import KProveTest
@@ -25,10 +25,10 @@ class ImpParseTest(KProveTest):
             ('id-token', False, KToken('abc', 'Id'), KToken('abc', 'Id')),
             ('add-aexp', False, KToken('3 + 4', 'AExp'), KApply('_+_', [intToken(3), intToken(4)])),
             ('add-int', True, KToken('3 +Int V', 'Int'), KApply('_+Int_', [intToken(3), KVariable('V')])),
-            ('k-cell', True, KToken('<k> . </k>', 'KCell'), KApply('<k>', [EMPTY_K])),
+            ('k-cell', True, KToken('<k> . </k>', 'KCell'), KApply('<k>', KSequence())),
         )
 
         for name, as_rule, token, kast in test_parses:
             with self.subTest(name):
                 actual_kast = self.kprove.parse_token(token, as_rule=as_rule)
-                self.assertEqual(actual_kast, kast)
+                self.assertEqual(remove_attrs(actual_kast), kast)
