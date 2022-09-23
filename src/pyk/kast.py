@@ -262,9 +262,19 @@ class KVariable(KInner, WithKAtt):
     name: str
     att: KAtt
 
-    def __init__(self, name: str, att: KAtt = EMPTY_ATT):
+    SORT_ATTRIBUTE: Final[str] = 'org.kframework.kore.Sort'
+
+    def __init__(self, name: str, *, sort: Optional['KSort'] = None, att: KAtt = EMPTY_ATT):
         object.__setattr__(self, 'name', name)
+        if sort:
+            att = att.update({KVariable.SORT_ATTRIBUTE: sort.to_dict()})
         object.__setattr__(self, 'att', att)
+
+    @property
+    def sort(self) -> Optional['KSort']:
+        if KVariable.SORT_ATTRIBUTE in self.att:
+            return KSort.from_dict(self.att[KVariable.SORT_ATTRIBUTE])
+        return None
 
     @classmethod
     def from_dict(cls: Type['KVariable'], d: Dict[str, Any]) -> 'KVariable':
@@ -277,10 +287,13 @@ class KVariable(KInner, WithKAtt):
     def to_dict(self) -> Dict[str, Any]:
         return {'node': 'KVariable', 'name': self.name, 'att': self.att.to_dict()}
 
-    def let(self, *, name: Optional[str] = None, att: Optional[KAtt] = None) -> 'KVariable':
+    def let(
+        self, *, name: Optional[str] = None, sort: Optional['KSort'] = None, att: Optional[KAtt] = None
+    ) -> 'KVariable':
+        # TODO: We actually want `sort: Optional[Optional['KSort']]`
         name = name if name is not None else self.name
         att = att if att is not None else self.att
-        return KVariable(name=name, att=att)
+        return KVariable(name=name, sort=sort, att=att)
 
     def let_att(self, att: KAtt) -> 'KVariable':
         return self.let(att=att)
