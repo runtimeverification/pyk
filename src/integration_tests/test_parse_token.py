@@ -23,7 +23,11 @@ class ParseTokenTest(KProveTest):
 
     def test_parse_token(self) -> None:
         tests: Iterable[Tuple[str, KToken, KInner]] = (
-            ('variable', KToken('N', 'Int'), KVariable('N', sort=KSort('K'))), # TODO: This should parse as an Int, not a K.
+            (
+                'variable',
+                KToken('N', 'Int'),
+                KVariable('N', sort=KSort('K')),
+            ),  # TODO: This should parse as an Int, not a K.
             (
                 '==Int',
                 KToken('N ==Int 1', 'Bool'),
