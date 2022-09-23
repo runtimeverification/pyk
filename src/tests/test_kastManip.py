@@ -95,7 +95,7 @@ class BoolMlPredConversionsTest(TestCase):
                 KLabel('#Ceil', [KSort('Set'), GENERATED_TOP_CELL]),
                 [KApply(KLabel('_Set_'), [KVariable('_'), KVariable('_')])],
             ),
-            KVariable('Ceil_0f9c9997'),
+            KVariable('Ceil_8ce123d4'),
         ),
         (
             'ceil-set-concat-sort',
@@ -109,7 +109,7 @@ class BoolMlPredConversionsTest(TestCase):
                     )
                 ],
             ),
-            notBool(KVariable('Ceil_0f9c9997')),
+            notBool(KVariable('Ceil_8ce123d4')),
         ),
         (
             'exists-equal-int',
@@ -118,7 +118,7 @@ class BoolMlPredConversionsTest(TestCase):
                 KLabel('#Exists', [INT, BOOL]),
                 [KVariable('X'), KApply('_==Int_', [KVariable('X'), KVariable('Y')])],
             ),
-            KVariable('Exists_6acf2557'),
+            KVariable('Exists_24a5465c'),
         ),
     )
 
