@@ -28,8 +28,7 @@ class KVariableTest(TestCase):
     )
 
     def test_construct(self) -> None:
-        for i, params in enumerate(self.TEST_DATA):
-            name, input, expected = params
+        for i, (name, input, expected) in enumerate(self.TEST_DATA):
             with self.subTest(i=i, name=name):
                 self.assertEqual(input, expected)
 
