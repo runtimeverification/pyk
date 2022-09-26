@@ -8,6 +8,7 @@ from os import PathLike
 from typing import (
     Any,
     Callable,
+    ClassVar,
     Dict,
     Final,
     FrozenSet,
@@ -80,6 +81,8 @@ class KAst(ABC):
 @dataclass(frozen=True)
 class KAtt(KAst, Mapping[str, Any]):
     atts: FrozenDict[str, Any]
+
+    SORT: ClassVar[str] = 'org.kframework.kore.Sort'
 
     def __init__(self, atts: Mapping[str, Any] = EMPTY_FROZEN_DICT):
         def _freeze(m: Any) -> Any:
@@ -318,9 +321,6 @@ class KToken(KInner):
         return None
 
 
-SORT_ATTRIBUTE: Final[str] = 'org.kframework.kore.Sort'
-
-
 @final
 @dataclass(frozen=True)
 class KVariable(KInner, WithKAtt):
@@ -330,15 +330,15 @@ class KVariable(KInner, WithKAtt):
     def __init__(self, name: str, *, sort: Optional[KSort] = None, att: KAtt = EMPTY_ATT):
         object.__setattr__(self, 'name', name)
         if sort is not None:
-            if SORT_ATTRIBUTE in att:
+            if KAtt.SORT in att:
                 raise ValueError('Both sort and sort attribute provided.')
-            att = att.update({SORT_ATTRIBUTE: sort.to_dict()})
+            att = att.update({KAtt.SORT: sort.to_dict()})
         object.__setattr__(self, 'att', att)
 
     @property
     def sort(self) -> Optional[KSort]:
-        if SORT_ATTRIBUTE in self.att:
-            return KSort.from_dict(self.att[SORT_ATTRIBUTE])
+        if KAtt.SORT in self.att:
+            return KSort.from_dict(self.att[KAtt.SORT])
         return None
 
     @classmethod
@@ -359,7 +359,7 @@ class KVariable(KInner, WithKAtt):
         name = name if name is not None else self.name
         att = att if att is not None else self.att
         if sort is not None:
-            att = att.update({SORT_ATTRIBUTE: None})
+            att = att.update({KAtt.SORT: None})
         return KVariable(name=name, sort=sort, att=att)
 
     def let_att(self, att: KAtt) -> 'KVariable':

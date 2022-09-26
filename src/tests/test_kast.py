@@ -1,19 +1,7 @@
 from typing import Final, List, Tuple
 from unittest import TestCase
 
-from pyk.kast import (
-    SORT_ATTRIBUTE,
-    KApply,
-    KAtt,
-    KDefinition,
-    KFlatModule,
-    KInner,
-    KLabel,
-    KSequence,
-    KSort,
-    KVariable,
-    build_assoc,
-)
+from pyk.kast import KApply, KAtt, KDefinition, KFlatModule, KInner, KLabel, KSequence, KSort, KVariable, build_assoc
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import INT
 from pyk.prelude.string import STRING
@@ -71,7 +59,7 @@ class KVariableTest(TestCase):
                 self.assertEqual(KVariable.from_dict(input.to_dict()), expected)
 
         with self.assertRaises(ValueError):
-            KVariable('Foo').let(sort=STRING, att=KAtt({SORT_ATTRIBUTE: INT})),
+            KVariable('Foo').let(sort=STRING, att=KAtt({KAtt.SORT: INT})),
 
 
 class KLabelTest(TestCase):
