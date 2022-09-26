@@ -256,60 +256,6 @@ class Subst(Mapping[str, KInner]):
         return ml_term
 
 
-SORT_ATTRIBUTE: Final[str] = 'org.kframework.kore.Sort'
-
-
-@final
-@dataclass(frozen=True)
-class KVariable(KInner, WithKAtt):
-    name: str
-    att: KAtt
-
-    def __init__(self, name: str, *, sort: Optional['KSort'] = None, att: KAtt = EMPTY_ATT):
-        object.__setattr__(self, 'name', name)
-        if sort is not None:
-            if SORT_ATTRIBUTE in att:
-                raise ValueError('Both sort and sort attribute provided.')
-            att = att.update({SORT_ATTRIBUTE: sort.to_dict()})
-        object.__setattr__(self, 'att', att)
-
-    @property
-    def sort(self) -> Optional['KSort']:
-        if SORT_ATTRIBUTE in self.att:
-            return KSort.from_dict(self.att[SORT_ATTRIBUTE])
-        return None
-
-    @classmethod
-    def from_dict(cls: Type['KVariable'], d: Dict[str, Any]) -> 'KVariable':
-        cls._check_node(d)
-        return KVariable(
-            name=d['name'],
-            att=KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT,
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {'node': 'KVariable', 'name': self.name, 'att': self.att.to_dict()}
-
-    def let(
-        self, *, name: Optional[str] = None, sort: Optional['KSort'] = None, att: Optional[KAtt] = None
-    ) -> 'KVariable':
-        # TODO: We actually want `sort: Optional[Optional['KSort']]`
-        name = name if name is not None else self.name
-        att = att if att is not None else self.att
-        if sort is not None:
-            att = att.update({SORT_ATTRIBUTE: None})
-        return KVariable(name=name, sort=sort, att=att)
-
-    def let_att(self, att: KAtt) -> 'KVariable':
-        return self.let(att=att)
-
-    def map_inner(self: 'KVariable', f: Callable[[KInner], KInner]) -> 'KVariable':
-        return self
-
-    def match(self, term: KInner) -> Subst:
-        return Subst({self.name: term})
-
-
 @final
 @dataclass(frozen=True)
 class KSort(KInner):
@@ -370,6 +316,60 @@ class KToken(KInner):
         if type(term) is KToken:
             return Subst() if term.token == self.token else None
         return None
+
+
+SORT_ATTRIBUTE: Final[str] = 'org.kframework.kore.Sort'
+
+
+@final
+@dataclass(frozen=True)
+class KVariable(KInner, WithKAtt):
+    name: str
+    att: KAtt
+
+    def __init__(self, name: str, *, sort: Optional[KSort] = None, att: KAtt = EMPTY_ATT):
+        object.__setattr__(self, 'name', name)
+        if sort is not None:
+            if SORT_ATTRIBUTE in att:
+                raise ValueError('Both sort and sort attribute provided.')
+            att = att.update({SORT_ATTRIBUTE: sort.to_dict()})
+        object.__setattr__(self, 'att', att)
+
+    @property
+    def sort(self) -> Optional[KSort]:
+        if SORT_ATTRIBUTE in self.att:
+            return KSort.from_dict(self.att[SORT_ATTRIBUTE])
+        return None
+
+    @classmethod
+    def from_dict(cls: Type['KVariable'], d: Dict[str, Any]) -> 'KVariable':
+        cls._check_node(d)
+        return KVariable(
+            name=d['name'],
+            att=KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT,
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {'node': 'KVariable', 'name': self.name, 'att': self.att.to_dict()}
+
+    def let(
+        self, *, name: Optional[str] = None, sort: Optional[KSort] = None, att: Optional[KAtt] = None
+    ) -> 'KVariable':
+        # TODO: We actually want `sort: Optional[Optional['KSort']]`
+        name = name if name is not None else self.name
+        att = att if att is not None else self.att
+        if sort is not None:
+            att = att.update({SORT_ATTRIBUTE: None})
+        return KVariable(name=name, sort=sort, att=att)
+
+    def let_att(self, att: KAtt) -> 'KVariable':
+        return self.let(att=att)
+
+    def map_inner(self: 'KVariable', f: Callable[[KInner], KInner]) -> 'KVariable':
+        return self
+
+    def match(self, term: KInner) -> Subst:
+        return Subst({self.name: term})
 
 
 BOOL: Final = KSort('Bool')
