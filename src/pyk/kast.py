@@ -267,7 +267,9 @@ class KVariable(KInner, WithKAtt):
 
     def __init__(self, name: str, *, sort: Optional['KSort'] = None, att: KAtt = EMPTY_ATT):
         object.__setattr__(self, 'name', name)
-        if sort:
+        if sort is not None:
+            if SORT_ATTRIBUTE in att:
+                raise ValueError('Both sort and sort attribute provided.')
             att = att.update({SORT_ATTRIBUTE: sort.to_dict()})
         object.__setattr__(self, 'att', att)
 
@@ -294,6 +296,8 @@ class KVariable(KInner, WithKAtt):
         # TODO: We actually want `sort: Optional[Optional['KSort']]`
         name = name if name is not None else self.name
         att = att if att is not None else self.att
+        if sort is not None:
+            att = att.update({SORT_ATTRIBUTE: None})
         return KVariable(name=name, sort=sort, att=att)
 
     def let_att(self, att: KAtt) -> 'KVariable':
