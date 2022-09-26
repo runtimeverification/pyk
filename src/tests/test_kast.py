@@ -33,8 +33,7 @@ class KVariableTest(TestCase):
                 self.assertEqual(input, expected)
 
     def test_to_dict(self) -> None:
-        for i, params in enumerate(self.TEST_DATA):
-            name, input, expected = params
+        for i, (name, input, expected) in enumerate(self.TEST_DATA):
             with self.subTest(i=i, name=name):
                 self.assertEqual(KVariable.from_dict(input.to_dict()), expected)
 
