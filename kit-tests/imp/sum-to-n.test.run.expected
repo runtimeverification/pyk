@@ -48,7 +48,7 @@ Prover output:
 ┣━ 16058b..29d5c1 (expanded, @init-1)    N:Int ==Int 1
 ┃   │  [1m[32m(verified)[0m[0m
 ┃   │  (-1 steps)
-┃   └  8d622f..667d7b (target, leaf)
+┃   └  6a6e72..499ac5 (target, leaf)
 ┃
 ┗━ 73e36d..9633b6 (expanded, @init-not-1)    notBool ( N:Int ==Int 1 )
     ┣━ cdb3db..8863e3 (expanded, @init-2)    N:Int ==Int 2
@@ -56,7 +56,7 @@ Prover output:
     ┃   ├  a425e5..4b490f (expanded, @init-10)
     ┃   │  [1m[32m(verified)[0m[0m
     ┃   │  (-1 steps)
-    ┃   └  8d622f..667d7b (target, leaf)
+    ┃   └  6a6e72..499ac5 (target, leaf)
     ┃
     ┗━ 1a257b..1bd4cd (expanded, @init-not-1-2)    notBool ( N:Int ==Int 2 )
         ┣━ a425e5..4b490f (expanded, @init-10)    N:Int ==Int 10

@@ -256,24 +256,25 @@ class Subst(Mapping[str, KInner]):
         return ml_term
 
 
+SORT_ATTRIBUTE: Final[str] = 'org.kframework.kore.Sort'
+
+
 @final
 @dataclass(frozen=True)
 class KVariable(KInner, WithKAtt):
     name: str
     att: KAtt
 
-    SORT_ATTRIBUTE: Final[str] = 'org.kframework.kore.Sort'
-
     def __init__(self, name: str, *, sort: Optional['KSort'] = None, att: KAtt = EMPTY_ATT):
         object.__setattr__(self, 'name', name)
         if sort:
-            att = att.update({KVariable.SORT_ATTRIBUTE: sort.to_dict()})
+            att = att.update({SORT_ATTRIBUTE: sort.to_dict()})
         object.__setattr__(self, 'att', att)
 
     @property
     def sort(self) -> Optional['KSort']:
-        if KVariable.SORT_ATTRIBUTE in self.att:
-            return KSort.from_dict(self.att[KVariable.SORT_ATTRIBUTE])
+        if SORT_ATTRIBUTE in self.att:
+            return KSort.from_dict(self.att[SORT_ATTRIBUTE])
         return None
 
     @classmethod
