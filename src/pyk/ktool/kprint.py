@@ -118,9 +118,11 @@ class KPrint:
         output = _kast(self.definition_dir, kore.text, input='kore', output='json', profile=self._profile)
         return KAst.from_dict(json.loads(output)['term'])
 
-    def kast_to_kore(self, kast: KAst) -> Kore:
+    def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
         kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
-        output = _kast(self.definition_dir, json.dumps(kast_json), input='json', output='kore', profile=self._profile)
+        output = _kast(
+            self.definition_dir, json.dumps(kast_json), input='json', output='kore', sort=sort, profile=self._profile
+        )
         return KoreParser(output).pattern()
 
     def pretty_print(self, kast: KAst, debug: bool = False) -> str:
