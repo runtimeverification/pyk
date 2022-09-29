@@ -40,7 +40,7 @@ from ..kast import (
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
 from ..kore.syntax import Kore
-from ..prelude.k import DOTS, EMPTY_K, K
+from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -55,12 +55,13 @@ def _kast(
     profile: bool = False,
     input: str = 'program',
     output: str = 'json',
-    sort: KSort = K,
+    sort: Optional[KSort] = None,
     args: Iterable[str] = (),
 ) -> str:
     kast_command = ['kast', '--definition', str(definition)]
     kast_command += ['--input', input, '--output', output]
-    kast_command += ['--sort', sort.name]
+    if sort:
+        kast_command += ['--sort', sort.name]
     kast_command += ['--expression', expression]
     command_env = os.environ.copy()
     proc_result = run_process(kast_command, env=command_env, logger=_LOGGER, check=check, profile=profile)
