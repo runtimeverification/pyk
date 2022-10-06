@@ -47,10 +47,14 @@ def main() -> None:
             _LOGGER.info(f'Wrote file: {args["output_file"].name}')
         else:
             if args['minimize']:
-                abstract_labels = [] if args['omit_labels'] is None else args['omit_labels'].split(',')
+                if args['omit_labels'] != '' and args['keep_cells'] != '':
+                    raise ValueError('You cannot use both --omit-labels and --keep-cells.')
+
+                abstract_labels = args['omit_labels'].split(',') if args['omit_labels'] != '' else []
+                keep_cells = args['keep_cells'].split(',') if args['keep_cells'] != '' else []
                 minimized_disjuncts = []
                 for disjunct in flatten_label('#Or', term):
-                    minimized = minimize_term(disjunct, abstract_labels=abstract_labels)
+                    minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
                     config, constraint = split_config_and_constraints(minimized)
                     if not is_top(constraint):
                         minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
@@ -149,6 +153,9 @@ def create_argument_parser() -> ArgumentParser:
         help='Do not minimize the JSON configuration before printing.',
     )
     print_args.add_argument('--omit-labels', default='', nargs='?', help='List of labels to omit from output.')
+    print_args.add_argument(
+        '--keep-cells', default='', nargs='?', help='List of cells with primitive values to keep in output.'
+    )
     print_args.add_argument('--output-file', type=FileType('w'), default='-')
 
     prove_args = pyk_args_command.add_parser(

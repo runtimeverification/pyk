@@ -18,7 +18,7 @@ from pyk.prelude.kbool import BOOL, FALSE, TRUE, andBool, notBool
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlEqualsTrue, mlTop
 
-from .utils import a, b, c, f, k, x
+from .utils import a, b, c, f, k, pc, state, x
 
 K_CELL = KApply('<k>', [KSequence([KVariable('S1'), KVariable('_DotVar0')])])
 T_CELL = KApply('<T>', [K_CELL, KApply('<state>', [KVariable('MAP')])])
@@ -44,15 +44,16 @@ class PushDownRewritesTest(TestCase):
 class MinimizeTermTest(TestCase):
     def test_minimize_term(self) -> None:
         # Given
-        test_data: Tuple[Tuple[KInner, List[str], KInner], ...] = (
-            (f(k(a)), ['<k>'], f(DOTS)),
-            (f(k(a)), [], f(k(a))),
+        test_data: Tuple[Tuple[KInner, List[str], List[str], KInner], ...] = (
+            (f(k(a), state(a), pc(a)), [], [], f(k(a), state(a), pc(a))),
+            (f(k(a), state(a), pc(a)), ['<k>'], [], f(state(a), pc(a), DOTS)),
+            (f(k(a), state(a), pc(a)), [], ['<state>'], f(state(a), DOTS)),
         )
 
-        for i, (before, abstract_labels, expected) in enumerate(test_data):
+        for i, (before, abstract_labels, keep_cells, expected) in enumerate(test_data):
             with self.subTest(i=i):
                 # When
-                actual = minimize_term(before, abstract_labels=abstract_labels)
+                actual = minimize_term(before, abstract_labels=abstract_labels, keep_cells=keep_cells)
 
                 # Then
                 self.assertEqual(actual, expected)
