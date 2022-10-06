@@ -53,14 +53,20 @@ def main() -> None:
                 abstract_labels = args['omit_labels'].split(',') if args['omit_labels'] != '' else []
                 keep_cells = args['keep_cells'].split(',') if args['keep_cells'] != '' else []
                 minimized_disjuncts = []
+
                 for disjunct in flatten_label('#Or', term):
-                    minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
-                    config, constraint = split_config_and_constraints(minimized)
+                    try:
+                        minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
+                        config, constraint = split_config_and_constraints(minimized)
+                    except ValueError as err:
+                        raise ValueError('The minified term does not contain a config cell.') from err
+
                     if not is_top(constraint):
                         minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
                     else:
                         minimized_disjuncts.append(config)
                 term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
+
             args['output_file'].write(printer.pretty_print(term))
             _LOGGER.info(f'Wrote file: {args["output_file"].name}')
 

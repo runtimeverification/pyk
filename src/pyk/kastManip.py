@@ -437,18 +437,15 @@ def labels_to_dots(kast: KInner, labels: Collection[str]) -> KInner:
     return bottom_up(_labels_to_dots, kast)
 
 
-def extract_cells(kast: KInner, cells: Collection[str]) -> KInner:
-    contains_selected_cell: Dict[str, bool] = {}
-
+def extract_cells(kast: KInner, keep_cells: Collection[str]) -> KInner:
     def _extract_cells(k: KInner) -> KInner:
-        if type(k) is KApply and k.is_cell:
-            contains_selected_cell[k.label.name] = (k.label.name in cells) or any(
-                type(arg) is KApply and arg.is_cell and contains_selected_cell[arg.label.name] for arg in k.args
-            )
-
-            if not contains_selected_cell[k.label.name]:
-                return DOTS
-
+        if (
+            type(k) is KApply
+            and k.is_cell
+            and not k.label.name in keep_cells
+            and all(type(arg) != KApply or not arg.is_cell or arg == DOTS for arg in k.args)
+        ):
+            return DOTS
         return k
 
     return bottom_up(_extract_cells, kast)
@@ -481,6 +478,7 @@ def minimize_term(
         -   Unused cells will be abstracted.
         -   Attempt to remove useless conditions.
     """
+
     term = inline_cell_maps(term)
     term = remove_semantic_casts(term)
     term = useless_vars_to_dots(term, keep_vars=keep_vars)

@@ -18,7 +18,7 @@ from pyk.prelude.kbool import BOOL, FALSE, TRUE, andBool, notBool
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlEqualsTrue, mlTop
 
-from .utils import a, b, c, f, k, pc, state, x
+from .utils import a, b, c, f, k, x
 
 K_CELL = KApply('<k>', [KSequence([KVariable('S1'), KVariable('_DotVar0')])])
 T_CELL = KApply('<T>', [K_CELL, KApply('<state>', [KVariable('MAP')])])
@@ -43,6 +43,9 @@ class PushDownRewritesTest(TestCase):
 
 class MinimizeTermTest(TestCase):
     def test_minimize_term(self) -> None:
+        state = KLabel('<state>')
+        pc = KLabel('<pc>')
+
         # Given
         test_data: Tuple[Tuple[KInner, List[str], List[str], KInner], ...] = (
             (f(k(a), state(a), pc(a)), [], [], f(k(a), state(a), pc(a))),

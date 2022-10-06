@@ -5,5 +5,3 @@ x, y, z = map(KVariable, ('x', 'y', 'z'))
 f, g, h = map(KLabel, ('f', 'g', 'h'))
 
 k = KLabel('<k>')
-state = KLabel('<state>')
-pc = KLabel('<pc>')
