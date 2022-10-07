@@ -26,6 +26,7 @@ pep8-naming = "*"
 
 [tool.poetry.scripts]
 pyk = "pyk.__main__:main"
+krepl-server = "pyk.krepl.server.__main__:main"
 "kit.py" = "pyk.ktool.kit:main"
 
 [tool.isort]
