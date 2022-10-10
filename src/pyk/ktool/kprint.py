@@ -78,7 +78,7 @@ class KPrint:
 
     _definition: Optional[KDefinition]
     _symbol_table: Optional[SymbolTable]
-    _temp_dir: Optional[TemporaryDirectory]
+    _temp_dir: Optional[TemporaryDirectory] = None
 
     def __init__(self, definition_dir: Path, use_directory: Optional[Path] = None, profile: bool = False) -> None:
         self.definition_dir = Path(definition_dir)
@@ -91,6 +91,10 @@ class KPrint:
         self._definition = None
         self._symbol_table = None
         self._profile = profile
+
+    def __del__(self) -> None:
+        if self._temp_dir is not None:
+            self._temp_dir.cleanup()
 
     @property
     def definition(self) -> KDefinition:
