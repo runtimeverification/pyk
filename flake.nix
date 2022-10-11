@@ -13,15 +13,8 @@
           python = prev.python39;
           projectDir = ./.;
           groups = [];
-          # exclude dev dependencies
+          # We remove `"dev"` from `checkGroups`, so that poetry2nix does not try to resolve dev dependencies.
           checkGroups = [];
-          overrides = prev.poetry2nix.overrides.withDefaults (
-            final: prev: {
-              mypy = prev.mypy.overridePythonAttrs (_old: {
-                MYPY_USE_MYPYC = false;
-              });
-            }
-          );
         };
       };
     } // (flake-utils.lib.eachDefaultSystem (system:

@@ -14,7 +14,7 @@ authors = [
 python = "^3.8"
 graphviz = "^0.20.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.groups.dev.dependencies]
 autoflake = "*"
 black = "*"
 flake8 = "*"
