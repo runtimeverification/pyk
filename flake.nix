@@ -12,6 +12,9 @@
         pyk = prev.poetry2nix.mkPoetryApplication { 
           python = prev.python39;
           projectDir = ./.;
+          groups = [];
+          # exclude dev dependencies
+          checkGroups = [];
           overrides = prev.poetry2nix.overrides.withDefaults (
             final: prev: {
               mypy = prev.mypy.overridePythonAttrs (_old: {
