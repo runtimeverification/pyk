@@ -4,6 +4,8 @@ from subprocess import Popen
 from typing import Any, ContextManager, List
 from unittest import TestCase
 
+from pyk.krepl.server import DEFAULT_PORT
+
 
 class KReplProc(ContextManager['KReplProc']):
     _proc: Popen
@@ -27,7 +29,7 @@ class KReplProc(ContextManager['KReplProc']):
 
 
 class KReplTest(TestCase):
-    KREPL_PORT: int = 8080
+    KREPL_PORT: int = DEFAULT_PORT
     KREPL_LOGLEVEL: str = 'error'
 
     _server: KReplProc

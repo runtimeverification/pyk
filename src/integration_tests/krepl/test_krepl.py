@@ -17,8 +17,6 @@ class KReplPidTest(KReplTest):
 
 
 class KReplRpcTest(KReplTest):
-    KREPL_PORT = 8888
-
     def test_request(self) -> None:
         # Given
         client = JsonRpcClient(self.KREPL_PORT)
