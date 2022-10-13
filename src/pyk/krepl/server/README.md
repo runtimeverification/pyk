@@ -56,10 +56,14 @@ Initializes the REPL with the specified initial configuration.
 
 * depth: Int. Default 1. The number of rewrite steps to take.
 
-#### Behavior
+#### Asynchronous Behavior
 
 Generates new configuration(s) if they does not yet exist taken by stepping the
 current configuration `depth` steps.
+
+#### Returns
+
+An asynchronous request identifier.
 
 ### rewind
 
@@ -67,18 +71,51 @@ current configuration `depth` steps.
 
 * depth: Int. Default 1. The number of rewrite steps to go back.
 
-#### Behavior
+#### Asynchronous Behavior
 
 Generates a new configuration if it does not yet exist taken by rewinding the
 current configuration `depth` steps.
 
+#### Returns
+
+An asynchronous request identifier.
+
 ### step-to-branch
 
-#### Behavior
+#### Asynchronous Behavior
 
 Generatess a new configuration if it does not yet exist taken by stepping the
 current configuration until just prior to the next configuration branching
 event.
+
+#### Returns
+
+An asynchronous request identifier.
+
+### wait-for
+
+#### Params
+
+* requestId: Int
+
+#### Behavior
+
+Returns only after the specified asynchronous request has completed.
+
+#### Returns
+
+* The return value of the asynchronous command if one exists.
+
+### check-completion
+
+#### Params
+
+* requestId: Int
+
+#### Returns
+
+* NotDone if the command is not complete, otherwise the return value of the
+command.
 
 ## Printing Configurations
 
