@@ -15,7 +15,6 @@ python = "^3.8"
 flask = "^2.2.2"
 graphviz = "^0.20.1"
 requests = "^2.28.1"
-tinyrpc = { version = "^1.1.5", extras = [ "gevent", "httpclient", "wsgi" ] }
 
 [tool.poetry.dev-dependencies]
 autoflake = "*"
@@ -55,13 +54,5 @@ skip-string-normalization = true
 disallow_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = "gevent.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
 module = "graphviz"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "tinyrpc.*"
 ignore_missing_imports = true
