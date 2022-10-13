@@ -2,6 +2,7 @@ from typing import Any, Final, List, Mapping
 
 DEFAULT_PORT: Final = 42412
 
+from pyk.kore.parser import KoreParser
 from pyk.kore.syntax import Pattern
 
 from ..rpc.server import JsonRpcServer
@@ -29,8 +30,8 @@ class KReplServer:
     def serve_forever(self) -> None:
         self._server.serve_forever()
 
-    def load_raw(self, pattern_dict: Mapping['str', Any]) -> None:
-        pattern = Pattern.from_dict(pattern_dict)
+    def load_raw(self, text: str) -> None:
+        pattern = KoreParser(text).pattern()
         return self._state.load_raw(pattern)
 
     def step_to_branch(self) -> str:

@@ -3,8 +3,6 @@ from pathlib import Path
 from typing import Any, Final, List
 
 from pyk.cli_utils import check_file_path, dir_path, file_path
-from pyk.kore.parser import KoreParser
-from pyk.kore.syntax import Pattern
 
 from ..rpc.client import JsonRpcClient
 
@@ -22,12 +20,7 @@ class KReplClient:
         with open(path, 'r') as f:
             text = f.read()
 
-        try:
-            pattern = KoreParser(text).pattern()
-        except ValueError as err:
-            raise ValueError(f'Unable to parse KORE file: {path}') from err
-
-        response = self._client.load_raw(pattern.dict)
+        response = self._client.load_raw(text)
         return response
 
     def step_to_branch(self) -> str:
