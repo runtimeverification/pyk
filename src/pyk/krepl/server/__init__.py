@@ -9,6 +9,8 @@ from ..rpc.server import JsonRpcServer
 
 
 class KReplState:
+    """Store proof tree and expose domain-specific methods over it. Will eventually be encapsualted in a user session."""
+
     def load_raw(self, pattern: Pattern) -> None:
         return
 
