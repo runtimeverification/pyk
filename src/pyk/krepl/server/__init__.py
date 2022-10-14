@@ -11,8 +11,15 @@ DEFAULT_PORT: Final = 42412
 
 
 class KReplSession:
-    def load_raw(self, pattern: Pattern) -> None:
-        return
+    _nodes: Dict[str, Pattern]
+
+    def __init__(self) -> None:
+        self._nodes = {}
+
+    def load_raw(self, pattern: Pattern) -> str:
+        node_id = 'init'
+        self._nodes = {node_id: pattern}
+        return node_id
 
     def step_to_branch(self) -> str:
         return '1'
@@ -43,8 +50,8 @@ class KReplServer:
         except ValueError as err:
             return make_response(err.args[0], 400)
 
-        self._session.load_raw(pattern)
-        return jsonify({'success': True})
+        config_id = self._session.load_raw(pattern)
+        return jsonify({'configId': config_id})
 
     def step_to_branch(self) -> Response:
         config_id = self._session.step_to_branch()
