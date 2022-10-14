@@ -10,9 +10,7 @@ from ..web.server import WebServer
 DEFAULT_PORT: Final = 42412
 
 
-class KReplState:
-    """Store proof tree and expose domain-specific methods over it. Will eventually be encapsualted in a user session."""
-
+class KReplSession:
     def load_raw(self, pattern: Pattern) -> None:
         return
 
@@ -22,14 +20,14 @@ class KReplState:
 
 class KReplServer:
     _server: WebServer
-    _state: KReplState
+    _session: KReplSession
 
     def __init__(self, port: int):
         server = WebServer(port)
         server.register('/load-raw', self.load_raw, method='POST')
         server.register('/step-to-branch', self.step_to_branch, method='POST')
         self._server = server
-        self._state = KReplState()
+        self._session = KReplSession()
 
     def run(self) -> None:
         self._server.run()
@@ -45,9 +43,9 @@ class KReplServer:
         except ValueError as err:
             return make_response(err.args[0], 400)
 
-        self._state.load_raw(pattern)
+        self._session.load_raw(pattern)
         return jsonify({'success': True})
 
     def step_to_branch(self) -> Response:
-        config_id = self._state.step_to_branch()
+        config_id = self._session.step_to_branch()
         return jsonify({'configId': config_id})
