@@ -12,13 +12,9 @@
         pyk = prev.poetry2nix.mkPoetryApplication { 
           python = prev.python39;
           projectDir = ./.;
-          overrides = prev.poetry2nix.overrides.withDefaults (
-            final: prev: {
-              mypy = prev.mypy.overridePythonAttrs (_old: {
-                MYPY_USE_MYPYC = false;
-              });
-            }
-          );
+          groups = [];
+          # We remove `"dev"` from `checkGroups`, so that poetry2nix does not try to resolve dev dependencies.
+          checkGroups = [];
         };
       };
     } // (flake-utils.lib.eachDefaultSystem (system:
