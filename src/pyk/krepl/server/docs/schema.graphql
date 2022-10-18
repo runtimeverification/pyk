@@ -9,11 +9,11 @@ type Query {
   graph: Graph!
 
   # Process management
-  processes(id: ID, status: ProcessStatus): [Process!]!
-  wait(id: ID!): Process!
+  processes(id: ProcessID, status: ProcessStatus): [Process!]!
+  wait(id: ProcessID!): Process!
 
   # Presentation
-  diff(from: ID, to: ID): String!
+  diff(from: NodeID, to: NodeID): String!
 }
 
 type Mutation {
@@ -22,22 +22,25 @@ type Mutation {
   loadRaw(kore: String!): Graph!
 
   # Behavior
-  step(id: ID!, depth: Int, branch: Bool = True, wait: Bool = False): StepProcess!
-  rewind(id: ID!, depth: Int, wait: Bool = False): RewindProcess!
+  step(id: NodeID!, depth: Int, branch: Bool = True, wait: Bool = False): StepProcess!
+  rewind(id: NodeID!, depth: Int, wait: Bool = False): RewindProcess!
 
   # Edit
-  addAlias(id: ID, alias: String): Node!
+  addAlias(id: NodeID, alias: String): Node!
   removeAlias(alias: String): Node!
-  updateCell(id: ID!, cell: String!, value: TermString!): Node!
+  updateCell(id: NodeID!, cell: String!, value: TermString!): Node!
 }
 
 
 # Model
 
+scalar NodeID
+scalar EdgeID
+
 type Graph {
   init: Node!
-  nodes(id: ID, alias: String, tagged: String): [Node!]!
-  edges(source: ID, target: ID, tagged: String): [Edge!]!
+  nodes(id: NodeID, alias: String, tagged: String): [Node!]!
+  edges(id: EdgeID, source: NodeID, target: NodeID, tagged: String): [Edge!]!
   aliases: [String!]!
   tags: [String!]!
   dot: String!
@@ -45,7 +48,7 @@ type Graph {
 }
 
 type Node {
-  id: ID!
+  id: NodeID!
   aliases: [String!]!
   term: Term!
   inEdge: Node
@@ -54,7 +57,7 @@ type Node {
 }
 
 type Edge {
-  id: ID!
+  id: EdgeID!
   source: Node!
   target: Node!
   condition: Term!
@@ -72,6 +75,8 @@ type Term {
 
 # Process handling
 
+scalar ProcessID
+
 enum ProcessStatus {
   PENDING
   RUNNING
@@ -79,18 +84,18 @@ enum ProcessStatus {
 }
 
 interface Process {
-  id: ID!
+  id: ProcessID!
   status: ProcessStatus!
 }
 
 type StepProcess implements Process {
-  id: ID!
+  id: ProcessID!
   status: ProcessStatus!
   result: StepResult
 }
 
 type RewindProcess implements Process {
-  id: ID!
+  id: ProcessID!
   status: ProcessStatus!
   result: RewindResult
 }
@@ -129,7 +134,7 @@ type StepResult implements Result {
 
 type RewindResult implements Result {
   graph: Graph!
-  node: Node!
+  newNode: Node
   newEdges: [Edge!]!
   removedEdges: [Edge!]!
 }
