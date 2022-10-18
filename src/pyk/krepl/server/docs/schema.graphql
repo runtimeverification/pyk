@@ -1,0 +1,128 @@
+schema {
+  query: Query
+  mutation: Mutation
+  #  subscription: Subscription  # GraphQL supports subscribing to events. This could be useful for process management.
+}
+
+type Query {
+  # Model
+  graph: Graph!
+
+  # Process management
+  processes(id: ID, status: ProcessStatus): [Process!]!
+  wait(id: ID!): Process!
+
+  # Presentation
+  diff(from: ID, to: ID): String!
+}
+
+type Mutation {
+  # Initialization
+  load(input: LoadInput!): Graph!
+  loadRaw(kore: String!): Graph!
+
+  # Behavior
+  step(depth: Int, branch: Bool = True, wait: Bool = False): StepProcess!
+  prune(id: ID!): PruneResult!
+
+  # Edit
+  addAlias(id: ID, alias: String): Node!
+  removeAlias(alias: String): Node!
+  updateCell(id: ID!, cell: String!, value: TermString!): Node!
+}
+
+
+# Model
+
+type Graph {
+  init: Node!
+  nodes(id: ID, alias: String, tagged: String): [Node!]!
+  edges(source: ID, target: ID, tagged: String): [Edge!]!
+  aliases: [String!]!
+  tags: [String!]!
+  dot: String!
+  tree: String!
+}
+
+type Node {
+  id: ID!
+  aliases: [String!]!
+  term: Term!
+  inEdge: Node
+  outEdges: [Node!]!
+  tags: [String!]!
+}
+
+type Edge {
+  id: ID!
+  source: Node!
+  target: Node!
+  condition: Term!
+  substitution: Subst!
+}
+
+type Term {
+  pretty(cells: [String!]): String
+  kast: String
+  kastJSON: JSONString
+  kore: String
+  koreJSON: JSONString
+}
+
+
+# Process handling
+
+enum ProcessStatus {
+  PENDING
+  RUNNING
+  DONE
+}
+
+interface Process {
+  id: ID!
+  status: ProcessStatus!
+}
+
+type StepProcess implements Process {
+  id: ID!
+  status: ProcessStatus!
+  result: StepResult
+}
+
+
+# Initialization
+
+input LoadInput {
+  program: TermString
+  params: [LoadParam!]
+}
+
+input TermString {
+  term: String!
+  module: String
+  sort: String
+}
+
+input LoadParam {
+  name: String!
+  program: TermString
+}
+
+
+# Behavior
+
+interface Result {
+  graph: Graph!
+}
+
+type StepResult implements Result {
+  graph: Graph!
+  newNodes: [Node!]!
+  newEdges: [Edge!]!
+}
+
+type PruneResult implements Result {
+  graph: Graph!
+  removedNodes: [Node!]!
+  removedEdges: [Edge!]!
+}
