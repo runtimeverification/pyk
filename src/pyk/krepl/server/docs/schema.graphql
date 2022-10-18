@@ -22,8 +22,8 @@ type Mutation {
   loadRaw(kore: String!): Graph!
 
   # Behavior
-  step(depth: Int, branch: Bool = True, wait: Bool = False): StepProcess!
-  prune(id: ID!): PruneResult!
+  step(id: ID!, depth: Int, branch: Bool = True, wait: Bool = False): StepProcess!
+  rewind(id: ID!, depth: Int, wait: Bool = False): RewindProcess!
 
   # Edit
   addAlias(id: ID, alias: String): Node!
@@ -89,6 +89,12 @@ type StepProcess implements Process {
   result: StepResult
 }
 
+type RewindProcess implements Process {
+  id: ID!
+  status: ProcessStatus!
+  result: RewindResult
+}
+
 
 # Initialization
 
@@ -121,8 +127,9 @@ type StepResult implements Result {
   newEdges: [Edge!]!
 }
 
-type PruneResult implements Result {
+type RewindResult implements Result {
   graph: Graph!
-  removedNodes: [Node!]!
+  node: Node!
+  newEdges: [Edge!]!
   removedEdges: [Edge!]!
 }

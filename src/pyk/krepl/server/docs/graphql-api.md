@@ -8,7 +8,7 @@ The following table lists how each REPL command, as described in the [README](..
 | `load-raw`         | `mutation load-raw`    |
 | `step`             | `mutation step`        |  
 | `step-to-branch`   | `mutation step`        |
-| `rewind`           | `mutation prune`       |
+| `rewind`           | `mutation rewind`      |
 | `alias`            | `mutation addAlias`    |
 | `rm-alias`         | `mutation removeAlias` |
 | `edit`             | `mutation updateCell`  |
