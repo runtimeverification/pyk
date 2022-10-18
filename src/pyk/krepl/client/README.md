@@ -1,16 +1,13 @@
-# K-REPL Server
+# K-REPL Client
 
-This package contains an RPC server for running K-REPL commands. Commands are
-executed either against the Haskell or LLVM backend. Communication with the
-LLVM backend happens by linking against a native library containing the
-semantics and backend using pybind. Communication with the Haskell backend
-happens via the `kore-rpc` binary.
+This package contains a CLI client for the server that implements the K-REPL
+commands. The commands are implemented via calls to the server API.
 
-The server requires authentication on each command; this is not yet specified
-in this document, but can be assumed to be an extra parameter required on all
-requests.
+The commands below provide a CLI interface to the API that is suitable for
+interactive debugging. Slightly different interfaces may be exposed in a
+graphical or web client later on. 
 
-Below are a list of RPC commands supported by the K-REPL server along with
+Below are a list of commands supported by the K-REPL CLI along with
 their expected parameters and output.
 
 ## Initialization
@@ -84,7 +81,7 @@ An asynchronous request identifier.
 
 #### Asynchronous Behavior
 
-Generatess a new configuration if it does not yet exist taken by stepping the
+Generates a new configuration if it does not yet exist taken by stepping the
 current configuration until just prior to the next configuration branching
 event.
 
