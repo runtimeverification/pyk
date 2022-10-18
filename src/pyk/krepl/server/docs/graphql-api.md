@@ -9,8 +9,6 @@ The following table lists how each REPL command, as described in the [README](..
 | `step`             | `mutation step`        |  
 | `step-to-branch`   | `mutation step`        |
 | `rewind`           | `mutation rewind`      |
-| `alias`            | `mutation addAlias`    |
-| `rm-alias`         | `mutation removeAlias` |
 | `edit`             | `mutation updateCell`  |
 | `wait-for`         | `query wait`           |
 | `check-completion` | `query processes`      |
@@ -18,6 +16,9 @@ The following table lists how each REPL command, as described in the [README](..
 | `show`             | `query graph`          |
 | `show-cell`        | `query graph`          |
 | `show-cfg`         | `query graph`          |
-| `list-aliases`     | `query graph`          |
 | `predecessor`      | `query graph`          |
 | `successors`       | `query graph`          | 
+| `select`           | Client-side feature    |
+| `alias`            | Client-side feature    |
+| `rm-alias`         | Client-side feature    |
+| `list-aliases`     | Client-side feature    |

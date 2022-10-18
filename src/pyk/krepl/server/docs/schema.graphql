@@ -26,8 +26,6 @@ type Mutation {
   rewind(id: NodeID!, depth: Int, wait: Bool = False): RewindProcess!
 
   # Edit
-  addAlias(id: NodeID, alias: String): Node!
-  removeAlias(alias: String): Node!
   updateCell(id: NodeID!, cell: String!, value: TermString!): Node!
 }
 
@@ -39,9 +37,8 @@ scalar EdgeID
 
 type Graph {
   init: Node!
-  nodes(id: NodeID, alias: String, tagged: String): [Node!]!
+  nodes(id: NodeID, tagged: String): [Node!]!
   edges(id: EdgeID, source: NodeID, target: NodeID, tagged: String): [Edge!]!
-  aliases: [String!]!
   tags: [String!]!
   dot: String!
   tree: String!
@@ -49,7 +46,6 @@ type Graph {
 
 type Node {
   id: NodeID!
-  aliases: [String!]!
   term: Term!
   inEdge: Node
   outEdges: [Node!]!
