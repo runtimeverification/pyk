@@ -21,11 +21,12 @@ type Mutation {
   load(input: LoadInput!): Graph!
   loadRaw(kore: String!): Graph!
 
-  # Behavior
+  # Stepping
   step(id: NodeID!, depth: Int, branch: Bool = True, wait: Bool = False): StepProcess!
   rewind(id: NodeID!, depth: Int, wait: Bool = False): RewindProcess!
 
-  # Edit
+  # State management
+  caseSplit(id: NodeID, condition: BoolTermString): CaseSplitResult!
   updateCell(id: NodeID!, cell: String!, value: TermString!): Node!
 }
 
@@ -104,19 +105,13 @@ input LoadInput {
   params: [LoadParam!]
 }
 
-input TermString {
-  term: String!
-  module: String
-  sort: String
-}
-
 input LoadParam {
   name: String!
   program: TermString
 }
 
 
-# Behavior
+# State management
 
 interface Result {
   graph: Graph!
@@ -133,4 +128,24 @@ type RewindResult implements Result {
   newNode: Node
   newEdges: [Edge!]!
   removedEdges: [Edge!]!
+}
+
+
+# State management
+
+input TermString {
+  term: String!
+  module: String
+  sort: String
+}
+
+input BoolTermString {
+  term: String!
+  module: String
+}
+
+type CaseSplitResult implements Result {
+  graph: Graph!
+  posNode: Node!
+  negNode: Node!
 }

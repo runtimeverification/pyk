@@ -9,6 +9,7 @@ The following table lists how each REPL command, as described in the [README](..
 | `step`             | `mutation step`        |  
 | `step-to-branch`   | `mutation step`        |
 | `rewind`           | `mutation rewind`      |
+| `case-split`       | `mutation case-split`  |
 | `edit`             | `mutation updateCell`  |
 | `wait-for`         | `query wait`           |
 | `check-completion` | `query processes`      |
