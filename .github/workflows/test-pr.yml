@@ -94,7 +94,7 @@ jobs:
       - name: 'Tear down Docker container'
         if: always()
         run: |
-          docker stop pyk-ci
+          docker stop --time=0 pyk-ci
 
   build-on-nix:
     needs: unit-tests
