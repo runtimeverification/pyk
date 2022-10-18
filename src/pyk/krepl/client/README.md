@@ -240,3 +240,16 @@ Edits the specified cell of the specified configuration, replacing its current
 contents with the specified value, and creating a new state for that edited
 configuration if it does not yet exist. By default, uses the sort of the cell
 and the main module.
+
+### case-split
+
+#### Params
+
+* id: ConfigId. Defaults to current configuration.
+* condition: String. Value to parse as a boolean condition. Defaults to parsing using main module of definition.
+* module: String. Optional module name to use for parsing.
+
+#### Behavior
+
+Parses the specified condition as a term of sort `Bool` and creates two new nodes in the graph, one with `\equals(condition, true)`
+and one with `\equals(condition, false)`. Each one consists of the relevant condition conjuncted with the specified configuration.
