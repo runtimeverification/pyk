@@ -89,8 +89,9 @@ jobs:
             runtimeverificationinc/pyk-ci:${COMMIT}
 
           docker cp . pyk-ci:/home/user
+          docker exec pyk-ci chown -R user:user /home/user
       - name: 'Build and run all tests'
-        run: docker exec pyk-ci make all
+        run: docker exec --user user --workdir /home/user pyk-ci make all
       - name: 'Tear down Docker container'
         if: always()
         run: |
