@@ -14,8 +14,6 @@ class ParseTokenTest(KProveTest):
     KOMPILE_BACKEND = KompileBackend.HASKELL
     KOMPILE_EMIT_JSON = True
 
-    KPROVE_USE_DIR = '.simple-proof-test'
-
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass

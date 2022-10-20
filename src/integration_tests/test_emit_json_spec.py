@@ -17,8 +17,6 @@ class EmitJsonSpecTest(KProveTest):
     KOMPILE_BACKEND = KompileBackend.HASKELL
     KOMPILE_EMIT_JSON = True
 
-    KPROVE_USE_DIR = '.emit-json-spec-test'
-
     SPEC_FILE = 'k-files/looping-spec.k'
     SPEC_JSON_FILE = 'definitions/imp-verification/looping-spec.json'
 
@@ -52,7 +50,7 @@ class EmitJsonSpecTest(KProveTest):
     def test_prove(self) -> None:
         # Given
         spec_name = 'looping-2-spec'
-        spec_file = Path(self.KPROVE_USE_DIR) / f'{spec_name}.k'
+        spec_file = self.use_dir / f'{spec_name}.k'
         spec_module_name = spec_name.upper()
 
         self.module = self.module.let(name=spec_module_name)

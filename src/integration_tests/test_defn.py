@@ -12,8 +12,6 @@ class DefnTest(KProveTest):
     KOMPILE_BACKEND = KompileBackend.HASKELL
     KOMPILE_EMIT_JSON = True
 
-    KPROVE_USE_DIR = '.defn-test'
-
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         symbol_table['_,_'] = assoc_with_unit(' , ', '')

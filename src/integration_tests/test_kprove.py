@@ -13,8 +13,6 @@ class SimpleProofTest(KProveTest):
     KOMPILE_BACKEND = KompileBackend.HASKELL
     KOMPILE_EMIT_JSON = True
 
-    KPROVE_USE_DIR = '.simple-proof-test'
-
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass
@@ -44,8 +42,6 @@ class ImpProofTest(KProveTest):
     KOMPILE_MAIN_FILE = 'k-files/imp-verification.k'
     KOMPILE_BACKEND = KompileBackend.HASKELL
     KOMPILE_EMIT_JSON = True
-
-    KPROVE_USE_DIR = '.imp'
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:

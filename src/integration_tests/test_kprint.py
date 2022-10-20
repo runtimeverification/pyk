@@ -12,8 +12,6 @@ class ImpParseTest(KProveTest):
     KOMPILE_BACKEND = KompileBackend.HASKELL
     KOMPILE_EMIT_JSON = True
 
-    KPROVE_USE_DIR = '.imp'
-
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass
