@@ -1,25 +1,22 @@
-from pyk.kast import KApply, KAs, KRewrite, KSort, KSortSynonym, read_kast_definition
+from pyk.kast import KApply, KAs, KRewrite, KSort, KSortSynonym
 from pyk.ktool import KompileBackend
+from pyk.utils import single
 
 from .kompiled_test import KompiledTest
 
 
 class ParseKAstTest(KompiledTest):
+    KOMPILE_EMIT_JSON = True
     MODULE_NAME: str
 
     def setUp(self) -> None:
         super().setUp()
-        self.compiled_json_file = self.kompiled_dir / 'compiled.json'
-        self.definition = read_kast_definition(self.compiled_json_file)
-        modules = [module for module in self.definition if module.name == self.MODULE_NAME]
-        self.assertEqual(len(modules), 1)
-        self.module = modules[0]
+        self.module = single(module for module in self.definition if module.name == self.MODULE_NAME)
 
 
 class KSortSynonymTest(ParseKAstTest):
     KOMPILE_MAIN_FILE = 'k-files/sort-synonym.k'
     KOMPILE_BACKEND = KompileBackend.HASKELL
-    KOMPILE_EMIT_JSON = True
 
     MODULE_NAME = 'SORT-SYNONYM-SYNTAX'
 
@@ -32,7 +29,6 @@ class KSortSynonymTest(ParseKAstTest):
 class KAsTest(ParseKAstTest):
     KOMPILE_MAIN_FILE = 'k-files/contextual-function.k'
     KOMPILE_BACKEND = KompileBackend.HASKELL
-    KOMPILE_EMIT_JSON = True
 
     MODULE_NAME = 'CONTEXTUAL-FUNCTION'
 
