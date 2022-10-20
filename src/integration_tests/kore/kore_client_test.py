@@ -22,3 +22,4 @@ class KoreClientTest(KompiledTest):
     def tearDown(self) -> None:
         self.client.close()
         self.server.close()
+        super().tearDown()
