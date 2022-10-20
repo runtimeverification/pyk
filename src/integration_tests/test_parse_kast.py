@@ -5,12 +5,12 @@ from .kompiled_test import KompiledTest
 
 
 class ParseKAstTest(KompiledTest):
-    COMPILED_JSON_PATH: str
     MODULE_NAME: str
 
     def setUp(self) -> None:
         super().setUp()
-        self.definition = read_kast_definition(self.COMPILED_JSON_PATH)
+        self.compiled_json_file = self.kompiled_dir / 'compiled.json'
+        self.definition = read_kast_definition(self.compiled_json_file)
         modules = [module for module in self.definition if module.name == self.MODULE_NAME]
         self.assertEqual(len(modules), 1)
         self.module = modules[0]
@@ -19,10 +19,8 @@ class ParseKAstTest(KompiledTest):
 class KSortSynonymTest(ParseKAstTest):
     KOMPILE_MAIN_FILE = 'k-files/sort-synonym.k'
     KOMPILE_BACKEND = KompileBackend.HASKELL
-    KOMPILE_OUTPUT_DIR = 'definitions/sort-synonym'
     KOMPILE_EMIT_JSON = True
 
-    COMPILED_JSON_PATH = 'definitions/sort-synonym/compiled.json'
     MODULE_NAME = 'SORT-SYNONYM-SYNTAX'
 
     def test(self) -> None:
@@ -34,10 +32,8 @@ class KSortSynonymTest(ParseKAstTest):
 class KAsTest(ParseKAstTest):
     KOMPILE_MAIN_FILE = 'k-files/contextual-function.k'
     KOMPILE_BACKEND = KompileBackend.HASKELL
-    KOMPILE_OUTPUT_DIR = 'definitions/contextual-function'
     KOMPILE_EMIT_JSON = True
 
-    COMPILED_JSON_PATH = 'definitions/contextual-function/compiled.json'
     MODULE_NAME = 'CONTEXTUAL-FUNCTION'
 
     def test(self) -> None:

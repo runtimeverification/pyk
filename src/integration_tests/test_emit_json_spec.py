@@ -15,7 +15,6 @@ class EmitJsonSpecTest(KProveTest):
 
     KOMPILE_MAIN_FILE = f'k-files/{MAIN_FILE_NAME}'
     KOMPILE_BACKEND = KompileBackend.HASKELL
-    KOMPILE_OUTPUT_DIR = 'definitions/imp-verification'
     KOMPILE_EMIT_JSON = True
 
     KPROVE_USE_DIR = '.emit-json-spec-test'
@@ -27,9 +26,8 @@ class EmitJsonSpecTest(KProveTest):
         super().setUp()
 
         spec_file = Path(self.SPEC_FILE)
-        kompiled_dir = Path(self.KOMPILE_OUTPUT_DIR)
         emit_json_spec = Path(self.SPEC_JSON_FILE)
-        _kprove(spec_file, kompiled_dir=kompiled_dir, emit_json_spec=emit_json_spec, dry_run=True)
+        _kprove(spec_file, kompiled_dir=self.kompiled_dir, emit_json_spec=emit_json_spec, dry_run=True)
 
         with open(self.SPEC_JSON_FILE, 'r') as f:
             kfml = KAst.from_dict(json.load(f)['term'])
