@@ -23,7 +23,7 @@ jobs:
           git config user.name devops
           git config user.email devops@runtimeverification.com
           version=v"$(cat package/version)"
-          git push --delete origin "${version}"
+          git push --delete origin "${version}" || true
           git tag "${version}" HEAD
           git push origin "${version}:${version}"
       - name: 'Update dependents'
