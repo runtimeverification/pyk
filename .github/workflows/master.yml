@@ -45,7 +45,7 @@ jobs:
         env:
           JENKINS_DEVOPS_TOKEN: ${{ secrets.JENKINS_DEVOPS_TOKEN }}
         run: |
-          git fetch --tags
+          git fetch --tags --all
           version=$(git describe HEAD)
           curl --fail 'https://ci.runtimeverification.com/jenkins/buildByToken/buildWithParameters' \
               --data job=Devops/master                                                              \
