@@ -1,9 +1,3 @@
-K_ROOT := $(abspath ..)
-K_BIN  := $(K_ROOT)/k-distribution/target/release/k/bin
-
-export PATH := $(K_BIN):$(PATH)
-
-
 .PHONY: default all clean build install          \
         poetry-install                           \
         test test-unit test-integration test-pyk \
@@ -34,14 +28,17 @@ POETRY_RUN := poetry run
 # Tests
 
 TEST_ARGS :=
+INTEGRATION_TESTS := $(shell sh -c 'poetry install > /dev/null && poetry run python3 -m integration_tests')
 
 test: test-unit test-integration test-pyk test-kit
 
 test-unit: poetry-install
 	$(POETRY_RUN) python -m unittest discover tests --failfast --verbose $(TEST_ARGS)
 
-test-integration: poetry-install
-	$(POETRY_RUN) python -m unittest discover integration_tests --failfast --verbose $(TEST_ARGS)
+test-integration: $(INTEGRATION_TESTS)
+
+integration_tests.%: poetry-install
+	$(POETRY_RUN) python -m unittest $@ $(TEST_ARGS)
 
 test-pyk: poetry-install
 	$(POETRY_RUN) $(MAKE) -C pyk-tests
