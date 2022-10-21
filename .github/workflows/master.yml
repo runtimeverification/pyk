@@ -22,18 +22,15 @@ jobs:
         run: |
           git config user.name devops
           git config user.email devops@runtimeverification.com
-          old_tag=$(git describe --tags | cut --delimiter='-' --field='1')
-          tag_base=$(echo ${old_tag} | sed 's/\(v[0-9]*\.[0-9]*\.\)\([0-9]*\)/\1/')
-          tag_tail=$(echo ${old_tag} | sed 's/\(v[0-9]*\.[0-9]*\.\)\([0-9]*\)/\2/')
-          tag_tail=$(echo "1 + ${tag_tail}" | bc)
-          new_tag="${tag_base}${tag_tail}"
-          git tag "${new_tag}" HEAD
-          git push origin --tags
+          version=v"$(cat package/version)"
+          git push --delete origin "${version}"
+          git tag "${version}" HEAD
+          git push origin "${version}:${version}"
       - name: 'Update dependents'
         env:
           JENKINS_DEVOPS_TOKEN: ${{ secrets.JENKINS_DEVOPS_TOKEN }}
         run: |
-          version=$(git describe --tags)
+          version="v$(cat package/version)"
           curl --fail 'https://ci.runtimeverification.com/jenkins/buildByToken/buildWithParameters' \
               --data job=Devops/master                                                              \
               --data token=${JENKINS_DEVOPS_TOKEN}                                                  \
