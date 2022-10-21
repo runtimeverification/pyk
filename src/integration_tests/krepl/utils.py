@@ -3,9 +3,8 @@ from typing import Any, ContextManager, List
 from unittest import TestCase
 
 from pyk.krepl.client import KReplClient
-from pyk.krepl.server import DEFAULT_PORT
 
-from ..utils import wait_for_port
+from ..utils import free_port_on_host, wait_for_port
 
 
 class KReplProc(ContextManager['KReplProc']):
@@ -30,20 +29,21 @@ class KReplProc(ContextManager['KReplProc']):
 
 
 class KReplTest(TestCase):
-    KREPL_PORT: int = DEFAULT_PORT
     KREPL_LOGLEVEL: str = 'error'
 
     _server: KReplProc
     client: KReplClient
 
     def setUp(self) -> None:
+        port = free_port_on_host()
+
         args: List[str] = []
-        args += ['--port', str(self.KREPL_PORT)]
+        args += ['--port', str(port)]
         args += ['--loglevel', self.KREPL_LOGLEVEL]
 
         self._server = KReplProc(*args)
-        wait_for_port(self.KREPL_PORT)
-        self.client = KReplClient(self.KREPL_PORT)
+        wait_for_port(port)
+        self.client = KReplClient(port)
 
     def tearDown(self) -> None:
         self._server.close()
