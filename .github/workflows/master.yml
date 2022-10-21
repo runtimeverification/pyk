@@ -28,12 +28,12 @@ jobs:
           git push origin "${version}:${version}"
       - name: 'Update dependents'
         env:
-          JENKINS_DEVOPS_TOKEN: ${{ secrets.JENKINS_DEVOPS_TOKEN }}
+          GH_JENKINS_ACCESS_TOKEN: ${{ secrets.GH_JENKINS_ACCESS_TOKEN }}
         run: |
           version="v$(cat package/version)"
           curl --fail 'https://ci.runtimeverification.com/jenkins/buildByToken/buildWithParameters' \
               --data job=Devops/master                                                              \
-              --data token=${JENKINS_DEVOPS_TOKEN}                                                  \
+              --data token=${GH_JENKINS_ACCESS_TOKEN}                                               \
               --data UPDATE_DEPS=true                                                               \
               --data UPDATE_DEPS_REPO=runtimeverification/pyk                                       \
               --data UPDATE_DEPS_VERSION=${version}
