@@ -2,7 +2,7 @@ name: 'Run Tests'
 on:
   push:
     branches:
-      - 'automate-release'
+      - 'master'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
