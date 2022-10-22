@@ -18,16 +18,15 @@ class EmitJsonSpecTest(KProveTest):
     KOMPILE_EMIT_JSON = True
 
     SPEC_FILE = 'k-files/looping-spec.k'
-    SPEC_JSON_FILE = 'definitions/imp-verification/looping-spec.json'
 
     def setUp(self) -> None:
         super().setUp()
 
         spec_file = Path(self.SPEC_FILE)
-        emit_json_spec = Path(self.SPEC_JSON_FILE)
-        _kprove(spec_file, kompiled_dir=self.kompiled_dir, emit_json_spec=emit_json_spec, dry_run=True)
+        self.spec_json_file = self.kompiled_dir / 'looping-spec.json'
+        _kprove(spec_file, kompiled_dir=self.kompiled_dir, emit_json_spec=self.spec_json_file, dry_run=True)
 
-        with open(self.SPEC_JSON_FILE, 'r') as f:
+        with open(self.spec_json_file, 'r') as f:
             kfml = KAst.from_dict(json.load(f)['term'])
             assert type(kfml) is KFlatModuleList
 
