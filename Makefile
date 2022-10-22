@@ -20,7 +20,9 @@ install: build
 	pip3 install ./dist/*.whl --root=$(DESTDIR) --prefix=$(PREFIX)
 
 poetry-install:
+ifndef NO_POETRY_INSTALL
 	poetry install
+endif
 
 POETRY_RUN := poetry run
 
@@ -28,14 +30,18 @@ POETRY_RUN := poetry run
 # Tests
 
 TEST_ARGS :=
-INTEGRATION_TESTS := $(shell sh -c 'poetry install > /dev/null && poetry run python3 -m integration_tests')
 
 test: test-unit test-integration test-pyk test-kit
 
 test-unit: poetry-install
 	$(POETRY_RUN) python -m unittest discover tests --failfast --verbose $(TEST_ARGS)
 
-test-integration: $(INTEGRATION_TESTS)
+ifdef TESTS
+test-integration: poetry-install $(TESTS)
+else
+test-integration: poetry-install
+	@$(MAKE) --no-print-directory $@ TESTS=$$(poetry run python3 -m integration_tests) NO_POETRY_INSTALL=true
+endif
 
 integration_tests.%: poetry-install
 	$(POETRY_RUN) python -m unittest $@ $(TEST_ARGS)
