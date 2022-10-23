@@ -23,6 +23,7 @@ class MatchTest(TestCase):
             (KSequence([a, x]), KSequence([y])),
             (KSequence([a, b, x]), KSequence([a, y])),
             (KSequence([f(a), b, x]), KSequence([f(z), y])),
+            (KSequence([f(a), b, c, x]), KSequence([f(z), y])),
         )
 
         for i, [term, pattern] in enumerate(test_data):
