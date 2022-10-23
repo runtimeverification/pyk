@@ -681,6 +681,14 @@ class KSequence(KInner, Sequence[KInner]):
         else:
             items = args
 
+        _items = []
+        for i in items:
+            if type(i) is KSequence:
+                _items.extend(list(i.items))
+            else:
+                _items.append(i)
+        items = tuple(_items)
+
         object.__setattr__(self, 'items', tuple(items))
 
     @overload
