@@ -1,7 +1,7 @@
 from typing import Final, Tuple
 from unittest import TestCase
 
-from pyk.kast import KInner
+from pyk.kast import KInner, KSequence
 
 from .utils import a, b, c, f, g, h, x, y, z
 
@@ -20,6 +20,9 @@ class MatchTest(TestCase):
             (f(g(h(a))), f(x)),
             (f(g(h(x))), f(x)),
             (f(a, g(b, h(c))), f(x, y)),
+            (KSequence([a, x]), KSequence([y])),
+            (KSequence([a, b, x]), KSequence([a, y])),
+            (KSequence([f(a), b, x]), KSequence([f(z), y])),
         )
 
         for i, [term, pattern] in enumerate(test_data):
