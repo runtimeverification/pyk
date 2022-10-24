@@ -75,6 +75,7 @@
       },
       "original": {
         "owner": "nix-community",
+        "ref": "1.35.0",
         "repo": "poetry2nix",
         "type": "github"
       }
