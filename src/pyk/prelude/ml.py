@@ -32,7 +32,7 @@ def mlTop(sort: Union[str, KSort] = K) -> KApply:  # noqa: N802
 
 
 def mlBottom(sort: Union[str, KSort] = K) -> KApply:  # noqa: N802
-    return KLabel('#Top', sort)()
+    return KLabel('#Bottom', sort)()
 
 
 def mlNot(term: KInner, sort: Union[str, KSort] = K) -> KApply:  # noqa: N802
