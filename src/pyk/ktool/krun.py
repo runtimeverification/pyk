@@ -30,6 +30,9 @@ def _krun(
     if depth and depth >= 0:
         args += ['--depth', str(depth)]
 
+    if profile:
+        args += ['--profile']
+
     try:
         return run_process(krun_command + args, logger=_LOGGER, check=check, profile=profile)
     except CalledProcessError as err:
