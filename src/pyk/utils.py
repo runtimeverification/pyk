@@ -1,5 +1,6 @@
 import hashlib
 import string
+from itertools import chain
 from typing import (
     Any,
     Callable,
@@ -99,6 +100,14 @@ def find_common_items(l1: Iterable[T], l2: Iterable[T]) -> Tuple[List[T], List[T
         if i not in common:
             new_l2.append(i)
     return (common, new_l1, new_l2)
+
+
+def flatten(x: Any) -> Iterable:
+    try:
+        it = iter(x)
+    except TypeError:
+        return (x,)
+    return chain.from_iterable(flatten(y) for y in it)
 
 
 def intersperse(iterable: Iterable[T], delimiter: T) -> Iterator[T]:

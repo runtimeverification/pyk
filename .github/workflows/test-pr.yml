@@ -91,7 +91,7 @@ jobs:
           docker cp . pyk-ci:/home/user
           docker exec pyk-ci chown -R user:user /home/user
       - name: 'Build and run all tests'
-        run: docker exec --user user --workdir /home/user pyk-ci make all
+        run: docker exec --user user --workdir /home/user pyk-ci make -j4 all
       - name: 'Tear down Docker container'
         if: always()
         run: |
