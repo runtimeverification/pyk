@@ -39,7 +39,7 @@ from ..kast import (
 )
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
-from ..kore.syntax import Kore, MLPattern
+from ..kore.syntax import DV, Kore, MLPattern, SortApp, String
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 
@@ -120,7 +120,7 @@ class KPrint:
         return kast_token
 
     def kore_to_kast(self, kore: Kore) -> KAst:
-        if type(kore) is MLPattern:
+        if isinstance(kore, MLPattern):
             _kast_out = self._kore_to_kast(kore)
             if _kast_out:
                 return _kast_out
@@ -129,10 +129,12 @@ class KPrint:
         return KAst.from_dict(json.loads(output)['term'])
 
     def _kore_to_kast(self, kore: MLPattern) -> Optional[KInner]:
+        if type(kore) is DV and kore.sort.name.startswith('Sort'):
+            return KToken(kore.value.value, KSort(kore.sort.name[4:]))
         return None
 
     def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
-        if type(kast) is KInner:
+        if isinstance(kast, KInner):
             _kore_out = self._kast_to_kore(kast)
             if _kore_out:
                 return _kore_out
@@ -144,6 +146,8 @@ class KPrint:
         return KoreParser(output).pattern()
 
     def _kast_to_kore(self, kast: KInner) -> Optional[MLPattern]:
+        if type(kast) is KToken:
+            return DV(SortApp('Sort' + kast.sort.name), String(kast.token))
         return None
 
     def pretty_print(self, kast: KAst, debug: bool = False) -> str:
