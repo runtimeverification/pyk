@@ -39,7 +39,7 @@ from ..kast import (
 )
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
-from ..kore.syntax import Kore
+from ..kore.syntax import Kore, MLPattern
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 
@@ -120,15 +120,31 @@ class KPrint:
         return kast_token
 
     def kore_to_kast(self, kore: Kore) -> KAst:
+        if type(kore) is MLPattern:
+            _kast_out = self._kore_to_kast(kore)
+            if _kast_out:
+                return _kast_out
+        _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
         output = _kast(self.definition_dir, kore.text, input='kore', output='json', profile=self._profile)
         return KAst.from_dict(json.loads(output)['term'])
 
+    def _kore_to_kast(self, kore: MLPattern) -> Optional[KInner]:
+        return None
+
     def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
+        if type(kast) is KInner:
+            _kore_out = self._kast_to_kore(kast)
+            if _kore_out:
+                return _kore_out
+        _LOGGER.warning(f'Falling back to using `kast` for KAst -> Kore: {kast}')
         kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
         output = _kast(
             self.definition_dir, json.dumps(kast_json), input='json', output='kore', sort=sort, profile=self._profile
         )
         return KoreParser(output).pattern()
+
+    def _kast_to_kore(self, kast: KInner) -> Optional[MLPattern]:
+        return None
 
     def pretty_print(self, kast: KAst, debug: bool = False) -> str:
         return pretty_print_kast(kast, self.symbol_table, debug=debug)
