@@ -19,6 +19,12 @@ class KoreToKastTest(KProveTest):
     def test_kast_to_kore(self) -> None:
         kore_kast_pairs = (
             (
+                'domain-value',
+                KSort('Int'),
+                DV(SortApp('SortInt'), String('3')),
+                intToken(3),
+            ),
+            (
                 'issue:k/2762',
                 KSort('Bool'),
                 App('Lblpred1', [], [DV(SortApp('SortInt'), String('3'))]),
