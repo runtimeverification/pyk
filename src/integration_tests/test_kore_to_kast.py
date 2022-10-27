@@ -1,4 +1,4 @@
-from pyk.kast import KApply, KSequence
+from pyk.kast import KApply, KSequence, KSort
 from pyk.kore.syntax import DV, App, SortApp, String
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
@@ -19,27 +19,27 @@ class KoreToKastTest(KProveTest):
     def test_kast_to_kore(self) -> None:
         kore_kast_pairs = (
             (
+                'domain-value',
+                KSort('Int'),
+                DV(SortApp('SortInt'), String('3')),
+                intToken(3),
+            ),
+            (
                 'issue:k/2762',
-                App(
-                    'inj',
-                    [SortApp('SortBool'), SortApp('SortKItem')],
-                    [App('Lblpred1', [], [DV(SortApp('SortInt'), String('3'))])],
-                ),
+                KSort('Bool'),
+                App('Lblpred1', [], [DV(SortApp('SortInt'), String('3'))]),
                 KApply('pred1', [intToken(3)]),
             ),
             (
                 'cells-conversion',
-                App(
-                    'inj',
-                    [SortApp('SortKCell'), SortApp('SortKItem')],
-                    [App("Lbl'-LT-'k'-GT-'", [], [App('dotk', [], [])])],
-                ),
+                KSort('KCell'),
+                App("Lbl'-LT-'k'-GT-'", [], [App('dotk', [], [])]),
                 KApply('<k>', [KSequence()]),
             ),
         )
-        for (name, kore, kast) in kore_kast_pairs:
+        for name, sort, kore, kast in kore_kast_pairs:
             with self.subTest(name):
-                kore_actual = self.kprove.kast_to_kore(kast)
+                kore_actual = self.kprove.kast_to_kore(kast, sort=sort)
                 kast_actual = self.kprove.kore_to_kast(kore)
                 self.assertEqual(kore_actual, kore)
                 self.assertEqual(kast_actual, kast)

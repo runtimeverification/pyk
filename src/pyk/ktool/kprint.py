@@ -19,6 +19,7 @@ from ..kast import (
     KFlatModule,
     KImport,
     KInner,
+    KLabel,
     KNonTerminal,
     KProduction,
     KRegexTerminal,
@@ -39,7 +40,7 @@ from ..kast import (
 )
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
-from ..kore.syntax import Kore
+from ..kore.syntax import DV, App, Kore, Pattern, SortApp, String
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 
@@ -80,6 +81,9 @@ class KPrint:
     _symbol_table: Optional[SymbolTable]
     _temp_dir: Optional[TemporaryDirectory] = None
 
+    _unmunge_codes: Dict[str, str]
+    _munge_codes: Dict[str, str]
+
     def __init__(self, definition_dir: Path, use_directory: Optional[Path] = None, profile: bool = False) -> None:
         self.definition_dir = Path(definition_dir)
         if use_directory:
@@ -91,6 +95,42 @@ class KPrint:
         self._definition = None
         self._symbol_table = None
         self._profile = profile
+        self._unmunge_codes = {
+            'Spce': ' ',
+            'Bang': '!',
+            'Quot': '"',
+            'Hash': '#',
+            'Dolr': '$',
+            'Perc': '%',
+            'And-': '&',
+            'Apos': "'",
+            'LPar': '(',
+            'RPar': ')',
+            'Star': '*',
+            'Plus': '+',
+            'Comm': ',',
+            'Hyph': '-',
+            'Stop': '.',
+            'Slsh': '/',
+            'Coln': ':',
+            'SCln': ';',
+            '-LT-': '<',
+            'Eqls': '=',
+            '-GT-': '>',
+            'Ques': '?',
+            '-AT-': '@',
+            'LSqB': '[',
+            'RSqB': ']',
+            'Bash': '\\',
+            'Xor-': '^',
+            'Unds': '_',
+            'BQuo': '`',
+            'LBra': '{',
+            'Pipe': '|',
+            'RBra': '}',
+            'Tild': '~',
+        }
+        self._munge_codes = {v: k for k, v in self._unmunge_codes.items()}
 
     def __del__(self) -> None:
         if self._temp_dir is not None:
@@ -119,16 +159,97 @@ class KPrint:
         assert isinstance(kast_token, KInner)
         return kast_token
 
+    def munge(self, label: str) -> str:
+        _symbol = 'Lbl'
+        literal_mode = True
+        while len(label) > 0:
+            if label[0] in self._munge_codes:
+                if not literal_mode:
+                    _symbol += self._munge_codes[label[0]]
+                    label = label[1:]
+                else:
+                    _symbol += "'"
+                    literal_mode = False
+            else:
+                if literal_mode:
+                    _symbol += label[0]
+                    label = label[1:]
+                else:
+                    _symbol += "'"
+                    literal_mode = True
+        if not literal_mode:
+            _symbol += "'"
+        return _symbol
+
+    def unmunge(self, symbol: str) -> str:
+        if symbol.startswith('Lbl'):
+            symbol = symbol[3:]
+        _label = ''
+        literal_mode = True
+        while len(symbol) > 0:
+            if symbol[0] == "'":
+                literal_mode = not literal_mode
+                symbol = symbol[1:]
+            else:
+                if literal_mode:
+                    _label += symbol[0]
+                    symbol = symbol[1:]
+                else:
+                    _label += self._unmunge_codes[symbol[0:4]]
+                    symbol = symbol[4:]
+        return _label
+
     def kore_to_kast(self, kore: Kore) -> KAst:
+        if isinstance(kore, Pattern):
+            _kast_out = self._kore_to_kast(kore)
+            if _kast_out:
+                return _kast_out
+        _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
         output = _kast(self.definition_dir, kore.text, input='kore', output='json', profile=self._profile)
         return KAst.from_dict(json.loads(output)['term'])
 
+    def _kore_to_kast(self, kore: Pattern) -> Optional[KInner]:
+        if type(kore) is DV and kore.sort.name.startswith('Sort'):
+            return KToken(kore.value.value, KSort(kore.sort.name[4:]))
+        if type(kore) is App:
+            # TODO: Support sort parameters
+            if not kore.sorts:
+                if kore.symbol == 'dotk' and not kore.patterns:
+                    return KSequence([])
+                klabel = KLabel(self.unmunge(kore.symbol), [KSort(k.name) for k in kore.sorts])
+                args = [self._kore_to_kast(_a) for _a in kore.patterns]
+                # TODO: Written like this to appease the type-checker.
+                new_args = [a for a in args if a is not None]
+                if len(new_args) == len(args):
+                    return KApply(klabel, new_args)
+        return None
+
     def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
+        if isinstance(kast, KInner):
+            _kore_out = self._kast_to_kore(kast)
+            if _kore_out:
+                return _kore_out
+        _LOGGER.warning(f'Falling back to using `kast` for KAst -> Kore: {kast}')
         kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
         output = _kast(
             self.definition_dir, json.dumps(kast_json), input='json', output='kore', sort=sort, profile=self._profile
         )
         return KoreParser(output).pattern()
+
+    def _kast_to_kore(self, kast: KInner) -> Optional[Pattern]:
+        if type(kast) is KToken:
+            return DV(SortApp('Sort' + kast.sort.name), String(kast.token))
+        if type(kast) is KApply:
+            # TODO: Support sort parameters
+            if not kast.label.params:
+                args = [self._kast_to_kore(a) for a in kast.args]
+                # TODO: Written like this to appease the type-checker.
+                new_args = [a for a in args if a is not None]
+                if len(new_args) == len(args):
+                    return App(self.munge(kast.label.name), (), new_args)
+        if type(kast) is KSequence and kast.arity == 0:
+            return App('dotk', (), ())
+        return None
 
     def pretty_print(self, kast: KAst, debug: bool = False) -> str:
         return pretty_print_kast(kast, self.symbol_table, debug=debug)
