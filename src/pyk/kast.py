@@ -1563,6 +1563,7 @@ class KDefinition(KOuter, WithKAtt):
     main_module: InitVar[KFlatModule]
 
     _production_for_klabel: Dict[KLabel, KProduction]
+    _subsorts: Dict[KSort, List[KSort]]
 
     def __init__(
         self,
@@ -1587,6 +1588,7 @@ class KDefinition(KOuter, WithKAtt):
         object.__setattr__(self, 'att', att)
         object.__setattr__(self, 'main_module', main_module)
         object.__setattr__(self, '_production_for_klabel', {})
+        object.__setattr__(self, '_subsorts', {})
 
     def __iter__(self) -> Iterator[KFlatModule]:
         return iter(self.modules)
@@ -1677,6 +1679,19 @@ class KDefinition(KOuter, WithKAtt):
             return single(prod for prod in self.productions if prod.sort == sort and 'cell' in prod.att)
         except ValueError as err:
             raise ValueError(f'Expected a single cell production for sort {sort}') from err
+
+    def subsorts(self, sort: KSort) -> List[KSort]:
+        if sort not in self._subsorts:
+            self._subsorts[sort] = list(set(self._compute_subsorts(sort)))
+        return self._subsorts[sort]
+
+    def _compute_subsorts(self, sort: KSort) -> List[KSort]:
+        _subsorts = []
+        for prod in self.productions:
+            if prod.sort == sort and len(prod.items) == 1 and type(prod.items[0]) is KNonTerminal:
+                _subsort = prod.items[0].sort
+                _subsorts.extend([_subsort] + self.subsorts(prod.items[0].sort))
+        return _subsorts
 
     def empty_config(self, sort: KSort) -> KInner:
         def _kdefinition_empty_config(_sort: KSort) -> KApply:
