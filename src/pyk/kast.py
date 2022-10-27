@@ -1562,6 +1562,8 @@ class KDefinition(KOuter, WithKAtt):
 
     main_module: InitVar[KFlatModule]
 
+    _production_for_klabel: Dict[KLabel, KProduction]
+
     def __init__(
         self,
         main_module_name: str,
@@ -1584,6 +1586,7 @@ class KDefinition(KOuter, WithKAtt):
         object.__setattr__(self, 'requires', tuple(requires))
         object.__setattr__(self, 'att', att)
         object.__setattr__(self, 'main_module', main_module)
+        object.__setattr__(self, '_production_for_klabel', {})
 
     def __iter__(self) -> Iterator[KFlatModule]:
         return iter(self.modules)
@@ -1649,10 +1652,14 @@ class KDefinition(KOuter, WithKAtt):
         return [rule for module in self.modules for rule in module.rules]
 
     def production_for_klabel(self, klabel: KLabel) -> KProduction:
-        try:
-            return single(prod for prod in self.productions if prod.klabel and prod.klabel == klabel)
-        except ValueError as err:
-            raise ValueError(f'Expected a single production for label {klabel}') from err
+        if klabel not in self._production_for_klabel:
+            try:
+                self._production_for_klabel[klabel] = single(
+                    prod for prod in self.productions if prod.klabel and prod.klabel == klabel
+                )
+            except ValueError as err:
+                raise ValueError(f'Expected a single production for label {klabel}') from err
+        return self._production_for_klabel[klabel]
 
     def production_for_cell_sort(self, sort: KSort) -> KProduction:
         # Typical cell production has 3 productions:
