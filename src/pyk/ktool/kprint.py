@@ -212,6 +212,8 @@ class KPrint:
         if type(kore) is DV and kore.sort.name.startswith('Sort'):
             return KToken(kore.value.value, KSort(kore.sort.name[4:]))
         if type(kore) is App:
+            if kore.symbol == 'inj' and len(kore.sorts) == 2 and len(kore.patterns) == 1:
+                return self._kore_to_kast(kore.patterns[0])
             # TODO: Support sort parameters
             if not kore.sorts:
                 if kore.symbol == 'dotk' and not kore.patterns:
@@ -226,7 +228,7 @@ class KPrint:
 
     def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
         if isinstance(kast, KInner):
-            _kore_out = self._kast_to_kore(kast)
+            _kore_out = self._kast_to_kore(kast, sort=sort)
             if _kore_out:
                 return _kore_out
         _LOGGER.warning(f'Falling back to using `kast` for KAst -> Kore: {kast}')
@@ -236,20 +238,43 @@ class KPrint:
         )
         return KoreParser(output).pattern()
 
-    def _kast_to_kore(self, kast: KInner) -> Optional[Pattern]:
+    def _kast_to_kore(self, kast: KInner, sort: Optional[KSort] = None) -> Optional[Pattern]:
+        def _get_sort(_ki: KInner) -> Optional[KSort]:
+            if type(_ki) is KApply:
+                return self.definition.return_sort(_ki.label)
+            return None
+
         if type(kast) is KToken:
-            return DV(SortApp('Sort' + kast.sort.name), String(kast.token))
+            dv: Pattern = DV(SortApp('Sort' + kast.sort.name), String(kast.token))
+            if sort is not None and kast.sort != sort:
+                dv = self._add_sort_injection(dv, kast.sort, sort)
+            return dv
+
         if type(kast) is KApply:
             # TODO: Support sort parameters
             if not kast.label.params:
-                args = [self._kast_to_kore(a) for a in kast.args]
+                args = [
+                    self._kast_to_kore(arg, sort=arg_sort)
+                    for arg, arg_sort in zip(kast.args, self.definition.argument_sorts(kast.label))
+                ]
                 # TODO: Written like this to appease the type-checker.
                 new_args = [a for a in args if a is not None]
                 if len(new_args) == len(args):
-                    return App(self.munge(kast.label.name), (), new_args)
+                    app: Pattern = App(self.munge(kast.label.name), (), new_args)
+                    isort = _get_sort(kast)
+                    if sort is not None and isort is not None and isort != sort:
+                        app = self._add_sort_injection(app, isort, sort)
+                    return app
+
         if type(kast) is KSequence and kast.arity == 0:
             return App('dotk', (), ())
+
         return None
+
+    def _add_sort_injection(self, pat: Pattern, isort: KSort, osort: KSort) -> Pattern:
+        if isort not in self.definition.subsorts(osort):
+            raise ValueError(f'Could not find injection from subsort to supersort: {isort} -> {osort}')
+        return App('inj', [SortApp('Sort' + isort.name), SortApp('Sort' + osort.name)], [pat])
 
     def pretty_print(self, kast: KAst, debug: bool = False) -> str:
         return pretty_print_kast(kast, self.symbol_table, debug=debug)
