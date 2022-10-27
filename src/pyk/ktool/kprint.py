@@ -209,11 +209,15 @@ class KPrint:
         return KAst.from_dict(json.loads(output)['term'])
 
     def _kore_to_kast(self, kore: Pattern) -> Optional[KInner]:
+
         if type(kore) is DV and kore.sort.name.startswith('Sort'):
             return KToken(kore.value.value, KSort(kore.sort.name[4:]))
+
         if type(kore) is App:
+
             if kore.symbol == 'inj' and len(kore.sorts) == 2 and len(kore.patterns) == 1:
                 return self._kore_to_kast(kore.patterns[0])
+
             # TODO: Support sort parameters
             if not kore.sorts:
                 if kore.symbol == 'dotk' and not kore.patterns:
@@ -224,6 +228,7 @@ class KPrint:
                 new_args = [a for a in args if a is not None]
                 if len(new_args) == len(args):
                     return KApply(klabel, new_args)
+
         return None
 
     def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
