@@ -1680,6 +1680,12 @@ class KDefinition(KOuter, WithKAtt):
         except ValueError as err:
             raise ValueError(f'Expected a single cell production for sort {sort}') from err
 
+    def return_sort(self, label: KLabel) -> KSort:
+        return self.production_for_klabel(label).sort
+
+    def argument_sorts(self, label: KLabel) -> List[KSort]:
+        return [nt.sort for nt in self.production_for_klabel(label).items if type(nt) is KNonTerminal]
+
     def subsorts(self, sort: KSort) -> List[KSort]:
         if sort not in self._subsorts:
             self._subsorts[sort] = list(set(self._compute_subsorts(sort)))
