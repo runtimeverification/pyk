@@ -36,6 +36,22 @@ class KoreToKastTest(KProveTest):
                 App("Lbl'-LT-'k'-GT-'", [], [App('dotk', [], [])]),
                 KApply('<k>', [KSequence()]),
             ),
+            (
+                'simple-injection',
+                KSort('Foo'),
+                App('Lblfoo', [], [App('inj', [SortApp('SortBaz'), SortApp('SortBar')], [App('Lblbaz', [], [])])]),
+                KApply('foo', [KApply('baz')]),
+            ),
+            (
+                'cells-conversion',
+                KSort('KItem'),
+                App(
+                    'inj',
+                    [SortApp('SortKCell'), SortApp('SortKItem')],
+                    [App("Lbl'-LT-'k'-GT-'", [], [App('dotk', [], [])])],
+                ),
+                KApply('<k>', [KSequence()]),
+            ),
         )
         for name, sort, kore, kast in kore_kast_pairs:
             with self.subTest(name):
