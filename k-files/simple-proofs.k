@@ -15,7 +15,7 @@ module SIMPLE-PROOFS
 
     syntax Bar ::= Baz
 
-    syntax Baz ::= "baz" [klabel(baz), symbol]
+    syntax Baz ::= "foo-bar" | "baz" [klabel(baz), symbol]
 
     rule <k> foo => bar ... </k>
          <state> ... 3 |-> N ... </state>
