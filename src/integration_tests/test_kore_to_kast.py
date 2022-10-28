@@ -55,8 +55,6 @@ class KoreToKastTest(KProveTest):
             (
                 'munging-problem',
                 KSort('Baz'),
-                # TODO: https://github.com/runtimeverification/k/issues/3023
-                # App("Lblfoo'Hyph'bar'Unds'SIMPLE'Hyph'PROOFS'Unds'Baz", [], []),
                 App("Lblfoo-bar'Unds'SIMPLE-PROOFS'Unds'Baz", [], []),
                 KApply('foo-bar_SIMPLE-PROOFS_Baz', []),
             ),

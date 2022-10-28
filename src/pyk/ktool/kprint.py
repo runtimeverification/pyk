@@ -109,8 +109,6 @@ class KPrint:
             'Star': '*',
             'Plus': '+',
             'Comm': ',',
-            # TODO: https://github.com/runtimeverification/k/issues/3023
-            # 'Hyph': '-',
             'Stop': '.',
             'Slsh': '/',
             'Coln': ':',
