@@ -60,6 +60,53 @@ class KoreToKastTest(KProveTest):
                 App("Lblfoo-bar'Unds'SIMPLE-PROOFS'Unds'Baz", [], []),
                 KApply('foo-bar_SIMPLE-PROOFS_Baz', []),
             ),
+            (
+                'kseq-empty',
+                KSort('K'),
+                App('dotk', [], []),
+                KSequence([]),
+            ),
+            (
+                'kseq-singleton',
+                KSort('K'),
+                App(
+                    'kseq',
+                    [],
+                    [
+                        App(
+                            'inj',
+                            [SortApp('SortBaz'), SortApp('SortKItem')],
+                            [App("Lblfoo-bar'Unds'SIMPLE-PROOFS'Unds'Baz", [], [])],
+                        ),
+                        App('dotk', (), ()),
+                    ],
+                ),
+                KSequence([KApply('foo-bar_SIMPLE-PROOFS_Baz')]),
+            ),
+            (
+                'kseq-two-element',
+                KSort('K'),
+                App(
+                    'kseq',
+                    [],
+                    [
+                        App("Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem", [], []),
+                        App(
+                            'kseq',
+                            [],
+                            [
+                                App(
+                                    'inj',
+                                    [SortApp('SortBaz'), SortApp('SortKItem')],
+                                    [App("Lblfoo-bar'Unds'SIMPLE-PROOFS'Unds'Baz", [], [])],
+                                ),
+                                App('dotk', (), ()),
+                            ],
+                        ),
+                    ],
+                ),
+                KSequence([KApply('foo_SIMPLE-PROOFS_KItem'), KApply('foo-bar_SIMPLE-PROOFS_Baz')]),
+            ),
         )
         for name, sort, kore, kast in kore_kast_pairs:
             with self.subTest(name):
