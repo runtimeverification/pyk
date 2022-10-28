@@ -203,7 +203,7 @@ class KPrint:
     def kore_to_kast(self, kore: Kore) -> KAst:
         if isinstance(kore, Pattern):
             _kast_out = self._kore_to_kast(kore)
-            if _kast_out:
+            if _kast_out is not None:
                 return _kast_out
         _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
         output = _kast(self.definition_dir, kore.text, input='kore', output='json', profile=self._profile)
@@ -220,22 +220,31 @@ class KPrint:
                 return self._kore_to_kast(kore.patterns[0])
 
             # TODO: Support sort parameters
-            if not kore.sorts:
-                if kore.symbol == 'dotk' and not kore.patterns:
+            if len(kore.sorts) == 0:
+
+                if kore.symbol == 'dotk' and len(kore.patterns) == 0:
                     return KSequence([])
-                klabel = KLabel(self.unmunge(kore.symbol), [KSort(k.name) for k in kore.sorts])
-                args = [self._kore_to_kast(_a) for _a in kore.patterns]
-                # TODO: Written like this to appease the type-checker.
-                new_args = [a for a in args if a is not None]
-                if len(new_args) == len(args):
-                    return KApply(klabel, new_args)
+
+                elif kore.symbol == 'kseq' and len(kore.patterns) == 2:
+                    p0 = self._kore_to_kast(kore.patterns[0])
+                    p1 = self._kore_to_kast(kore.patterns[1])
+                    if p0 is not None and p1 is not None:
+                        return KSequence([p0, p1])
+
+                else:
+                    klabel = KLabel(self.unmunge(kore.symbol), [KSort(k.name) for k in kore.sorts])
+                    args = [self._kore_to_kast(_a) for _a in kore.patterns]
+                    # TODO: Written like this to appease the type-checker.
+                    new_args = [a for a in args if a is not None]
+                    if len(new_args) == len(args):
+                        return KApply(klabel, new_args)
 
         return None
 
     def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
         if isinstance(kast, KInner):
             _kore_out = self._kast_to_kore(kast, sort=sort)
-            if _kore_out:
+            if _kore_out is not None:
                 return _kore_out
         _LOGGER.warning(f'Falling back to using `kast` for KAst -> Kore: {kast}')
         kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
@@ -258,7 +267,7 @@ class KPrint:
 
         if type(kast) is KApply:
             # TODO: Support sort parameters
-            if not kast.label.params:
+            if len(kast.label.params) == 0:
                 args = [
                     self._kast_to_kore(arg, sort=arg_sort)
                     for arg, arg_sort in zip(kast.args, self.definition.argument_sorts(kast.label))
@@ -272,8 +281,14 @@ class KPrint:
                         app = self._add_sort_injection(app, isort, sort)
                     return app
 
-        if type(kast) is KSequence and kast.arity == 0:
-            return App('dotk', (), ())
+        if type(kast) is KSequence:
+            seq = App('dotk', (), ())
+            for i in reversed(kast.items):
+                kore_i = self._kast_to_kore(i, sort=KSort('KItem'))
+                if kore_i is None:
+                    return None
+                seq = App('kseq', (), [kore_i, seq])
+            return seq
 
         return None
 
