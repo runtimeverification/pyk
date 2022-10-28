@@ -20,6 +20,7 @@ def _krun(
     check: bool = True,
     profile: bool = True,
     output: str = 'json',
+    expand_macros: bool = False,
     depth: Optional[int] = None,
     args: Iterable[str] = (),
 ) -> CompletedProcess:
@@ -33,6 +34,9 @@ def _krun(
 
     if profile:
         args += ['--profile']
+
+    if not expand_macros:
+        args += ['--no-expand-macros']
 
     try:
         return run_process(krun_command + args, logger=_LOGGER, check=check, profile=profile)
@@ -54,7 +58,9 @@ class KRun(KPrint):
         with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
             self.main_module = mm.read()
 
-    def run(self, pgm: KInner, depth: Optional[int] = None, args: Iterable[str] = ()) -> CTerm:
+    def run(
+        self, pgm: KInner, depth: Optional[int] = None, expand_macros: bool = False, args: Iterable[str] = ()
+    ) -> CTerm:
         with NamedTemporaryFile('w', dir=self.use_directory, delete=False) as ntf:
             ntf.write(self.pretty_print(pgm))
             ntf.flush()
@@ -62,6 +68,7 @@ class KRun(KPrint):
                 self.definition_dir,
                 Path(ntf.name),
                 depth=depth,
+                expand_macros=expand_macros,
                 args=(list(args) + ['--output', 'json']),
                 profile=self._profile,
             )
@@ -72,16 +79,22 @@ class KRun(KPrint):
             return CTerm(result_kast)
 
     def run_kore(
-        self, pgm: KInner, depth: Optional[int] = None, sort: Optional[KSort] = None, args: Iterable[str] = ()
+        self,
+        pgm: KInner,
+        depth: Optional[int] = None,
+        sort: Optional[KSort] = None,
+        expand_macros: bool = False,
+        args: Iterable[str] = (),
     ) -> CTerm:
-        with NamedTemporaryFile('w', dir=self.use_directory, delete=False) as ntf:
-            kore_pgm = self.kast_to_kore(pgm, sort=sort)
+        kore_pgm = self.kast_to_kore(pgm, sort=sort)
+        with NamedTemporaryFile('w', dir=self.use_directory, delete=True) as ntf:
             ntf.write(kore_pgm.text)
             ntf.flush()
             result = _krun(
                 self.definition_dir,
                 Path(ntf.name),
                 depth=depth,
+                expand_macros=expand_macros,
                 args=(list(args) + ['--output', 'kore', '--parser', 'cat']),
                 profile=self._profile,
             )
