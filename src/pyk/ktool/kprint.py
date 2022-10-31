@@ -48,6 +48,86 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 SymbolTable = Dict[str, Callable[..., str]]
 
+_unmunge_codes: Dict[str, str] = {
+    'Spce': ' ',
+    'Bang': '!',
+    'Quot': '"',
+    'Hash': '#',
+    'Dolr': '$',
+    'Perc': '%',
+    'And-': '&',
+    'Apos': "'",
+    'LPar': '(',
+    'RPar': ')',
+    'Star': '*',
+    'Plus': '+',
+    'Comm': ',',
+    'Stop': '.',
+    'Slsh': '/',
+    'Coln': ':',
+    'SCln': ';',
+    '-LT-': '<',
+    'Eqls': '=',
+    '-GT-': '>',
+    'Ques': '?',
+    '-AT-': '@',
+    'LSqB': '[',
+    'RSqB': ']',
+    'Bash': '\\',
+    'Xor-': '^',
+    'Unds': '_',
+    'BQuo': '`',
+    'LBra': '{',
+    'Pipe': '|',
+    'RBra': '}',
+    'Tild': '~',
+}
+_munge_codes: Dict[str, str] = {v: k for k, v in _unmunge_codes.items()}
+
+
+def _munge(label: str) -> str:
+    global _munge_codes
+    _symbol = 'Lbl'
+    literal_mode = True
+    while len(label) > 0:
+        if label[0] in _munge_codes:
+            if not literal_mode:
+                _symbol += _munge_codes[label[0]]
+                label = label[1:]
+            else:
+                _symbol += "'"
+                literal_mode = False
+        else:
+            if literal_mode:
+                _symbol += label[0]
+                label = label[1:]
+            else:
+                _symbol += "'"
+                literal_mode = True
+    if not literal_mode:
+        _symbol += "'"
+    return _symbol
+
+
+def _unmunge(symbol: str) -> str:
+    global _unmunge_codes
+    if symbol.startswith('Lbl'):
+        symbol = symbol[3:]
+    _label = ''
+    literal_mode = True
+    while len(symbol) > 0:
+        if symbol[0] == "'":
+            literal_mode = not literal_mode
+            symbol = symbol[1:]
+        else:
+            if literal_mode:
+                _label += symbol[0]
+                symbol = symbol[1:]
+            else:
+                _label += _unmunge_codes[symbol[0:4]]
+                symbol = symbol[4:]
+    return _label
+
 
 def _kast(
     definition: Path,
@@ -95,41 +175,6 @@ class KPrint:
         self._definition = None
         self._symbol_table = None
         self._profile = profile
-        self._unmunge_codes = {
-            'Spce': ' ',
-            'Bang': '!',
-            'Quot': '"',
-            'Hash': '#',
-            'Dolr': '$',
-            'Perc': '%',
-            'And-': '&',
-            'Apos': "'",
-            'LPar': '(',
-            'RPar': ')',
-            'Star': '*',
-            'Plus': '+',
-            'Comm': ',',
-            'Stop': '.',
-            'Slsh': '/',
-            'Coln': ':',
-            'SCln': ';',
-            '-LT-': '<',
-            'Eqls': '=',
-            '-GT-': '>',
-            'Ques': '?',
-            '-AT-': '@',
-            'LSqB': '[',
-            'RSqB': ']',
-            'Bash': '\\',
-            'Xor-': '^',
-            'Unds': '_',
-            'BQuo': '`',
-            'LBra': '{',
-            'Pipe': '|',
-            'RBra': '}',
-            'Tild': '~',
-        }
-        self._munge_codes = {v: k for k, v in self._unmunge_codes.items()}
 
     def __del__(self) -> None:
         if self._temp_dir is not None:
@@ -157,46 +202,6 @@ class KPrint:
         kast_token = KAst.from_dict(json.loads(output)['term'])
         assert isinstance(kast_token, KInner)
         return kast_token
-
-    def munge(self, label: str) -> str:
-        _symbol = 'Lbl'
-        literal_mode = True
-        while len(label) > 0:
-            if label[0] in self._munge_codes:
-                if not literal_mode:
-                    _symbol += self._munge_codes[label[0]]
-                    label = label[1:]
-                else:
-                    _symbol += "'"
-                    literal_mode = False
-            else:
-                if literal_mode:
-                    _symbol += label[0]
-                    label = label[1:]
-                else:
-                    _symbol += "'"
-                    literal_mode = True
-        if not literal_mode:
-            _symbol += "'"
-        return _symbol
-
-    def unmunge(self, symbol: str) -> str:
-        if symbol.startswith('Lbl'):
-            symbol = symbol[3:]
-        _label = ''
-        literal_mode = True
-        while len(symbol) > 0:
-            if symbol[0] == "'":
-                literal_mode = not literal_mode
-                symbol = symbol[1:]
-            else:
-                if literal_mode:
-                    _label += symbol[0]
-                    symbol = symbol[1:]
-                else:
-                    _label += self._unmunge_codes[symbol[0:4]]
-                    symbol = symbol[4:]
-        return _label
 
     def kore_to_kast(self, kore: Kore) -> KAst:
         if isinstance(kore, Pattern):
@@ -230,7 +235,7 @@ class KPrint:
                         return KSequence([p0, p1])
 
                 else:
-                    klabel = KLabel(self.unmunge(kore.symbol), [KSort(k.name) for k in kore.sorts])
+                    klabel = KLabel(_unmunge(kore.symbol), [KSort(k.name) for k in kore.sorts])
                     args = [self._kore_to_kast(_a) for _a in kore.patterns]
                     # TODO: Written like this to appease the type-checker.
                     new_args = [a for a in args if a is not None]
@@ -273,7 +278,7 @@ class KPrint:
                 # TODO: Written like this to appease the type-checker.
                 new_args = [a for a in args if a is not None]
                 if len(new_args) == len(args):
-                    app: Pattern = App(self.munge(kast.label.name), (), new_args)
+                    app: Pattern = App(_munge(kast.label.name), (), new_args)
                     isort = _get_sort(kast)
                     if sort is not None and isort is not None and isort != sort:
                         app = self._add_sort_injection(app, isort, sort)
