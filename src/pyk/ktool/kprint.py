@@ -265,7 +265,7 @@ class KPrint:
 
         if type(kast) is KToken:
             dv: Pattern = DV(SortApp('Sort' + kast.sort.name), String(kast.token))
-            if sort is not None and kast.sort != sort:
+            if sort is not None:
                 dv = self._add_sort_injection(dv, kast.sort, sort)
             return dv
 
@@ -281,7 +281,7 @@ class KPrint:
                 if len(new_args) == len(args):
                     app: Pattern = App(_munge(kast.label.name), (), new_args)
                     isort = _get_sort(kast)
-                    if sort is not None and isort is not None and isort != sort:
+                    if sort is not None and isort is not None:
                         app = self._add_sort_injection(app, isort, sort)
                     return app
 
@@ -299,6 +299,8 @@ class KPrint:
         return None
 
     def _add_sort_injection(self, pat: Pattern, isort: KSort, osort: KSort) -> Pattern:
+        if isort == osort:
+            return pat
         if isort not in self.definition.subsorts(osort):
             raise ValueError(f'Could not find injection from subsort to supersort: {isort} -> {osort}')
         return App('inj', [SortApp('Sort' + isort.name), SortApp('Sort' + osort.name)], [pat])
