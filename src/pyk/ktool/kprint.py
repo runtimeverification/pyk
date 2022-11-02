@@ -40,7 +40,7 @@ from ..kast import (
 )
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
-from ..kore.syntax import DV, App, Kore, Pattern, SortApp, String
+from ..kore.syntax import DV, App, EVar, Kore, Pattern, SortApp, String
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 
@@ -217,6 +217,9 @@ class KPrint:
         if type(kore) is DV and kore.sort.name.startswith('Sort'):
             return KToken(kore.value.value, KSort(kore.sort.name[4:]))
 
+        if type(kore) is EVar:
+            return KVariable(kore.name[3:], sort=KSort(kore.sort.name[4:]))
+
         if type(kore) is App:
 
             if kore.symbol == 'inj' and len(kore.sorts) == 2 and len(kore.patterns) == 1:
@@ -268,6 +271,12 @@ class KPrint:
             if sort is not None:
                 dv = self._add_sort_injection(dv, kast.sort, sort)
             return dv
+
+        if type(kast) is KVariable:
+            if sort is not None and kast.sort is not None:
+                return self._add_sort_injection(
+                    EVar('Var' + kast.name, SortApp('Sort' + kast.sort.name)), kast.sort, sort
+                )
 
         if type(kast) is KApply:
             # TODO: Support sort parameters
