@@ -16,7 +16,7 @@ class KoreToKastTest(KProveTest):
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass
 
-    def test_kast_to_kore(self) -> None:
+    def test_bidirectional(self) -> None:
         kore_kast_pairs = (
             (
                 'domain-value',
@@ -124,3 +124,17 @@ class KoreToKastTest(KProveTest):
                 kast_actual = self.kprove.kore_to_kast(kore)
                 self.assertEqual(kore_actual, kore)
                 self.assertEqual(kast_actual, kast)
+
+    def test_kast_to_kore(self) -> None:
+        kore_kast_pairs = (
+            (
+                'variable-without-sort',
+                KSort('Bar'),
+                EVar('VarX', SortApp('SortBar')),
+                KVariable('X'),
+            ),
+        )
+        for name, sort, kore, kast in kore_kast_pairs:
+            with self.subTest(name):
+                kore_actual = self.kprove.kast_to_kore(kast, sort=sort)
+                self.assertEqual(kore_actual, kore)
