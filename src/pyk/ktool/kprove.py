@@ -43,6 +43,7 @@ def _kprove(
     env: Optional[Mapping[str, str]] = None,
     check: bool = True,
     profile: bool = False,
+    depth: Optional[int] = None,
 ) -> CompletedProcess:
     check_file_path(spec_file)
 
@@ -56,6 +57,7 @@ def _kprove(
         emit_json_spec=emit_json_spec,
         output=output,
         dry_run=dry_run,
+        depth=depth,
     )
 
     try:
@@ -75,6 +77,7 @@ def _build_arg_list(
     emit_json_spec: Optional[Path],
     output: Optional[KProveOutput],
     dry_run: bool,
+    depth: Optional[int],
 ) -> List[str]:
     args = []
 
@@ -95,6 +98,9 @@ def _build_arg_list(
 
     if dry_run:
         args.append('--dry-run')
+
+    if depth is not None and depth >= 0:
+        args += ['--depth', str(depth)]
 
     return args
 
@@ -135,6 +141,7 @@ class KProve(KPrint):
         log_axioms_file: Optional[Path] = None,
         allow_zero_step: bool = False,
         dry_run: bool = False,
+        depth: Optional[int] = None,
     ) -> KInner:
         log_file = spec_file.with_suffix('.debug-log') if log_axioms_file is None else log_axioms_file
         if log_file.exists():
@@ -165,6 +172,7 @@ class KProve(KPrint):
             env=env,
             check=False,
             profile=self._profile,
+            depth=depth,
         )
 
         if proc_result.returncode not in (0, 1):
@@ -190,6 +198,7 @@ class KProve(KPrint):
         log_axioms_file: Optional[Path] = None,
         allow_zero_step: bool = False,
         dry_run: bool = False,
+        depth: Optional[int] = None,
     ) -> KInner:
         claim_path, claim_module_name = self._write_claim_definition(claim, claim_id, lemmas=lemmas)
         return self.prove(
@@ -201,6 +210,7 @@ class KProve(KPrint):
             log_axioms_file=log_axioms_file,
             allow_zero_step=allow_zero_step,
             dry_run=dry_run,
+            depth=depth,
         )
 
     # TODO: This should return the empty disjunction `[]` instead of `#Top`.
@@ -216,6 +226,7 @@ class KProve(KPrint):
         haskell_args: Iterable[str] = (),
         log_axioms_file: Path = None,
         allow_zero_step: bool = False,
+        depth: Optional[int] = None,
     ) -> List[KInner]:
         claim, var_map = build_claim(claim_id, init_cterm, target_cterm, keep_vars=free_vars(init_cterm.kast))
         next_state = self.prove_claim(
@@ -226,6 +237,7 @@ class KProve(KPrint):
             haskell_args=haskell_args,
             log_axioms_file=log_axioms_file,
             allow_zero_step=allow_zero_step,
+            depth=depth,
         )
         next_states = [var_map(ns) for ns in flatten_label('#Or', next_state)]
         constraint_subst, _ = extract_subst(init_cterm.kast)
@@ -253,9 +265,10 @@ class KProve(KPrint):
         next_state = self.prove(
             claim_path,
             spec_module_name=claim_module,
-            args=list(args) + ['--depth', str(max_depth)],
+            args=args,
             haskell_args=(['--execute-to-branch'] + list(haskell_args)),
             log_axioms_file=log_axioms_file,
+            depth=max_depth,
         )
         if len(flatten_label('#Or', next_state)) != 1:
             raise AssertionError(f'get_basic_block execeted 1 state from Haskell backend, got: {next_state}')
