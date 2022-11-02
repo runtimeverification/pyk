@@ -11,6 +11,9 @@ from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run
 from ..cterm import CTerm, build_claim
 from ..kast import KClaim, KDefinition, KFlatModule, KImport, KInner, KRequire, KRule, KSentence
 from ..kastManip import extract_subst, flatten_label, free_vars
+from ..kore.rpc import KoreClient, KoreServer
+from ..kore.syntax import Pattern
+from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_top, mlAnd, mlBottom, mlTop
 from ..utils import unique
 from .kprint import KPrint
@@ -111,6 +114,8 @@ class KProve(KPrint):
     prover_args: List[str]
     backend: str
     main_module: str
+    port: int
+    _kore_rpc: Optional[Tuple[KoreServer, KoreClient]]
 
     def __init__(
         self,
@@ -119,6 +124,7 @@ class KProve(KPrint):
         use_directory: Optional[Path] = None,
         profile: bool = False,
         command: str = 'kprove',
+        port: int = 3000,
     ):
         super(KProve, self).__init__(definition_dir, use_directory=use_directory, profile=profile)
         # TODO: we should not have to supply main_file, it should be read
@@ -126,10 +132,20 @@ class KProve(KPrint):
         self.main_file = main_file
         self.prover = [command]
         self.prover_args = []
+        self.port = port
         with open(self.definition_dir / 'backend.txt', 'r') as ba:
             self.backend = ba.read()
         with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
             self.main_module = mm.read()
+        self._kore_rpc = None
+
+    @property
+    def kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
+        if not self._kore_rpc:
+            _kore_server = KoreServer(self.definition_dir, self.main_module, self.port)
+            _kore_client = KoreClient('localhost', self.port)
+            self._kore_rpc = (_kore_server, _kore_client)
+        return self._kore_rpc
 
     def prove(
         self,
@@ -295,6 +311,25 @@ class KProve(KPrint):
                 could_be_branching = True
             else:
                 could_be_branching = False
+        return depth, branching, next_state
+
+    def execute(
+        self,
+        cterm: CTerm,
+        depth: Optional[int] = None,
+        cut_point_rules: Optional[Iterable[str]] = None,
+        terminal_rules: Optional[Iterable[str]] = None,
+    ) -> Tuple[int, bool, KInner]:
+        kore = self.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
+        assert isinstance(kore, Pattern)
+        _, kore_client = self.kore_rpc
+        er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+        depth = er.depth
+        branching = er.next_states is not None and len(er.next_states) > 0
+        next_state = self.kore_to_kast(er.state.term)
+        assert isinstance(next_state, KInner)
+        assert er.state.substitution is None
+        assert er.state.predicate is None
         return depth, branching, next_state
 
     def _write_claim_definition(self, claim: KClaim, claim_id: str, lemmas: Iterable[KRule] = ()) -> Tuple[Path, str]:
