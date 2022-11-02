@@ -1,4 +1,4 @@
-from pyk.kast import KApply, KAtt, KSequence, KSort, KVariable
+from pyk.kast import KApply, KSequence, KSort, KVariable
 from pyk.kore.syntax import DV, App, EVar, SortApp, String
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
@@ -34,7 +34,7 @@ class KoreToKastTest(KProveTest):
                 'variable-with-super-sort',
                 KSort('Bar'),
                 App('inj', [SortApp('SortBaz'), SortApp('SortBar')], [EVar('VarX', SortApp('SortBaz'))]),
-                KVariable('X', sort=KSort('Baz'), att=KAtt({'prettyPrintWithSortAnnotation': ''})),
+                KVariable('X', sort=KSort('Baz')),
             ),
             (
                 'issue:k/2762',
