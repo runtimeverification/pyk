@@ -37,6 +37,12 @@ class KoreToKastTest(KProveTest):
                 KVariable('X', sort=KSort('Baz')),
             ),
             (
+                'variable-with-underscore',
+                KSort('Int'),
+                EVar("VarX'Unds'Y", SortApp('SortInt')),
+                KVariable('X_Y', sort=KSort('Int')),
+            ),
+            (
                 'issue:k/2762',
                 KSort('Bool'),
                 App('Lblpred1', [], [DV(SortApp('SortInt'), String('3'))]),
