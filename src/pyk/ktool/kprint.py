@@ -242,6 +242,7 @@ class KPrint:
                     if len(new_args) == len(args):
                         return KApply(klabel, new_args)
 
+        _LOGGER.warning(f'KPrint._kore_to_kast failed on input: {kore}')
         return None
 
     def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
@@ -285,14 +286,16 @@ class KPrint:
                     return app
 
         if type(kast) is KSequence:
-            seq = App('dotk', (), ())
-            for i in reversed(kast.items):
-                kore_i = self._kast_to_kore(i, sort=KSort('KItem'))
-                if kore_i is None:
-                    return None
-                seq = App('kseq', (), [kore_i, seq])
-            return seq
+            args = [self._kast_to_kore(i, sort=KSort('KItem')) for i in reversed(kast.items)]
+            # TODO: Written like this to appease the type-checker.
+            new_args = [a for a in args if a is not None]
+            if len(new_args) == len(args):
+                seq = App('dotk', (), ())
+                for a in new_args:
+                    seq = App('kseq', (), [a, seq])
+                return seq
 
+        _LOGGER.warning(f'KPrint._kast_to_kore failed on input: {kast}')
         return None
 
     def _add_sort_injection(self, pat: Pattern, isort: KSort, osort: KSort) -> Pattern:
