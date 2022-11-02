@@ -87,7 +87,7 @@ _munge_codes: Dict[str, str] = {v: k for k, v in _unmunge_codes.items()}
 
 def _munge(label: str) -> str:
     global _munge_codes
-    _symbol = 'Lbl'
+    _symbol = ''
     literal_mode = True
     while len(label) > 0:
         if label[0] in _munge_codes:
@@ -111,8 +111,6 @@ def _munge(label: str) -> str:
 
 def _unmunge(symbol: str) -> str:
     global _unmunge_codes
-    if symbol.startswith('Lbl'):
-        symbol = symbol[3:]
     _label = ''
     literal_mode = True
     while len(symbol) > 0:
@@ -218,7 +216,8 @@ class KPrint:
             return KToken(kore.value.value, KSort(kore.sort.name[4:]))
 
         if type(kore) is EVar:
-            return KVariable(kore.name[3:], sort=KSort(kore.sort.name[4:]))
+            vname = _unmunge(kore.name[3:])
+            return KVariable(vname, sort=KSort(kore.sort.name[4:]))
 
         if type(kore) is App:
 
@@ -238,7 +237,8 @@ class KPrint:
                         return KSequence([p0, p1])
 
                 else:
-                    klabel = KLabel(_unmunge(kore.symbol), [KSort(k.name) for k in kore.sorts])
+                    _label_name = _unmunge(kore.symbol[3:])
+                    klabel = KLabel(_label_name, [KSort(k.name) for k in kore.sorts])
                     args = [self._kore_to_kast(_a) for _a in kore.patterns]
                     # TODO: Written like this to appease the type-checker.
                     new_args = [a for a in args if a is not None]
@@ -273,10 +273,13 @@ class KPrint:
             return dv
 
         if type(kast) is KVariable:
+            vname = _munge('Var' + kast.name)
             if sort is not None and kast.sort is not None:
-                return self._add_sort_injection(
-                    EVar('Var' + kast.name, SortApp('Sort' + kast.sort.name)), kast.sort, sort
-                )
+                return self._add_sort_injection(EVar(vname, SortApp('Sort' + kast.sort.name)), kast.sort, sort)
+            if sort is not None and kast.sort is None:
+                return EVar(vname, SortApp('Sort' + sort.name))
+            if sort is None and kast.sort is not None:
+                return EVar(vname, SortApp('Sort' + kast.sort.name))
 
         if type(kast) is KApply:
             # TODO: Support sort parameters
@@ -288,7 +291,8 @@ class KPrint:
                 # TODO: Written like this to appease the type-checker.
                 new_args = [a for a in args if a is not None]
                 if len(new_args) == len(args):
-                    app: Pattern = App(_munge(kast.label.name), (), new_args)
+                    label_name = 'Lbl' + _munge(kast.label.name)
+                    app: Pattern = App(label_name, (), new_args)
                     isort = _get_sort(kast)
                     if sort is not None and isort is not None:
                         app = self._add_sort_injection(app, isort, sort)
