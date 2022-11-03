@@ -332,7 +332,7 @@ class KProve(KPrint):
         _, kore_client = self.kore_rpc()
         er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
         depth = er.depth
-        branching = er.next_states is not None and len(er.next_states) > 0
+        branching = er.next_states is not None and len(er.next_states) > 1
         next_state = self.kore_to_kast(er.state.term)
         assert isinstance(next_state, KInner)
         assert er.state.substitution is None
