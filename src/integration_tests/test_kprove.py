@@ -1,5 +1,5 @@
 from pyk.cterm import CTerm
-from pyk.kast import KApply, KAtt, KClaim, KRule, KToken
+from pyk.kast import KApply, KAtt, KClaim, KRule, KSequence, KToken, KVariable
 from pyk.kastManip import get_cell
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
@@ -118,3 +118,53 @@ class ImpProofTest(KProveTest):
 
                 # Then
                 self.assertCountEqual(posts_expected_strs, posts_actual_strs)
+
+    def test_execute(self) -> None:
+        def _config(k: str, state: str) -> CTerm:
+            _k_parsed = self.kprove.parse_token(KToken(k, 'Pgm'), as_rule=True)
+            _state_parsed = self.kprove.parse_token(KToken(state, 'Map'), as_rule=True)
+            return CTerm(
+                KApply(
+                    '<generatedTop>',
+                    [
+                        KApply(
+                            '<T>',
+                            (
+                                KApply('<k>', [KSequence([_k_parsed])]),
+                                KApply('<state>', [_state_parsed]),
+                            ),
+                        ),
+                        KVariable('GENERATED_COUNTER_CELL'),
+                    ],
+                )
+            )
+            # return CTerm(KApply('<generatedTop>', [KApply('<T>', (KApply('<k>', [_k_parsed]), KApply('<state>', [_state_parsed])))]))
+
+        # Given
+        pre_state = '.Map'
+
+        test_data = (
+            ('step-1', 1, 'int $n , $s ; $n = 3 ;', (1, False, ('int $s , .Ids ; $n = 3 ;', '$n |-> 0'))),
+            ('step-2', 2, 'int $n , $s ; $n = 3 ;', (2, False, ('int .Ids ; $n = 3 ;', '$s |-> 0 $n |-> 0'))),
+            (
+                'branch',
+                4,
+                'int $n ; if (_B:Bool) { $n = 1; } else { $n = 2; }',
+                (2, True, ('if ( _B:Bool ) { $n = 1 ; } else { $n = 2 ; }', '$n |-> 0')),
+            ),
+        )
+
+        for name, depth, pre_k, (expected_depth, expected_branching, (expected_k, expected_mem)) in test_data:
+            with self.subTest(name):
+                # When
+                actual_depth, actual_branching, _actual_state = self.kprove.execute(
+                    _config(pre_k, pre_state), depth=depth
+                )
+                actual_k = self.kprove.pretty_print(get_cell(_actual_state, 'K_CELL'))
+                actual_mem = self.kprove.pretty_print(get_cell(_actual_state, 'STATE_CELL'))
+
+                # Then
+                self.assertEqual(actual_k, expected_k)
+                self.assertEqual(actual_mem, expected_mem)
+                self.assertEqual(actual_branching, expected_branching)
+                self.assertEqual(actual_depth, expected_depth)
