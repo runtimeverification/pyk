@@ -37,6 +37,42 @@ class SimpleProofTest(KProveTest):
         self.assertNotTop(result1)
         self.assertTop(result2)
 
+    def test_execute(self) -> None:
+        def _config(k: str, state: str) -> CTerm:
+            _k_parsed = self.kprove.parse_token(KToken(k, 'KItem'), as_rule=True)
+            _state_parsed = self.kprove.parse_token(KToken(state, 'Map'), as_rule=True)
+            # TODO: Why does kompile put <generatedCounter> before <state>?
+            return CTerm(
+                KApply(
+                    '<generatedTop>',
+                    [
+                        KApply('<k>', [KSequence([_k_parsed])]),
+                        KVariable('GENERATED_COUNTER_CELL'),
+                        KApply('<state>', [_state_parsed]),
+                    ],
+                )
+            )
+
+        # Given
+        pre_state = '.Map'
+
+        test_data = (('simple-branch', 3, 'a', (1, True, ('b', '.Map'))),)
+
+        for name, depth, pre_k, (expected_depth, expected_branching, (expected_k, expected_mem)) in test_data:
+            with self.subTest(name):
+                # When
+                actual_depth, actual_branching, _actual_state = self.kprove.execute(
+                    _config(pre_k, pre_state), depth=depth
+                )
+                actual_k = self.kprove.pretty_print(get_cell(_actual_state, 'K_CELL'))
+                actual_mem = self.kprove.pretty_print(get_cell(_actual_state, 'STATE_CELL'))
+
+                # Then
+                self.assertEqual(actual_k, expected_k)
+                self.assertEqual(actual_mem, expected_mem)
+                self.assertEqual(actual_branching, expected_branching)
+                self.assertEqual(actual_depth, expected_depth)
+
 
 class ImpProofTest(KProveTest):
     KOMPILE_MAIN_FILE = 'k-files/imp-verification.k'
@@ -138,7 +174,6 @@ class ImpProofTest(KProveTest):
                     ],
                 )
             )
-            # return CTerm(KApply('<generatedTop>', [KApply('<T>', (KApply('<k>', [_k_parsed]), KApply('<state>', [_state_parsed])))]))
 
         # Given
         pre_state = '.Map'
