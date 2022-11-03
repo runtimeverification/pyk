@@ -126,7 +126,7 @@ class KProve(KPrint):
         use_directory: Optional[Path] = None,
         profile: bool = False,
         command: str = 'kprove',
-        port: int = 3000,
+        port: Optional[int] = None,
     ):
         super(KProve, self).__init__(definition_dir, use_directory=use_directory, profile=profile)
         # TODO: we should not have to supply main_file, it should be read
@@ -134,7 +134,7 @@ class KProve(KPrint):
         self.main_file = main_file
         self.prover = [command]
         self.prover_args = []
-        self.port = port
+        self.port = 3000 if port is None else port
         with open(self.definition_dir / 'backend.txt', 'r') as ba:
             self.backend = ba.read()
         with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
