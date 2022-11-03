@@ -141,13 +141,18 @@ class KProve(KPrint):
             self.main_module = mm.read()
         self._kore_rpc = None
 
-    @property
     def kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
         if not self._kore_rpc:
             _kore_server = KoreServer(self.definition_dir, self.main_module, self.port)
             _kore_client = KoreClient('localhost', self.port)
             self._kore_rpc = (_kore_server, _kore_client)
         return self._kore_rpc
+
+    def close_kore_rpc(self) -> None:
+        if self._kore_rpc is not None:
+            _kore_server, _kore_client = self._kore_rpc
+            _kore_client.close()
+            _kore_server.close()
 
     def prove(
         self,
@@ -324,7 +329,7 @@ class KProve(KPrint):
     ) -> Tuple[int, bool, KInner]:
         kore = self.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         assert isinstance(kore, Pattern)
-        _, kore_client = self.kore_rpc
+        _, kore_client = self.kore_rpc()
         er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
         depth = er.depth
         branching = er.next_states is not None and len(er.next_states) > 0
