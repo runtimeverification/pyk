@@ -284,10 +284,15 @@ class KPrint:
         if type(kast) is KApply:
             # TODO: Support sort parameters
             if len(kast.label.params) == 0:
-                args = [
-                    self._kast_to_kore(arg, sort=arg_sort)
-                    for arg, arg_sort in zip(kast.args, self.definition.argument_sorts(kast.label))
-                ]
+                # TODO: KAST validation should be a separate pass
+                argument_sorts = self.definition.argument_sorts(kast.label)
+                if kast.arity != len(argument_sorts):
+                    raise ValueError(
+                        f'Incorrect argument count for label {kast.label}:\n'
+                        f'    Actual: {kast.args}\n'
+                        f'    Expected: {argument_sorts}\n'
+                    )
+                args = [self._kast_to_kore(arg, sort=arg_sort) for arg, arg_sort in zip(kast.args, argument_sorts)]
                 # TODO: Written like this to appease the type-checker.
                 new_args = [a for a in args if a is not None]
                 if len(new_args) == len(args):
