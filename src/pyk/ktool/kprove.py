@@ -53,6 +53,9 @@ def _kprove(
     for include_dir in include_dirs:
         check_dir_path(include_dir)
 
+    if depth is not None and depth < 0:
+        raise ValueError(f'Argument "depth" must be non-negative, got: {depth}')
+
     typed_args = _build_arg_list(
         kompiled_dir=kompiled_dir,
         spec_module_name=spec_module_name,
@@ -102,9 +105,7 @@ def _build_arg_list(
     if dry_run:
         args.append('--dry-run')
 
-    if depth is not None:
-        if depth < 0:
-            raise ValueError(f'Argument "depth" must be non-negative, got: {depth}')
+    if depth:
         args += ['--depth', str(depth)]
 
     return args
