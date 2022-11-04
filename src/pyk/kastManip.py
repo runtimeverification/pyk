@@ -373,22 +373,6 @@ def remove_semantic_casts(kast: KInner) -> KInner:
     return bottom_up(_remove_semtnaic_casts, kast)
 
 
-def mark_useless_vars(kast: KInner) -> KInner:
-    """Given a kast term as input with variables, return one where the useless vars are appropriately marked.
-
-    -   Input: A Kast term.
-    -   Output: Kast term with variables appropriately named.
-    """
-    occurances = count_vars(kast)
-    subst = {}
-    for v in occurances:
-        if v.startswith('_') and occurances[v] > 1:
-            subst[v] = KVariable(v[1:])
-        elif (not v.startswith('_')) and occurances[v] == 1:
-            subst[v] = KVariable('_' + v)
-    return substitute(kast, subst)
-
-
 def useless_vars_to_dots(kast: KInner, keep_vars: Iterable[str] = ()) -> KInner:
     """Structurally abstract away useless variables.
 
