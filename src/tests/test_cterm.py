@@ -20,7 +20,6 @@ unds_v1 = KVariable('_V1')
 ques_v2 = KVariable('?V2')
 ques_unds_v2 = KVariable('?_V2')
 v1_sorted = KVariable('V1', sort=INT)
-unds_v1_sorted = KVariable('_V1', sort=INT)
 
 
 def _as_cterm(term: KInner) -> CTerm:
@@ -109,7 +108,18 @@ class BuildClaimtest(TestCase):
             return KApply('_<=Int_', [intToken(0), v])
 
         test_data = (
-            ('sorted-var', k(v1_sorted), k(v2), KClaim(k(KRewrite(unds_v1_sorted, v2)), att=KAtt({'label': 'claim'}))),
+            (
+                'sorted-var-1',
+                mlAnd([k(v1_sorted), mlEqualsTrue(constraint(v1))]),
+                k(v2),
+                KClaim(k(KRewrite(v1_sorted, ques_unds_v2)), requires=constraint(v1), att=KAtt({'label': 'claim'})),
+            ),
+            (
+                'sorted-var-2',
+                mlAnd([k(v1), mlEqualsTrue(constraint(v1_sorted))]),
+                k(v2),
+                KClaim(k(KRewrite(v1, ques_unds_v2)), requires=constraint(v1_sorted), att=KAtt({'label': 'claim'})),
+            ),
             (
                 'req-rhs',
                 mlAnd([k(v1), mlEqualsTrue(constraint(v2))]),
@@ -125,9 +135,9 @@ class BuildClaimtest(TestCase):
             ),
         )
 
-        for name, init, target, claim in test_data:
+        for name, init, target, claim_expected in test_data:
             with self.subTest(name):
                 init_cterm = CTerm(init)
                 target_cterm = CTerm(target)
-                kclaim, _ = build_claim('claim', init_cterm, target_cterm)
-                self.assertEqual(kclaim, claim)
+                claim_actual, _ = build_claim('claim', init_cterm, target_cterm)
+                self.assertEqual(claim_actual, claim_expected)
