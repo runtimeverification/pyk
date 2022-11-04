@@ -4,7 +4,7 @@ from unittest import TestCase
 from pyk.cterm import CTerm, build_claim, build_rule
 from pyk.kast import KApply, KAtt, KClaim, KInner, KLabel, KRewrite, KSequence, KVariable
 from pyk.prelude.k import GENERATED_TOP_CELL
-from pyk.prelude.kint import intToken
+from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlAnd, mlEqualsTrue
 
 from .utils import a, b, c, f, g, h, k, x, y, z
@@ -19,6 +19,8 @@ v2 = KVariable('V2')
 unds_v1 = KVariable('_V1')
 ques_v2 = KVariable('?V2')
 ques_unds_v2 = KVariable('?_V2')
+v1_sorted = KVariable('V1', sort=INT)
+unds_v1_sorted = KVariable('_V1', sort=INT)
 
 
 def _as_cterm(term: KInner) -> CTerm:
@@ -107,6 +109,7 @@ class BuildClaimtest(TestCase):
             return KApply('_<=Int_', [intToken(0), v])
 
         test_data = (
+            ('sorted-var', k(v1_sorted), k(v2), KClaim(k(KRewrite(unds_v1_sorted, v2)), att=KAtt({'label': 'claim'}))),
             (
                 'req-rhs',
                 mlAnd([k(v1), mlEqualsTrue(constraint(v2))]),
