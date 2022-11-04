@@ -167,6 +167,23 @@ class KoreToKastTest(KProveTest):
                 EVar('VarX', SortApp('SortBar')),
                 KVariable('X'),
             ),
+            (
+                'variable-different-sorts',
+                KSort('BarHolder'),
+                App(
+                    'Lblbarholder',
+                    [],
+                    [
+                        App(
+                            'Lblfoo',
+                            [],
+                            [App('inj', [SortApp('SortBaz'), SortApp('SortBar')], [EVar('VarB', SortApp('SortBaz'))])],
+                        ),
+                        App('inj', [SortApp('SortBaz'), SortApp('SortBar')], [EVar('VarB', SortApp('SortBaz'))]),
+                    ],
+                ),
+                KApply('barholder', [KApply('foo', [KVariable('B', sort=KSort('Baz'))]), KVariable('B')]),
+            ),
         )
         for name, sort, kore, kast in kore_kast_pairs:
             with self.subTest(name):
