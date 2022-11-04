@@ -150,8 +150,9 @@ def build_rule(
             new_v = '_' + new_v
         if v in rhs_vars and v not in lhs_vars:
             new_v = '?' + new_v
-        v_subst[v] = KVariable(new_v)
-        vremap_subst[new_v] = KVariable(v)
+        if new_v != v:
+            v_subst[v] = KVariable(new_v)
+            vremap_subst[new_v] = KVariable(v)
 
     init_term = substitute(init_term, v_subst)
     final_term = apply_existential_substitutions(substitute(final_term, v_subst))
