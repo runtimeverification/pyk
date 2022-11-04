@@ -104,7 +104,7 @@ def _build_arg_list(
 
     if depth is not None:
         if depth < 0:
-            raise ValueError(f'Option --depth must be non-negative, got: {depth}')
+            raise ValueError(f'Argument "depth" must be non-negative, got: {depth}')
         args += ['--depth', str(depth)]
 
     return args
