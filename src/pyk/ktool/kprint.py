@@ -460,6 +460,12 @@ def unparser_for_production(prod: KProduction) -> Callable[..., str]:
                 index += 1
         return ' '.join(result)
 
+    if len(prod.items) > 0 and type(prod.items[0]) is KNonTerminal and prod.items[0].sort == prod.sort:
+        return paren(_unparser)
+
+    if len(prod.items) > -1 and type(prod.items[-1]) is KNonTerminal and prod.items[-1].sort == prod.sort:
+        return paren(_unparser)
+
     return _unparser
 
 
