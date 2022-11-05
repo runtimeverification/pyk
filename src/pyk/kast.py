@@ -1704,7 +1704,9 @@ class KDefinition(KOuter, WithKAtt):
                 _subsorts.extend([_subsort] + self.subsorts(prod.items[0].sort))
         return _subsorts
 
-    def sort_vars(self, kast: KInner) -> KInner:
+    def sort_vars_subst(self, kast: KInner) -> Subst:
+        # TODO: Should also take sort inferences from KApply children.
+        # TODO: Should also take into account subsorts.
         subst = {}
         for vname, _voccurances in var_occurances(kast).items():
             voccurances = list(unique(_voccurances))
@@ -1716,7 +1718,11 @@ class KDefinition(KOuter, WithKAtt):
                     elif vsort is not None and v.sort is not None and vsort != v.sort:
                         raise ValueError(f'Could not find common subsort among variable occurances: {voccurances}')
                 subst[vname] = KVariable(vname, sort=vsort)
-        return Subst(subst)(kast)
+        return Subst(subst)
+
+    def sort_vars(self, kast: KInner) -> KInner:
+        subst = self.sort_vars_subst(kast)
+        return subst(kast)
 
     def empty_config(self, sort: KSort) -> KInner:
         def _kdefinition_empty_config(_sort: KSort) -> KApply:
