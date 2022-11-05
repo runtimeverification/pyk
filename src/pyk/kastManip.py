@@ -32,8 +32,8 @@ from .kast import (
     Subst,
     WithKAtt,
     bottom_up,
-    collect,
     top_down,
+    var_occurances,
 )
 from .prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
 from .prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
@@ -201,20 +201,6 @@ def extract_subst(term: KInner) -> Tuple[Subst, KInner]:
             subst = new_subst
 
     return subst, mlAnd(rem_conjuncts)
-
-
-def var_occurances(term: KInner) -> Dict[str, List[KVariable]]:
-    _var_occurances: Dict[str, List[KVariable]] = {}
-
-    # TODO: should treat #Exists and #Forall specially.
-    def _var_occurance(_term: KInner) -> None:
-        if type(_term) is KVariable:
-            if _term.name not in _var_occurances:
-                _var_occurances[_term.name] = []
-            _var_occurances[_term.name].append(_term)
-
-    collect(_var_occurance, term)
-    return _var_occurances
 
 
 def count_vars(term: KInner) -> typing.Counter[str]:

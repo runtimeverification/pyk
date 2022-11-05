@@ -1780,6 +1780,21 @@ def top_down(f: Callable[[KInner], KInner], kinner: KInner) -> KInner:
     return f(kinner).map_inner(lambda _kinner: top_down(f, _kinner))
 
 
+# TODO: make method of KInner
+def var_occurances(term: KInner) -> Dict[str, List[KVariable]]:
+    _var_occurances: Dict[str, List[KVariable]] = {}
+
+    # TODO: should treat #Exists and #Forall specially.
+    def _var_occurance(_term: KInner) -> None:
+        if type(_term) is KVariable:
+            if _term.name not in _var_occurances:
+                _var_occurances[_term.name] = []
+            _var_occurances[_term.name].append(_term)
+
+    collect(_var_occurance, term)
+    return _var_occurances
+
+
 # TODO replace by method that does not reconstruct the AST
 def collect(callback: Callable[[KInner], None], kinner: KInner) -> None:
     def f(kinner: KInner) -> KInner:
