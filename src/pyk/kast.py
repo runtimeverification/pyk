@@ -27,7 +27,7 @@ from typing import (
     overload,
 )
 
-from .utils import EMPTY_FROZEN_DICT, FrozenDict, filter_none, hash_str, single
+from .utils import EMPTY_FROZEN_DICT, FrozenDict, filter_none, hash_str, single, unique
 
 T = TypeVar('T', bound='KAst')
 W = TypeVar('W', bound='WithKAtt')
@@ -1703,6 +1703,20 @@ class KDefinition(KOuter, WithKAtt):
                 _subsort = prod.items[0].sort
                 _subsorts.extend([_subsort] + self.subsorts(prod.items[0].sort))
         return _subsorts
+
+    def sort_vars(self, kast: KInner) -> KInner:
+        subst = {}
+        for vname, _voccurances in var_occurances(kast).items():
+            voccurances = list(unique(_voccurances))
+            if len(voccurances) > 1:
+                vsort = voccurances[0].sort
+                for v in voccurances[1:]:
+                    if vsort is None and v.sort is not None:
+                        vsort = v.sort
+                    elif vsort is not None and v.sort is not None and vsort != v.sort:
+                        raise ValueError(f'Could not find common subsort among variable occurances: {voccurances}')
+                subst[vname] = KVariable(vname, sort=vsort)
+        return Subst(subst)(kast)
 
     def empty_config(self, sort: KSort) -> KInner:
         def _kdefinition_empty_config(_sort: KSort) -> KApply:
