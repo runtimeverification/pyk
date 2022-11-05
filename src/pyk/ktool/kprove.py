@@ -9,7 +9,7 @@ from typing import Final, Iterable, List, Mapping, Optional, Tuple
 
 from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
 from ..cterm import CTerm, build_claim
-from ..kast import KClaim, KDefinition, KFlatModule, KImport, KInner, KRequire, KRule, KSentence
+from ..kast import KApply, KClaim, KDefinition, KFlatModule, KImport, KInner, KLabel, KRequire, KRule, KSentence
 from ..kastManip import extract_subst, flatten_label, free_vars
 from ..kore.rpc import KoreClient, KoreServer
 from ..kore.syntax import Pattern
@@ -324,7 +324,12 @@ class KProve(KPrint):
         depth: Optional[int] = None,
         cut_point_rules: Optional[Iterable[str]] = None,
         terminal_rules: Optional[Iterable[str]] = None,
+        assume_defined: bool = True,
     ) -> Tuple[int, bool, KInner]:
+        if assume_defined:
+            cterm = cterm.add_constraint(
+                KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.kast])
+            )
         kore = self.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         assert isinstance(kore, Pattern)
         _, kore_client = self.kore_rpc()
