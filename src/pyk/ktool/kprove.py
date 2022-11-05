@@ -338,9 +338,13 @@ class KProve(KPrint):
         branching = er.next_states is not None and len(er.next_states) > 1
         next_state = self.kore_to_kast(er.state.term)
         assert isinstance(next_state, KInner)
+        next_predicate: KInner = mlTop()
+        if er.state.predicate is not None:
+            _next_predicate = self.kore_to_kast(er.state.predicate)
+            assert isinstance(_next_predicate, KInner)
+            next_predicate = _next_predicate
         assert er.state.substitution is None
-        assert er.state.predicate is None
-        return depth, branching, next_state
+        return depth, branching, mlAnd([next_state] + flatten_label('#And', next_predicate))
 
     def _write_claim_definition(self, claim: KClaim, claim_id: str, lemmas: Iterable[KRule] = ()) -> Tuple[Path, str]:
         tmp_claim = self.use_directory / (claim_id.lower() + '-spec')
