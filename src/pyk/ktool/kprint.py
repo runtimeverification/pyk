@@ -338,6 +338,7 @@ class KPrint:
 
     def kast_to_kore(self, kast: KAst, sort: Optional[KSort] = None) -> Kore:
         if isinstance(kast, KInner):
+            kast = self.definition.sort_vars(kast)
             _kore_out = self._kast_to_kore(kast, sort=sort)
             if _kore_out is not None:
                 return _kore_out
