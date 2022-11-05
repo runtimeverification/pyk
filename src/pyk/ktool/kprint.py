@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, Final, Iterable, Optional
@@ -363,8 +362,8 @@ class KPrint:
             raise ValueError(f'Could not find injection from subsort to supersort: {isort} -> {osort}')
         return App('inj', [SortApp('Sort' + isort.name), SortApp('Sort' + osort.name)], [pat])
 
-    def pretty_print(self, kast: KAst, debug: bool = False) -> str:
-        return pretty_print_kast(kast, self.symbol_table, debug=debug)
+    def pretty_print(self, kast: KAst) -> str:
+        return pretty_print_kast(kast, self.symbol_table)
 
 
 def unparser_for_production(prod: KProduction) -> Callable[..., str]:
@@ -406,21 +405,18 @@ def build_symbol_table(definition: KDefinition, opinionated: bool = False) -> Sy
     return symbol_table
 
 
-def pretty_print_kast(kast: KAst, symbol_table: SymbolTable, debug: bool = False) -> str:
+def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
     """Print out KAST terms/outer syntax.
 
     -   Input: KAST term.
     -   Output: Best-effort string representation of KAST term.
     """
-    if debug:
-        sys.stderr.write(str(kast))
-        sys.stderr.write('\n')
-        sys.stderr.flush()
+    _LOGGER.debug(f'pretty_print_kast: {kast}')
     if type(kast) is KVariable:
         sort = kast.sort
         if not sort:
             return kast.name
-        return kast.name + ':' + pretty_print_kast(sort, symbol_table, debug)
+        return kast.name + ':' + pretty_print_kast(sort, symbol_table)
     if type(kast) is KSort:
         return kast.name
     if type(kast) is KToken:
@@ -428,7 +424,7 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable, debug: bool = False
     if type(kast) is KApply:
         label = kast.label.name
         args = kast.args
-        unparsed_args = [pretty_print_kast(arg, symbol_table, debug=debug) for arg in args]
+        unparsed_args = [pretty_print_kast(arg, symbol_table) for arg in args]
         if kast.is_cell:
             cell_contents = '\n'.join(unparsed_args).rstrip()
             cell_str = label + '\n' + indent(cell_contents) + '\n</' + label[1:]
@@ -436,93 +432,89 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable, debug: bool = False
         unparser = applied_label_str(label) if label not in symbol_table else symbol_table[label]
         return unparser(*unparsed_args)
     if type(kast) is KAs:
-        pattern_str = pretty_print_kast(kast.pattern, symbol_table, debug=debug)
-        alias_str = pretty_print_kast(kast.alias, symbol_table, debug=debug)
+        pattern_str = pretty_print_kast(kast.pattern, symbol_table)
+        alias_str = pretty_print_kast(kast.alias, symbol_table)
         return pattern_str + ' #as ' + alias_str
     if type(kast) is KRewrite:
-        lhs_str = pretty_print_kast(kast.lhs, symbol_table, debug=debug)
-        rhs_str = pretty_print_kast(kast.rhs, symbol_table, debug=debug)
+        lhs_str = pretty_print_kast(kast.lhs, symbol_table)
+        rhs_str = pretty_print_kast(kast.rhs, symbol_table)
         return '( ' + lhs_str + ' => ' + rhs_str + ' )'
     if type(kast) is KSequence:
         if kast.arity == 0:
-            return pretty_print_kast(EMPTY_K, symbol_table, debug=debug)
+            return pretty_print_kast(EMPTY_K, symbol_table)
         if kast.arity == 1:
-            return pretty_print_kast(kast.items[0], symbol_table, debug=debug)
-        unparsed_k_seq = '\n~> '.join([pretty_print_kast(item, symbol_table, debug=debug) for item in kast.items[0:-1]])
+            return pretty_print_kast(kast.items[0], symbol_table)
+        unparsed_k_seq = '\n~> '.join([pretty_print_kast(item, symbol_table) for item in kast.items[0:-1]])
         if kast.items[-1] == DOTS:
-            unparsed_k_seq = unparsed_k_seq + '\n' + pretty_print_kast(DOTS, symbol_table, debug=debug)
+            unparsed_k_seq = unparsed_k_seq + '\n' + pretty_print_kast(DOTS, symbol_table)
         else:
-            unparsed_k_seq = unparsed_k_seq + '\n~> ' + pretty_print_kast(kast.items[-1], symbol_table, debug=debug)
+            unparsed_k_seq = unparsed_k_seq + '\n~> ' + pretty_print_kast(kast.items[-1], symbol_table)
         return unparsed_k_seq
     if type(kast) is KTerminal:
         return '"' + kast.value + '"'
     if type(kast) is KRegexTerminal:
         return 'r"' + kast.regex + '"'
     if type(kast) is KNonTerminal:
-        return pretty_print_kast(kast.sort, symbol_table, debug=debug)
+        return pretty_print_kast(kast.sort, symbol_table)
     if type(kast) is KProduction:
         if 'klabel' not in kast.att and kast.klabel:
             kast = kast.update_atts({'klabel': kast.klabel.name})
-        syntax_str = 'syntax ' + pretty_print_kast(kast.sort, symbol_table, debug=debug)
+        syntax_str = 'syntax ' + pretty_print_kast(kast.sort, symbol_table)
         if kast.items:
-            syntax_str += ' ::= ' + ' '.join([pretty_print_kast(pi, symbol_table, debug=debug) for pi in kast.items])
-        att_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+            syntax_str += ' ::= ' + ' '.join([pretty_print_kast(pi, symbol_table) for pi in kast.items])
+        att_str = pretty_print_kast(kast.att, symbol_table)
         if att_str:
             syntax_str += ' ' + att_str
         return syntax_str
     if type(kast) is KSyntaxSort:
-        sort_str = pretty_print_kast(kast.sort, symbol_table, debug=debug)
-        att_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+        sort_str = pretty_print_kast(kast.sort, symbol_table)
+        att_str = pretty_print_kast(kast.att, symbol_table)
         return 'syntax ' + sort_str + ' ' + att_str
     if type(kast) is KSortSynonym:
-        new_sort_str = pretty_print_kast(kast.new_sort, symbol_table, debug=debug)
-        old_sort_str = pretty_print_kast(kast.old_sort, symbol_table, debug=debug)
-        att_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+        new_sort_str = pretty_print_kast(kast.new_sort, symbol_table)
+        old_sort_str = pretty_print_kast(kast.old_sort, symbol_table)
+        att_str = pretty_print_kast(kast.att, symbol_table)
         return 'syntax ' + new_sort_str + ' = ' + old_sort_str + ' ' + att_str
     if type(kast) is KSyntaxLexical:
         name_str = kast.name
         regex_str = kast.regex
-        att_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+        att_str = pretty_print_kast(kast.att, symbol_table)
         # todo: proper escaping
         return 'syntax lexical ' + name_str + ' = r"' + regex_str + '" ' + att_str
     if type(kast) is KSyntaxAssociativity:
         assoc_str = kast.assoc.value
         tags_str = ' '.join(kast.tags)
-        att_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+        att_str = pretty_print_kast(kast.att, symbol_table)
         return 'syntax associativity ' + assoc_str + ' ' + tags_str + ' ' + att_str
     if type(kast) is KSyntaxPriority:
         priorities_str = ' > '.join([' '.join(group) for group in kast.priorities])
-        att_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+        att_str = pretty_print_kast(kast.att, symbol_table)
         return 'syntax priority ' + priorities_str + ' ' + att_str
     if type(kast) is KBubble:
         body = '// KBubble(' + kast.sentence_type + ', ' + kast.content + ')'
-        att_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+        att_str = pretty_print_kast(kast.att, symbol_table)
         return body + ' ' + att_str
     if type(kast) is KRule or type(kast) is KClaim:
-        body = '\n     '.join(pretty_print_kast(kast.body, symbol_table, debug=debug).split('\n'))
+        body = '\n     '.join(pretty_print_kast(kast.body, symbol_table).split('\n'))
         rule_str = 'rule ' if type(kast) is KRule else 'claim '
         if 'label' in kast.att:
             rule_str = rule_str + '[' + kast.att['label'] + ']:'
         rule_str = rule_str + ' ' + body
-        atts_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+        atts_str = pretty_print_kast(kast.att, symbol_table)
         if kast.requires != TRUE:
-            requires_str = 'requires ' + '\n  '.join(
-                pretty_print_kast_bool(kast.requires, symbol_table, debug=debug).split('\n')
-            )
+            requires_str = 'requires ' + '\n  '.join(pretty_print_kast_bool(kast.requires, symbol_table).split('\n'))
             rule_str = rule_str + '\n  ' + requires_str
         if kast.ensures != TRUE:
-            ensures_str = 'ensures ' + '\n  '.join(
-                pretty_print_kast_bool(kast.ensures, symbol_table, debug=debug).split('\n')
-            )
+            ensures_str = 'ensures ' + '\n  '.join(pretty_print_kast_bool(kast.ensures, symbol_table).split('\n'))
             rule_str = rule_str + '\n   ' + ensures_str
         return rule_str + '\n  ' + atts_str
     if type(kast) is KContext:
-        body = indent(pretty_print_kast(kast.body, symbol_table, debug=debug))
+        body = indent(pretty_print_kast(kast.body, symbol_table))
         context_str = 'context alias ' + body
         requires_str = ''
-        atts_str = pretty_print_kast(kast.att, symbol_table, debug=debug)
+        atts_str = pretty_print_kast(kast.att, symbol_table)
         if kast.requires != TRUE:
-            requires_str = pretty_print_kast(kast.requires, symbol_table, debug=debug)
+            requires_str = pretty_print_kast(kast.requires, symbol_table)
             requires_str = 'requires ' + indent(requires_str)
         return context_str + '\n  ' + requires_str + '\n  ' + atts_str
     if type(kast) is KAtt:
@@ -534,32 +526,29 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable, debug: bool = False
         return ' '.join(['imports', ('public' if kast.public else 'private'), kast.name])
     if type(kast) is KFlatModule:
         name = kast.name
-        imports = '\n'.join([pretty_print_kast(kimport, symbol_table, debug=debug) for kimport in kast.imports])
-        sentences = '\n\n'.join([pretty_print_kast(sentence, symbol_table, debug=debug) for sentence in kast.sentences])
+        imports = '\n'.join([pretty_print_kast(kimport, symbol_table) for kimport in kast.imports])
+        sentences = '\n\n'.join([pretty_print_kast(sentence, symbol_table) for sentence in kast.sentences])
         contents = imports + '\n\n' + sentences
         return 'module ' + name + '\n    ' + '\n    '.join(contents.split('\n')) + '\n\nendmodule'
     if type(kast) is KRequire:
         return 'requires "' + kast.require + '"'
     if type(kast) is KDefinition:
-        requires = '\n'.join([pretty_print_kast(require, symbol_table, debug=debug) for require in kast.requires])
-        modules = '\n\n'.join([pretty_print_kast(module, symbol_table, debug=debug) for module in kast.modules])
+        requires = '\n'.join([pretty_print_kast(require, symbol_table) for require in kast.requires])
+        modules = '\n\n'.join([pretty_print_kast(module, symbol_table) for module in kast.modules])
         return requires + '\n\n' + modules
 
     raise ValueError(f'Error unparsing: {kast}')
 
 
-def pretty_print_kast_bool(kast: KAst, symbol_table: SymbolTable, debug: bool = False) -> str:
+def pretty_print_kast_bool(kast: KAst, symbol_table: SymbolTable) -> str:
     """Print out KAST requires/ensures clause.
 
     -   Input: KAST Bool for requires/ensures clause.
     -   Output: Best-effort string representation of KAST term.
     """
-    if debug:
-        sys.stderr.write(str(kast))
-        sys.stderr.write('\n')
-        sys.stderr.flush()
+    _LOGGER.debug(f'pretty_print_kast_bool: {kast}')
     if type(kast) is KApply and kast.label.name in ['_andBool_', '_orBool_']:
-        clauses = [pretty_print_kast_bool(c, symbol_table, debug=debug) for c in flatten_label(kast.label.name, kast)]
+        clauses = [pretty_print_kast_bool(c, symbol_table) for c in flatten_label(kast.label.name, kast)]
         head = kast.label.name.replace('_', ' ')
         if head == ' orBool ':
             head = '  orBool '
@@ -576,7 +565,7 @@ def pretty_print_kast_bool(kast: KAst, symbol_table: SymbolTable, debug: bool = 
         )
         return '\n'.join(clauses)
     else:
-        return pretty_print_kast(kast, symbol_table, debug=debug)
+        return pretty_print_kast(kast, symbol_table)
 
 
 def paren(printer: Callable[..., str]) -> Callable[..., str]:
