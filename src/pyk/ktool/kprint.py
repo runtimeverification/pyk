@@ -210,6 +210,7 @@ class KPrint:
         return KAst.from_dict(json.loads(output)['term'])
 
     def _kore_to_kast(self, kore: Pattern) -> Optional[KInner]:
+        _LOGGER.debug(f'_kore_to_kast: {kore}')
 
         if type(kore) is DV and kore.sort.name.startswith('Sort'):
             return KToken(kore.value.value, KSort(kore.sort.name[4:]))
@@ -274,6 +275,8 @@ class KPrint:
         return KoreParser(output).pattern()
 
     def _kast_to_kore(self, kast: KInner, sort: Optional[KSort] = None) -> Optional[Pattern]:
+        _LOGGER.debug(f'_kast_to_kore: {kast}')
+
         def _get_sort(_ki: KInner) -> Optional[KSort]:
             if type(_ki) is KApply:
                 return self.definition.return_sort(_ki.label)
