@@ -215,16 +215,16 @@ class KPrint:
         if type(kore) is DV and kore.sort.name.startswith('Sort'):
             return KToken(kore.value.value, KSort(kore.sort.name[4:]))
 
-        if type(kore) is EVar:
+        elif type(kore) is EVar:
             vname = _unmunge(kore.name[3:])
             return KVariable(vname, sort=KSort(kore.sort.name[4:]))
 
-        if type(kore) is App:
+        elif type(kore) is App:
 
             if kore.symbol == 'inj' and len(kore.sorts) == 2 and len(kore.patterns) == 1:
                 return self._kore_to_kast(kore.patterns[0])
 
-            if len(kore.sorts) == 0:
+            elif len(kore.sorts) == 0:
 
                 if kore.symbol == 'dotk' and len(kore.patterns) == 0:
                     return KSequence([])
@@ -244,14 +244,14 @@ class KPrint:
                     if len(new_args) == len(args):
                         return KApply(klabel, new_args)
 
-        if type(kore) is And:
+        elif type(kore) is And:
             psort = KSort(kore.sort.name[4:])
             larg = self._kore_to_kast(kore.left)
             rarg = self._kore_to_kast(kore.right)
             if larg is not None and rarg is not None:
                 return KApply(KLabel('#And', [psort]), [larg, rarg])
 
-        if type(kore) is Equals:
+        elif type(kore) is Equals:
             osort = KSort(kore.op_sort.name[4:])
             psort = KSort(kore.sort.name[4:])
             larg = self._kore_to_kast(kore.left)
@@ -286,7 +286,7 @@ class KPrint:
                 dv = self._add_sort_injection(dv, kast.sort, sort)
             return dv
 
-        if type(kast) is KVariable:
+        elif type(kast) is KVariable:
             vname = _munge('Var' + kast.name)
             if sort is not None and kast.sort is not None:
                 return self._add_sort_injection(EVar(vname, SortApp('Sort' + kast.sort.name)), kast.sort, sort)
@@ -295,7 +295,7 @@ class KPrint:
             if sort is None and kast.sort is not None:
                 return EVar(vname, SortApp('Sort' + kast.sort.name))
 
-        if type(kast) is KApply:
+        elif type(kast) is KApply:
 
             if len(kast.label.params) == 0:
                 # TODO: KAST validation should be a separate pass
@@ -317,7 +317,7 @@ class KPrint:
                         app = self._add_sort_injection(app, isort, sort)
                     return app
 
-            if len(kast.label.params) == 1:
+            elif len(kast.label.params) == 1:
                 psort = kast.label.params[0]
                 if kast.label.name == '#And' and kast.arity == 2:
                     larg = self._kast_to_kore(kast.args[0], sort=psort)
@@ -328,9 +328,10 @@ class KPrint:
                             _and = self._add_sort_injection(_and, psort, sort)
                         return _and
 
-            if len(kast.label.params) == 2:
+            elif len(kast.label.params) == 2:
                 osort = kast.label.params[0]
                 psort = kast.label.params[1]
+
                 if kast.label.name == '#Equals' and kast.arity == 2:
                     larg = self._kast_to_kore(kast.args[0], sort=osort)
                     rarg = self._kast_to_kore(kast.args[1], sort=osort)
@@ -342,7 +343,7 @@ class KPrint:
                             _equals = self._add_sort_injection(_equals, psort, sort)
                         return _equals
 
-        if type(kast) is KSequence:
+        elif type(kast) is KSequence:
             args = [self._kast_to_kore(i, sort=KSort('KItem')) for i in reversed(kast.items)]
             # TODO: Written like this to appease the type-checker.
             new_args = [a for a in args if a is not None]
