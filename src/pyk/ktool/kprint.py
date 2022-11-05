@@ -40,7 +40,7 @@ from ..kast import (
 )
 from ..kastManip import flatten_label
 from ..kore.parser import KoreParser
-from ..kore.syntax import DV, And, App, Equals, EVar, Kore, Pattern, SortApp, String
+from ..kore.syntax import DV, And, App, Ceil, Equals, EVar, Kore, Pattern, SortApp, String
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 
@@ -333,6 +333,13 @@ class KPrint:
             if larg is not None and rarg is not None:
                 return KApply(KLabel('#Equals', [osort, psort]), [larg, rarg])
 
+        if type(kore) is Ceil:
+            osort = KSort(kore.op_sort.name[4:])
+            psort = KSort(kore.sort.name[4:])
+            arg = self._kore_to_kast(kore.pattern)
+            if arg is not None:
+                return KApply(KLabel('#Ceil', [osort, psort]), [arg])
+
         _LOGGER.warning(f'KPrint._kore_to_kast failed on input: {kore}')
         return None
 
@@ -424,6 +431,13 @@ class KPrint:
                         if sort is not None:
                             _equals = self._add_sort_injection(_equals, psort, sort)
                         return _equals
+                if kast.label.name == '#Ceil' and kast.arity == 1:
+                    arg = self._kast_to_kore(kast.args[0], sort=osort)
+                    if arg is not None:
+                        _ceil: Pattern = Ceil(SortApp('Sort' + osort.name), SortApp('Sort' + psort.name), arg)
+                        if sort is not None:
+                            _ceil = self._add_sort_injection(_ceil, psort, sort)
+                        return _ceil
 
         elif type(kast) is KSequence:
             args = [self._kast_to_kore(i, sort=KSort('KItem')) for i in reversed(kast.items)]
