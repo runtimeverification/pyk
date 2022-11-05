@@ -1710,13 +1710,14 @@ class KDefinition(KOuter, WithKAtt):
         subst = {}
         for vname, _voccurances in var_occurances(kast).items():
             voccurances = list(unique(_voccurances))
-            if len(voccurances) > 1:
+            if len(voccurances) > 0:
                 vsort = voccurances[0].sort
-                for v in voccurances[1:]:
-                    if vsort is None and v.sort is not None:
-                        vsort = v.sort
-                    elif vsort is not None and v.sort is not None and vsort != v.sort:
-                        raise ValueError(f'Could not find common subsort among variable occurances: {voccurances}')
+                if len(voccurances) > 1:
+                    for v in voccurances[1:]:
+                        if vsort is None and v.sort is not None:
+                            vsort = v.sort
+                        elif vsort is not None and v.sort is not None and vsort != v.sort:
+                            raise ValueError(f'Could not find common subsort among variable occurances: {voccurances}')
                 subst[vname] = KVariable(vname, sort=vsort)
         return Subst(subst)
 
