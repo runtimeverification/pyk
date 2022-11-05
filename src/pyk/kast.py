@@ -1661,12 +1661,11 @@ class KDefinition(KOuter, WithKAtt):
 
     def production_for_klabel(self, klabel: KLabel) -> KProduction:
         if klabel not in self._production_for_klabel:
+            prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
             try:
-                self._production_for_klabel[klabel] = single(
-                    prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name
-                )
+                self._production_for_klabel[klabel] = single(prods)
             except ValueError as err:
-                raise ValueError(f'Expected a single production for label {klabel}') from err
+                raise ValueError(f'Expected a single production for label {klabel}, not: {prods}') from err
         return self._production_for_klabel[klabel]
 
     def production_for_cell_sort(self, sort: KSort) -> KProduction:
