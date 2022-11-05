@@ -219,12 +219,9 @@ def var_occurances(term: KInner) -> Dict[str, List[KVariable]]:
 
 def count_vars(term: KInner) -> typing.Counter[str]:
     counter: typing.Counter[str] = Counter()
-
-    def count(term: KInner) -> None:
-        if type(term) is KVariable:
-            counter[term.name] += 1
-
-    collect(count, term)
+    occurances = var_occurances(term)
+    for vname in occurances:
+        counter[vname] = len(occurances[vname])
     return counter
 
 
