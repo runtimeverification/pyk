@@ -346,6 +346,15 @@ class KProve(KPrint):
         assert er.state.substitution is None
         return depth, branching, mlAnd([next_state] + flatten_label('#And', next_predicate))
 
+    def simplify(self, cterm: CTerm) -> KInner:
+        kore = self.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
+        assert isinstance(kore, Pattern)
+        _, kore_client = self.kore_rpc()
+        kore_simplified = kore_client.simplify(kore)
+        kast_simplified = self.kore_to_kast(kore_simplified)
+        assert isinstance(kast_simplified, KInner)
+        return kast_simplified
+
     def _write_claim_definition(self, claim: KClaim, claim_id: str, lemmas: Iterable[KRule] = ()) -> Tuple[Path, str]:
         tmp_claim = self.use_directory / (claim_id.lower() + '-spec')
         tmp_module_name = claim_id.upper() + '-SPEC'
