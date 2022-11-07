@@ -10,6 +10,7 @@ from ..cli_utils import check_dir_path, check_file_path, run_process
 from ..cterm import CTerm
 from ..kast import KAst, KInner, KSort
 from ..kore.parser import KoreParser
+from ..kore.syntax import Pattern
 from .kprint import KPrint
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -77,6 +78,36 @@ class KRun(KPrint):
             result_kast = self.kore_to_kast(result_kore)
             assert isinstance(result_kast, KInner)
             return CTerm(result_kast)
+
+    def run_kore_term(
+        self,
+        pattern: Pattern,
+        *,
+        depth: Optional[int] = None,
+        expand_macros: bool = False,
+    ) -> Pattern:
+        with NamedTemporaryFile('w', dir=self.use_directory) as f:
+            f.write(pattern.text)
+            f.flush()
+
+            proc_res = _krun(
+                input_file=Path(f.name),
+                definition_dir=self.definition_dir,
+                output=KRunOutput.KORE,
+                parser='cat',
+                term=True,
+                depth=depth,
+                no_expand_macros=not expand_macros,
+                profile=self._profile,
+            )
+
+        if proc_res.returncode != 0:
+            raise RuntimeError('Non-zero exit-code from krun')
+
+        parser = KoreParser(proc_res.stdout)
+        res = parser.pattern()
+        assert parser.eof
+        return res
 
 
 class KRunOutput(Enum):
