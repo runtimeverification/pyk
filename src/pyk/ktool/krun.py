@@ -37,6 +37,7 @@ class KRun(KPrint):
         with NamedTemporaryFile('w', dir=self.use_directory, delete=False) as ntf:
             ntf.write(self.pretty_print(pgm))
             ntf.flush()
+
             result = _krun(
                 input_file=Path(ntf.name),
                 definition_dir=self.definition_dir,
@@ -45,11 +46,13 @@ class KRun(KPrint):
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
             )
-            if result.returncode != 0:
-                raise RuntimeError('Non-zero exit-code from krun.')
-            result_kast = KAst.from_dict(json.loads(result.stdout)['term'])
-            assert isinstance(result_kast, KInner)
-            return CTerm(result_kast)
+
+        if result.returncode != 0:
+            raise RuntimeError('Non-zero exit-code from krun.')
+
+        result_kast = KAst.from_dict(json.loads(result.stdout)['term'])
+        assert isinstance(result_kast, KInner)
+        return CTerm(result_kast)
 
     def run_kore(
         self,
@@ -60,9 +63,10 @@ class KRun(KPrint):
         expand_macros: bool = False,
     ) -> CTerm:
         kore_pgm = self.kast_to_kore(pgm, sort=sort)
-        with NamedTemporaryFile('w', dir=self.use_directory, delete=True) as ntf:
+        with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
             ntf.write(kore_pgm.text)
             ntf.flush()
+
             result = _krun(
                 input_file=Path(ntf.name),
                 definition_dir=self.definition_dir,
@@ -72,12 +76,14 @@ class KRun(KPrint):
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
             )
-            if result.returncode != 0:
-                raise RuntimeError('Non-zero exit-code from krun.')
-            result_kore = KoreParser(result.stdout).pattern()
-            result_kast = self.kore_to_kast(result_kore)
-            assert isinstance(result_kast, KInner)
-            return CTerm(result_kast)
+
+        if result.returncode != 0:
+            raise RuntimeError('Non-zero exit-code from krun.')
+
+        result_kore = KoreParser(result.stdout).pattern()
+        result_kast = self.kore_to_kast(result_kore)
+        assert isinstance(result_kast, KInner)
+        return CTerm(result_kast)
 
     def run_kore_term(
         self,
