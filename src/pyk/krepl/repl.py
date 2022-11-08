@@ -3,18 +3,13 @@ from typing import Any, List
 
 from pyk.cli_utils import file_path
 
-from .client import KReplClient
-
 
 class Repl(Cmd):
     intro = 'K-REPL Shell\nType "help" or "?" for more information.'
     prompt = '> '
 
-    _client: KReplClient
-
-    def __init__(self, host: str, port: int):
+    def __init__(self) -> None:
         super().__init__()
-        self._client = KReplClient(host, port)
 
     def emptyline(self) -> bool:
         return False
