@@ -1,56 +1,125 @@
-from cmd import Cmd
-from typing import Any, List
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from typing import Final, Optional
 
-from pyk.cli_utils import file_path
+from cmd2 import Cmd, with_argparser, with_category
+
+from ..cli_utils import check_dir_path, check_file_path, file_path
+from ..kore.parser import KoreParser
+from ..kore.syntax import Pattern
+from ..ktool.kprint import KAstInput, KAstOutput, _kast
+from ..ktool.krun import KRun, KRunOutput, _krun
 
 
-class Repl(Cmd):
+class DebuggerError(Exception):
+    ...
+
+
+class KDebugger:
+    definition_dir: Path
+    program_file: Optional[Path]
+    pattern: Optional[Pattern]
+
+    _krun: KRun
+
+    def __init__(self, definition_dir: Path) -> None:
+        check_dir_path(definition_dir)
+
+        self.definition_dir = definition_dir
+        self.program_file = None
+        self.pattern = None
+
+        self._krun = KRun(definition_dir)
+
+    def load(self, program_file: Path) -> None:
+        check_file_path(program_file)
+
+        try:
+            proc_res = _krun(
+                input_file=program_file,
+                definition_dir=self.definition_dir,
+                output=KRunOutput.KORE,
+                depth=0,
+            )
+        except RuntimeError as err:
+            raise DebuggerError('Failed to load program') from err
+
+        self.pattern = KoreParser(proc_res.stdout).pattern()
+        self.program_file = program_file
+
+    def step(self, depth: int = 1) -> None:
+        if self.pattern is None:
+            raise DebuggerError('No loaded program')
+        self.pattern = self._krun.run_kore_term(self.pattern, depth=depth)
+
+    def show(self) -> str:
+        if self.pattern is None:
+            raise DebuggerError('No loded program')
+
+        proc_res = _kast(
+            definition_dir=self.definition_dir,
+            input=KAstInput.KORE,
+            output=KAstOutput.PRETTY,
+            expression=self.pattern.text,
+        )
+        return proc_res.stdout
+
+
+def _load_parser() -> ArgumentParser:
+    parser = ArgumentParser(description='Load a program')
+    parser.add_argument('program', type=file_path, metavar='PROGRAM')
+    return parser
+
+
+def _step_parser() -> ArgumentParser:
+    parser = ArgumentParser(description='Execute a step in the program')
+    parser.add_argument('depth', type=int, nargs='?', default=1, metavar='DEPTH')
+    return parser
+
+
+def _show_parser() -> ArgumentParser:
+    return ArgumentParser(description='Show the current configuration')
+
+
+class KRepl(Cmd):
+    CAT_DEBUG: Final = 'Debugger Commands'
+    CAT_BUILTIN: Final = 'Built-in Commands'
+
     intro = 'K-REPL Shell\nType "help" or "?" for more information.'
     prompt = '> '
 
-    def __init__(self) -> None:
-        super().__init__()
+    debugger: KDebugger
 
-    def emptyline(self) -> bool:
-        return False
+    def __init__(self, debugger: KDebugger) -> None:
+        super().__init__(allow_cli_args=False)
+        self.default_category = self.CAT_BUILTIN
 
-    def default(self, line: str) -> Any:
-        if line == 'EOF':
-            return True
-        return super().default(line)
+        self.debugger = debugger
 
-    def help_help(self) -> None:
-        print('Usage: help [COMMAND] - List available commands or detailed help for COMMAND')
-
-    def do_load_raw(self, arg: str) -> None:
-        """Usage: load_raw FILE - Load initial KORE pattern from FILE"""
+    @with_argparser(_load_parser())
+    @with_category(CAT_DEBUG)
+    def do_load(self, args: Namespace) -> None:
         try:
-            (arg1,) = _get_args(arg, 1)
-            file_path(arg1)
-        except ValueError as err:
-            print(err.args[0])
+            self.debugger.load(args.program)
+        except DebuggerError as err:
+            self.poutput(err)
+
+    @with_argparser(_step_parser())
+    @with_category(CAT_DEBUG)
+    def do_step(self, args: Namespace) -> None:
+        if args.depth < 0:
+            self.poutput('Depth should be non-negative')
             return
 
-        print('load_raw')
-
-    def do_step_to_branch(self, arg: str) -> None:
-        """Usage: step_to_branch - Step to the next branching point"""
         try:
-            _get_args(arg, 0)
-        except ValueError as err:
-            print(err.args[0])
-            return
+            self.debugger.step(args.depth)
+        except DebuggerError as err:
+            self.poutput(err)
 
-        print('step_branch')
-
-    def do_exit(self, arg: str) -> bool:
-        """Usage: exit - Exit REPL"""
-        return True
-
-
-def _get_args(s: str, n: int) -> List[str]:
-    args = s.split()
-    if len(args) != n:
-        arg_str = '1 argument' if n == 1 else f'{n} arguments'
-        raise ValueError(f'Expected {arg_str}, got: {len(args)}')
-    return args
+    @with_argparser(_show_parser())
+    @with_category(CAT_DEBUG)
+    def do_show(self, args: Namespace) -> None:
+        try:
+            self.poutput(self.debugger.show())
+        except DebuggerError as err:
+            self.poutput(err)

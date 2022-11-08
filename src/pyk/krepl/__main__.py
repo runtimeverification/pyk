@@ -1,18 +1,20 @@
 from argparse import ArgumentParser
 
-from .repl import Repl
+from ..cli_utils import dir_path
+from .repl import KDebugger, KRepl
 
 
 def main() -> None:
-    argument_parser().parse_args()
-    try:
-        Repl().cmdloop()
-    except KeyboardInterrupt:
-        ...
+    args = argument_parser().parse_args()
+    debugger = KDebugger(args.definition_dir)
+    repl = KRepl(debugger)
+    repl.cmdloop()
 
 
 def argument_parser() -> ArgumentParser:
-    return ArgumentParser(description='K-REPL Client')
+    parser = ArgumentParser(description='K-REPL Shell')
+    parser.add_argument('definition_dir', type=dir_path, metavar='DEFINITION')
+    return parser
 
 
 if __name__ == '__main__':
