@@ -19,9 +19,10 @@ class ParserTest(TestCase):
             with self.subTest(test_file.name):
                 # Given
                 with open(test_file, 'r') as f:
-                    parser1 = KoreParser(f.read())
+                    text = f.read()
 
                 # When
+                parser1 = KoreParser(text)
                 definition1 = parser1.definition()
                 parser2 = KoreParser(definition1.text)
                 definition2 = parser2.definition()
@@ -40,7 +41,9 @@ class ParserTest(TestCase):
             with self.subTest(test_file.name):
                 # Given
                 with open(test_file, 'r') as f:
-                    parser = KoreParser(f.read())
+                    text = f.read()
+
+                parser = KoreParser(text)
 
                 # Then
                 with self.assertRaises(ValueError):
