@@ -129,6 +129,8 @@ class Kore(ABC):
         'Next',
         'Rewrites',
         'DV',
+        'LeftAssoc',
+        'RightAssoc',
     }
 
     @classmethod
