@@ -8,24 +8,14 @@ from pyk.kore.syntax import Kore, kore_term
 
 TEST_DIR: Final = Path(__file__).parent
 
-# JSON files for random generated patterns
-JSON_TEST_DIR: Final = TEST_DIR / 'json-data'
-JSON_TEST_FILES: Final = tuple(JSON_TEST_DIR.iterdir())
-
-# Kore test files containing definitions
-KORE_TEST_DIR: Final = TEST_DIR / 'kore-data'
-KORE_PASS_DIR: Final = KORE_TEST_DIR / 'pass'
-KORE_PASS_TEST_FILES: Final = tuple(KORE_PASS_DIR.iterdir())
-KORE_FAIL_DIR: Final = KORE_TEST_DIR / 'fail'
-KORE_FAIL_TEST_FILES: Final = tuple(test_file for test_file in KORE_FAIL_DIR.iterdir() if test_file.suffix == '.kore')
-
-assert KORE_PASS_TEST_FILES
-assert KORE_FAIL_TEST_FILES
-
 
 class ParserTest(TestCase):
     def test_parse_kore_pass(self) -> None:
-        for test_file in KORE_PASS_TEST_FILES:
+        test_dir = TEST_DIR / 'kore-data/pass'
+        test_files = tuple(test_dir.iterdir())
+        assert test_files
+
+        for test_file in test_files:
             with self.subTest(test_file.name):
                 # Given
                 with open(test_file, 'r') as f:
@@ -42,7 +32,11 @@ class ParserTest(TestCase):
                 self.assertEqual(definition1, definition2)
 
     def test_parse_kore_fail(self) -> None:
-        for test_file in KORE_FAIL_TEST_FILES:
+        test_dir = TEST_DIR / 'kore-data/fail'
+        test_files = tuple(test_file for test_file in test_dir.iterdir() if test_file.suffix == '.kore')
+        assert test_files
+
+        for test_file in test_files:
             with self.subTest(test_file.name):
                 # Given
                 with open(test_file, 'r') as f:
@@ -54,7 +48,11 @@ class ParserTest(TestCase):
                     parser.definition()
 
     def test_parse_json(self) -> None:
-        for test_file in JSON_TEST_FILES:
+        test_dir = TEST_DIR / 'json-data'
+        test_files = tuple(test_dir.iterdir())
+        assert test_files
+
+        for test_file in test_files:
             with open(test_file, 'r') as f:
                 # Given
                 terms = json.load(f)
