@@ -4,11 +4,11 @@ from unittest import TestCase
 from pyk.kore.parser import KoreParser
 from pyk.kore.syntax import Kore, kore_term
 
-from .utils import JSON_TEST_FILES, KORE_PASS_TEST_FILES
+from .utils import JSON_TEST_FILES, KORE_FAIL_TEST_FILES, KORE_PASS_TEST_FILES
 
 
 class ParserTest(TestCase):
-    def test_parse_kore(self) -> None:
+    def test_parse_kore_pass(self) -> None:
         for test_file in KORE_PASS_TEST_FILES:
             with self.subTest(test_file.name):
                 # Given
@@ -24,6 +24,18 @@ class ParserTest(TestCase):
                 self.assertTrue(parser1.eof)
                 self.assertTrue(parser2.eof)
                 self.assertEqual(definition1, definition2)
+
+    def test_parse_kore_fail(self) -> None:
+        for test_file in KORE_FAIL_TEST_FILES:
+            with self.subTest(test_file.name):
+                # Given
+                with open(test_file, 'r') as f:
+                    parser = KoreParser(f.read())
+
+                # Then
+                with self.assertRaises(ValueError):
+                    # When
+                    parser.definition()
 
     def test_parse_json(self) -> None:
         for test_file in JSON_TEST_FILES:
