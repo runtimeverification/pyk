@@ -7,15 +7,11 @@ JSON_TEST_FILES: Final = tuple(_JSON_TEST_DIR.iterdir())
 
 # Kore test files containing definitions
 _KORE_TEST_DIR: Final = Path(__file__).parent / 'kore-data'
-_KORE_TEST_INPUT: Final = tuple(
-    (test_file, test_file.with_suffix('.kore.golden'))
-    for test_file in _KORE_TEST_DIR.iterdir()
-    if test_file.suffix == '.kore'
-)
+_KORE_PASS_DIR: Final = _KORE_TEST_DIR / 'pass'
+_KORE_FAIL_DIR: Final = _KORE_TEST_DIR / 'fail'
 
-KORE_PASS_TEST_FILES: Final = tuple(
-    test_file for test_file, golden_file in _KORE_TEST_INPUT if golden_file.stat().st_size == 0
-)
-KORE_FAIL_TEST_FILES: Final = tuple(
-    test_file for test_file, golden_file in _KORE_TEST_INPUT if golden_file.stat().st_size > 0
-)
+KORE_PASS_TEST_FILES: Final = tuple(_KORE_PASS_DIR.iterdir())
+KORE_FAIL_TEST_FILES: Final = tuple(test_file for test_file in _KORE_FAIL_DIR.iterdir() if test_file.suffix == '.kore')
+
+assert KORE_PASS_TEST_FILES
+assert KORE_FAIL_TEST_FILES
