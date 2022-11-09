@@ -4,7 +4,7 @@ from typing import Final
 from unittest import TestCase
 
 from pyk.kore.parser import KoreParser
-from pyk.kore.syntax import Kore, kore_term
+from pyk.kore.syntax import Kore, Pattern, kore_term
 
 TEST_DATA_DIR: Final = Path(__file__).parent / 'test-data'
 
@@ -46,6 +46,30 @@ class ParserTest(TestCase):
                 with self.assertRaises(ValueError):
                     # When
                     parser.definition()
+
+    def test_parse_pattern(self) -> None:
+        test_dir = TEST_DATA_DIR / 'patterns'
+        test_files = tuple(test_dir.iterdir())
+        assert test_files
+
+        for test_file in test_files:
+            with self.subTest(test_file.name):
+                # Given
+                with open(test_file, 'r') as f:
+                    text = f.read()
+
+                # When
+                parser1 = KoreParser(text)
+                pattern1 = parser1.pattern()
+                parser2 = KoreParser(pattern1.text)
+                pattern2 = parser2.pattern()
+                pattern3 = Pattern.from_dict(pattern1.dict)
+
+                # Then
+                self.assertTrue(parser1.eof)
+                self.assertTrue(parser2.eof)
+                self.assertEqual(pattern1, pattern2)
+                self.assertEqual(pattern1, pattern3)
 
     def test_parse_json(self) -> None:
         test_dir = TEST_DATA_DIR / 'json'
