@@ -20,7 +20,7 @@ class KDebugger:
     program_file: Optional[Path]
     pattern: Optional[Pattern]
 
-    _krun: KRun
+    krun: KRun
 
     def __init__(self, definition_dir: Path) -> None:
         check_dir_path(definition_dir)
@@ -29,7 +29,7 @@ class KDebugger:
         self.program_file = None
         self.pattern = None
 
-        self._krun = KRun(definition_dir)
+        self.krun = KRun(definition_dir)
 
     def load(self, program_file: Path) -> None:
         check_file_path(program_file)
@@ -50,7 +50,7 @@ class KDebugger:
     def step(self, depth: int = 1) -> None:
         if self.pattern is None:
             raise DebuggerError('No loaded program')
-        self.pattern = self._krun.run_kore_term(self.pattern, depth=depth)
+        self.pattern = self.krun.run_kore_term(self.pattern, depth=depth)
 
     def show(self) -> str:
         if self.pattern is None:
