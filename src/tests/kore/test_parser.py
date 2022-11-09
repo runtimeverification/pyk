@@ -6,12 +6,12 @@ from unittest import TestCase
 from pyk.kore.parser import KoreParser
 from pyk.kore.syntax import Kore, kore_term
 
-TEST_DIR: Final = Path(__file__).parent
+TEST_DATA_DIR: Final = Path(__file__).parent / 'test-data'
 
 
 class ParserTest(TestCase):
-    def test_parse_kore_pass(self) -> None:
-        test_dir = TEST_DIR / 'kore-data/pass'
+    def test_parse_definition_pass(self) -> None:
+        test_dir = TEST_DATA_DIR / 'definitions/pass'
         test_files = tuple(test_dir.iterdir())
         assert test_files
 
@@ -31,8 +31,8 @@ class ParserTest(TestCase):
                 self.assertTrue(parser2.eof)
                 self.assertEqual(definition1, definition2)
 
-    def test_parse_kore_fail(self) -> None:
-        test_dir = TEST_DIR / 'kore-data/fail'
+    def test_parse_definition_fail(self) -> None:
+        test_dir = TEST_DATA_DIR / 'definitions/fail'
         test_files = tuple(test_file for test_file in test_dir.iterdir() if test_file.suffix == '.kore')
         assert test_files
 
@@ -48,7 +48,7 @@ class ParserTest(TestCase):
                     parser.definition()
 
     def test_parse_json(self) -> None:
-        test_dir = TEST_DIR / 'json-data'
+        test_dir = TEST_DATA_DIR / 'json'
         test_files = tuple(test_dir.iterdir())
         assert test_files
 
