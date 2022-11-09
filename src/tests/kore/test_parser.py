@@ -1,10 +1,26 @@
 import json
+from pathlib import Path
+from typing import Final
 from unittest import TestCase
 
 from pyk.kore.parser import KoreParser
 from pyk.kore.syntax import Kore, kore_term
 
-from .utils import JSON_TEST_FILES, KORE_FAIL_TEST_FILES, KORE_PASS_TEST_FILES
+TEST_DIR: Final = Path(__file__).parent
+
+# JSON files for random generated patterns
+JSON_TEST_DIR: Final = TEST_DIR / 'json-data'
+JSON_TEST_FILES: Final = tuple(JSON_TEST_DIR.iterdir())
+
+# Kore test files containing definitions
+KORE_TEST_DIR: Final = TEST_DIR / 'kore-data'
+KORE_PASS_DIR: Final = KORE_TEST_DIR / 'pass'
+KORE_PASS_TEST_FILES: Final = tuple(KORE_PASS_DIR.iterdir())
+KORE_FAIL_DIR: Final = KORE_TEST_DIR / 'fail'
+KORE_FAIL_TEST_FILES: Final = tuple(test_file for test_file in KORE_FAIL_DIR.iterdir() if test_file.suffix == '.kore')
+
+assert KORE_PASS_TEST_FILES
+assert KORE_FAIL_TEST_FILES
 
 
 class ParserTest(TestCase):
