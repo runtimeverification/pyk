@@ -33,7 +33,7 @@ from .kast import (
     WithKAtt,
     bottom_up,
     top_down,
-    var_occurances,
+    var_occurences,
 )
 from .prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
 from .prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
@@ -205,9 +205,9 @@ def extract_subst(term: KInner) -> Tuple[Subst, KInner]:
 
 def count_vars(term: KInner) -> typing.Counter[str]:
     counter: typing.Counter[str] = Counter()
-    occurances = var_occurances(term)
-    for vname in occurances:
-        counter[vname] = len(occurances[vname])
+    occurences = var_occurences(term)
+    for vname in occurences:
+        counter[vname] = len(occurences[vname])
     return counter
 
 

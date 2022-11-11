@@ -1708,16 +1708,16 @@ class KDefinition(KOuter, WithKAtt):
         # TODO: Should also take sort inferences from KApply children.
         # TODO: Should also take into account subsorts.
         subst = {}
-        for vname, _voccurances in var_occurances(kast).items():
-            voccurances = list(unique(_voccurances))
-            if len(voccurances) > 0:
-                vsort = voccurances[0].sort
-                if len(voccurances) > 1:
-                    for v in voccurances[1:]:
+        for vname, _voccurences in var_occurences(kast).items():
+            voccurences = list(unique(_voccurences))
+            if len(voccurences) > 0:
+                vsort = voccurences[0].sort
+                if len(voccurences) > 1:
+                    for v in voccurences[1:]:
                         if vsort is None and v.sort is not None:
                             vsort = v.sort
                         elif vsort is not None and v.sort is not None and vsort != v.sort:
-                            raise ValueError(f'Could not find common subsort among variable occurances: {voccurances}')
+                            raise ValueError(f'Could not find common subsort among variable occurences: {voccurences}')
                 subst[vname] = KVariable(vname, sort=vsort)
         return Subst(subst)
 
@@ -1802,18 +1802,18 @@ def top_down(f: Callable[[KInner], KInner], kinner: KInner) -> KInner:
 
 
 # TODO: make method of KInner
-def var_occurances(term: KInner) -> Dict[str, List[KVariable]]:
-    _var_occurances: Dict[str, List[KVariable]] = {}
+def var_occurences(term: KInner) -> Dict[str, List[KVariable]]:
+    _var_occurences: Dict[str, List[KVariable]] = {}
 
     # TODO: should treat #Exists and #Forall specially.
     def _var_occurance(_term: KInner) -> None:
         if type(_term) is KVariable:
-            if _term.name not in _var_occurances:
-                _var_occurances[_term.name] = []
-            _var_occurances[_term.name].append(_term)
+            if _term.name not in _var_occurences:
+                _var_occurences[_term.name] = []
+            _var_occurences[_term.name].append(_term)
 
     collect(_var_occurance, term)
-    return _var_occurances
+    return _var_occurences
 
 
 # TODO replace by method that does not reconstruct the AST
