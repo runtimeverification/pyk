@@ -1720,7 +1720,7 @@ class KDefinition(KOuter, WithKAtt):
                             raise ValueError(
                                 f'Could not find common subsort among variable occurrences: {voccurrences}'
                             )
-                    subst[vname] = KVariable(vname, sort=vsort)
+                subst[vname] = KVariable(vname, sort=vsort)
         return Subst(subst)
 
     def sort_vars(self, kast: KInner) -> KInner:
