@@ -137,7 +137,7 @@ def build_rule(
 
     lhs_vars = free_vars(init_term)
     rhs_vars = free_vars(final_term)
-    var_occurences = count_vars(
+    var_occurrences = count_vars(
         mlAnd(
             [push_down_rewrites(KRewrite(init_config, final_config))] + init_constraints + final_constraints,
             GENERATED_TOP_CELL,
@@ -145,9 +145,9 @@ def build_rule(
     )
     v_subst: Dict[str, KVariable] = {}
     vremap_subst: Dict[str, KVariable] = {}
-    for v in var_occurences:
+    for v in var_occurrences:
         new_v = v
-        if var_occurences[v] == 1:
+        if var_occurrences[v] == 1:
             new_v = '_' + new_v
         if v in rhs_vars and v not in lhs_vars:
             new_v = '?' + new_v
