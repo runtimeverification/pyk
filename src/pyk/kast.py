@@ -1806,13 +1806,13 @@ def var_occurences(term: KInner) -> Dict[str, List[KVariable]]:
     _var_occurences: Dict[str, List[KVariable]] = {}
 
     # TODO: should treat #Exists and #Forall specially.
-    def _var_occurance(_term: KInner) -> None:
+    def _var_occurence(_term: KInner) -> None:
         if type(_term) is KVariable:
             if _term.name not in _var_occurences:
                 _var_occurences[_term.name] = []
             _var_occurences[_term.name].append(_term)
 
-    collect(_var_occurance, term)
+    collect(_var_occurence, term)
     return _var_occurences
 
 
