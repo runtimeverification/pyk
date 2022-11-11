@@ -1718,7 +1718,7 @@ class KDefinition(KOuter, WithKAtt):
                             vsort = v.sort
                         elif vsort is not None and v.sort is not None and vsort != v.sort:
                             raise ValueError(f'Could not find common subsort among variable occurences: {voccurences}')
-                subst[vname] = KVariable(vname, sort=vsort)
+                    subst[vname] = KVariable(vname, sort=vsort)
         return Subst(subst)
 
     def sort_vars(self, kast: KInner) -> KInner:
