@@ -167,5 +167,5 @@ def build_rule(
 
     rule = KRule(rule_body, requires=rule_requires, ensures=rule_ensures, att=rule_att)
     rule = rule.update_atts({'label': rule_id})
-    new_keep_vars = [v_subst[v].name for v in keep_vars]
+    new_keep_vars = [v_subst[v].name if v in v_subst else v for v in keep_vars]
     return (minimize_rule(rule, keep_vars=new_keep_vars), Subst(vremap_subst))
