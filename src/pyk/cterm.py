@@ -12,6 +12,7 @@ from .kastManip import (
     minimize_rule,
     ml_pred_to_bool,
     push_down_rewrites,
+    remove_generated_cells,
     simplify_bool,
     split_config_and_constraints,
     substitute,
@@ -159,7 +160,7 @@ def build_rule(
     (init_config, init_constraint) = split_config_and_constraints(init_term)
     (final_config, final_constraint) = split_config_and_constraints(final_term)
 
-    rule_body = push_down_rewrites(KRewrite(init_config, final_config))
+    rule_body = remove_generated_cells(push_down_rewrites(KRewrite(init_config, final_config)))
     rule_requires = simplify_bool(ml_pred_to_bool(init_constraint))
     rule_ensures = simplify_bool(ml_pred_to_bool(final_constraint))
     att_dict = {} if priority is None else {'priority': str(priority)}
