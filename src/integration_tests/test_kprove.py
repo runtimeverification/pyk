@@ -104,7 +104,7 @@ class ImpProofTest(KProveTest):
             '<generatedTop>\n'
             '  <T>\n'
             '    <k>\n'
-            '      if ( 0 <=Int N:Int ) { { $s = $s + $n ; $n = $n + -1 ; } while ( 0 <= $n ) { $s = $s + $n ; $n = $n + -1 ; } } else { }\n'
+            '      if ( 0 <=Int N:Int ) { ( { ( $s = ( $s + $n ) ; $n = ( $n + -1 ) ; ) } while ( 0 <= $n ) { ( $s = ( $s + $n ) ; $n = ( $n + -1 ) ; ) } ) } else { }\n'
             '      ~> _DotVar2:K\n'
             '    </k>\n'
             '    <state>\n'
@@ -179,8 +179,8 @@ class ImpProofTest(KProveTest):
         pre_state = '.Map'
 
         test_data = (
-            ('step-1', 1, 'int $n , $s ; $n = 3 ;', (1, False, ('int $s , .Ids ; $n = 3 ;', '$n |-> 0'))),
-            ('step-2', 2, 'int $n , $s ; $n = 3 ;', (2, False, ('int .Ids ; $n = 3 ;', '$s |-> 0 $n |-> 0'))),
+            ('step-1', 1, 'int $n , $s ; $n = 3 ;', (1, False, ('int ( $s , .Ids ) ; $n = 3 ;', '$n |-> 0'))),
+            ('step-2', 2, 'int $n , $s ; $n = 3 ;', (2, False, ('int .Ids ; $n = 3 ;', '( $s |-> 0 $n |-> 0 )'))),
             (
                 'branch',
                 4,

@@ -926,7 +926,7 @@ class KProduction(KSentence):
 
     @property
     def arity(self) -> int:
-        return len(self.items)
+        return len(self.argument_sorts)
 
     @classmethod
     def from_dict(cls: Type['KProduction'], d: Dict[str, Any]) -> 'KProduction':
@@ -969,6 +969,10 @@ class KProduction(KSentence):
 
     def let_att(self, att: KAtt) -> 'KProduction':
         return self.let(att=att)
+
+    @property
+    def argument_sorts(self) -> List[KSort]:
+        return [nt.sort for nt in self.items if type(nt) is KNonTerminal]
 
 
 @final
@@ -1689,7 +1693,7 @@ class KDefinition(KOuter, WithKAtt):
         return self.production_for_klabel(label).sort
 
     def argument_sorts(self, label: KLabel) -> List[KSort]:
-        return [nt.sort for nt in self.production_for_klabel(label).items if type(nt) is KNonTerminal]
+        return self.production_for_klabel(label).argument_sorts
 
     def subsorts(self, sort: KSort) -> List[KSort]:
         if sort not in self._subsorts:
