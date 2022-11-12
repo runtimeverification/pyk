@@ -1153,12 +1153,6 @@ def build_cons(unit: KInner, label: Union[str, KLabel], terms: Iterable[KInner])
         return unit
 
 
-def read_kast(path: Union[str, PathLike]) -> KAst:
-    with open(path, 'r') as _f:
-        return KAst.from_dict(json.loads(_f.read())['term'])
-
-
 def read_kast_definition(path: Union[str, PathLike]) -> KDefinition:
-    _defn = read_kast(path)
-    assert isinstance(_defn, KDefinition)
-    return _defn
+    with open(path, 'r') as _f:
+        return KDefinition.from_dict(json.loads(_f.read())['term'])
