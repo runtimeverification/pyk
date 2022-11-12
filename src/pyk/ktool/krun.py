@@ -31,9 +31,12 @@ class KRun(KPrint):
         self,
         pgm: KInner,
         *,
+        config: Optional[Mapping[str, KInner]] = None,
         depth: Optional[int] = None,
         expand_macros: bool = False,
     ) -> CTerm:
+        pmap = {k: 'cat' for k in config} if config is not None else None
+        cmap = {k: self.kast_to_kore(v).text for k, v in config.items()} if config is not None else None
         with NamedTemporaryFile('w', dir=self.use_directory, delete=False) as ntf:
             ntf.write(self.pretty_print(pgm))
             ntf.flush()
@@ -45,6 +48,8 @@ class KRun(KPrint):
                 depth=depth,
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
+                cmap=cmap,
+                pmap=pmap,
             )
 
         if result.returncode != 0:
@@ -125,7 +130,7 @@ class KRun(KPrint):
             definition_dir=self.definition_dir,
             output=KRunOutput.KORE,
             pmap={var: 'cat' for var in config},
-            cmap={var: pattern.text for var, pattern in config.items()},
+            cmap={var: pattern.text.replace(' ', '') for var, pattern in config.items()},
             depth=depth,
             no_expand_macros=not expand_macros,
             profile=self._profile,
