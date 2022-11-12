@@ -763,14 +763,6 @@ class KFlatModule(KOuter, WithKAtt):
         return [sentence for sentence in self.sentences if type(sentence) is KRule]
 
     @property
-    def macro_rules(self) -> List[KRule]:
-        return [rule for rule in self.rules if 'macro' in rule.att] + self.alias_rules
-
-    @property
-    def alias_rules(self) -> List[KRule]:
-        return [rule for rule in self.rules if 'alias' in rule.att]
-
-    @property
     def claims(self) -> List[KClaim]:
         return [sentence for sentence in self.sentences if type(sentence) is KClaim]
 
