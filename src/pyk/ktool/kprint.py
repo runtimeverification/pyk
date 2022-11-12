@@ -7,38 +7,28 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, Final, List, Optional
 
 from ..cli_utils import check_dir_path, check_file_path, run_process
-from ..kast import (
-    KApply,
-    KAs,
-    KAst,
-    KAtt,
+from ..kast.kinner import KApply, KAs, KAst, KAtt, KInner, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
+from ..kast.kouter import (
     KBubble,
     KClaim,
     KContext,
     KDefinition,
     KFlatModule,
     KImport,
-    KInner,
-    KLabel,
     KNonTerminal,
     KProduction,
     KRegexTerminal,
     KRequire,
-    KRewrite,
     KRule,
-    KSequence,
-    KSort,
     KSortSynonym,
     KSyntaxAssociativity,
     KSyntaxLexical,
     KSyntaxPriority,
     KSyntaxSort,
     KTerminal,
-    KToken,
-    KVariable,
     read_kast_definition,
 )
-from ..kastManip import flatten_label
+from ..kast.manip import flatten_label
 from ..kore.parser import KoreParser
 from ..kore.syntax import DV, And, App, Ceil, Equals, EVar, Kore, Pattern, SortApp, String
 from ..prelude.k import DOTS, EMPTY_K

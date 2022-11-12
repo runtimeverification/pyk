@@ -5,7 +5,8 @@ from tempfile import mkdtemp
 from typing import Iterable, Optional
 from unittest import TestCase
 
-from pyk.kast import KDefinition, KInner
+from pyk.kast.kinner import KInner
+from pyk.kast.kouter import KDefinition
 from pyk.ktool import KompileBackend, kompile
 from pyk.prelude.ml import is_top
 

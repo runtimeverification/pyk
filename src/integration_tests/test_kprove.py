@@ -1,6 +1,7 @@
 from pyk.cterm import CTerm
-from pyk.kast import KApply, KAtt, KClaim, KRule, KSequence, KToken, KVariable
-from pyk.kastManip import get_cell
+from pyk.kast.kinner import KApply, KAtt, KSequence, KToken, KVariable
+from pyk.kast.kouter import KClaim, KRule
+from pyk.kast.manip import get_cell
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
 from pyk.prelude.kbool import BOOL

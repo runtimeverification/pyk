@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
 
-from pyk.kast import EMPTY_ATT, KAst, KDefinition, KFlatModuleList, KRequire
-from pyk.kastManip import remove_generated_cells
+from pyk.kast.kinner import EMPTY_ATT, KAst
+from pyk.kast.kouter import KDefinition, KFlatModuleList, KRequire
+from pyk.kast.manip import remove_generated_cells
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable, paren
 from pyk.ktool.kprove import _kprove

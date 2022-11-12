@@ -1,6 +1,6 @@
 from typing import Iterable, Tuple
 
-from pyk.kast import KApply, KInner, KSort, KToken, KVariable
+from pyk.kast.kinner import KApply, KInner, KSort, KToken, KVariable
 from pyk.ktool import KompileBackend
 from pyk.ktool.kit import parse_token_rule_syntax
 from pyk.ktool.kprint import SymbolTable

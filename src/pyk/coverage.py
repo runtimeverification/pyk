@@ -1,7 +1,8 @@
 from os import PathLike
 from typing import Iterable, List
 
-from .kast import KApply, KDefinition, KRewrite, KRule, KSequence, read_kast_definition
+from .kast.kinner import KApply, KRewrite, KSequence
+from .kast.kouter import KDefinition, KRule, read_kast_definition
 
 
 def get_rule_by_id(definition: KDefinition, rule_id: str) -> KRule:
