@@ -1,4 +1,5 @@
-from pyk.kast import KApply, KAs, KRewrite, KSort, KSortSynonym
+from pyk.kast.kinner import KApply, KAs, KRewrite, KSort
+from pyk.kast.kouter import KSortSynonym
 from pyk.ktool import KompileBackend
 from pyk.utils import single
 

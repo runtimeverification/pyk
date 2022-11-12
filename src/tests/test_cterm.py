@@ -2,7 +2,8 @@ from typing import Final, Tuple
 from unittest import TestCase
 
 from pyk.cterm import CTerm, build_claim, build_rule
-from pyk.kast import KApply, KAtt, KClaim, KInner, KLabel, KRewrite, KSequence, KVariable
+from pyk.kast.kinner import KApply, KAtt, KInner, KLabel, KRewrite, KSequence, KVariable
+from pyk.kast.kouter import KClaim
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlAnd, mlEqualsTrue

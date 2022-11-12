@@ -6,8 +6,9 @@ from typing import Any, Dict, Final, Iterable, Optional
 
 from .cli_utils import check_dir_path, check_file_path
 from .cterm import CTerm
-from .kast import KApply, KClaim, KDefinition, KInner, KNonTerminal, KVariable, Subst
-from .kastManip import (
+from .kast.kinner import KApply, KInner, KVariable, Subst
+from .kast.kouter import KClaim, KDefinition, KNonTerminal
+from .kast.manip import (
     abstract_term_safely,
     bool_to_ml_pred,
     bottom_up,

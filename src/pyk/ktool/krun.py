@@ -8,7 +8,7 @@ from typing import Final, List, Mapping, Optional
 
 from ..cli_utils import check_dir_path, check_file_path, run_process
 from ..cterm import CTerm
-from ..kast import KAst, KInner, KSort
+from ..kast.kinner import KAst, KInner, KSort
 from ..kore.parser import KoreParser
 from ..kore.syntax import Pattern
 from .kprint import KPrint
