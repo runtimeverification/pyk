@@ -30,7 +30,7 @@ from ..kast.outer import (
     read_kast_definition,
 )
 from ..kore.parser import KoreParser
-from ..kore.syntax import DV, And, App, Ceil, Equals, EVar, Pattern, SortApp, String
+from ..kore.syntax import DV, And, App, Ceil, Equals, EVar, Not, Pattern, SortApp, String
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 
@@ -312,6 +312,12 @@ class KPrint:
             if larg is not None and rarg is not None:
                 return KApply(KLabel('#And', [psort]), [larg, rarg])
 
+        elif type(kore) is Not:
+            psort = KSort(kore.sort.name[4:])
+            arg = self._kore_to_kast(kore.pattern)
+            if arg is not None:
+                return KApply(KLabel('#Not', [psort]), [arg])
+
         elif type(kore) is Equals:
             osort = KSort(kore.op_sort.name[4:])
             psort = KSort(kore.sort.name[4:])
@@ -402,6 +408,13 @@ class KPrint:
                         if sort is not None:
                             _and = self._add_sort_injection(_and, psort, sort)
                         return _and
+                elif kast.label.name == '#Not' and kast.arity == 1:
+                    arg = self._kast_to_kore(kast.args[0], sort=psort)
+                    if arg is not None:
+                        _not: Pattern = Not(SortApp('Sort' + psort.name), arg)
+                        if sort is not None:
+                            _not = self._add_sort_injection(_not, psort, sort)
+                        return _not
 
             elif len(kast.label.params) == 2:
                 osort = kast.label.params[0]
