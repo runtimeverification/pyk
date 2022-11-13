@@ -1,5 +1,5 @@
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KVariable
-from pyk.kore.syntax import DV, And, App, Ceil, Equals, EVar, SortApp, String
+from pyk.kore.syntax import DV, And, App, Ceil, Equals, EVar, Not, SortApp, String
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
 from pyk.prelude.kbool import TRUE
@@ -92,6 +92,18 @@ class KoreToKastTest(KProveTest):
                 ),
                 KApply(
                     KLabel('#Ceil', [KSort('Bool'), KSort('GeneratedTopCell')]),
+                    [KVariable('X', sort=KSort('Bool'))],
+                ),
+            ),
+            (
+                'ml-not',
+                KSort('Bool'),
+                Not(
+                    SortApp('SortBool'),
+                    EVar('VarX', SortApp('SortBool')),
+                ),
+                KApply(
+                    KLabel('#Not', [KSort('Bool')]),
                     [KVariable('X', sort=KSort('Bool'))],
                 ),
             ),
