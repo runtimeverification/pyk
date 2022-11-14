@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pyk.kast.kinner import KApply, KSequence, KToken
+from pyk.kast.inner import KApply, KSequence, KToken
 from pyk.kast.manip import flatten_label, get_cell
 from pyk.kore.parser import KoreParser
 from pyk.kore.syntax import DV, App, Pattern, SortApp, String

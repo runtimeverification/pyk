@@ -21,7 +21,7 @@ from ..prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
 from ..prelude.ml import is_top, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlOr
 from ..utils import find_common_items, hash_str
-from .kinner import (
+from .inner import (
     EMPTY_ATT,
     KApply,
     KAtt,
@@ -36,7 +36,7 @@ from .kinner import (
     top_down,
     var_occurrences,
 )
-from .kouter import KDefinition, KFlatModule, KRuleLike
+from .outer import KDefinition, KFlatModule, KRuleLike
 
 _LOGGER: Final = logging.getLogger(__name__)
 

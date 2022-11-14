@@ -1,7 +1,7 @@
 from typing import Dict, Final, Optional, Tuple
 from unittest import TestCase
 
-from pyk.kast.kinner import KApply, KInner, KLabel, KVariable, Subst
+from pyk.kast.inner import KApply, KInner, KLabel, KVariable, Subst
 from pyk.kast.manip import extract_subst
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import intToken

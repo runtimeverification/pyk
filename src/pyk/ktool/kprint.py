@@ -7,8 +7,9 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, Final, List, Optional
 
 from ..cli_utils import check_dir_path, check_file_path, run_process
-from ..kast.kinner import KApply, KAs, KAst, KAtt, KInner, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
-from ..kast.kouter import (
+from ..kast.inner import KApply, KAs, KAst, KAtt, KInner, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
+from ..kast.manip import flatten_label
+from ..kast.outer import (
     KBubble,
     KClaim,
     KContext,
@@ -28,7 +29,6 @@ from ..kast.kouter import (
     KTerminal,
     read_kast_definition,
 )
-from ..kast.manip import flatten_label
 from ..kore.parser import KoreParser
 from ..kore.syntax import DV, And, App, Ceil, Equals, EVar, Pattern, SortApp, String
 from ..prelude.k import DOTS, EMPTY_K

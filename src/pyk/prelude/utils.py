@@ -1,6 +1,6 @@
 from typing import Union
 
-from ..kast.kinner import KToken
+from ..kast.inner import KToken
 from .kbool import boolToken
 from .kint import intToken
 from .string import stringToken

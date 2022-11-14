@@ -1,9 +1,9 @@
 from typing import Final, Iterable
 
-from ..kast.kinner import BOOL as KAST_BOOL
-from ..kast.kinner import FALSE as KAST_FALSE
-from ..kast.kinner import TRUE as KAST_TRUE
-from ..kast.kinner import KApply, KInner, KLabel, KToken, build_assoc
+from ..kast.inner import BOOL as KAST_BOOL
+from ..kast.inner import FALSE as KAST_FALSE
+from ..kast.inner import TRUE as KAST_TRUE
+from ..kast.inner import KApply, KInner, KLabel, KToken, build_assoc
 from ..utils import unique
 
 BOOL: Final = KAST_BOOL

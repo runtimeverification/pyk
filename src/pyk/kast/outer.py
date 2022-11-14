@@ -21,7 +21,7 @@ from typing import (
 )
 
 from ..utils import filter_none, single, unique
-from .kinner import (
+from .inner import (
     EMPTY_ATT,
     TRUE,
     KApply,

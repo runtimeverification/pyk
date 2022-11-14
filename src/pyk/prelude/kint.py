@@ -1,6 +1,6 @@
 from typing import Final
 
-from ..kast.kinner import KApply, KInner, KSort, KToken
+from ..kast.inner import KApply, KInner, KSort, KToken
 
 INT: Final = KSort('Int')
 
