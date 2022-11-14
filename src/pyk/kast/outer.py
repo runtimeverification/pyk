@@ -21,21 +21,8 @@ from typing import (
 )
 
 from ..utils import filter_none, single, unique
-from .inner import (
-    EMPTY_ATT,
-    TRUE,
-    KApply,
-    KAst,
-    KAtt,
-    KInner,
-    KLabel,
-    KRewrite,
-    KSort,
-    KToken,
-    KVariable,
-    Subst,
-    WithKAtt,
-)
+from .inner import TRUE, KApply, KInner, KLabel, KRewrite, KSort, KToken, KVariable, Subst
+from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt
 
 RL = TypeVar('RL', bound='KRuleLike')
 
