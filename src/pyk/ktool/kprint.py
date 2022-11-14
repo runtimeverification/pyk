@@ -148,7 +148,7 @@ def _kast(
     sort: Optional[str] = None,
     # ---
     check: bool = True,
-    profile: bool = True,
+    profile: bool = False,
 ) -> CompletedProcess:
     if input_file:
         check_file_path(input_file)
