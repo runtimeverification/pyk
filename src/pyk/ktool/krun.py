@@ -130,7 +130,7 @@ class KRun(KPrint):
             definition_dir=self.definition_dir,
             output=KRunOutput.KORE,
             pmap={var: 'cat' for var in config},
-            cmap={var: pattern.text.replace(' ', '') for var, pattern in config.items()},
+            cmap={var: pattern.text for var, pattern in config.items()},
             depth=depth,
             no_expand_macros=not expand_macros,
             profile=self._profile,
