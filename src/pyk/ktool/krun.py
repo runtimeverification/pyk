@@ -50,8 +50,7 @@ class KRun(KPrint):
         if result.returncode != 0:
             raise RuntimeError('Non-zero exit-code from krun.')
 
-        result_kast = KAst.from_dict(json.loads(result.stdout)['term'])
-        assert isinstance(result_kast, KInner)
+        result_kast = KInner.from_dict(json.loads(result.stdout)['term'])
         return CTerm(result_kast)
 
     def run_kore(
