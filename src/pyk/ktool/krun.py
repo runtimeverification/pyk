@@ -1,5 +1,6 @@
 import json
 import logging
+import tarfile
 from enum import Enum
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
@@ -33,6 +34,7 @@ class KRun(KPrint):
         *,
         depth: Optional[int] = None,
         expand_macros: bool = False,
+        bug_report: Optional[Path] = None,
     ) -> CTerm:
         with NamedTemporaryFile('w', dir=self.use_directory, delete=False) as ntf:
             ntf.write(self.pretty_print(pgm))
@@ -45,6 +47,7 @@ class KRun(KPrint):
                 depth=depth,
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
+                bug_report=bug_report,
             )
 
         if result.returncode != 0:
@@ -60,6 +63,7 @@ class KRun(KPrint):
         sort: Optional[KSort] = None,
         depth: Optional[int] = None,
         expand_macros: bool = False,
+        bug_report: Optional[Path] = None,
     ) -> CTerm:
         kore_pgm = self.kast_to_kore(pgm, sort=sort)
         with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
@@ -74,6 +78,7 @@ class KRun(KPrint):
                 depth=depth,
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
+                bug_report=bug_report,
             )
 
         if result.returncode != 0:
@@ -89,6 +94,7 @@ class KRun(KPrint):
         *,
         depth: Optional[int] = None,
         expand_macros: bool = False,
+        bug_report: Optional[Path] = None,
     ) -> Pattern:
         with NamedTemporaryFile('w', dir=self.use_directory) as f:
             f.write(pattern.text)
@@ -103,6 +109,7 @@ class KRun(KPrint):
                 depth=depth,
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
+                bug_report=bug_report,
             )
 
         if proc_res.returncode != 0:
@@ -119,6 +126,7 @@ class KRun(KPrint):
         *,
         depth: Optional[int] = None,
         expand_macros: bool = False,
+        bug_report: Optional[Path] = None,
     ) -> Pattern:
         proc_res = _krun(
             definition_dir=self.definition_dir,
@@ -128,6 +136,7 @@ class KRun(KPrint):
             depth=depth,
             no_expand_macros=not expand_macros,
             profile=self._profile,
+            bug_report=bug_report,
         )
 
         if proc_res.returncode != 0:
@@ -165,6 +174,7 @@ def _krun(
     # ---
     check: bool = True,
     profile: bool = True,
+    bug_report: Optional[Path] = None,
 ) -> CompletedProcess:
     if input_file:
         check_file_path(input_file)
@@ -187,6 +197,40 @@ def _krun(
         term=term,
         no_expand_macros=no_expand_macros,
     )
+
+    if bug_report is not None:
+        bug_report_tar_file = bug_report.with_suffix('.tar')
+        if bug_report_tar_file.exists():
+            _LOGGER.warning(f'Bug report file already exists, removing: {bug_report_tar_file}')
+            bug_report_tar_file.unlink()
+        bug_report_command = []
+        bug_report_files = []
+        if definition_dir is None:
+            raise ValueError('Cannot create bug report with definition_dir=None.')
+        defn_path = Path(definition_dir)
+        for a in args:
+            if Path(a).exists():
+                apath = Path(a)
+                if apath != defn_path:
+                    relapath = Path('inputs') / apath.name
+                    bug_report_files.append((apath, relapath))
+                    bug_report_command.append(str(relapath))
+                else:
+                    bug_report_command.append('kompiled')
+            else:
+                bug_report_command.append(a)
+        _LOGGER.info(f'Making bug report for command: {args}')
+        _LOGGER.info(f'Making bug report with files: {bug_report_files}')
+        with tarfile.open(bug_report_tar_file, 'w') as tar:
+            tar.add(defn_path, arcname='kompiled')
+            for f, relf in bug_report_files:
+                tar.add(f, arcname=relf)
+            with NamedTemporaryFile('w') as ntf:
+                ntf.write(' '.join("'" + s + "'" for s in bug_report_command))
+                ntf.flush()
+                tar.add(ntf.name, arcname='command')
+            tar.close()
+        _LOGGER.info(f'Made bug report: {bug_report_tar_file}')
 
     try:
         return run_process(args, logger=_LOGGER, check=check, profile=profile)
