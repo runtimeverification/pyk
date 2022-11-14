@@ -4,6 +4,7 @@ from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import intToken
+from pyk.prelude.string import stringToken
 
 from .kprove_test import KProveTest
 
@@ -20,10 +21,16 @@ class KoreToKastTest(KProveTest):
     def test_bidirectional(self) -> None:
         kore_kast_pairs = (
             (
-                'domain-value',
+                'domain-value-int',
                 KSort('Int'),
                 DV(SortApp('SortInt'), String('3')),
                 intToken(3),
+            ),
+            (
+                'domain-value-string',
+                KSort('String'),
+                DV(SortApp('SortString'), String('foobar')),
+                stringToken('foobar'),
             ),
             (
                 'variable-with-sort',
