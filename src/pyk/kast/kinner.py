@@ -38,8 +38,7 @@ class KAst(ABC):
     @classmethod
     @abstractmethod
     def from_dict(cls: Type[T], d: Dict[str, Any]) -> T:
-        node = d['node']
-        return globals()[node].from_dict(d)
+        ...
 
     @abstractmethod
     def to_dict(self) -> Dict[str, Any]:
