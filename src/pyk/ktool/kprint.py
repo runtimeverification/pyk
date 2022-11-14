@@ -274,7 +274,10 @@ class KPrint:
         _LOGGER.debug(f'_kore_to_kast: {kore}')
 
         if type(kore) is DV and kore.sort.name.startswith('Sort'):
-            return KToken(kore.value.value, KSort(kore.sort.name[4:]))
+            token = kore.value.value
+            if kore.sort == SortApp('SortString'):
+                token = '"' + token + '"'
+            return KToken(token, KSort(kore.sort.name[4:]))
 
         elif type(kore) is EVar:
             vname = _unmunge(kore.name[3:])
@@ -362,7 +365,12 @@ class KPrint:
             return None
 
         if type(kast) is KToken:
-            dv: Pattern = DV(SortApp('Sort' + kast.sort.name), String(kast.token))
+            value = kast.token
+            if kast.sort == KSort('String'):
+                assert value.startswith('"')
+                assert value.endswith('"')
+                value = value[1:-1]
+            dv: Pattern = DV(SortApp('Sort' + kast.sort.name), String(value))
             if sort is not None:
                 dv = self._add_sort_injection(dv, kast.sort, sort)
             return dv
