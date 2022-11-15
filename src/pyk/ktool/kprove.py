@@ -119,7 +119,6 @@ class KProve(KPrint):
     main_module: str
     port: int
 
-    _bug_report: Optional[BugReport]
     _kore_rpc: Optional[Tuple[KoreServer, KoreClient]]
 
     def __init__(
@@ -132,7 +131,9 @@ class KProve(KPrint):
         port: Optional[int] = None,
         bug_report: Optional[BugReport] = None,
     ):
-        super(KProve, self).__init__(definition_dir, use_directory=use_directory, profile=profile)
+        super(KProve, self).__init__(
+            definition_dir, use_directory=use_directory, profile=profile, bug_report=bug_report
+        )
         # TODO: we should not have to supply main_file, it should be read
         # TODO: setting use_directory manually should set temp files to not be deleted and a log message
         self.main_file = main_file
@@ -143,7 +144,6 @@ class KProve(KPrint):
             self.backend = ba.read()
         with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
             self.main_module = mm.read()
-        self._bug_report = bug_report
         self._kore_rpc = None
 
     def kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
