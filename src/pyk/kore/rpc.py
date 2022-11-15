@@ -1,7 +1,6 @@
 import json
 import logging
 import socket
-import tarfile
 from abc import ABC
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -27,7 +26,7 @@ from typing import (
     final,
 )
 
-from ..cli_utils import check_dir_path, check_file_path
+from ..cli_utils import BugReport, check_dir_path, check_file_path
 from ..utils import filter_none
 from .syntax import Pattern
 
@@ -59,9 +58,9 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
     _file: TextIO
     _req_id: int
 
-    _bug_report: Optional[Path]
+    _bug_report: Optional[BugReport]
 
-    def __init__(self, host: str, port: int, *, timeout: Optional[int] = None, bug_report: Optional[Path] = None):
+    def __init__(self, host: str, port: int, *, timeout: Optional[int] = None, bug_report: Optional[BugReport] = None):
         if timeout is not None and timeout < 0:
             raise ValueError(f'Expected nonnegative timeout value, got: {timeout}')
 
@@ -127,12 +126,11 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
     def _add_bug_report(self, req_or_res: str, data: str) -> None:
         if self._bug_report is not None:
-            with tarfile.open(self._bug_report, 'a') as tar:
+            with NamedTemporaryFile('w') as ntf:
+                ntf.write(data)
+                ntf.flush()
                 request_file = Path(f'rpc/{self._req_id:03}_{req_or_res}.json')
-                with NamedTemporaryFile('w') as ntf:
-                    ntf.write(data)
-                    ntf.flush()
-                    tar.add(ntf.name, arcname=request_file)
+                self._bug_report.add_file(Path(ntf.name), arcname=request_file)
 
     @staticmethod
     def _check(response: Mapping[str, Any]) -> None:
@@ -334,7 +332,7 @@ class KoreClient(ContextManager['KoreClient']):
 
     _client: JsonRpcClient
 
-    def __init__(self, host: str, port: int, *, timeout: Optional[int] = None, bug_report: Optional[Path] = None):
+    def __init__(self, host: str, port: int, *, timeout: Optional[int] = None, bug_report: Optional[BugReport] = None):
         self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report)
 
     def __enter__(self) -> 'KoreClient':
@@ -404,7 +402,7 @@ class KoreServer(ContextManager['KoreServer']):
     _port: int
     _pid: int
 
-    def __init__(self, kompiled_dir: Path, module_name: str, port: int, bug_report: Optional[Path] = None):
+    def __init__(self, kompiled_dir: Path, module_name: str, port: int, bug_report: Optional[BugReport] = None):
         check_dir_path(kompiled_dir)
 
         definition_file = kompiled_dir / 'definition.kore'
@@ -414,11 +412,7 @@ class KoreServer(ContextManager['KoreServer']):
         _LOGGER.info(f'Starting KoreServer: port={self._port}')
         command = ['kore-rpc', str(definition_file), '--module', module_name, '--server-port', str(port)]
         if bug_report is not None:
-            with tarfile.open(bug_report, 'a') as tar:
-                with NamedTemporaryFile('w') as ntf:
-                    ntf.write(' '.join("'" + c + "'" for c in command))
-                    ntf.flush()
-                    tar.add(ntf.name, arcname=Path('command'))
+            bug_report.add_command(command)
         self._proc = Popen(command)
         self._pid = self._proc.pid
         _LOGGER.info(f'KoreServer started: port={self._port}, pid={self._pid}')
