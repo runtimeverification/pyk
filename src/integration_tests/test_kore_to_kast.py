@@ -3,8 +3,8 @@ from pyk.kore.syntax import DV, And, App, Ceil, Equals, EVar, Not, SortApp, Stri
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
 from pyk.prelude.kbool import TRUE
-from pyk.prelude.kint import intToken
-from pyk.prelude.string import stringToken
+from pyk.prelude.kint import INT, intToken
+from pyk.prelude.string import STRING, stringToken
 
 from .kprove_test import KProveTest
 
@@ -22,13 +22,13 @@ class KoreToKastTest(KProveTest):
         kore_kast_pairs = (
             (
                 'domain-value-int',
-                KSort('Int'),
+                INT,
                 DV(SortApp('SortInt'), String('3')),
                 intToken(3),
             ),
             (
                 'domain-value-string',
-                KSort('String'),
+                STRING,
                 DV(SortApp('SortString'), String('foobar')),
                 stringToken('foobar'),
             ),
@@ -40,9 +40,9 @@ class KoreToKastTest(KProveTest):
             ),
             (
                 'variable-with-sort',
-                KSort('Int'),
+                INT,
                 EVar('VarX', SortApp('SortInt')),
-                KVariable('X', sort=KSort('Int')),
+                KVariable('X', sort=INT),
             ),
             (
                 'variable-with-super-sort',
@@ -52,9 +52,9 @@ class KoreToKastTest(KProveTest):
             ),
             (
                 'variable-with-underscore',
-                KSort('Int'),
+                INT,
                 EVar("VarX'Unds'Y", SortApp('SortInt')),
-                KVariable('X_Y', sort=KSort('Int')),
+                KVariable('X_Y', sort=INT),
             ),
             (
                 'issue:k/2762',

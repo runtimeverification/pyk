@@ -31,8 +31,10 @@ from ..kast.outer import (
 )
 from ..kore.parser import KoreParser
 from ..kore.syntax import DV, And, App, Ceil, Equals, EVar, Not, Pattern, SortApp, String
+from ..prelude.bytes import BYTES, bytesToken
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
+from ..prelude.string import STRING, stringToken
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -274,12 +276,11 @@ class KPrint:
         _LOGGER.debug(f'_kore_to_kast: {kore}')
 
         if type(kore) is DV and kore.sort.name.startswith('Sort'):
-            token = kore.value.value
             if kore.sort == SortApp('SortString'):
-                token = '"' + token + '"'
+                return stringToken(kore.value.value)
             if kore.sort == SortApp('SortBytes'):
-                token = 'b"' + token + '"'
-            return KToken(token, KSort(kore.sort.name[4:]))
+                return bytesToken(kore.value.value)
+            return KToken(kore.value.value, KSort(kore.sort.name[4:]))
 
         elif type(kore) is EVar:
             vname = _unmunge(kore.name[3:])
@@ -368,11 +369,11 @@ class KPrint:
 
         if type(kast) is KToken:
             value = kast.token
-            if kast.sort == KSort('String'):
+            if kast.sort == STRING:
                 assert value.startswith('"')
                 assert value.endswith('"')
                 value = value[1:-1]
-            if kast.sort == KSort('Bytes'):
+            if kast.sort == BYTES:
                 assert value.startswith('b"')
                 assert value.endswith('"')
                 value = value[2:-1]
