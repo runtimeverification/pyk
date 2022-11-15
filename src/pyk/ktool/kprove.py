@@ -118,6 +118,8 @@ class KProve(KPrint):
     backend: str
     main_module: str
     port: int
+
+    _bug_report: Optional[Path]
     _kore_rpc: Optional[Tuple[KoreServer, KoreClient]]
 
     def __init__(
@@ -128,6 +130,7 @@ class KProve(KPrint):
         profile: bool = False,
         command: str = 'kprove',
         port: Optional[int] = None,
+        bug_report: Optional[Path] = None,
     ):
         super(KProve, self).__init__(definition_dir, use_directory=use_directory, profile=profile)
         # TODO: we should not have to supply main_file, it should be read
@@ -140,12 +143,13 @@ class KProve(KPrint):
             self.backend = ba.read()
         with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
             self.main_module = mm.read()
+        self._bug_report = None
         self._kore_rpc = None
 
     def kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
         if not self._kore_rpc:
-            _kore_server = KoreServer(self.definition_dir, self.main_module, self.port)
-            _kore_client = KoreClient('localhost', self.port)
+            _kore_server = KoreServer(self.definition_dir, self.main_module, self.port, bug_report=self._bug_report)
+            _kore_client = KoreClient('localhost', self.port, bug_report=self._bug_report)
             self._kore_rpc = (_kore_server, _kore_client)
         return self._kore_rpc
 
