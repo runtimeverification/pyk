@@ -277,6 +277,8 @@ class KPrint:
             token = kore.value.value
             if kore.sort == SortApp('SortString'):
                 token = '"' + token + '"'
+            if kore.sort == SortApp('SortBytes'):
+                token = 'b"' + token + '"'
             return KToken(token, KSort(kore.sort.name[4:]))
 
         elif type(kore) is EVar:
@@ -370,6 +372,10 @@ class KPrint:
                 assert value.startswith('"')
                 assert value.endswith('"')
                 value = value[1:-1]
+            if kast.sort == KSort('Bytes'):
+                assert value.startswith('b"')
+                assert value.endswith('"')
+                value = value[2:-1]
             dv: Pattern = DV(SortApp('Sort' + kast.sort.name), String(value))
             if sort is not None:
                 dv = self._add_sort_injection(dv, kast.sort, sort)
