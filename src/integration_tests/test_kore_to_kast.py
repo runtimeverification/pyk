@@ -1,4 +1,4 @@
-from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KVariable
+from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
 from pyk.kore.syntax import DV, And, App, Ceil, Equals, EVar, Not, SortApp, String
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
@@ -31,6 +31,12 @@ class KoreToKastTest(KProveTest):
                 KSort('String'),
                 DV(SortApp('SortString'), String('foobar')),
                 stringToken('foobar'),
+            ),
+            (
+                'domain-value-bytes',
+                KSort('Bytes'),
+                DV(SortApp('SortBytes'), String('0000')),
+                KToken('b"0000"', KSort('Bytes')),
             ),
             (
                 'variable-with-sort',
