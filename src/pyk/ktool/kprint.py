@@ -235,7 +235,7 @@ class KPrint:
         self._profile = profile
         self._bug_report = bug_report
         if self._bug_report:
-            self._bug_report.add_file(self.definition_dir, Path('kompiled'))
+            self._bug_report.add_definition(self.definition_dir)
 
     def __del__(self) -> None:
         if self._temp_dir is not None:
