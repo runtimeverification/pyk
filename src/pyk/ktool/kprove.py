@@ -339,8 +339,7 @@ class KProve(KPrint):
         next_state = self.kore_to_kast(er.state.term)
         next_predicate: KInner = mlTop()
         if er.state.predicate is not None:
-            _next_predicate = self.kore_to_kast(er.state.predicate)
-            next_predicate = _next_predicate
+            next_predicate = self.kore_to_kast(er.state.predicate)
         assert er.state.substitution is None
         return depth, branching, mlAnd([next_state] + flatten_label('#And', next_predicate))
 
