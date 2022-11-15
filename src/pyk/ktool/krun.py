@@ -1,13 +1,12 @@
 import json
 import logging
-import tarfile
 from enum import Enum
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
 from tempfile import NamedTemporaryFile
 from typing import Final, List, Mapping, Optional
 
-from ..cli_utils import check_dir_path, check_file_path, run_process
+from ..cli_utils import BugReport, check_dir_path, check_file_path, run_process
 from ..cterm import CTerm
 from ..kast.inner import KInner, KSort
 from ..kore.parser import KoreParser
@@ -21,8 +20,14 @@ class KRun(KPrint):
     backend: str
     main_module: str
 
-    def __init__(self, definition_dir: Path, use_directory: Optional[Path] = None, profile: bool = False) -> None:
-        super(KRun, self).__init__(definition_dir, use_directory=use_directory, profile=profile)
+    def __init__(
+        self,
+        definition_dir: Path,
+        use_directory: Optional[Path] = None,
+        profile: bool = False,
+        bug_report: Optional[BugReport] = None,
+    ) -> None:
+        super(KRun, self).__init__(definition_dir, use_directory=use_directory, profile=profile, bug_report=bug_report)
         with open(self.definition_dir / 'backend.txt', 'r') as ba:
             self.backend = ba.read()
         with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
@@ -35,7 +40,6 @@ class KRun(KPrint):
         config: Optional[Mapping[str, KInner]] = None,
         depth: Optional[int] = None,
         expand_macros: bool = False,
-        bug_report: Optional[Path] = None,
     ) -> CTerm:
         if config is not None and 'PGM' in config:
             raise ValueError('Cannot supply both pgm and config with PGM variable.')
@@ -54,7 +58,7 @@ class KRun(KPrint):
                 cmap=cmap,
                 pmap=pmap,
                 profile=self._profile,
-                bug_report=bug_report,
+                bug_report=self._bug_report,
             )
 
         if result.returncode != 0:
@@ -70,7 +74,6 @@ class KRun(KPrint):
         sort: Optional[KSort] = None,
         depth: Optional[int] = None,
         expand_macros: bool = False,
-        bug_report: Optional[Path] = None,
     ) -> CTerm:
         kore_pgm = self.kast_to_kore(pgm, sort=sort)
         with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
@@ -85,7 +88,7 @@ class KRun(KPrint):
                 depth=depth,
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
-                bug_report=bug_report,
+                bug_report=self._bug_report,
             )
 
         if result.returncode != 0:
@@ -101,7 +104,6 @@ class KRun(KPrint):
         *,
         depth: Optional[int] = None,
         expand_macros: bool = False,
-        bug_report: Optional[Path] = None,
     ) -> Pattern:
         with NamedTemporaryFile('w', dir=self.use_directory) as f:
             f.write(pattern.text)
@@ -116,7 +118,7 @@ class KRun(KPrint):
                 depth=depth,
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
-                bug_report=bug_report,
+                bug_report=self._bug_report,
             )
 
         if proc_res.returncode != 0:
@@ -133,7 +135,6 @@ class KRun(KPrint):
         *,
         depth: Optional[int] = None,
         expand_macros: bool = False,
-        bug_report: Optional[Path] = None,
     ) -> Pattern:
         proc_res = _krun(
             definition_dir=self.definition_dir,
@@ -143,7 +144,7 @@ class KRun(KPrint):
             depth=depth,
             no_expand_macros=not expand_macros,
             profile=self._profile,
-            bug_report=bug_report,
+            bug_report=self._bug_report,
         )
 
         if proc_res.returncode != 0:
@@ -181,7 +182,7 @@ def _krun(
     # ---
     check: bool = True,
     profile: bool = False,
-    bug_report: Optional[Path] = None,
+    bug_report: Optional[BugReport] = None,
 ) -> CompletedProcess:
     if input_file:
         check_file_path(input_file)
@@ -206,38 +207,12 @@ def _krun(
     )
 
     if bug_report is not None:
-        bug_report_tar_file = bug_report.with_suffix('.tar')
-        if bug_report_tar_file.exists():
-            _LOGGER.warning(f'Bug report file already exists, removing: {bug_report_tar_file}')
-            bug_report_tar_file.unlink()
-        bug_report_command = []
-        bug_report_files = []
-        if definition_dir is None:
-            raise ValueError('Cannot create bug report with definition_dir=None.')
-        defn_path = Path(definition_dir)
-        for a in args:
-            if Path(a).exists():
-                apath = Path(a)
-                if apath != defn_path:
-                    relapath = Path('inputs') / apath.name
-                    bug_report_files.append((apath, relapath))
-                    bug_report_command.append(str(relapath))
-                else:
-                    bug_report_command.append('kompiled')
-            else:
-                bug_report_command.append(a)
-        _LOGGER.info(f'Making bug report for command: {args}')
-        _LOGGER.info(f'Making bug report with files: {bug_report_files}')
-        with tarfile.open(bug_report_tar_file, 'w') as tar:
-            tar.add(defn_path, arcname='kompiled')
-            for f, relf in bug_report_files:
-                tar.add(f, arcname=relf)
-            with NamedTemporaryFile('w') as ntf:
-                ntf.write(' '.join("'" + s + "'" for s in bug_report_command))
-                ntf.flush()
-                tar.add(ntf.name, arcname='command')
-            tar.close()
-        _LOGGER.info(f'Made bug report: {bug_report_tar_file}')
+        if input_file is not None:
+            new_input_file = Path(f'krun_inputs/{input_file}')
+            bug_report.add_file(input_file, new_input_file)
+            bug_report.add_command([a if a != str(input_file) else str(new_input_file) for a in args])
+        else:
+            bug_report.add_command(args)
 
     try:
         return run_process(args, logger=_LOGGER, check=check, profile=profile)
