@@ -13,7 +13,6 @@ from ..kast.inner import KInner
 from ..kast.manip import extract_subst, flatten_label, free_vars
 from ..kast.outer import KClaim, KDefinition, KFlatModule, KImport, KRequire, KRule, KSentence
 from ..kore.rpc import KoreClient, KoreServer
-from ..kore.syntax import Pattern
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_top, mlAnd, mlBottom, mlTop
 from ..utils import unique
@@ -327,13 +326,11 @@ class KProve(KPrint):
         terminal_rules: Optional[Iterable[str]] = None,
     ) -> Tuple[int, bool, KInner]:
         kore = self.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        assert isinstance(kore, Pattern)
         _, kore_client = self.kore_rpc()
         er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
         depth = er.depth
         branching = er.next_states is not None and len(er.next_states) > 1
         next_state = self.kore_to_kast(er.state.term)
-        assert isinstance(next_state, KInner)
         assert er.state.substitution is None
         assert er.state.predicate is None
         return depth, branching, next_state
