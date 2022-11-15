@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from subprocess import Popen
-from tempfile import NamedTemporaryFile
 from time import sleep
 from typing import (
     Any,
@@ -109,13 +108,24 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
         server_addr = f'{self._host}:{self._port}'
         req = json.dumps(payload)
-        self._add_bug_report('request', req)
         _LOGGER.info(f'Sending request to {server_addr}: {req}')
         self._sock.sendall(req.encode())
         _LOGGER.info(f'Waiting for response from {server_addr}...')
-        resp = self._file.readline()
-        self._add_bug_report('response', resp)
+        resp = self._file.readline().strip()
         _LOGGER.info(f'Received response from {server_addr}: {resp}')
+
+        if self._bug_report:
+            bug_report_request = f'rpc/{self._req_id:03}_request.json'
+            bug_report_response = f'rpc/{self._req_id:03}_response.json'
+            bug_report_actual = f'rpc/{self._req_id:03}_actual.json'
+            self._bug_report.add_file_contents(req, Path(bug_report_request))
+            self._bug_report.add_file_contents(resp, Path(bug_report_response))
+            self._bug_report.add_command(
+                ['cat', bug_report_request]
+                + ['|', 'nc', self._host, str(self._port)]
+                + ['|', 'tee', bug_report_actual]
+                + ['&&', 'diff', bug_report_actual, bug_report_response]
+            )
 
         data = json.loads(resp)
         self._check(data)
@@ -123,14 +133,6 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         assert data['id'] == self._req_id
         self._req_id += 1
         return data['result']
-
-    def _add_bug_report(self, req_or_res: str, data: str) -> None:
-        if self._bug_report is not None:
-            with NamedTemporaryFile('w') as ntf:
-                ntf.write(data)
-                ntf.flush()
-                request_file = Path(f'rpc/{self._req_id:03}_{req_or_res}.json')
-                self._bug_report.add_file(Path(ntf.name), arcname=request_file)
 
     @staticmethod
     def _check(response: Mapping[str, Any]) -> None:
