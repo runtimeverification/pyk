@@ -13,7 +13,6 @@ from ..kast.inner import KApply, KInner, KLabel
 from ..kast.manip import extract_subst, flatten_label, free_vars
 from ..kast.outer import KClaim, KDefinition, KFlatModule, KImport, KRequire, KRule, KSentence
 from ..kore.rpc import KoreClient, KoreServer
-from ..kore.syntax import Pattern
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_top, mlAnd, mlBottom, mlTop
 from ..utils import unique
