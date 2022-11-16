@@ -4,9 +4,10 @@ from pathlib import Path
 from typing import Any
 
 from ..cli_utils import dir_path
-from .config import KBUILD_DIR
+from .config import KBUILD_DIR, PROJECT_FILE_NAME
 from .package import RootPackage
 from .project import Project
+from .utils import find_file_upwards
 
 
 def main() -> None:
@@ -48,7 +49,8 @@ def do_clean(**kwargs: Any) -> None:
 
 
 def do_install(start_dir: Path, **kwargs: Any) -> None:
-    project = Project.load_from_dir(start_dir)
+    project_file = find_file_upwards(PROJECT_FILE_NAME, start_dir)
+    project = Project.load(project_file)
     package = RootPackage(project)
     installed_files = package.install()
     for installed_file in installed_files:
@@ -56,7 +58,8 @@ def do_install(start_dir: Path, **kwargs: Any) -> None:
 
 
 def do_kompile(start_dir: Path, target_name: str, **kwargs: Any) -> None:
-    project = Project.load_from_dir(start_dir)
+    project_file = find_file_upwards(PROJECT_FILE_NAME, start_dir)
+    project = Project.load(project_file)
     package = RootPackage(project)
     definition_dir = package.kompile(target_name)
     print(definition_dir)

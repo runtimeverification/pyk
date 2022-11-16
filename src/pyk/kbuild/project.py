@@ -10,14 +10,13 @@ from ..cli_utils import abs_or_rel_to, check_absolute_path, check_dir_path, chec
 from ..ktool import KompileBackend
 from ..utils import single
 from .config import PROJECT_FILE_NAME
-from .utils import find_file_upwards
 
 
 class Source(ABC):  # noqa: B024
     @staticmethod
-    def from_dict(project_path: Path, dct: Mapping[str, Any]) -> 'Source':
+    def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> 'Source':
         if 'path' in dct:
-            return PathSource.from_dict(project_path, dct)
+            return PathSource.from_dict(project_dir, dct)
 
         if 'git' in dct:
             return GitSource(git=dct['git'], rev=dct['rev'])
@@ -38,8 +37,8 @@ class PathSource(Source):
         object.__setattr__(self, 'path', path)
 
     @staticmethod
-    def from_dict(project_path: Path, dct: Mapping[str, Any]) -> 'PathSource':
-        path = abs_or_rel_to(Path(dct['path']), project_path).resolve()
+    def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> 'PathSource':
+        path = abs_or_rel_to(Path(dct['path']), project_dir).resolve()
         return PathSource(path=path)
 
 
@@ -155,30 +154,29 @@ class Project:
         object.__setattr__(self, 'targets', tuple(targets))
 
     @staticmethod
-    def load(config_file: Path) -> 'Project':
-        check_file_path(config_file)
+    def load(project_file: Path) -> 'Project':
+        check_file_path(project_file)
 
-        with open(config_file, 'rb') as f:
+        with open(project_file, 'rb') as f:
             dct = tomli.load(f)
 
-        project_path = config_file.parent.resolve()
+        project_dir = project_file.parent.resolve()
 
         return Project(
-            path=project_path,
+            path=project_dir,
             name=dct['project']['name'],
             version=dct['project']['version'],
             source_dir=dct['project']['source'],
             dependencies=tuple(
-                Dependency(name=name, source=Source.from_dict(project_path, source))
+                Dependency(name=name, source=Source.from_dict(project_dir, source))
                 for name, source in dct.get('dependencies', {}).items()
             ),
             targets=tuple(Target.from_dict(name, target) for name, target in dct.get('targets', {}).items()),
         )
 
     @staticmethod
-    def load_from_dir(start_dir: Path) -> 'Project':
-        config_file = find_file_upwards(PROJECT_FILE_NAME, start_dir)
-        return Project.load(config_file)
+    def load_from_dir(project_dir: Path) -> 'Project':
+        return Project.load(project_dir / PROJECT_FILE_NAME)
 
     @property
     def include_file_names(self) -> List[str]:
