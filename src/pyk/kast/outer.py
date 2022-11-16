@@ -853,6 +853,8 @@ class KDefinition(KOuter, WithKAtt):
 
     _production_for_klabel: Dict[KLabel, KProduction]
     _subsorts: Dict[KSort, List[KSort]]
+    _init_config: Dict[KSort, KInner]
+    _empty_config: Dict[KSort, KInner]
 
     def __init__(
         self,
@@ -878,6 +880,8 @@ class KDefinition(KOuter, WithKAtt):
         object.__setattr__(self, 'main_module', main_module)
         object.__setattr__(self, '_production_for_klabel', {})
         object.__setattr__(self, '_subsorts', {})
+        object.__setattr__(self, '_init_config', {})
+        object.__setattr__(self, '_empty_config', {})
 
     def __iter__(self) -> Iterator[KFlatModule]:
         return iter(self.modules)
@@ -1029,6 +1033,11 @@ class KDefinition(KOuter, WithKAtt):
         return subst(kast)
 
     def empty_config(self, sort: KSort) -> KInner:
+        if sort not in self._empty_config:
+            self._empty_config[sort] = self._compute_empty_config(sort)
+        return self._empty_config[sort]
+
+    def _compute_empty_config(self, sort: KSort) -> KInner:
         def _kdefinition_empty_config(_sort: KSort) -> KApply:
             cell_prod = self.production_for_cell_sort(_sort)
             cell_klabel = cell_prod.klabel
@@ -1052,6 +1061,11 @@ class KDefinition(KOuter, WithKAtt):
         return _kdefinition_empty_config(sort)
 
     def init_config(self, sort: KSort) -> KInner:
+        if sort not in self._init_config:
+            self._init_config[sort] = self._compute_init_config(sort)
+        return self._init_config[sort]
+
+    def _compute_init_config(self, sort: KSort) -> KInner:
 
         config_var_map = KVariable('__###CONFIG_VAR_MAP###__')
 
