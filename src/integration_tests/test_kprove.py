@@ -87,7 +87,7 @@ class SimpleProofTest(KProveTest):
                 self.assertEqual(actual_k, expected_k)
                 self.assertEqual(actual_state, expected_state)
                 self.assertEqual(actual_depth, expected_depth)
-                self.assertEqual(actual_next_states, expected_next_states)
+                self.assertCountEqual(actual_next_states, expected_next_states)
 
 
 class ImpProofTest(KProveTest):
@@ -248,4 +248,4 @@ class ImpProofTest(KProveTest):
                 self.assertEqual(actual_k, expected_k)
                 self.assertEqual(actual_state, expected_state)
                 self.assertEqual(actual_depth, expected_depth)
-                self.assertEqual(actual_next_states, expected_next_states)
+                self.assertCountEqual(actual_next_states, expected_next_states)
