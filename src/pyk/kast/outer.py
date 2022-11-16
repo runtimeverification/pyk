@@ -942,6 +942,24 @@ class KDefinition(KOuter, WithKAtt):
     def rules(self) -> List[KRule]:
         return [rule for module in self.modules for rule in module.rules]
 
+    @property
+    def alias_rules(self) -> List[KRule]:
+        return [rule for rule in self.rules if 'alias' in rule.att]
+
+    @property
+    def macro_rules(self) -> List[KRule]:
+        return [rule for rule in self.rules if 'macro' in rule.att] + self.alias_rules
+
+    @property
+    def semantic_rules(self) -> List[KRule]:
+        _semantic_rules = []
+        for r in self.rules:
+            if type(r.body) is KApply and r.body.label.name == '<generatedTop>':
+                _semantic_rules.append(r)
+            if type(r.body) is KRewrite and type(r.body.lhs) is KApply and r.body.lhs.label.name == '<generatedTop>':
+                _semantic_rules.append(r)
+        return _semantic_rules
+
     def production_for_klabel(self, klabel: KLabel) -> KProduction:
         if klabel not in self._production_for_klabel:
             prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
