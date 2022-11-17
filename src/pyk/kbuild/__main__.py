@@ -17,9 +17,6 @@ def main() -> None:
     if command == 'clean':
         return do_clean(**args)
 
-    if command == 'install':
-        return do_install(**args)
-
     if command == 'kompile':
         return do_kompile(**args)
 
@@ -36,8 +33,6 @@ def _argument_parser() -> ArgumentParser:
 
     command_parser.add_parser('clean', help='clean build cache')
 
-    command_parser.add_parser('install', help='install project')
-
     kompile_parser = command_parser.add_parser('kompile', help='kompile target')
     kompile_parser.add_argument('target_name', metavar='TARGET', help='target to build')
 
@@ -46,15 +41,6 @@ def _argument_parser() -> ArgumentParser:
 
 def do_clean(**kwargs: Any) -> None:
     shutil.rmtree(KBUILD_DIR, ignore_errors=True)
-
-
-def do_install(start_dir: Path, **kwargs: Any) -> None:
-    project_file = find_file_upwards(PROJECT_FILE_NAME, start_dir)
-    project = Project.load(project_file)
-    package = RootPackage(project)
-    installed_files = package.install()
-    for installed_file in installed_files:
-        print(installed_file.relative_to(KBUILD_DIR))
 
 
 def do_kompile(start_dir: Path, target_name: str, **kwargs: Any) -> None:
