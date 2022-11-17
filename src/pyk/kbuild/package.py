@@ -64,7 +64,7 @@ class Package(ABC):
 
     def kompile(self, target_name: str) -> Path:
         for package in self.packages:
-            package.install()
+            package.sync()
 
         output_dir = self.definition_dir(target_name)
 
@@ -81,7 +81,7 @@ class Package(ABC):
 
         return output_dir
 
-    def install(self) -> List[Path]:
+    def sync(self) -> List[Path]:
         return sync_files(
             source_dir=self.project.source_dir,
             target_dir=self.include_dir / self.name,
@@ -140,13 +140,13 @@ class DepsPackage(Package):
 
     @property
     def project(self) -> Project:
-        project_path = self.sync()
+        project_path = self.sync_project()
         project = Project.load_from_dir(project_path)
         if self.name != project.name:
             raise ValueError(f'Expected {self.name} as project name, found: {project.name}')
         return project
 
-    def sync(self) -> Path:
+    def sync_project(self) -> Path:
         if type(self.source) is PathSource:
             return self.source.path
 
