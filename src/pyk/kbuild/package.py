@@ -93,8 +93,9 @@ class Package(ABC):
 
     def up_to_date(self, target_name: str) -> bool:
         definition_dir = self.definition_dir(target_name)
+        timestamp = definition_dir / 'timestamp'
 
-        if not definition_dir.exists():
+        if not timestamp.exists():
             return False
 
         input_files: List[Path] = []
@@ -103,7 +104,7 @@ class Package(ABC):
             input_files.extend(package.include_files)
 
         input_timestamps = (input_file.stat().st_mtime for input_file in input_files)
-        target_timestamp = (definition_dir / 'timestamp').stat().st_mtime
+        target_timestamp = timestamp.stat().st_mtime
         return all(input_timestamp < target_timestamp for input_timestamp in input_timestamps)
 
 
