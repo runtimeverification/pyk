@@ -103,6 +103,13 @@ class BaseRepl(Cmd, Generic[T], ABC):
 
     @abstractmethod
     def do_load(self, args: Any) -> Optional[bool]:  # Leaky abstraction - make extension mechanism more robust
+        """
+        Abstract method to set up the interpreter.
+        Subclasses are expected to
+        * decorate the method with `with_argparser` to ensure the right set of arguments is parsed;
+        * instantiate an `Interpreter[T]` based on `args`, then set `self.interpreter`;
+        * set `self.state` to `self.interpreter.init_state()`.
+        """
         ...
 
     @with_argparser(_step_parser())
