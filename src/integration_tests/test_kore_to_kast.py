@@ -1,5 +1,3 @@
-import sys
-
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
 from pyk.kore.syntax import DV, And, App, Ceil, Equals, EVar, LeftAssoc, Not, RightAssoc, SortApp, String
 from pyk.ktool import KompileBackend
