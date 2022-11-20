@@ -1,5 +1,7 @@
+import sys
+
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
-from pyk.kore.syntax import DV, And, App, Ceil, Equals, EVar, LeftAssoc, Not, SortApp, String
+from pyk.kore.syntax import DV, And, App, Ceil, Equals, EVar, LeftAssoc, Not, RightAssoc, SortApp, String
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
 from pyk.prelude.kbool import TRUE
@@ -255,7 +257,7 @@ class KoreToKastTest(KProveTest):
             (
                 'right-assoc',
                 KSort('Map'),
-                LeftAssoc(
+                RightAssoc(
                     App(
                         "Lbl'Unds'Map'Unds'",
                         [],
