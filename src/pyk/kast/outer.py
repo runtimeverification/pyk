@@ -3,25 +3,10 @@ from abc import abstractmethod
 from dataclasses import InitVar, dataclass
 from enum import Enum
 from os import PathLike
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Final,
-    FrozenSet,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    final,
-)
+from typing import Any, Dict, Final, FrozenSet, Iterable, Iterator, List, Optional, Tuple, Type, TypeVar, Union, final
 
 from ..utils import filter_none, single, unique
-from .inner import TRUE, KApply, KInner, KLabel, KRewrite, KSort, KToken, KVariable, Subst
+from .inner import TRUE, KApply, KInner, KLabel, KRewrite, KSort, KToken, KVariable, Subst, top_down, var_occurrences
 from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt
 
 RL = TypeVar('RL', bound='KRuleLike')
@@ -853,6 +838,8 @@ class KDefinition(KOuter, WithKAtt):
 
     _production_for_klabel: Dict[KLabel, KProduction]
     _subsorts: Dict[KSort, List[KSort]]
+    _init_config: Dict[KSort, KInner]
+    _empty_config: Dict[KSort, KInner]
 
     def __init__(
         self,
@@ -878,6 +865,8 @@ class KDefinition(KOuter, WithKAtt):
         object.__setattr__(self, 'main_module', main_module)
         object.__setattr__(self, '_production_for_klabel', {})
         object.__setattr__(self, '_subsorts', {})
+        object.__setattr__(self, '_init_config', {})
+        object.__setattr__(self, '_empty_config', {})
 
     def __iter__(self) -> Iterator[KFlatModule]:
         return iter(self.modules)
@@ -941,6 +930,24 @@ class KDefinition(KOuter, WithKAtt):
     @property
     def rules(self) -> List[KRule]:
         return [rule for module in self.modules for rule in module.rules]
+
+    @property
+    def alias_rules(self) -> List[KRule]:
+        return [rule for rule in self.rules if 'alias' in rule.att]
+
+    @property
+    def macro_rules(self) -> List[KRule]:
+        return [rule for rule in self.rules if 'macro' in rule.att] + self.alias_rules
+
+    @property
+    def semantic_rules(self) -> List[KRule]:
+        _semantic_rules = []
+        for r in self.rules:
+            if type(r.body) is KApply and r.body.label.name == '<generatedTop>':
+                _semantic_rules.append(r)
+            if type(r.body) is KRewrite and type(r.body.lhs) is KApply and r.body.lhs.label.name == '<generatedTop>':
+                _semantic_rules.append(r)
+        return _semantic_rules
 
     def production_for_klabel(self, klabel: KLabel) -> KProduction:
         if klabel not in self._production_for_klabel:
@@ -1011,6 +1018,11 @@ class KDefinition(KOuter, WithKAtt):
         return subst(kast)
 
     def empty_config(self, sort: KSort) -> KInner:
+        if sort not in self._empty_config:
+            self._empty_config[sort] = self._compute_empty_config(sort)
+        return self._empty_config[sort]
+
+    def _compute_empty_config(self, sort: KSort) -> KInner:
         def _kdefinition_empty_config(_sort: KSort) -> KApply:
             cell_prod = self.production_for_cell_sort(_sort)
             cell_klabel = cell_prod.klabel
@@ -1034,6 +1046,11 @@ class KDefinition(KOuter, WithKAtt):
         return _kdefinition_empty_config(sort)
 
     def init_config(self, sort: KSort) -> KInner:
+        if sort not in self._init_config:
+            self._init_config[sort] = self._compute_init_config(sort)
+        return self._init_config[sort]
+
+    def _compute_init_config(self, sort: KSort) -> KInner:
 
         config_var_map = KVariable('__###CONFIG_VAR_MAP###__')
 
@@ -1074,62 +1091,6 @@ class KDefinition(KOuter, WithKAtt):
         init_config = top_down(_remove_config_var_lookups, init_config)
 
         return init_config
-
-
-# TODO make method of KInner
-def bottom_up(f: Callable[[KInner], KInner], kinner: KInner) -> KInner:
-    return f(kinner.map_inner(lambda _kinner: bottom_up(f, _kinner)))
-
-
-# TODO make method of KInner
-def top_down(f: Callable[[KInner], KInner], kinner: KInner) -> KInner:
-    return f(kinner).map_inner(lambda _kinner: top_down(f, _kinner))
-
-
-# TODO: make method of KInner
-def var_occurrences(term: KInner) -> Dict[str, List[KVariable]]:
-    _var_occurrences: Dict[str, List[KVariable]] = {}
-
-    # TODO: should treat #Exists and #Forall specially.
-    def _var_occurence(_term: KInner) -> None:
-        if type(_term) is KVariable:
-            if _term.name not in _var_occurrences:
-                _var_occurrences[_term.name] = []
-            _var_occurrences[_term.name].append(_term)
-
-    collect(_var_occurence, term)
-    return _var_occurrences
-
-
-# TODO replace by method that does not reconstruct the AST
-def collect(callback: Callable[[KInner], None], kinner: KInner) -> None:
-    def f(kinner: KInner) -> KInner:
-        callback(kinner)
-        return kinner
-
-    bottom_up(f, kinner)
-
-
-def build_assoc(unit: KInner, label: Union[str, KLabel], terms: Iterable[KInner]) -> KInner:
-    _label = label if type(label) is KLabel else KLabel(label)
-    res: Optional[KInner] = None
-    for term in reversed(list(terms)):
-        if term == unit:
-            continue
-        if not res:
-            res = term
-        else:
-            res = _label(term, res)
-    return res or unit
-
-
-def build_cons(unit: KInner, label: Union[str, KLabel], terms: Iterable[KInner]) -> KInner:
-    it = iter(terms)
-    try:
-        fst = next(it)
-        return KApply(label, (fst, build_cons(unit, label, it)))
-    except StopIteration:
-        return unit
 
 
 def read_kast_definition(path: Union[str, PathLike]) -> KDefinition:
