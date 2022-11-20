@@ -144,6 +144,8 @@ class KRun(KPrint):
             return App("Lbl'Unds'Map'Unds'", [], [ps[0], _map(ps[1:])])
 
         def _sort(p: Pattern) -> KSort:
+            if type(p) is DV:
+                return KSort(p.sort.name[4:])
             if type(p) is App:
                 label = KLabel(_unmunge(p.symbol[3:]))
                 return self.definition.return_sort(label)
