@@ -251,7 +251,10 @@ class KPrint:
     @property
     def definition(self) -> KDefinition:
         if not self._definition:
-            self._definition = read_kast_definition(self.definition_dir / 'compiled.json')
+            defn = self.definition_dir / 'compiled.json'
+            _LOGGER.info(f'Loading definition: {defn}')
+            self._definition = read_kast_definition(defn)
+            _LOGGER.info(f'Loaded definition: {defn}')
         return self._definition
 
     @property
