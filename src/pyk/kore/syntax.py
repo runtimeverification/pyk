@@ -1352,8 +1352,10 @@ class LeftAssoc(Assoc):
 
     @property
     def pattern(self) -> Pattern:
-        assert len(self.app.sorts) == 0
-        assert len(self.app.patterns) > 0
+        if len(self.app.sorts) > 0:
+            raise ValueError(f'Cannot associate a pattern with sort parameters: {self}')
+        if len(self.app.patterns) == 0:
+            raise ValueError(f'Cannot associate a pattern with no arguments: {self}')
         ret = self.app.patterns[0]
         for a in self.app.patterns[1:]:
             ret = App(self.app.symbol, [], [ret, a])
@@ -1387,8 +1389,10 @@ class RightAssoc(Assoc):
 
     @property
     def pattern(self) -> Pattern:
-        assert len(self.app.sorts) == 0
-        assert len(self.app.patterns) > 0
+        if len(self.app.sorts) > 0:
+            raise ValueError(f'Cannot associate a pattern with sort parameters: {self}')
+        if len(self.app.patterns) == 0:
+            raise ValueError(f'Cannot associate a pattern with no arguments: {self}')
         ret = self.app.patterns[-1]
         for a in reversed(self.app.patterns[:-1]):
             ret = App(self.app.symbol, [], [a, ret])
