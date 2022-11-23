@@ -55,7 +55,7 @@ def start_pattern() -> Pattern:
 
 def foo_output(n: int) -> str:
     """
-    <k> foo(n) </k>
+    <k> foo(100 - n) </k>
     """
     return fr"""Lbl'-LT-'generatedTop'-GT-'{{}}(Lbl'-LT-'k'-GT-'{{}}(kseq{{}}(inj{{SortFoo{{}}, SortKItem{{}}}}(Lblfoo'LParUndsRParUnds'STEPS'Unds'Foo'Unds'Int{{}}(\dv{{SortInt{{}}}}("{100-n}"))),dotk{{}}())),Lbl'-LT-'generatedCounter'-GT-'{{}}(\dv{{SortInt{{}}}}("0")))"""
 
