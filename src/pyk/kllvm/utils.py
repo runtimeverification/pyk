@@ -1,11 +1,12 @@
+import sysconfig
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from types import ModuleType
 from typing import Final, Union
 
-from ..cli_utils import check_file_path, run_process
+from ..cli_utils import check_file_path
 
-PYTHON_EXTENSION_SUFFIX: Final = run_process(['python3-config', '--extension-suffix'], pipe_stderr=True).stdout.strip()
+PYTHON_EXTENSION_SUFFIX: Final = sysconfig.get_config_var('EXT_SUFFIX')
 
 
 def import_from_file(module_name: str, module_file: Union[str, Path]) -> ModuleType:
