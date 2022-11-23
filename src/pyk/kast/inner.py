@@ -92,6 +92,20 @@ class Subst(Mapping[str, KInner]):
     def __call__(self, term: KInner) -> KInner:
         return self.apply(term)
 
+    @classmethod
+    def from_dict(cls: Type['Subst'], d: Dict[str, Any]) -> 'Subst':
+        _subst = {}
+        for k, v in d.items():
+            if type(k) is str:
+                _subst[k] = KInner.from_dict(v)
+        return Subst(_subst)
+
+    def to_dict(self) -> Dict[str, Any]:
+        _res = {}
+        for k, v in self._subst.items():
+            _res[k] = v.to_dict()
+        return _res
+
     def minimize(self) -> 'Subst':
         return Subst({k: v for k, v in self.items() if v != KVariable(k)})
 
