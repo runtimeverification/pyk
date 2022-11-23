@@ -346,9 +346,19 @@ class KProve(KPrint):
         kast_simplified = self.kore_to_kast(kore_simplified)
         return kast_simplified
 
-    def check_implication(self, antecedent: CTerm, consequent: CTerm) -> Optional[Subst]:
+    def check_implication(
+        self, antecedent: CTerm, consequent: CTerm, bind_consequent_variables: bool = True
+    ) -> Optional[Subst]:
+        _consequent = consequent.kast
+        if bind_consequent_variables:
+            _consequent = consequent.kast
+            fv_antecedent = free_vars(antecedent.kast)
+            unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
+            for uc in unbound_consequent:
+                _LOGGER.info(f'Binding variable in consequent: {uc}')
+                _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
-        consequent_kore = self.kast_to_kore(consequent.kast, GENERATED_TOP_CELL)
+        consequent_kore = self.kast_to_kore(_consequent, GENERATED_TOP_CELL)
         _, kore_client = self.kore_rpc()
         result = kore_client.implies(antecedent_kore, consequent_kore)
         if result.substitution is None:
