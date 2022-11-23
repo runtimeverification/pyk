@@ -474,7 +474,9 @@ class KPrint:
         if isort == osort:
             return pat
         if isort not in self.definition.subsorts(osort):
-            raise ValueError(f'Could not find injection from subsort to supersort: {isort} -> {osort}')
+            raise ValueError(
+                f'Could not find injection from subsort to supersort {isort} -> {osort} for pattern: {pat}'
+            )
         return App('inj', [SortApp('Sort' + isort.name), SortApp('Sort' + osort.name)], [pat])
 
     def pretty_print(self, kast: KAst) -> str:
