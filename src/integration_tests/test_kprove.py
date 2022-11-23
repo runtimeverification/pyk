@@ -72,13 +72,13 @@ class SimpleProofTest(KProveTest):
                 actual_depth, _actual_state, _actual_next_states = self.kprove.execute(
                     _config(pre_k, pre_state), depth=depth
                 )
-                actual_k = self.kprove.pretty_print(get_cell(_actual_state, 'K_CELL'))
-                actual_state = self.kprove.pretty_print(get_cell(_actual_state, 'STATE_CELL'))
+                actual_k = self.kprove.pretty_print(get_cell(_actual_state.kast, 'K_CELL'))
+                actual_state = self.kprove.pretty_print(get_cell(_actual_state.kast, 'STATE_CELL'))
 
                 actual_next_states = [
                     (
-                        self.kprove.pretty_print(get_cell(s, 'K_CELL')),
-                        self.kprove.pretty_print(get_cell(s, 'STATE_CELL')),
+                        self.kprove.pretty_print(get_cell(s.kast, 'K_CELL')),
+                        self.kprove.pretty_print(get_cell(s.kast, 'STATE_CELL')),
                     )
                     for s in _actual_next_states
                 ]
@@ -233,13 +233,13 @@ class ImpProofTest(KProveTest):
                 actual_depth, _actual_state, _actual_next_states = self.kprove.execute(
                     _config(pre_k, pre_state), depth=depth
                 )
-                actual_k = self.kprove.pretty_print(get_cell(_actual_state, 'K_CELL'))
-                actual_state = self.kprove.pretty_print(get_cell(_actual_state, 'STATE_CELL'))
+                actual_k = self.kprove.pretty_print(get_cell(_actual_state.kast, 'K_CELL'))
+                actual_state = self.kprove.pretty_print(get_cell(_actual_state.kast, 'STATE_CELL'))
 
                 actual_next_states = [
                     (
-                        self.kprove.pretty_print(get_cell(s, 'K_CELL')),
-                        self.kprove.pretty_print(get_cell(s, 'STATE_CELL')),
+                        self.kprove.pretty_print(get_cell(s.kast, 'K_CELL')),
+                        self.kprove.pretty_print(get_cell(s.kast, 'STATE_CELL')),
                     )
                     for s in _actual_next_states
                 ]
