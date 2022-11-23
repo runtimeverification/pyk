@@ -1,37 +1,42 @@
-from tempfile import NamedTemporaryFile
-from unittest import TestCase
+from pathlib import Path
 
-from pyk.kllvm.parser import Parser
+from pyk.kllvm.parser import Parser, read_pattern
 
 
-class ParserTest(TestCase):
-    def test_file(self) -> None:
-        # Given
-        text = """
-            A{}(
-                B{}(),
-                C{}()
-            )
-        """
+def test_read_pattern(tmp_path: Path) -> None:
+    # Given
+    kore_text = 'A{}(B{}(),C{}())'
+    kore_file = tmp_path / 'test.kore'
+    kore_file.write_text(kore_text)
 
-        with NamedTemporaryFile(mode='w') as f:
-            f.write(text)
-            f.flush()
+    # When
+    actual = read_pattern(kore_file)
 
-            parser = Parser(f.name)
+    # Then
+    assert str(actual) == kore_text
 
-            # When
-            actual = parser.pattern()
 
-        # Then
-        self.assertEqual(str(actual), 'A{}(B{}(),C{}())')
+def test_parser_from_file(tmp_path: Path) -> None:
+    # Given
+    kore_text = 'A{}(B{}(),C{}())'
+    kore_file = tmp_path / 'test.kore'
+    kore_file.write_text(kore_text)
+    parser = Parser(str(kore_file))
 
-    def test_string(self) -> None:
-        # Given
-        parser = Parser.from_string('A{}(X:S, Y:Z, Int{}())')
+    # When
+    actual = parser.pattern()
 
-        # When
-        actual = parser.pattern()
+    # Then
+    assert str(actual) == kore_text
 
-        # Then
-        self.assertEqual(str(actual), 'A{}(X : S,Y : Z,Int{}())')
+
+def test_parser_from_string() -> None:
+    # Given
+    kore_text = 'A{}(X : S,Y : Z,Int{}())'
+    parser = Parser.from_string(kore_text)
+
+    # When
+    actual = parser.pattern()
+
+    # Then
+    assert str(actual) == kore_text
