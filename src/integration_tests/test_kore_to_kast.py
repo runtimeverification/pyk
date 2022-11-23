@@ -222,6 +222,19 @@ class KoreToKastTest(KProveTest):
                 ),
                 KApply('barholder', [KApply('foo', [KVariable('B', sort=KSort('Baz'))]), KVariable('B')]),
             ),
+            (
+                'variable-with-multi-sort',
+                KSort('BarHolder'),
+                App(
+                    'Lblbarholder2',
+                    [],
+                    [
+                        App('inj', [SortApp('SortBaz'), SortApp('SortBar')], [EVar('VarX', SortApp('SortBaz'))]),
+                        EVar('VarX', SortApp('SortBaz')),
+                    ],
+                ),
+                KApply('barholder2', [KVariable('X', sort=KSort('Baz')), KVariable('X', sort=KSort('Bar'))]),
+            ),
         )
         for name, sort, kore, kast in kore_kast_pairs:
             with self.subTest(name):
