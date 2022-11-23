@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KAtt, KSequence, KToken, KVariable, Subst
+from pyk.kast.inner import KApply, KAtt, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import get_cell
 from pyk.kast.outer import KClaim, KRule
 from pyk.ktool import KompileBackend
@@ -283,7 +283,7 @@ class ImpProofTest(KProveTest):
                 'variable-subst',
                 ('int $n , $s ; $n = X ;', '.Map'),
                 ('int $n , $s ; $n = Y ;', '.Map'),
-                Subst({'X': KVariable('Y')}),
+                Subst({'X': KVariable('Y', sort=KSort('AExp'))}),
             ),
         )
 
