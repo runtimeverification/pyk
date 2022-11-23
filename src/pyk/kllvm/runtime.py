@@ -1,9 +1,10 @@
 import logging
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Final, Type, Union
+from typing import Final, Type, Union
 
 from ..cli_utils import check_dir_path, check_file_path, run_process
+from .ast import Pattern
 from .utils import PYTHON_EXTENSION_SUFFIX, import_from_file
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ def import_runtime(kompiled_dir: Union[str, Path]) -> ModuleType:
 
 def _make_term_class(mod: ModuleType) -> Type:
     class Term:
-        def __init__(self, pattern: Any):  # TODO pattern: KOREPattern
+        def __init__(self, pattern: Pattern):
             self._block = mod.InternalTerm(pattern)
 
         def __str__(self) -> str:
