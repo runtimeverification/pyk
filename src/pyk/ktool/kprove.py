@@ -354,9 +354,10 @@ class KProve(KPrint):
             _consequent = consequent.kast
             fv_antecedent = free_vars(antecedent.kast)
             unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
-            for uc in unbound_consequent:
-                _LOGGER.info(f'Binding variable in consequent: {uc}')
-                _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
+            if len(unbound_consequent) > 0:
+                _LOGGER.info(f'Binding variables in consequent: {unbound_consequent}')
+                for uc in unbound_consequent:
+                    _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
         consequent_kore = self.kast_to_kore(_consequent, GENERATED_TOP_CELL)
         _, kore_client = self.kore_rpc()
