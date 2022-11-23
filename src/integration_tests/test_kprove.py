@@ -251,7 +251,7 @@ class ImpProofTest(KProveTest):
                 self.assertEqual(actual_depth, expected_depth)
                 self.assertCountEqual(actual_next_states, expected_next_states)
 
-    def test_check_implication(self) -> None:
+    def test_implies(self) -> None:
         def _config(k: str, state: str) -> CTerm:
             _k_parsed = self.kprove.parse_token(KToken(k, 'Pgm'), as_rule=True)
             _state_parsed = self.kprove.parse_token(KToken(state, 'Map'), as_rule=True)
@@ -297,7 +297,7 @@ class ImpProofTest(KProveTest):
                 antecedent = _config(antecedent_k, antecedent_map)
                 consequent = _config(consequent_k, consequent_map)
                 # When
-                actual_subst = self.kprove.check_implication(antecedent, consequent)
+                actual_subst = self.kprove.implies(antecedent, consequent)
 
                 # Then
                 self.assertEqual(actual_subst, expected_subst)

@@ -346,9 +346,7 @@ class KProve(KPrint):
         kast_simplified = self.kore_to_kast(kore_simplified)
         return kast_simplified
 
-    def check_implication(
-        self, antecedent: CTerm, consequent: CTerm, bind_consequent_variables: bool = True
-    ) -> Optional[Subst]:
+    def implies(self, antecedent: CTerm, consequent: CTerm, bind_consequent_variables: bool = True) -> Optional[Subst]:
         _consequent = consequent.kast
         if bind_consequent_variables:
             _consequent = consequent.kast
@@ -372,7 +370,7 @@ class KProve(KPrint):
             if m is not None and type(m['###VAR']) is KVariable:
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
-                raise ValueError(f'Recieved back a non-substitution from check_implication endpoint: {ml_pred}')
+                raise ValueError(f'Recieved back a non-substitution from implies endpoint: {ml_pred}')
         return Subst(_subst)
 
     def _write_claim_definition(self, claim: KClaim, claim_id: str, lemmas: Iterable[KRule] = ()) -> Tuple[Path, str]:
