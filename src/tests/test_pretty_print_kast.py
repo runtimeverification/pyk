@@ -12,18 +12,20 @@ success_production = KProduction(
 
 
 class PrettyPrintKastTest(TestCase):
-    TEST_DATA: Final[Tuple[Tuple[KAst, str], ...]] = (
-        (KVariable('V'), 'V'),
-        (KVariable('V', sort=KSort('Int')), 'V:Int'),
-        (KRule(TRUE), 'rule  true\n  '),
-        (KRule(TRUE, ensures=TRUE), 'rule  true\n  '),
+    TEST_DATA: Final[Tuple[Tuple[str, KAst, str], ...]] = (
+        ('var', KVariable('V'), 'V'),
+        ('var-sorted', KVariable('V', sort=KSort('Int')), 'V:Int'),
+        ('rule', KRule(TRUE), 'rule  true\n  '),
+        ('rule-empty-req', KRule(TRUE, ensures=TRUE), 'rule  true\n  '),
         (
+            'rule-req-andbool',
             KRule(TRUE, ensures=KApply('_andBool_', [TRUE, TRUE])),
             'rule  true\n   ensures ( true\n   andBool ( true\n           ))\n  ',
         ),
-        (KProduction(KSort('Test')), 'syntax Test'),
-        (KProduction(KSort('Test'), att=KAtt({'token': ''})), 'syntax Test [token()]'),
+        ('sort-decl', KProduction(KSort('Test')), 'syntax Test'),
+        ('token-decl', KProduction(KSort('Test'), att=KAtt({'token': ''})), 'syntax Test [token()]'),
         (
+            'function-decl',
             KProduction(KSort('Test'), [KTerminal('foo'), KNonTerminal(KSort('Int'))], att=KAtt({'function': ''})),
             'syntax Test ::= "foo" Int [function()]',
         ),
@@ -32,8 +34,8 @@ class PrettyPrintKastTest(TestCase):
     SYMBOL_TABLE: Final[SymbolTable] = {}
 
     def test_pretty_print(self) -> None:
-        for i, (kast, expected) in enumerate(self.TEST_DATA):
-            with self.subTest(i=i):
+        for name, kast, expected in self.TEST_DATA:
+            with self.subTest(name):
                 actual = pretty_print_kast(kast, self.SYMBOL_TABLE)
                 actual_tokens = actual.split('\n')
                 expected_tokens = expected.split('\n')
