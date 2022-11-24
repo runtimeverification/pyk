@@ -123,7 +123,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return {
                 'source': self.source.id,
                 'target': self.target.id,
-                'witness': {'subst': self.subst.to_dict(), 'constraint': self.constraint.to_dict()},
+                'subst': self.subst.to_dict(),
+                'constraint': self.constraint.to_dict(),
             }
 
         def pretty(self, kprint: KPrint) -> Iterable[str]:
