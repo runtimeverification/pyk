@@ -197,6 +197,10 @@ class KProduction(KSentence):
     def arity(self) -> int:
         return len(self.items)
 
+    @property
+    def argument_sorts(self) -> List[KSort]:
+        return [knt.sort for knt in self.items if type(knt) is KNonTerminal]
+
     @classmethod
     def from_dict(cls: Type['KProduction'], d: Dict[str, Any]) -> 'KProduction':
         cls._check_node(d)
@@ -980,7 +984,7 @@ class KDefinition(KOuter, WithKAtt):
         return self.production_for_klabel(label).sort
 
     def argument_sorts(self, label: KLabel) -> List[KSort]:
-        return [nt.sort for nt in self.production_for_klabel(label).items if type(nt) is KNonTerminal]
+        return self.production_for_klabel(label).argument_sorts
 
     def subsorts(self, sort: KSort) -> List[KSort]:
         if sort not in self._subsorts:
