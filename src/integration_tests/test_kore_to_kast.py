@@ -251,6 +251,16 @@ class KoreToKastTest(KProveTest):
                 ),
                 KApply('barholder2', [KVariable('X', sort=KSort('Baz')), KVariable('X', sort=KSort('Bar'))]),
             ),
+            (
+                'ml-exists-var-inference',
+                KSort('Foo'),
+                Exists(
+                    SortApp('SortFoo'),
+                    EVar('VarX', SortApp('SortBar')),
+                    App('Lblfoo', [], [EVar('VarX', SortApp('SortBar'))]),
+                ),
+                KApply(KLabel('#Exists', [KSort('Foo')]), [KVariable('X'), KApply('foo', [KVariable('X')])]),
+            ),
         )
         for name, sort, kore, kast in kore_kast_pairs:
             with self.subTest(name):
