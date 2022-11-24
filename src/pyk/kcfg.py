@@ -322,7 +322,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         attr_string = ' (' + ', '.join(attrs) + ')' if attrs else ''
         return shorten_hash(node.id) + attr_string
 
-    def pretty(self, kprint: KPrint) -> Iterable[str]:
+    def pretty(self, kprint: KPrint, omit_large_subst: bool = False) -> Iterable[str]:
 
         processed_nodes: List[KCFG.Node] = []
 
@@ -379,7 +379,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                         ret.append(indent + '│  ' + _bold(_green('(verified)')))
                     ret.extend(add_indent(indent + '│  ', edge_like.pretty(kprint)))
                 elif isinstance(edge_like, KCFG.Cover):
-                    ret.extend(add_indent(indent + '┊  ', edge_like.pretty(kprint)))
+                    ret.extend(add_indent(indent + '┊  ', edge_like.pretty(kprint, omit_large_subst=omit_large_subst)))
                 ret.append(indent + elbow + ' ' + _print_node(edge_like.target))
                 if isinstance(edge_like, KCFG.Edge) and edge_like.depth == 0:
                     first, *rest = edge_like.pretty(kprint)
