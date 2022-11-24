@@ -338,12 +338,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 short_info = _bold(short_info)
             return short_info
 
-        def _is_rewrite_edge(edge_like: KCFG.EdgeLike) -> bool:
-            return isinstance(edge_like, KCFG.Edge) and edge_like.depth != 0
-
-        def _is_case_split_edge(edge_like: KCFG.EdgeLike) -> bool:
-            return isinstance(edge_like, KCFG.Edge) and edge_like.depth == 0
-
         def _print_subgraph(indent: str, curr_node: KCFG.Node, prior_on_trace: List[KCFG.Node]) -> List[str]:
             ret: List[str] = []
 
