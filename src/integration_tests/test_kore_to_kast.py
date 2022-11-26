@@ -8,6 +8,7 @@ from pyk.kore.syntax import (
     Equals,
     EVar,
     Exists,
+    Implies,
     LeftAssoc,
     Not,
     RightAssoc,
@@ -19,7 +20,7 @@ from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import INT, intToken
-from pyk.prelude.ml import mlBottom, mlTop
+from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
 
 from .kprove_test import KProveTest
@@ -65,6 +66,20 @@ class KoreToKastTest(KProveTest):
                 KSort('GeneratedTopCell'),
                 Bottom(SortApp('SortGeneratedTopCell')),
                 mlBottom(),
+            ),
+            (
+                'ml-implies',
+                KSort('GeneratedTopCell'),
+                Implies(
+                    SortApp('SortGeneratedTopCell'),
+                    EVar('VarX', SortApp('SortGeneratedTopCell')),
+                    EVar('VarY', SortApp('SortGeneratedTopCell')),
+                ),
+                mlImplies(
+                    KVariable('X', sort=KSort('GeneratedTopCell')),
+                    KVariable('Y', sort=KSort('GeneratedTopCell')),
+                    sort=KSort('GeneratedTopCell'),
+                ),
             ),
             (
                 'variable-with-sort',
