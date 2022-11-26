@@ -30,10 +30,11 @@ from ..kast.outer import (
     read_kast_definition,
 )
 from ..kore.parser import KoreParser
-from ..kore.syntax import DV, And, App, Assoc, Ceil, Equals, EVar, Exists, Not, Pattern, SortApp, String
+from ..kore.syntax import DV, And, App, Assoc, Bottom, Ceil, Equals, EVar, Exists, Not, Pattern, SortApp, String, Top
 from ..prelude.bytes import BYTES, bytesToken
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
+from ..prelude.ml import mlBottom, mlTop
 from ..prelude.string import STRING, stringToken
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -311,6 +312,12 @@ class KPrint:
                     if len(new_args) == len(args):
                         return KApply(klabel, new_args)
 
+        elif type(kore) is Top:
+            return mlTop(sort=KSort(kore.sort.name[4:]))
+
+        elif type(kore) is Bottom:
+            return mlBottom(sort=KSort(kore.sort.name[4:]))
+
         elif type(kore) is And:
             psort = KSort(kore.sort.name[4:])
             larg = self._kore_to_kast(kore.left)
@@ -442,6 +449,18 @@ class KPrint:
                         if sort is not None:
                             _not = self._add_sort_injection(_not, psort, sort)
                         return _not
+
+                elif kast.label.name == '#Top' and kast.arity == 0:
+                    _top: Pattern = Top(SortApp('Sort' + psort.name))
+                    if sort is not None:
+                        _top = self._add_sort_injection(_top, psort, sort)
+                        return _top
+
+                elif kast.label.name == '#Bottom' and kast.arity == 0:
+                    _bottom: Pattern = Bottom(SortApp('Sort' + psort.name))
+                    if sort is not None:
+                        _bottom = self._add_sort_injection(_bottom, psort, sort)
+                        return _bottom
 
                 elif kast.label.name == '#Exists' and kast.arity == 2 and type(kast.args[0]) is KVariable:
                     var = self._kast_to_kore(kast.args[0])
