@@ -343,6 +343,7 @@ class KProve(KPrint):
             cterm = cterm.add_constraint(
                 KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.kast])
             )
+        _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self.kore_rpc()
         er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
@@ -353,6 +354,7 @@ class KProve(KPrint):
         return depth, next_state, next_states
 
     def simplify(self, cterm: CTerm) -> KInner:
+        _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self.kore_rpc()
         kore_simplified = kore_client.simplify(kore)
@@ -360,6 +362,7 @@ class KProve(KPrint):
         return kast_simplified
 
     def implies(self, antecedent: CTerm, consequent: CTerm, bind_consequent_variables: bool = True) -> Optional[Subst]:
+        _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
         _consequent = consequent.kast
         if bind_consequent_variables:
             _consequent = consequent.kast
