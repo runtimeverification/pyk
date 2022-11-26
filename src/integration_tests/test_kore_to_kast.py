@@ -1,9 +1,25 @@
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
-from pyk.kore.syntax import DV, And, App, Ceil, Equals, EVar, Exists, LeftAssoc, Not, RightAssoc, SortApp, String
+from pyk.kore.syntax import (
+    DV,
+    And,
+    App,
+    Bottom,
+    Ceil,
+    Equals,
+    EVar,
+    Exists,
+    LeftAssoc,
+    Not,
+    RightAssoc,
+    SortApp,
+    String,
+    Top,
+)
 from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import INT, intToken
+from pyk.prelude.ml import mlBottom, mlTop
 from pyk.prelude.string import STRING, stringToken
 
 from .kprove_test import KProveTest
@@ -37,6 +53,18 @@ class KoreToKastTest(KProveTest):
                 KSort('Bytes'),
                 DV(SortApp('SortBytes'), String('0000')),
                 KToken('b"0000"', KSort('Bytes')),
+            ),
+            (
+                'ml-top',
+                KSort('GeneratedTopCell'),
+                Top(SortApp('SortGeneratedTopCell')),
+                mlTop(),
+            ),
+            (
+                'ml-bottom',
+                KSort('GeneratedTopCell'),
+                Bottom(SortApp('SortGeneratedTopCell')),
+                mlBottom(),
             ),
             (
                 'variable-with-sort',
