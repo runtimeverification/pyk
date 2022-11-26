@@ -13,6 +13,7 @@ from ..kast.inner import KApply, KInner, KLabel, Subst
 from ..kast.manip import extract_subst, flatten_label, free_vars
 from ..kast.outer import KClaim, KDefinition, KFlatModule, KImport, KRequire, KRule, KSentence, KVariable
 from ..kore.rpc import KoreClient, KoreServer
+from ..kore.syntax import Top
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_top, mlAnd, mlBottom, mlEquals, mlTop
 from ..utils import unique
@@ -376,9 +377,19 @@ class KProve(KPrint):
         consequent_kore = self.kast_to_kore(_consequent, GENERATED_TOP_CELL)
         _, kore_client = self.kore_rpc()
         result = kore_client.implies(antecedent_kore, consequent_kore)
+        if type(result.implication) is not Top:
+            _LOGGER.warning(
+                f'Received a non-trivial implication back from check implication endpoint: {result.implication}'
+            )
+        if result.predicate is not None and type(result.predicate) is not Top:
+            raise ValueError(
+                f'Received a non-trivial predicate back from check implication endpoint: {result.predicate}'
+            )
         if result.substitution is None:
             return None
         ml_subst = self.kore_to_kast(result.substitution)
+        if is_top(ml_subst):
+            return Subst({})
         subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
         _subst: Dict[str, KInner] = {}
         for ml_pred in flatten_label('#And', ml_subst):
@@ -386,7 +397,7 @@ class KProve(KPrint):
             if m is not None and type(m['###VAR']) is KVariable:
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
-                raise ValueError(f'Recieved back a non-substitution from implies endpoint: {ml_pred}')
+                raise ValueError(f'Received a non-substitution from implies endpoint: {ml_pred}')
         return Subst(_subst)
 
     def _write_claim_definition(self, claim: KClaim, claim_id: str, lemmas: Iterable[KRule] = ()) -> Tuple[Path, str]:
