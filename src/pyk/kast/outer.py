@@ -963,7 +963,9 @@ class KDefinition(KOuter, WithKAtt):
             _prods = [prod for prod in prods if 'unparseAvoid' not in prod.att]
             if len(_prods) < len(prods):
                 prods = _prods
-                _LOGGER.warning(f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}')
+                _LOGGER.warning(
+                    f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}'
+                )
             try:
                 self._production_for_klabel[klabel] = single(prods)
             except ValueError as err:
