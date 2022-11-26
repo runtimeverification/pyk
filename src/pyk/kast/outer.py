@@ -1,4 +1,5 @@
 import json
+import logging
 from abc import abstractmethod
 from dataclasses import InitVar, dataclass
 from enum import Enum
@@ -11,6 +12,8 @@ from .inner import KApply, KInner, KLabel, KRewrite, KSort, KToken, KVariable, S
 from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt
 
 RL = TypeVar('RL', bound='KRuleLike')
+
+_LOGGER: Final = logging.getLogger(__name__)
 
 
 class KOuter(KAst):
@@ -957,6 +960,10 @@ class KDefinition(KOuter, WithKAtt):
     def production_for_klabel(self, klabel: KLabel) -> KProduction:
         if klabel not in self._production_for_klabel:
             prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
+            _prods = [prod for prod in prods if 'unparseAvoid' not in prod.att]
+            if len(_prods) < len(prods):
+                prods = _prods
+                _LOGGER.warning(f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}')
             try:
                 self._production_for_klabel[klabel] = single(prods)
             except ValueError as err:
