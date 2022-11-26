@@ -5,7 +5,7 @@ from enum import Enum
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
-from typing import Dict, Final, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Final, Iterable, List, Mapping, Optional, Tuple
 
 from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
 from ..cterm import CTerm, build_claim
@@ -142,6 +142,15 @@ class KProve(KPrint):
             self.main_module = mm.read()
         self._kore_rpc = None
 
+    def __enter__(self) -> 'KProve':
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
+    def set_kore_rpc_port(self, p: int) -> None:
+        self.port = p
+
     def kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
         if not self._kore_rpc:
             _kore_server = KoreServer(self.definition_dir, self.main_module, self.port)
@@ -154,6 +163,10 @@ class KProve(KPrint):
             _kore_server, _kore_client = self._kore_rpc
             _kore_client.close()
             _kore_server.close()
+            self._kore_rpc = None
+
+    def close(self) -> None:
+        self.close_kore_rpc()
 
     def prove(
         self,
