@@ -30,7 +30,23 @@ from ..kast.outer import (
     read_kast_definition,
 )
 from ..kore.parser import KoreParser
-from ..kore.syntax import DV, And, App, Assoc, Bottom, Ceil, Equals, EVar, Exists, Not, Pattern, SortApp, String, Top
+from ..kore.syntax import (
+    DV,
+    And,
+    App,
+    Assoc,
+    Bottom,
+    Ceil,
+    Equals,
+    EVar,
+    Exists,
+    Implies,
+    Not,
+    Pattern,
+    SortApp,
+    String,
+    Top,
+)
 from ..prelude.bytes import BYTES, bytesToken
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
@@ -325,6 +341,13 @@ class KPrint:
             if larg is not None and rarg is not None:
                 return KApply(KLabel('#And', [psort]), [larg, rarg])
 
+        elif type(kore) is Implies:
+            psort = KSort(kore.sort.name[4:])
+            larg = self._kore_to_kast(kore.left)
+            rarg = self._kore_to_kast(kore.right)
+            if larg is not None and rarg is not None:
+                return KApply(KLabel('#Implies', [psort]), [larg, rarg])
+
         elif type(kore) is Not:
             psort = KSort(kore.sort.name[4:])
             arg = self._kore_to_kast(kore.pattern)
@@ -441,6 +464,15 @@ class KPrint:
                         if sort is not None:
                             _and = self._add_sort_injection(_and, psort, sort)
                         return _and
+
+                elif kast.label.name == '#Implies' and kast.arity == 2:
+                    larg = self._kast_to_kore(kast.args[0], sort=psort)
+                    rarg = self._kast_to_kore(kast.args[1], sort=psort)
+                    if larg is not None and rarg is not None:
+                        _implies: Pattern = Implies(SortApp('Sort' + psort.name), larg, rarg)
+                        if sort is not None:
+                            _implies = self._add_sort_injection(_implies, psort, sort)
+                        return _implies
 
                 elif kast.label.name == '#Not' and kast.arity == 1:
                     arg = self._kast_to_kore(kast.args[0], sort=psort)
