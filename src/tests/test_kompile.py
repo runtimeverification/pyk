@@ -7,10 +7,10 @@ def test_all_args() -> None:
     # Given
     # fmt: off
     expected = [
+        '--output-definition', 'path/to/kompiled',
+        '--backend', 'haskell',
         '--main-module', 'MAIN-MODULE',
         '--syntax-module', 'SYNTAX-MODULE',
-        '--backend', 'haskell',
-        '--output-definition', 'path/to/kompiled',
         '-I', '/',
         '-I', '/include/lib',
         '--md-selector', 'k & ! nobytes & ! node',
@@ -24,10 +24,10 @@ def test_all_args() -> None:
 
     # When
     actual = _build_arg_list(
+        output_dir=Path('path/to/kompiled'),
+        backend=KompileBackend.HASKELL,
         main_module='MAIN-MODULE',
         syntax_module='SYNTAX-MODULE',
-        backend=KompileBackend.HASKELL,
-        output_dir=Path('path/to/kompiled'),
         include_dirs=(Path(path) for path in ['/', '/include/lib']),
         md_selector='k & ! nobytes & ! node',
         hook_namespaces=['JSON', 'KRYPTO', 'BLOCKCHAIN'],

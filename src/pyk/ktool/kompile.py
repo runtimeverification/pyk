@@ -21,10 +21,10 @@ def kompile(
     main_file: Path,
     *,
     command: str = 'kompile',
+    output_dir: Optional[Path] = None,
+    backend: Optional[KompileBackend],
     main_module: Optional[str] = None,
     syntax_module: Optional[str] = None,
-    backend: Optional[KompileBackend],
-    output_dir: Optional[Path] = None,
     include_dirs: Iterable[Path] = (),
     md_selector: Optional[str] = None,
     hook_namespaces: Iterable[str] = (),
@@ -44,10 +44,10 @@ def kompile(
         check_dir_path(abs_or_rel_to(include_dir, cwd or Path()))
 
     args = _build_arg_list(
+        output_dir=output_dir,
+        backend=backend,
         main_module=main_module,
         syntax_module=syntax_module,
-        backend=backend,
-        output_dir=output_dir,
         include_dirs=include_dirs,
         md_selector=md_selector,
         hook_namespaces=hook_namespaces,
@@ -71,10 +71,10 @@ def kompile(
 
 def _build_arg_list(
     *,
+    output_dir: Optional[Path],
+    backend: Optional[KompileBackend],
     main_module: Optional[str],
     syntax_module: Optional[str],
-    backend: Optional[KompileBackend],
-    output_dir: Optional[Path],
     include_dirs: Iterable[Path],
     md_selector: Optional[str],
     hook_namespaces: Iterable[str],
@@ -85,17 +85,17 @@ def _build_arg_list(
 ) -> List[str]:
     _args = []
 
+    if output_dir:
+        _args += ['--output-definition', str(output_dir)]
+
+    if backend:
+        _args += ['--backend', backend.value]
+
     if main_module:
         _args.extend(['--main-module', main_module])
 
     if syntax_module:
         _args.extend(['--syntax-module', syntax_module])
-
-    if backend:
-        _args += ['--backend', backend.value]
-
-    if output_dir:
-        _args += ['--output-definition', str(output_dir)]
 
     for include_dir in include_dirs:
         _args += ['-I', str(include_dir)]
