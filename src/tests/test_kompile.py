@@ -7,6 +7,8 @@ def test_all_args() -> None:
     # Given
     # fmt: off
     expected = [
+        'kevm', 'kompile',
+        'imp.k',
         '--output-definition', 'path/to/kompiled',
         '--backend', 'haskell',
         '--main-module', 'MAIN-MODULE',
@@ -24,6 +26,8 @@ def test_all_args() -> None:
 
     # When
     actual = _build_arg_list(
+        command=('kevm', 'kompile'),
+        main_file=Path('imp.k'),
         output_dir=Path('path/to/kompiled'),
         backend=KompileBackend.HASKELL,
         main_module='MAIN-MODULE',

@@ -43,7 +43,9 @@ def kompile(
     for include_dir in include_dirs:
         check_dir_path(abs_or_rel_to(include_dir, cwd or Path()))
 
-    args = _build_arg_list(
+    run_args = _build_arg_list(
+        command=command,
+        main_file=main_file,
         output_dir=output_dir,
         backend=backend,
         main_module=main_module,
@@ -56,8 +58,6 @@ def kompile(
         concrete_rules=concrete_rules,
         args=args,
     )
-
-    run_args = list(command) + [str(main_file)] + args
 
     try:
         run_process(run_args, logger=_LOGGER, cwd=cwd, check=check, profile=profile)
@@ -73,6 +73,8 @@ def kompile(
 
 def _build_arg_list(
     *,
+    command: Iterable[str],
+    main_file: Path,
     output_dir: Optional[Path],
     backend: Optional[KompileBackend],
     main_module: Optional[str],
@@ -85,7 +87,7 @@ def _build_arg_list(
     concrete_rules: Iterable[str],
     args: Iterable[str],
 ) -> List[str]:
-    _args = []
+    _args = list(command) + [str(main_file)]
 
     if output_dir:
         _args += ['--output-definition', str(output_dir)]
