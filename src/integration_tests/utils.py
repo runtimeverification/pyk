@@ -8,7 +8,7 @@ import pytest
 from pytest import TempPathFactory
 
 from pyk.kast.outer import KDefinition, read_kast_definition
-from pyk.ktool import KompileBackend, kompile
+from pyk.ktool import KompileBackend, KRun, kompile
 
 
 class Kompiler:
@@ -56,6 +56,12 @@ class KompiledTest:
     @pytest.fixture(scope='class')
     def definition(self, definition_dir: Path) -> KDefinition:
         return read_kast_definition(definition_dir / 'compiled.json')
+
+
+class KRunTest(KompiledTest):
+    @pytest.fixture
+    def krun(self, definition_dir: Path) -> KRun:
+        return KRun(definition_dir)
 
 
 # Based on: https://stackoverflow.com/a/45690594
