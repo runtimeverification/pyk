@@ -1,13 +1,12 @@
 from types import ModuleType
 
 from pyk.kllvm.runtime import compile_runtime, import_runtime
-from pyk.ktool import KompileBackend
 
 from ..kompiled_test import KompiledTest
 
 
 class RuntimeTest(KompiledTest):
-    KOMPILE_BACKEND = KompileBackend.LLVM
+    KOMPILE_BACKEND = 'llvm'
 
     runtime: ModuleType
 

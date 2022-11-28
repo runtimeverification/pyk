@@ -13,6 +13,8 @@ from .utils import free_port_on_host
 
 
 class KProveTest(KompiledTest, ABC):
+    KOMPILE_BACKEND = 'haskell'
+
     KPROVE_INCLUDE_DIRS: Iterable[str] = []
 
     use_dir: Path
