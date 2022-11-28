@@ -16,7 +16,6 @@ from pyk.kore.syntax import (
     String,
     Top,
 )
-from pyk.ktool import KompileBackend
 from pyk.ktool.kprint import SymbolTable
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import INT, intToken
@@ -28,8 +27,6 @@ from .kprove_test import KProveTest
 
 class KoreToKastTest(KProveTest):
     KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
-    KOMPILE_BACKEND = KompileBackend.HASKELL
-    KOMPILE_EMIT_JSON = True
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
