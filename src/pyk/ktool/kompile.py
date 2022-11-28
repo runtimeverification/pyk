@@ -2,7 +2,7 @@ import logging
 import shlex
 from enum import Enum
 from pathlib import Path
-from subprocess import CalledProcessError, CompletedProcess
+from subprocess import CalledProcessError
 from typing import Final, Iterable, List, Optional
 
 from ..cli_utils import abs_or_rel_to, check_dir_path, check_file_path, run_process
@@ -57,8 +57,10 @@ def kompile(
         args=args,
     )
 
+    run_args = [command, str(main_file)] + args
+
     try:
-        _kompile(str(main_file), *args, command=command, cwd=cwd, check=check, profile=profile)
+        run_process(run_args, logger=_LOGGER, cwd=cwd, check=check, profile=profile)
     except CalledProcessError as err:
         raise RuntimeError(
             f'Command kompile exited with code {err.returncode} for: {main_file}', err.stdout, err.stderr
@@ -118,18 +120,6 @@ def _build_arg_list(
     _args.extend(args)
 
     return _args
-
-
-def _kompile(
-    main_file: str,
-    *args: str,
-    check: bool = True,
-    profile: bool = False,
-    command: str = 'kompile',
-    cwd: Optional[Path] = None,
-) -> CompletedProcess:
-    run_args = [command, main_file] + list(args)
-    return run_process(run_args, logger=_LOGGER, cwd=cwd, check=check, profile=profile)
 
 
 def _kompiled_dir(main_file: Path, output_dir: Optional[Path] = None) -> Path:
