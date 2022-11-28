@@ -280,6 +280,12 @@ class ImpProofTest(KProveTest):
                 ('int $n , $s ; $n = Y ;', '.Map'),
                 Subst({'X': KVariable('Y', sort=KSort('AExp'))}),
             ),
+            (
+                'trivial',
+                ('int $n , $s ; $n = 3 ;', '.Map'),
+                ('int $n , $s ; $n = 3 ;', '.Map'),
+                Subst({}),
+            ),
         )
 
         for (
