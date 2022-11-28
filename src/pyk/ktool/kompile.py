@@ -39,9 +39,8 @@ def kompile(
     main_file = Path(main_file)
     check_file_path(abs_or_rel_to(main_file, cwd or Path()))
 
-    include_dirs = [Path(include_dir) for include_dir in include_dirs]
-    for include_dir in include_dirs:
-        assert isinstance(include_dir, Path)
+    _include_dirs = [Path(include_dir) for include_dir in include_dirs]
+    for include_dir in _include_dirs:
         check_dir_path(abs_or_rel_to(include_dir, cwd or Path()))
 
     output_dir = Path(output_dir) if output_dir is not None else None
@@ -53,7 +52,7 @@ def kompile(
         backend=backend,
         main_module=main_module,
         syntax_module=syntax_module,
-        include_dirs=include_dirs,
+        include_dirs=_include_dirs,
         md_selector=md_selector,
         hook_namespaces=hook_namespaces,
         emit_json=emit_json,
@@ -76,12 +75,12 @@ def kompile(
 def _build_arg_list(
     *,
     command: Iterable[str],
-    main_file: Union[str, Path],
-    output_dir: Optional[Union[str, Path]],
+    main_file: Path,
+    output_dir: Optional[Path],
     backend: Optional[KompileBackend],
     main_module: Optional[str],
     syntax_module: Optional[str],
-    include_dirs: Iterable[Union[str, Path]],
+    include_dirs: Iterable[Path],
     md_selector: Optional[str],
     hook_namespaces: Iterable[str],
     emit_json: bool,

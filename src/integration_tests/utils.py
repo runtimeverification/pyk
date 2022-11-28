@@ -21,7 +21,7 @@ class Kompiler:
         self,
         main_file: Union[str, Path],
         *,
-        backend: Optional[KompileBackend] = None,
+        backend: Optional[Union[str, KompileBackend]] = None,
         main_module: Optional[str] = None,
         syntax_module: Optional[str] = None,
         include_dirs: Iterable[Union[str, Path]] = (),
@@ -29,7 +29,7 @@ class Kompiler:
         return kompile(
             main_file=main_file,
             output_dir=self._tmp_path_factory.mktemp('kompiled'),
-            backend=backend,
+            backend=KompileBackend(backend),
             main_module=main_module,
             syntax_module=syntax_module,
             include_dirs=include_dirs,

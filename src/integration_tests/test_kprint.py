@@ -8,14 +8,6 @@ from pyk.kast.manip import remove_attrs
 from pyk.ktool import KPrint
 from pyk.prelude.kint import intToken
 
-from .utils import Kompiler
-
-
-@pytest.fixture(scope='module')
-def imp_definition_dir(kompile: Kompiler) -> Path:
-    return kompile('k-files/imp.k')
-
-
 TEST_DATA: Final = (
     ('int-token', False, KToken('3', 'Int'), intToken(3)),
     ('id-token', False, KToken('abc', 'Id'), KToken('abc', 'Id')),
