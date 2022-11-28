@@ -19,9 +19,17 @@ _LOGGER: Final = logging.getLogger(__name__)
 class KRun(KPrint):
     backend: str
     main_module: str
+    command: str
 
-    def __init__(self, definition_dir: Path, use_directory: Optional[Path] = None, profile: bool = False) -> None:
+    def __init__(
+        self,
+        definition_dir: Path,
+        use_directory: Optional[Path] = None,
+        profile: bool = False,
+        command: str = 'krun',
+    ) -> None:
         super(KRun, self).__init__(definition_dir, use_directory=use_directory, profile=profile)
+        self.command = command
         with open(self.definition_dir / 'backend.txt', 'r') as ba:
             self.backend = ba.read()
         with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
@@ -44,6 +52,7 @@ class KRun(KPrint):
             ntf.flush()
 
             result = _krun(
+                command=self.command,
                 input_file=Path(ntf.name),
                 definition_dir=self.definition_dir,
                 output=KRunOutput.JSON,
@@ -74,6 +83,7 @@ class KRun(KPrint):
             ntf.flush()
 
             result = _krun(
+                command=self.command,
                 input_file=Path(ntf.name),
                 definition_dir=self.definition_dir,
                 output=KRunOutput.KORE,
@@ -102,6 +112,7 @@ class KRun(KPrint):
             f.flush()
 
             proc_res = _krun(
+                command=self.command,
                 input_file=Path(f.name),
                 definition_dir=self.definition_dir,
                 output=KRunOutput.KORE,
