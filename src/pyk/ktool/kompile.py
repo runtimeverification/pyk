@@ -20,7 +20,7 @@ class KompileBackend(Enum):
 def kompile(
     main_file: Path,
     *,
-    command: str = 'kompile',
+    command: Iterable[str] = ('kompile',),
     output_dir: Optional[Path] = None,
     backend: Optional[KompileBackend] = None,
     main_module: Optional[str] = None,
@@ -57,7 +57,7 @@ def kompile(
         args=args,
     )
 
-    run_args = [command, str(main_file)] + args
+    run_args = list(command) + [str(main_file)] + args
 
     try:
         run_process(run_args, logger=_LOGGER, cwd=cwd, check=check, profile=profile)
