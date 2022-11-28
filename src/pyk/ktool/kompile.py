@@ -22,7 +22,7 @@ def kompile(
     *,
     command: str = 'kompile',
     output_dir: Optional[Path] = None,
-    backend: Optional[KompileBackend],
+    backend: Optional[KompileBackend] = None,
     main_module: Optional[str] = None,
     syntax_module: Optional[str] = None,
     include_dirs: Iterable[Path] = (),
