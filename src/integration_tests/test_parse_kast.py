@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from pyk.kast.inner import KApply, KAs, KRewrite, KSort
 from pyk.kast.outer import KSortSynonym
 from pyk.utils import single
@@ -6,7 +8,7 @@ from .kompiled_test import KompiledTest
 
 
 class ParseKAstTest(KompiledTest):
-    MODULE_NAME: str
+    MODULE_NAME: ClassVar[str]
 
     def setUp(self) -> None:
         super().setUp()
