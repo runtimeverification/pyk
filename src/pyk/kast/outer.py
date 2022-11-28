@@ -976,6 +976,9 @@ class KDefinition(KOuter, WithKAtt):
         except ValueError as err:
             raise ValueError(f'Expected a single cell production for sort {sort}') from err
 
+    def module(self, name: str) -> KFlatModule:
+        return single(module for module in self if module.name == name)
+
     def return_sort(self, label: KLabel) -> KSort:
         return self.production_for_klabel(label).sort
 
