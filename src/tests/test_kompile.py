@@ -20,7 +20,6 @@ def test_all_args() -> None:
         '--emit-json',
         '--post-process', "'echo \"hello\"'",
         '--concrete-rules', 'foo,bar',
-        '--new-fangled-option', 'buzz'
     ]
     # fmt: on
 
@@ -38,7 +37,6 @@ def test_all_args() -> None:
         emit_json=True,
         post_process='echo "hello"',
         concrete_rules=['foo', 'bar'],
-        args=['--new-fangled-option', 'buzz'],
     )
 
     # Then

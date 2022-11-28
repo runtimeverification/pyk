@@ -31,7 +31,6 @@ def kompile(
     emit_json: bool = True,
     post_process: Optional[str] = None,
     concrete_rules: Iterable[str] = (),
-    args: Iterable[str] = (),
     # ---
     cwd: Optional[Path] = None,
     check: bool = True,
@@ -43,7 +42,7 @@ def kompile(
     for include_dir in include_dirs:
         check_dir_path(abs_or_rel_to(include_dir, cwd or Path()))
 
-    run_args = _build_arg_list(
+    args = _build_arg_list(
         command=command,
         main_file=main_file,
         output_dir=output_dir,
@@ -56,11 +55,10 @@ def kompile(
         emit_json=emit_json,
         post_process=post_process,
         concrete_rules=concrete_rules,
-        args=args,
     )
 
     try:
-        run_process(run_args, logger=_LOGGER, cwd=cwd, check=check, profile=profile)
+        run_process(args, logger=_LOGGER, cwd=cwd, check=check, profile=profile)
     except CalledProcessError as err:
         raise RuntimeError(
             f'Command kompile exited with code {err.returncode} for: {main_file}', err.stdout, err.stderr
@@ -85,43 +83,40 @@ def _build_arg_list(
     emit_json: bool,
     post_process: Optional[str],
     concrete_rules: Iterable[str],
-    args: Iterable[str],
 ) -> List[str]:
-    _args = list(command) + [str(main_file)]
+    args = list(command) + [str(main_file)]
 
     if output_dir:
-        _args += ['--output-definition', str(output_dir)]
+        args += ['--output-definition', str(output_dir)]
 
     if backend:
-        _args += ['--backend', backend.value]
+        args += ['--backend', backend.value]
 
     if main_module:
-        _args.extend(['--main-module', main_module])
+        args.extend(['--main-module', main_module])
 
     if syntax_module:
-        _args.extend(['--syntax-module', syntax_module])
+        args.extend(['--syntax-module', syntax_module])
 
     for include_dir in include_dirs:
-        _args += ['-I', str(include_dir)]
+        args += ['-I', str(include_dir)]
 
     if md_selector:
-        _args.extend(['--md-selector', md_selector])
+        args.extend(['--md-selector', md_selector])
 
     if hook_namespaces:
-        _args.extend(['--hook-namespaces', ' '.join(hook_namespaces)])
+        args.extend(['--hook-namespaces', ' '.join(hook_namespaces)])
 
     if emit_json:
-        _args.append('--emit-json')
+        args.append('--emit-json')
 
     if post_process:
-        _args.extend(['--post-process', shlex.quote(post_process)])
+        args.extend(['--post-process', shlex.quote(post_process)])
 
     if concrete_rules:
-        _args.extend(['--concrete-rules', ','.join(concrete_rules)])
+        args.extend(['--concrete-rules', ','.join(concrete_rules)])
 
-    _args.extend(args)
-
-    return _args
+    return args
 
 
 def _kompiled_dir(main_file: Path, output_dir: Optional[Path] = None) -> Path:
