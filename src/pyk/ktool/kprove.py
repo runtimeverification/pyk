@@ -149,9 +149,6 @@ class KProve(KPrint):
     def __exit__(self, *args: Any) -> None:
         self.close()
 
-    def set_kore_rpc_port(self, p: int) -> None:
-        self.port = p
-
     def kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
         if not self._kore_rpc:
             _kore_server = KoreServer(self.definition_dir, self.main_module, self.port)
@@ -165,6 +162,14 @@ class KProve(KPrint):
             _kore_client.close()
             _kore_server.close()
             self._kore_rpc = None
+
+    def set_kore_rpc_port(self, p: int) -> None:
+        was_open = self._kore_rpc is not None
+        if was_open:
+            self.close_kore_rpc()
+        self.port = p
+        if was_open:
+            self.kore_rpc()
 
     def close(self) -> None:
         self.close_kore_rpc()
