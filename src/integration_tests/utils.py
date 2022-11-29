@@ -88,7 +88,7 @@ class KProveTest(KompiledTest):
 
     @pytest.fixture
     def kprove(self, definition_dir: Path, tmp_path_factory: TempPathFactory) -> Iterator[KProve]:
-        kprove = KProve(definition_dir, port=free_port_on_host(), use_directory=tmp_path_factory.mktemp('krun'))
+        kprove = KProve(definition_dir, port=free_port_on_host(), use_directory=tmp_path_factory.mktemp('kprove'))
         self._update_symbol_table(kprove.symbol_table)
         yield kprove
         kprove.close_kore_rpc()
