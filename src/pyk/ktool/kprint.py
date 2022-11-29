@@ -50,7 +50,7 @@ from ..kore.syntax import (
 from ..prelude.bytes import BYTES, bytesToken
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
-from ..prelude.ml import mlBottom, mlTop
+from ..prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
 from ..prelude.string import STRING, stringToken
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -339,27 +339,28 @@ class KPrint:
             larg = self._kore_to_kast(kore.left)
             rarg = self._kore_to_kast(kore.right)
             if larg is not None and rarg is not None:
-                return KApply(KLabel('#And', [psort]), [larg, rarg])
+                return mlAnd([larg, rarg], sort=psort)
 
         elif type(kore) is Implies:
             psort = KSort(kore.sort.name[4:])
             larg = self._kore_to_kast(kore.left)
             rarg = self._kore_to_kast(kore.right)
             if larg is not None and rarg is not None:
-                return KApply(KLabel('#Implies', [psort]), [larg, rarg])
+                return mlImplies(larg, rarg, sort=psort)
 
         elif type(kore) is Not:
             psort = KSort(kore.sort.name[4:])
             arg = self._kore_to_kast(kore.pattern)
             if arg is not None:
-                return KApply(KLabel('#Not', [psort]), [arg])
+                return mlNot(arg, sort=psort)
 
         elif type(kore) is Exists:
             psort = KSort(kore.sort.name[4:])
             var = self._kore_to_kast(kore.var)
             body = self._kore_to_kast(kore.pattern)
-            if var is not None and type(var) is KVariable and body is not None:
-                return KApply(KLabel('#Exists', [psort]), [var, body])
+            if var is not None and body is not None:
+                assert type(var) is KVariable
+                return mlExists(var, body, sort=psort)
 
         elif type(kore) is Equals:
             osort = KSort(kore.op_sort.name[4:])
@@ -367,14 +368,14 @@ class KPrint:
             larg = self._kore_to_kast(kore.left)
             rarg = self._kore_to_kast(kore.right)
             if larg is not None and rarg is not None:
-                return KApply(KLabel('#Equals', [osort, psort]), [larg, rarg])
+                return mlEquals(larg, rarg, arg_sort=osort, sort=psort)
 
         elif type(kore) is Ceil:
             osort = KSort(kore.op_sort.name[4:])
             psort = KSort(kore.sort.name[4:])
             arg = self._kore_to_kast(kore.pattern)
             if arg is not None:
-                return KApply(KLabel('#Ceil', [osort, psort]), [arg])
+                return mlCeil(arg, arg_sort=osort, sort=psort)
 
         elif isinstance(kore, Assoc):
             return self._kore_to_kast(kore.pattern)
