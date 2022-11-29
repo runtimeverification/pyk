@@ -5,7 +5,7 @@ from enum import Enum
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
-from typing import Any, Dict, Final, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, ContextManager, Dict, Final, Iterable, List, Mapping, Optional, Tuple
 
 from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
 from ..cterm import CTerm, build_claim
@@ -112,7 +112,7 @@ def _build_arg_list(
     return args
 
 
-class KProve(KPrint):
+class KProve(KPrint, ContextManager['KProve']):
     main_file: Optional[Path]
     prover: List[str]
     prover_args: List[str]
