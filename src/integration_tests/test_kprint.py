@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Final
 
 import pytest
@@ -7,6 +6,8 @@ from pyk.kast.inner import KApply, KInner, KSequence, KToken, KVariable
 from pyk.kast.manip import remove_attrs
 from pyk.ktool import KPrint
 from pyk.prelude.kint import intToken
+
+from .utils import KPrintTest
 
 TEST_DATA: Final = (
     ('int-token', False, KToken('3', 'Int'), intToken(3)),
@@ -17,19 +18,22 @@ TEST_DATA: Final = (
 )
 
 
-@pytest.mark.parametrize('test_id,as_rule,token,expected', TEST_DATA, ids=[test_id for test_id, _, _, _ in TEST_DATA])
-def test_parse_token(
-    imp_definition_dir: Path,
-    test_id: str,
-    as_rule: bool,
-    token: KToken,
-    expected: KInner,
-) -> None:
-    # Given
-    kprint = KPrint(imp_definition_dir)
+class TestParseToken(KPrintTest):
+    KOMPILE_MAIN_FILE = 'k-files/imp.k'
 
-    # When
-    actual = kprint.parse_token(token, as_rule=as_rule)
+    @pytest.mark.parametrize(
+        'test_id,as_rule,token,expected', TEST_DATA, ids=[test_id for test_id, _, _, _ in TEST_DATA]
+    )
+    def test_parse_token(
+        self,
+        kprint: KPrint,
+        test_id: str,
+        as_rule: bool,
+        token: KToken,
+        expected: KInner,
+    ) -> None:
+        # When
+        actual = kprint.parse_token(token, as_rule=as_rule)
 
-    # Then
-    assert remove_attrs(actual) == expected
+        # Then
+        assert remove_attrs(actual) == expected

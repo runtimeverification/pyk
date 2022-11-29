@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pyk.kast.inner import KApply, KSequence, KToken
 from pyk.kast.manip import flatten_label, get_cell
 from pyk.kore.parser import KoreParser
@@ -6,7 +8,7 @@ from pyk.ktool import KRun
 from pyk.ktool.kprint import KAstInput, KAstOutput, _kast
 from pyk.prelude.kint import intToken
 
-from .utils import Kompiler, KRunTest
+from .utils import KRunTest
 
 
 class TestImpRun(KRunTest):
@@ -34,8 +36,8 @@ class TestImpRun(KRunTest):
     def test_run_kore_term(self, krun: KRun) -> None:
         # Given
         x = '#token("x", "Id")'
-        pattern = self._state(krun, k=f'int {x} ; {x} = 1 ;', state='.Map')
-        expected = self._state(krun, k='.', state=f'{x} |-> 1')
+        pattern = self._state(krun.definition_dir, k=f'int {x} ; {x} = 1 ;', state='.Map')
+        expected = self._state(krun.definition_dir, k='.', state=f'{x} |-> 1')
 
         # When
         actual = krun.run_kore_term(pattern)
@@ -43,7 +45,7 @@ class TestImpRun(KRunTest):
         # Then
         assert actual == expected
 
-    def _state(self, krun: KRun, k: str, state: str) -> Pattern:
+    def _state(self, definition_dir: Path, k: str, state: str) -> Pattern:
         pretty_text = f"""
             <generatedTop>
                 <T>
@@ -56,7 +58,7 @@ class TestImpRun(KRunTest):
             </generatedTop>
         """
         proc_res = _kast(
-            definition_dir=krun.definition_dir,
+            definition_dir=definition_dir,
             input=KAstInput.RULE,
             output=KAstOutput.KORE,
             expression=pretty_text,
@@ -66,35 +68,35 @@ class TestImpRun(KRunTest):
         return KoreParser(kore_text).pattern()
 
 
-def test_run_kore_config(kompile: Kompiler) -> None:
-    # Given
-    definition_dir = kompile('k-files/config.k')
-    krun = KRun(definition_dir)
+class TestCofigRun(KRunTest):
+    KOMPILE_MAIN_FILE = 'k-files/config.k'
 
-    fst = DV(SortApp('SortInt'), String('0'))
-    snd = DV(SortApp('SortInt'), String('1'))
-    expected = App(
-        "Lbl'-LT-'generatedTop'-GT-'",
-        (),
-        (
-            App(
-                "Lbl'-LT-'T'-GT-'",
-                (),
-                (
-                    App("Lbl'-LT-'first'-GT-'", (), (fst,)),
-                    App("Lbl'-LT-'second'-GT-'", (), (snd,)),
+    def test_run_kore_config(self, krun: KRun) -> None:
+        # Given
+        fst = DV(SortApp('SortInt'), String('0'))
+        snd = DV(SortApp('SortInt'), String('1'))
+        expected = App(
+            "Lbl'-LT-'generatedTop'-GT-'",
+            (),
+            (
+                App(
+                    "Lbl'-LT-'T'-GT-'",
+                    (),
+                    (
+                        App("Lbl'-LT-'first'-GT-'", (), (fst,)),
+                        App("Lbl'-LT-'second'-GT-'", (), (snd,)),
+                    ),
+                ),
+                App(
+                    "Lbl'-LT-'generatedCounter'-GT-'",
+                    (),
+                    (DV(SortApp('SortInt'), String('0')),),
                 ),
             ),
-            App(
-                "Lbl'-LT-'generatedCounter'-GT-'",
-                (),
-                (DV(SortApp('SortInt'), String('0')),),
-            ),
-        ),
-    )
+        )
 
-    # When
-    actual = krun.run_kore_config({'FST': fst, 'SND': snd}, depth=0)
+        # When
+        actual = krun.run_kore_config({'FST': fst, 'SND': snd}, depth=0)
 
-    # Then
-    assert actual == expected
+        # Then
+        assert actual == expected

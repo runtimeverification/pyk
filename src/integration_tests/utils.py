@@ -2,13 +2,14 @@ from contextlib import closing
 from pathlib import Path
 from socket import AF_INET, SO_REUSEADDR, SOCK_STREAM, SOL_SOCKET, socket
 from time import sleep
-from typing import ClassVar, Iterable, Optional, Union
+from typing import ClassVar, Iterable, Iterator, Optional, Union
 
 import pytest
 from pytest import TempPathFactory
 
 from pyk.kast.outer import KDefinition, read_kast_definition
-from pyk.ktool import KompileBackend, KRun, kompile
+from pyk.ktool import KompileBackend, KPrint, KProve, KRun, kompile
+from pyk.ktool.kprint import SymbolTable
 
 
 class Kompiler:
@@ -29,7 +30,7 @@ class Kompiler:
         return kompile(
             main_file=main_file,
             output_dir=self._tmp_path_factory.mktemp('kompiled'),
-            backend=KompileBackend(backend),
+            backend=KompileBackend(backend) if backend is not None else None,
             main_module=main_module,
             syntax_module=syntax_module,
             include_dirs=include_dirs,
@@ -58,10 +59,43 @@ class KompiledTest:
         return read_kast_definition(definition_dir / 'compiled.json')
 
 
+class KPrintTest(KompiledTest):
+    @pytest.fixture
+    def kprint(self, definition_dir: Path, tmp_path_factory: TempPathFactory) -> KPrint:
+        kprint = KPrint(definition_dir, use_directory=tmp_path_factory.mktemp('kprint'))
+        self._update_symbol_table(kprint.symbol_table)
+        return kprint
+
+    @staticmethod
+    def _update_symbol_table(symbol_table: SymbolTable) -> None:
+        pass
+
+
 class KRunTest(KompiledTest):
     @pytest.fixture
-    def krun(self, definition_dir: Path) -> KRun:
-        return KRun(definition_dir)
+    def krun(self, definition_dir: Path, tmp_path_factory: TempPathFactory) -> KRun:
+        krun = KRun(definition_dir, use_directory=tmp_path_factory.mktemp('krun'))
+        self._update_symbol_table(krun.symbol_table)
+        return krun
+
+    @staticmethod
+    def _update_symbol_table(symbol_table: SymbolTable) -> None:
+        pass
+
+
+class KProveTest(KompiledTest):
+    KOMPILE_BACKEND = 'haskell'
+
+    @pytest.fixture
+    def kprove(self, definition_dir: Path, tmp_path_factory: TempPathFactory) -> Iterator[KProve]:
+        kprove = KProve(definition_dir, port=free_port_on_host(), use_directory=tmp_path_factory.mktemp('krun'))
+        self._update_symbol_table(kprove.symbol_table)
+        yield kprove
+        kprove.close_kore_rpc()
+
+    @staticmethod
+    def _update_symbol_table(symbol_table: SymbolTable) -> None:
+        pass
 
 
 # Based on: https://stackoverflow.com/a/45690594

@@ -784,7 +784,7 @@ class KFlatModuleList(KOuter):
 
     def __init__(self, main_module: str, modules: Iterable[KFlatModule]):
         object.__setattr__(self, 'main_module', main_module)
-        object.__setattr__(self, 'modules', modules)
+        object.__setattr__(self, 'modules', tuple(modules))
 
     @classmethod
     def from_dict(cls: Type['KFlatModuleList'], d: Dict[str, Any]) -> 'KFlatModuleList':
