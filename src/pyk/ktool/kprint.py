@@ -456,7 +456,8 @@ class KPrint:
             elif len(kast.label.params) == 1:
                 psort = kast.label.params[0]
 
-                if kast.label.name == '#And' and kast.arity == 2:
+                if kast.label.name == '#And':
+                    assert kast.arity == 2
                     larg = self._kast_to_kore(kast.args[0], sort=psort)
                     rarg = self._kast_to_kore(kast.args[1], sort=psort)
                     if larg is not None and rarg is not None:
@@ -465,7 +466,8 @@ class KPrint:
                             _and = self._add_sort_injection(_and, psort, sort)
                         return _and
 
-                elif kast.label.name == '#Implies' and kast.arity == 2:
+                elif kast.label.name == '#Implies':
+                    assert kast.arity == 2
                     larg = self._kast_to_kore(kast.args[0], sort=psort)
                     rarg = self._kast_to_kore(kast.args[1], sort=psort)
                     if larg is not None and rarg is not None:
@@ -474,7 +476,8 @@ class KPrint:
                             _implies = self._add_sort_injection(_implies, psort, sort)
                         return _implies
 
-                elif kast.label.name == '#Not' and kast.arity == 1:
+                elif kast.label.name == '#Not':
+                    assert kast.arity == 1
                     arg = self._kast_to_kore(kast.args[0], sort=psort)
                     if arg is not None:
                         _not: Pattern = Not(SortApp('Sort' + psort.name), arg)
@@ -482,19 +485,23 @@ class KPrint:
                             _not = self._add_sort_injection(_not, psort, sort)
                         return _not
 
-                elif kast.label.name == '#Top' and kast.arity == 0:
+                elif kast.label.name == '#Top':
+                    assert kast.arity == 0
                     _top: Pattern = Top(SortApp('Sort' + psort.name))
                     if sort is not None:
                         _top = self._add_sort_injection(_top, psort, sort)
                         return _top
 
-                elif kast.label.name == '#Bottom' and kast.arity == 0:
+                elif kast.label.name == '#Bottom':
+                    assert kast.arity == 0
                     _bottom: Pattern = Bottom(SortApp('Sort' + psort.name))
                     if sort is not None:
                         _bottom = self._add_sort_injection(_bottom, psort, sort)
                         return _bottom
 
-                elif kast.label.name == '#Exists' and kast.arity == 2 and type(kast.args[0]) is KVariable:
+                elif kast.label.name == '#Exists':
+                    assert kast.arity == 2
+                    assert type(kast.args[0]) is KVariable
                     var = self._kast_to_kore(kast.args[0])
                     body = self._kast_to_kore(kast.args[1], sort=psort)
                     if var is not None and type(var) is EVar and body is not None:
@@ -507,7 +514,8 @@ class KPrint:
                 osort = kast.label.params[0]
                 psort = kast.label.params[1]
 
-                if kast.label.name == '#Equals' and kast.arity == 2:
+                if kast.label.name == '#Equals':
+                    assert kast.arity == 2
                     larg = self._kast_to_kore(kast.args[0], sort=osort)
                     rarg = self._kast_to_kore(kast.args[1], sort=osort)
                     if larg is not None and rarg is not None:
@@ -518,7 +526,8 @@ class KPrint:
                             _equals = self._add_sort_injection(_equals, psort, sort)
                         return _equals
 
-                if kast.label.name == '#Ceil' and kast.arity == 1:
+                if kast.label.name == '#Ceil':
+                    assert kast.arity == 1
                     arg = self._kast_to_kore(kast.args[0], sort=osort)
                     if arg is not None:
                         _ceil: Pattern = Ceil(SortApp('Sort' + osort.name), SortApp('Sort' + psort.name), arg)
