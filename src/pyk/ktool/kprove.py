@@ -402,7 +402,7 @@ class KProve(KPrint):
             if m is not None and type(m['###VAR']) is KVariable:
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
-                raise ValueError(f'Received a non-substitution from implies endpoint: {ml_pred}')
+                raise AssertionError(f'Received a non-substitution from implies endpoint: {ml_pred}')
         return Subst(_subst)
 
     def _write_claim_definition(self, claim: KClaim, claim_id: str, lemmas: Iterable[KRule] = ()) -> Tuple[Path, str]:
