@@ -396,12 +396,12 @@ class KProve(KPrint, ContextManager['KProve']):
             return (Subst({}), ml_pred)
         subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
         _subst: Dict[str, KInner] = {}
-        for ml_pred in flatten_label('#And', ml_subst):
-            m = subst_pattern.match(ml_pred)
+        for subst_pred in flatten_label('#And', ml_subst):
+            m = subst_pattern.match(subst_pred)
             if m is not None and type(m['###VAR']) is KVariable:
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
-                raise AssertionError(f'Received a non-substitution from implies endpoint: {ml_pred}')
+                raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         return (Subst(_subst), ml_pred)
 
     def _write_claim_definition(self, claim: KClaim, claim_id: str, lemmas: Iterable[KRule] = ()) -> Tuple[Path, str]:
