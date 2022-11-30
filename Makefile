@@ -48,7 +48,7 @@ test-pyk: poetry-install
 	$(POETRY_RUN) $(MAKE) -C pyk-tests
 
 test-kit: poetry-install
-	$(POETRY_RUN) $(MAKE) -C kit-tests CHECK=$(CHECK)
+	$(POETRY_RUN) $(MAKE) -C kit-tests CHECK="$(CHECK)"
 
 
 # Checks and formatting
