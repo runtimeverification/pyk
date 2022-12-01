@@ -1,3 +1,4 @@
+from itertools import count
 from typing import Dict, Final, Optional, Tuple
 
 import pytest
@@ -25,7 +26,7 @@ COMPOSE_TEST_DATA: Tuple[Tuple[Dict[str, KInner], Dict[str, KInner], Dict[str, K
 )
 
 
-@pytest.mark.parametrize('subst1,subst2,expected', COMPOSE_TEST_DATA, ids=range(len(COMPOSE_TEST_DATA)))
+@pytest.mark.parametrize('subst1,subst2,expected', COMPOSE_TEST_DATA, ids=count())
 def test_compose(subst1: Dict[str, KInner], subst2: Dict[str, KInner], expected: Dict[str, KInner]) -> None:
     # When
     actual = dict((Subst(subst1) * Subst(subst2)).minimize())
@@ -45,7 +46,7 @@ UNION_TEST_DATA: Tuple[Tuple[Dict[str, KInner], Dict[str, KInner], Optional[Dict
 )
 
 
-@pytest.mark.parametrize('subst1,subst2,expected', UNION_TEST_DATA, ids=range(len(UNION_TEST_DATA)))
+@pytest.mark.parametrize('subst1,subst2,expected', UNION_TEST_DATA, ids=count())
 def test_union(
     subst1: Dict[str, KInner],
     subst2: Dict[str, KInner],
@@ -70,7 +71,7 @@ APPLY_TEST_DATA: Tuple[Tuple[KInner, Dict[str, KInner], KInner], ...] = (
 )
 
 
-@pytest.mark.parametrize('pattern,subst,expected', APPLY_TEST_DATA, ids=range(len(APPLY_TEST_DATA)))
+@pytest.mark.parametrize('pattern,subst,expected', APPLY_TEST_DATA, ids=count())
 def test_apply(pattern: KInner, subst: Dict[str, KInner], expected: KInner) -> None:
     # When
     actual = Subst(subst)(pattern)
@@ -90,7 +91,7 @@ UNAPPLY_TEST_DATA: Tuple[Tuple[KInner, Dict[str, KInner], KInner], ...] = (
 )
 
 
-@pytest.mark.parametrize('term,subst,expected', UNAPPLY_TEST_DATA, ids=range(len(UNAPPLY_TEST_DATA)))
+@pytest.mark.parametrize('term,subst,expected', UNAPPLY_TEST_DATA, ids=count())
 def test_unapply(term: KInner, subst: Dict[str, KInner], expected: KInner) -> None:
     # When
     actual = Subst(subst).unapply(term)
@@ -113,7 +114,7 @@ ML_PRED_TEST_DATA: Final = (
 )
 
 
-@pytest.mark.parametrize('test_id,subst,pred', ML_PRED_TEST_DATA, ids=[test_id for test_id, _, _ in ML_PRED_TEST_DATA])
+@pytest.mark.parametrize('test_id,subst,pred', ML_PRED_TEST_DATA, ids=[test_id for test_id, *_ in ML_PRED_TEST_DATA])
 def test_ml_pred(test_id: str, subst: Subst, pred: KInner) -> None:
     assert subst.ml_pred == pred
 
@@ -132,11 +133,7 @@ EXTRACT_SUBST_TEST_DATA: Final[Tuple[Tuple[KInner, Dict[str, KInner], KInner], .
 )
 
 
-@pytest.mark.parametrize(
-    'term,expected_subst,expected_term',
-    EXTRACT_SUBST_TEST_DATA,
-    ids=range(len(EXTRACT_SUBST_TEST_DATA)),
-)
+@pytest.mark.parametrize('term,expected_subst,expected_term', EXTRACT_SUBST_TEST_DATA, ids=count())
 def test_extract_subst(term: KInner, expected_subst: Dict[str, KInner], expected_term: KInner) -> None:
     # When
     actual_subst, actual_term = extract_subst(term)

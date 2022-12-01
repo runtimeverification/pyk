@@ -38,7 +38,7 @@ PRETTY_PRINT_TEST_DATA = (
 @pytest.mark.parametrize(
     'test_id,kast,expected',
     PRETTY_PRINT_TEST_DATA,
-    ids=[test_id for test_id, _, _ in PRETTY_PRINT_TEST_DATA],
+    ids=[test_id for test_id, *_ in PRETTY_PRINT_TEST_DATA],
 )
 def test_pretty_print(test_id: str, kast: KAst, expected: str) -> None:
     # Given

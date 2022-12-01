@@ -1,3 +1,4 @@
+from itertools import count
 from typing import Any, Dict, Final, Iterator
 from unittest.mock import Mock, patch
 
@@ -99,7 +100,7 @@ SIMPLIFY_TEST_DATA: Final = (
 )
 
 
-@pytest.mark.parametrize('pattern,params,response,expected', EXECUTE_TEST_DATA, ids=range(len(EXECUTE_TEST_DATA)))
+@pytest.mark.parametrize('pattern,params,response,expected', EXECUTE_TEST_DATA, ids=count())
 def test_execute(
     kore_client: KoreClient,
     rpc_client: MockClient,
@@ -119,9 +120,7 @@ def test_execute(
     assert actual == expected
 
 
-@pytest.mark.parametrize(
-    'antecedent,consequent,params,response,expected', IMPLIES_TEST_DATA, ids=range(len(IMPLIES_TEST_DATA))
-)
+@pytest.mark.parametrize('antecedent,consequent,params,response,expected', IMPLIES_TEST_DATA, ids=count())
 def test_implies(
     kore_client: KoreClient,
     rpc_client: MockClient,
@@ -142,7 +141,7 @@ def test_implies(
     assert actual == expected
 
 
-@pytest.mark.parametrize('pattern,params,response,expected', SIMPLIFY_TEST_DATA, ids=range(len(SIMPLIFY_TEST_DATA)))
+@pytest.mark.parametrize('pattern,params,response,expected', SIMPLIFY_TEST_DATA, ids=count())
 def test_simplify(
     kore_client: KoreClient,
     rpc_client: MockClient,

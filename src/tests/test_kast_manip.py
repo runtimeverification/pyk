@@ -1,3 +1,4 @@
+from itertools import count
 from typing import Dict, Final, List, Tuple
 
 import pytest
@@ -32,7 +33,7 @@ PUSH_REWRITES_TEST_DATA: Final = (
 )
 
 
-@pytest.mark.parametrize('term,expected', PUSH_REWRITES_TEST_DATA, ids=range(len(PUSH_REWRITES_TEST_DATA)))
+@pytest.mark.parametrize('term,expected', PUSH_REWRITES_TEST_DATA, ids=count())
 def test_push_down_rewrites(term: KInner, expected: KInner) -> None:
     # When
     actual = push_down_rewrites(term)
@@ -50,11 +51,7 @@ MINIMIZE_TERM_TEST_DATA: Final[Tuple[Tuple[KInner, List[str], List[str], KInner]
 )
 
 
-@pytest.mark.parametrize(
-    'term,abstract_labels,keep_cells,expected',
-    MINIMIZE_TERM_TEST_DATA,
-    ids=range(len(MINIMIZE_TERM_TEST_DATA)),
-)
+@pytest.mark.parametrize('term,abstract_labels,keep_cells,expected', MINIMIZE_TERM_TEST_DATA, ids=count())
 def test_minimize_term(term: KInner, abstract_labels: List[str], keep_cells: List[str], expected: KInner) -> None:
     # When
     actual = minimize_term(term, abstract_labels=abstract_labels, keep_cells=keep_cells)
@@ -128,7 +125,7 @@ ML_TO_BOOL_TEST_DATA: Final = (
 @pytest.mark.parametrize(
     'test_id,unsafe,ml_pred,expected',
     ML_TO_BOOL_TEST_DATA,
-    ids=[test_data[0] for test_data in ML_TO_BOOL_TEST_DATA],
+    ids=[test_id for test_id, *_ in ML_TO_BOOL_TEST_DATA],
 )
 def test_ml_pred_to_bool(test_id: str, unsafe: bool, ml_pred: KInner, expected: KInner) -> None:
     # When
@@ -160,7 +157,7 @@ REMOVE_GENERATED_TEST_DATA = (
 )
 
 
-@pytest.mark.parametrize('term,expected', REMOVE_GENERATED_TEST_DATA, ids=range(len(REMOVE_GENERATED_TEST_DATA)))
+@pytest.mark.parametrize('term,expected', REMOVE_GENERATED_TEST_DATA, ids=count())
 def test_remove_generated_cells(term: KInner, expected: KInner) -> None:
     # When
     actual = remove_generated_cells(term)
@@ -220,11 +217,7 @@ SPLIT_CONFIG_TEST_DATA = (
 )
 
 
-@pytest.mark.parametrize(
-    'term,expected_config,expected_subst',
-    SPLIT_CONFIG_TEST_DATA,
-    ids=range(len(SPLIT_CONFIG_TEST_DATA)),
-)
+@pytest.mark.parametrize('term,expected_config,expected_subst', SPLIT_CONFIG_TEST_DATA, ids=count())
 def test_split_config_from(term: KInner, expected_config: KInner, expected_subst: Dict[str, KInner]) -> None:
     # When
     actual_config, actual_subst = split_config_from(term)
