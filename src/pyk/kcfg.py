@@ -146,6 +146,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     _nodes: Dict[str, Node]
     _edges: Dict[str, Dict[str, Edge]]
     _covers: Dict[str, Dict[str, Cover]]
+    _splits: Dict[str, List[str]]
     _init: Set[str]
     _target: Set[str]
     _expanded: Set[str]
@@ -157,6 +158,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         self._nodes = {}
         self._edges = {}
         self._covers = {}
+        self._splits = {}
         self._init = set()
         self._target = set()
         self._expanded = set()
@@ -238,6 +240,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         expanded = sorted(self._expanded)
         verified = [{'source': source_id, 'target': target_id} for source_id, target_id in sorted(self._verified)]
         aliases = dict(sorted(self._aliases.items()))
+        splits = dict(sorted((k, sorted(v)) for k, v in self._splits.items()))
 
         res = {
             'nodes': nodes,
@@ -248,6 +251,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             'expanded': expanded,
             'verified': verified,
             'aliases': aliases,
+            'splits': splits,
         }
         return {k: v for k, v in res.items() if v}
 
@@ -303,6 +307,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         for alias, id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=resolve(id))
+
+        for split_id, split_ids in dct.get('splits', {}).items():
+            cfg.add_split(split_id, split_ids)
 
         return cfg
 
@@ -538,6 +545,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if source_id != node_id and target_id != node_id
         }
 
+        self._splits = {k: vs for k, vs in self._splits.items() if k != node_id and node_id not in vs}
+
         for alias in [alias for alias, id in self._aliases.items() if id == node_id]:
             self.remove_alias(alias)
 
@@ -581,15 +590,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         source = self.node(source_id)
 
-        def _add_case_edge(_constraint: KInner) -> str:
+        def _add_case_cover(_constraint: KInner) -> str:
             _cterm = source.cterm.add_constraint(_constraint)
             _node = self.get_or_create_node(_cterm)
-            self.create_edge(source.id, _node.id, _constraint, 0)
-            self.add_verified(source.id, _node.id)
+            self.create_cover(source.id, _node.id, constraint=_constraint)
             return _node.id
 
-        branch_node_ids = [_add_case_edge(constraint) for constraint in constraints]
-        self.add_expanded(source.id)
+        branch_node_ids = [_add_case_cover(constraint) for constraint in constraints]
+        self.add_split(source.id, branch_node_ids)
         return branch_node_ids
 
     def remove_edge(self, source_id: str, target_id: str) -> None:
@@ -671,6 +679,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         node_id = self._resolve(node_id)
         self._expanded.add(node_id)
 
+    def add_split(self, node_id: str, node_ids: Iterable[str]) -> None:
+        node_id = self._resolve(node_id)
+        self._splits[node_id] = [self._resolve(nid) for nid in node_ids]
+
     def add_verified(self, source_id: str, target_id: str) -> None:
         source_id = self._resolve(source_id)
         target_id = self._resolve(target_id)
@@ -743,6 +755,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         node_id = self._resolve(node_id)
         return node_id in self._expanded
 
+    def is_split(self, node_id: str) -> bool:
+        node_id = self._resolve(node_id)
+        return node_id in self._splits
+
     def is_leaf(self, node_id: str) -> bool:
         node_id = self._resolve(node_id)
         return node_id not in self._edges
@@ -751,9 +767,22 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         node_id = self._resolve(node_id)
         return node_id in self._covers
 
+    def is_covered_by_non_split(self, node_id: str) -> bool:
+        node_id = self._resolve(node_id)
+        return node_id in self._covers and not any(
+            self.is_split(cover.target.id) for cover in self.covers(source_id=node_id)
+        )
+
     def is_frontier(self, node_id: str) -> bool:
         node_id = self._resolve(node_id)
-        return not any([self.is_target(node_id), self.is_expanded(node_id), self.is_covered(node_id)])
+        return not any(
+            [
+                self.is_target(node_id),
+                self.is_expanded(node_id),
+                self.is_covered_by_non_split(node_id),
+                self.is_split(node_id),
+            ]
+        )
 
     def is_stuck(self, node_id: str) -> bool:
         node_id = self._resolve(node_id)
@@ -778,6 +807,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             attrs.append('frontier')
         if self.is_leaf(node_id):
             attrs.append('leaf')
+        if self.is_split(node_id):
+            attrs.append('split')
         return attrs
 
     def prune(self, node_id: str) -> None:
