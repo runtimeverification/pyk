@@ -240,7 +240,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         expanded = sorted(self._expanded)
         verified = [{'source': source_id, 'target': target_id} for source_id, target_id in sorted(self._verified)]
         aliases = dict(sorted(self._aliases.items()))
-        splits = dict(sorted([(k, sorted(v)) for k, v in self._splits.items()]))
+        splits = dict(sorted((k, sorted(v)) for k, v in self._splits.items()))
 
         res = {
             'nodes': nodes,
