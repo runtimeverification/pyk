@@ -1,6 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from functools import cached_property
 from typing import (
     Any,
     Callable,
@@ -1910,6 +1911,10 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
             + [f'    {sentence.text}' for sentence in self.sentences]
             + ['endmodule ' + _brackd(attr.text for attr in self.attrs)]
         )
+
+    @cached_property
+    def axioms(self) -> Tuple[Axiom, ...]:
+        return tuple(sentence for sentence in self if type(sentence) is Axiom)
 
 
 @final
