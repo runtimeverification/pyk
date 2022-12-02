@@ -1416,17 +1416,26 @@ class RightAssoc(Assoc):
 @dataclass(frozen=True)
 class Attr(Kore):
     symbol: str
+    sorts: Tuple[Sort, ...]
     params: Tuple[Union[String, 'Attr'], ...]
 
-    def __init__(self, symbol: str, params: Iterable[Union[String, 'Attr']] = ()):
+    def __init__(self, symbol: str, sorts: Iterable[Sort] = (), params: Iterable[Union[String, 'Attr']] = ()):
         check_symbol_id(symbol)
         object.__setattr__(self, 'symbol', symbol)
+        object.__setattr__(self, 'sorts', tuple(sorts))
         object.__setattr__(self, 'params', tuple(params))
 
-    def let(self, *, symbol: Optional[str] = None, params: Optional[Iterable[Union[String, 'Attr']]] = None) -> 'Attr':
+    def let(
+        self,
+        *,
+        symbol: Optional[str] = None,
+        sorts: Iterable[Sort] = (),
+        params: Optional[Iterable[Union[String, 'Attr']]] = None,
+    ) -> 'Attr':
         symbol = symbol if symbol is not None else self.symbol
+        sorts = sorts if sorts is not None else self.sorts
         params = params if params is not None else self.params
-        return Attr(symbol=symbol, params=params)
+        return Attr(symbol=symbol, sorts=sorts, params=params)
 
     @classmethod
     def _tag(cls) -> str:
@@ -1442,7 +1451,13 @@ class Attr(Kore):
 
     @property
     def text(self) -> str:
-        return self.symbol + ' { } ' + _parend(param.text for param in self.params)
+        return (
+            self.symbol
+            + ' '
+            + _braced(sort.text for sort in self.sorts)
+            + ' '
+            + _parend(param.text for param in self.params)
+        )
 
 
 class WithAttrs(ABC):
