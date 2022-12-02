@@ -215,7 +215,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         target = sorted(self._target)
         expanded = sorted(self._expanded)
         aliases = dict(sorted(self._aliases.items()))
-        splits = dict(sorted([(k, sorted(v)) for k, v in self._splits.items()]))
+        splits = dict(sorted((k, sorted(v)) for k, v in self._splits.items()))
 
         res = {
             'nodes': nodes,
