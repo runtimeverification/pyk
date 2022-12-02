@@ -203,7 +203,7 @@ class KProve(KPrint, ContextManager['KProve']):
             '--log',
             str(log_file),
             '--log-format',
-            str(haskell_log_format),
+            haskell_log_format.value,
             '--log-entries',
             ','.join(haskell_log_entries),
         ]
