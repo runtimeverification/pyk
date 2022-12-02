@@ -1862,7 +1862,7 @@ class Claim(AxiomLike):
 
 @final
 @dataclass(frozen=True)
-class Module(Kore, WithAttrs):
+class Module(Kore, WithAttrs, Iterable[Sentence]):
     name: str
     sentences: Tuple[Sentence, ...]
     attrs: Tuple[Attr, ...]
@@ -1872,6 +1872,9 @@ class Module(Kore, WithAttrs):
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'sentences', tuple(sentences))
         object.__setattr__(self, 'attrs', tuple(attrs))
+
+    def __iter__(self) -> Iterator[Sentence]:
+        return iter(self.sentences)
 
     def let(
         self,
@@ -1911,13 +1914,16 @@ class Module(Kore, WithAttrs):
 
 @final
 @dataclass(frozen=True)
-class Definition(Kore, WithAttrs):
+class Definition(Kore, WithAttrs, Iterable[Module]):
     modules: Tuple[Module, ...]
     attrs: Tuple[Attr, ...]
 
     def __init__(self, modules: Iterable[Module] = (), attrs: Iterable[Attr] = ()):
         object.__setattr__(self, 'modules', tuple(modules))
         object.__setattr__(self, 'attrs', tuple(attrs))
+
+    def __iter__(self) -> Iterator[Module]:
+        return iter(self.modules)
 
     def let(
         self, *, modules: Optional[Iterable[Module]] = None, attrs: Optional[Iterable[Attr]] = None
