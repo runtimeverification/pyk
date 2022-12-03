@@ -35,20 +35,20 @@ class KompiledDefn:
         return KoreParser(self.path.read_text()).definition()
 
     @cached_property
-    def _subsort_dict(self) -> FrozenDict[Sort, FrozenSet[Sort]]:
-        subsort_dict = _subsort_dict(self.definition)
-        return FrozenDict({supersort: frozenset(subsorts) for supersort, subsorts in subsort_dict.items()})
+    def _subsort_table(self) -> FrozenDict[Sort, FrozenSet[Sort]]:
+        subsort_table = _subsort_table(self.definition)
+        return FrozenDict({supersort: frozenset(subsorts) for supersort, subsorts in subsort_table.items()})
 
     # Strict subsort, i.e. not reflexive
     def _is_subsort(self, subsort: Sort, supersort: Sort) -> bool:
-        return subsort in self._subsort_dict.get(supersort, set())
+        return subsort in self._subsort_table.get(supersort, set())
 
     @cached_property
     def _symbol_table(self) -> FrozenDict[str, SymbolDecl]:
         return FrozenDict(_symbol_table(self.definition))
 
 
-def _subsort_dict(definition: Definition) -> Dict[Sort, Set[Sort]]:
+def _subsort_table(definition: Definition) -> Dict[Sort, Set[Sort]]:
     axioms = (axiom for module in definition for axiom in module.axioms)
     attrs = (attr for axiom in axioms for attr in axiom.attrs)
     subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')

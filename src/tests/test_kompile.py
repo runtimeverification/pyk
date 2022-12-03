@@ -1,8 +1,8 @@
-from pyk.kompile import _subsort_dict
+from pyk.kompile import _subsort_table
 from pyk.kore.syntax import Attr, Axiom, Definition, Module, Sort, SortApp, SortVar, Top
 
 
-def test_subsort_dict() -> None:
+def test_subsort_table() -> None:
     def sort_axiom(subsort: Sort, supersort: Sort) -> Axiom:
         r = SortVar('R')
         return Axiom((r,), Top(r), attrs=(Attr('subsort', (subsort, supersort)),))
@@ -25,7 +25,7 @@ def test_subsort_dict() -> None:
     }
 
     # When
-    actual = _subsort_dict(definition)
+    actual = _subsort_table(definition)
 
     # Then
     assert actual == expected
