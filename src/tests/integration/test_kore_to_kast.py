@@ -1,8 +1,10 @@
+from pathlib import Path
 from typing import Final
 
 import pytest
 
 from pyk.kast.inner import KApply, KInner, KLabel, KSequence, KSort, KToken, KVariable
+from pyk.konvert import KompiledKore, _ksort_to_kore
 from pyk.kore.prelude import BOOL as KORE_BOOL
 from pyk.kore.prelude import BYTES as KORE_BYTES
 from pyk.kore.prelude import INT as KORE_INT
@@ -32,7 +34,7 @@ from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
 
-from .utils import KPrintTest
+from .utils import KompiledTest, KPrintTest
 
 BIDIRECTIONAL_TEST_DATA: Final = (
     (
@@ -440,3 +442,39 @@ class TestKoreToKast(KPrintTest):
 
         # Then
         assert actual_kast == kast
+
+
+class TestKoreToKastNew(KompiledTest):
+    KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
+
+    @pytest.fixture(scope='class')
+    def kompiled_kore(self, definition_dir: Path) -> KompiledKore:
+        return KompiledKore(definition_dir)
+
+    @pytest.mark.parametrize(
+        'test_id,sort,expected,kast',
+        BIDIRECTIONAL_TEST_DATA,
+        ids=[test_id for test_id, *_ in BIDIRECTIONAL_TEST_DATA],
+    )
+    def test_bidirectional(
+        self, kompiled_kore: KompiledKore, test_id: str, sort: KSort, expected: Pattern, kast: KInner
+    ) -> None:
+        # When
+        actual = kompiled_kore.kast_to_kore(kast, sort=_ksort_to_kore(sort), with_inj=True)
+
+        # Then
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        'test_id,sort,expected,kast',
+        KAST_TO_KORE_TEST_DATA,
+        ids=[test_id for test_id, *_ in KAST_TO_KORE_TEST_DATA],
+    )
+    def test_kast_to_kore(
+        self, kompiled_kore: KompiledKore, test_id: str, sort: KSort, expected: Pattern, kast: KInner
+    ) -> None:
+        # When
+        actual = kompiled_kore.kast_to_kore(kast, sort=_ksort_to_kore(sort), with_inj=True)
+
+        # Then
+        assert actual == expected

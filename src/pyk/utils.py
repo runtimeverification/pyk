@@ -1,4 +1,5 @@
 import hashlib
+import itertools
 import string
 from typing import (
     Any,
@@ -11,6 +12,7 @@ from typing import (
     Iterator,
     List,
     Mapping,
+    MutableMapping,
     Optional,
     Tuple,
     Type,
@@ -31,6 +33,7 @@ R2 = TypeVar('R2')
 R3 = TypeVar('R3')
 R4 = TypeVar('R4')
 T = TypeVar('T')
+S = TypeVar('S')
 K = TypeVar('K')
 V = TypeVar('V')
 H = TypeVar('H', bound=Hashable)
@@ -73,6 +76,77 @@ class FrozenDict(Mapping[K, V]):
 
 
 EMPTY_FROZEN_DICT: Final[FrozenDict] = FrozenDict()
+
+
+class Scope(MutableMapping[str, T]):
+    _name: str
+    _symbols: Dict[str, T]
+    _parent: Optional['Scope[T]']
+    _children: Dict[str, 'Scope[T]']
+
+    def __init__(self, name: str, parent: Optional['Scope[T]'] = None):
+        self._name = name
+        self._parent = parent
+        self._symbols = {}
+        self._children = {}
+
+    def __getitem__(self, key: str) -> T:
+        if key in self._symbols:
+            return self._symbols[key]
+        if self._parent is not None:
+            return self._parent[key]
+        raise KeyError(key)
+
+    def __setitem__(self, key: str, value: T) -> None:
+        self._symbols[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        if key in self._symbols:
+            del self._symbols[key]
+        elif self._parent is not None:
+            del self._parent[key]
+        else:
+            raise KeyError(key)
+
+    def __iter__(self) -> Iterator[str]:
+        if self._parent is None:
+            return iter(self._symbols)
+        return unique(itertools.chain(iter(self._symbols), iter(self._parent)))
+
+    def __len__(self) -> int:
+        return len(set(self))
+
+    def __str__(self) -> str:
+        return f'Scope({dict(self)})'
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def push_scope(self, name: str) -> 'Scope[T]':
+        if name in self._children:
+            raise ValueError(f'Scope with name {name} already defined')
+        child = Scope(name, self)
+        self._children[name] = child
+        return child
+
+    def pop_scope(self) -> 'Scope[T]':
+        if self._parent is None:
+            raise ValueError('Root scope cannot be popped')
+        self._parent._children.pop(self._name)
+        parent = self._parent
+        self._parent = None
+        return parent
+
+    def child_scope(self, name: str) -> 'Scope[T]':
+        return self._children[name]
+
+    def map(self, f: Callable[[T], S]) -> 'Scope[S]':
+        scope: Scope[S] = Scope(self._name)
+        scope._symbols = {key: f(value) for key, value in self._symbols.items()}
+        scope._children = {name: child.map(f) for name, child in self._children.items()}
+        for child in scope._children.values():
+            child._parent = scope
+        return scope
 
 
 def check_type(x: Any, typ: Type[T]) -> T:
