@@ -6,7 +6,7 @@ from typing import Dict, FrozenSet, Set, Union, final
 
 from .cli_utils import check_dir_path, check_file_path
 from .kore.parser import KoreParser
-from .kore.syntax import Definition, Sort
+from .kore.syntax import Definition, Sort, SymbolDecl
 from .utils import FrozenDict
 
 
@@ -43,6 +43,10 @@ class KompiledDefn:
     def _is_subsort(self, subsort: Sort, supersort: Sort) -> bool:
         return subsort in self._subsort_dict.get(supersort, set())
 
+    @cached_property
+    def _symbol_table(self) -> FrozenDict[str, SymbolDecl]:
+        return FrozenDict(_symbol_table(self.definition))
+
 
 def _subsort_dict(definition: Definition) -> Dict[Sort, Set[Sort]]:
     axioms = (axiom for module in definition for axiom in module.axioms)
@@ -55,3 +59,8 @@ def _subsort_dict(definition: Definition) -> Dict[Sort, Set[Sort]]:
         res[supersort].add(subsort)
 
     return res
+
+
+def _symbol_table(definition: Definition) -> Dict[str, SymbolDecl]:
+    symbol_decls = (symbol_decl for module in definition for symbol_decl in module.symbol_decls)
+    return {symbol_decl.symbol.name: symbol_decl for symbol_decl in symbol_decls}
