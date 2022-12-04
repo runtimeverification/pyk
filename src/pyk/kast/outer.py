@@ -1000,7 +1000,7 @@ class KDefinition(KOuter, WithKAtt):
 
     def subsorts(self, sort: KSort) -> List[KSort]:
         if sort not in self._subsorts:
-            self._subsorts[sort] = list(set(self._compute_subsorts(sort)))
+            self._subsorts[sort] = self._compute_subsorts(sort)
         return self._subsorts[sort]
 
     def _compute_subsorts(self, sort: KSort) -> List[KSort]:
@@ -1009,7 +1009,7 @@ class KDefinition(KOuter, WithKAtt):
             if prod.sort == sort and len(prod.items) == 1 and type(prod.items[0]) is KNonTerminal:
                 _subsort = prod.items[0].sort
                 _subsorts.extend([_subsort] + self.subsorts(prod.items[0].sort))
-        return _subsorts
+        return list(set(_subsorts))
 
     def sort_vars_subst(self, kast: KInner) -> Subst:
         _var_sort_occurrences = var_occurrences(kast)
