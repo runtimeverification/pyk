@@ -2,7 +2,7 @@ from typing import Final
 
 import pytest
 
-from pyk.kast.inner import KApply, KInner, KLabel, KSequence, KSort, KToken, KVariable
+from pyk.kast.inner import KApply, KInner, KLabel, KSequence, KSort, KVariable
 from pyk.kore.syntax import (
     DV,
     And,
@@ -22,6 +22,7 @@ from pyk.kore.syntax import (
     Top,
 )
 from pyk.ktool import KPrint
+from pyk.prelude.bytes import bytesToken
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
@@ -45,8 +46,8 @@ BIDIRECTIONAL_TEST_DATA: Final = (
     (
         'domain-value-bytes',
         KSort('Bytes'),
-        DV(SortApp('SortBytes'), String('0000')),
-        KToken('b"0000"', KSort('Bytes')),
+        DV(SortApp('SortBytes'), String(chr(0) + chr(60) + chr(96) + chr(245))),
+        bytesToken(chr(0) + chr(60) + chr(96) + chr(245)),
     ),
     (
         'ml-top',
