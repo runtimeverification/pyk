@@ -138,8 +138,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 subst_str = 'OMITTED SUBST'
             if len(subst_strs) > 1 and not minimize:
                 subst_str = '{\n    ' + '\n    '.join(subst_strs) + '\n}'
+            constraint_str = kprint.pretty_print(ml_pred_to_bool(self.constraint, unsafe=True))
+            if len(constraint_str) > 78:
+                constraint_str = 'OMITTED CONSTRAINT'
             return [
-                f'constraint: {kprint.pretty_print(ml_pred_to_bool(self.constraint))}',
+                f'constraint: {constraint_str}',
                 f'subst: {subst_str}',
             ]
 
