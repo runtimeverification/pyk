@@ -52,6 +52,7 @@ from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 from ..prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
 from ..prelude.string import STRING, stringToken
+from ..utils import enquote_str
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -409,16 +410,7 @@ class KPrint:
             return None
 
         if type(kast) is KToken:
-            value = kast.token
-            if kast.sort == STRING:
-                assert value.startswith('"')
-                assert value.endswith('"')
-                value = value[1:-1]
-            if kast.sort == BYTES:
-                assert value.startswith('b"')
-                assert value.endswith('"')
-                value = value[2:-1]
-            dv: Pattern = DV(SortApp('Sort' + kast.sort.name), String(value))
+            dv: Pattern = DV(SortApp('Sort' + kast.sort.name), String(kast.token))
             if sort is not None:
                 dv = self._add_sort_injection(dv, kast.sort, sort)
             return dv
@@ -616,6 +608,10 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
     if type(kast) is KSort:
         return kast.name
     if type(kast) is KToken:
+        if kast.sort == BYTES:
+            return 'b"' + enquote_str(kast.token) + '"'
+        if kast.sort == STRING:
+            return '"' + enquote_str(kast.token) + '"'
         return kast.token
     if type(kast) is KApply:
         label = kast.label.name
