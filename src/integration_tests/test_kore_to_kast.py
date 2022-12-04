@@ -290,6 +290,44 @@ KAST_TO_KORE_TEST_DATA: Final = (
         ),
         KApply(KLabel('#Exists', [KSort('Foo')]), [KVariable('X'), KApply('foo', [KVariable('X')])]),
     ),
+    (
+        'ksequence-empty',
+        KSort('K'),
+        App('dotk', [], []),
+        KSequence([]),
+    ),
+    (
+        'ksequence-singleton-var',
+        KSort('K'),
+        EVar('VarCONT', SortApp('SortK')),
+        KSequence([KVariable('CONT')]),
+    ),
+    (
+        'ksequence-duo-var-1',
+        KSort('K'),
+        App(
+            'kseq',
+            (),
+            [
+                EVar('VarELEM', SortApp('SortKItem')),
+                EVar('VarCONT', SortApp('SortK')),
+            ],
+        ),
+        KSequence([KVariable('ELEM'), KVariable('CONT')]),
+    ),
+    (
+        'ksequence-duo-var-2',
+        KSort('K'),
+        App(
+            'kseq',
+            (),
+            [
+                EVar('VarELEM1', SortApp('SortKItem')),
+                App('kseq', (), [EVar('VarELEM2', SortApp('SortKItem')), App('dotk', (), ())]),
+            ],
+        ),
+        KSequence([KVariable('ELEM1', sort=KSort('KItem')), KVariable('ELEM2', sort=KSort('KItem'))]),
+    ),
 )
 
 KORE_TO_KAST_TEST_DATA: Final = (
