@@ -20,6 +20,7 @@ from typing import (
     final,
 )
 
+from ..utils import check_type
 from .lexer import KoreLexer, KoreStringLexer
 
 
@@ -98,6 +99,7 @@ T = TypeVar('T', bound='Kore')
 P = TypeVar('P', bound='Pattern')
 WS = TypeVar('WS', bound='WithSort')
 WA = TypeVar('WA', bound='WithAttrs')
+ML = TypeVar('ML', bound='MLPattern')
 
 
 def unsupported() -> Any:
@@ -444,6 +446,23 @@ class MLPattern(Pattern):
     def symbol(cls) -> str:
         ...
 
+    @classmethod
+    def of(cls: Type[ML], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> ML:
+        actual_cls = ML_SYMBOLS.get(symbol)
+
+        if not actual_cls:
+            raise ValueError(f'Invalid MLPattern symbol: {symbol}')
+
+        if not issubclass(actual_cls, cls):
+            raise ValueError(f'Expected {cls.__name__} symbol, found: {symbol}')
+
+        return actual_cls.of(symbol, sorts, patterns)
+
+    @classmethod
+    def _check_symbol(cls: Type[ML], symbol: str) -> None:
+        if symbol != cls.symbol():
+            raise ValueError(f"Expected '{cls.symbol()}' as symbol, found: '{symbol}'")
+
     @property
     @abstractmethod
     def sorts(self) -> Tuple[Sort, ...]:
@@ -505,6 +524,13 @@ class Top(NullaryConn):
         return '\\top'
 
     @classmethod
+    def of(cls: Type['Top'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Top':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        () = patterns
+        return Top(sort=sort)
+
+    @classmethod
     def from_dict(cls: Type['Top'], dct: Mapping[str, Any]) -> 'Top':
         cls._check_tag(dct)
         return Top(sort=Sort.from_dict(dct['sort']))
@@ -532,6 +558,13 @@ class Bottom(NullaryConn):
     @classmethod
     def symbol(cls) -> str:
         return '\\bottom'
+
+    @classmethod
+    def of(cls: Type['Bottom'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Bottom':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        () = patterns
+        return Bottom(sort=sort)
 
     @classmethod
     def from_dict(cls: Type['Bottom'], dct: Mapping[str, Any]) -> 'Bottom':
@@ -575,6 +608,13 @@ class Not(UnaryConn):
     @classmethod
     def symbol(cls) -> str:
         return '\\not'
+
+    @classmethod
+    def of(cls: Type['Not'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Not':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        (pattern,) = patterns
+        return Not(sort=sort, pattern=pattern)
 
     @classmethod
     def from_dict(cls: Type['Not'], dct: Mapping[str, Any]) -> 'Not':
@@ -638,6 +678,13 @@ class And(BinaryConn):
         return '\\and'
 
     @classmethod
+    def of(cls: Type['And'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'And':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        left, right = patterns
+        return And(sort=sort, left=left, right=right)
+
+    @classmethod
     def from_dict(cls: Type['And'], dct: Mapping[str, Any]) -> 'And':
         cls._check_tag(dct)
         return And(
@@ -679,6 +726,13 @@ class Or(BinaryConn):
     @classmethod
     def symbol(cls) -> str:
         return '\\or'
+
+    @classmethod
+    def of(cls: Type['Or'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Or':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        left, right = patterns
+        return Or(sort=sort, left=left, right=right)
 
     @classmethod
     def from_dict(cls: Type['Or'], dct: Mapping[str, Any]) -> 'Or':
@@ -724,6 +778,15 @@ class Implies(BinaryConn):
         return '\\implies'
 
     @classmethod
+    def of(
+        cls: Type['Implies'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()
+    ) -> 'Implies':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        left, right = patterns
+        return Implies(sort=sort, left=left, right=right)
+
+    @classmethod
     def from_dict(cls: Type['Implies'], dct: Mapping[str, Any]) -> 'Implies':
         cls._check_tag(dct)
         return Implies(
@@ -765,6 +828,13 @@ class Iff(BinaryConn):
     @classmethod
     def symbol(cls) -> str:
         return '\\iff'
+
+    @classmethod
+    def of(cls: Type['Iff'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Iff':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        left, right = patterns
+        return Iff(sort=sort, left=left, right=right)
 
     @classmethod
     def from_dict(cls: Type['Iff'], dct: Mapping[str, Any]) -> 'Iff':
@@ -834,6 +904,14 @@ class Exists(MLQuant):
         return '\\exists'
 
     @classmethod
+    def of(cls: Type['Exists'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Exists':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        var, pattern = patterns
+        var = check_type(var, EVar)
+        return Exists(sort=sort, var=var, pattern=pattern)
+
+    @classmethod
     def from_dict(cls: Type['Exists'], dct: Mapping[str, Any]) -> 'Exists':
         cls._check_tag(dct)
         return Exists(
@@ -875,6 +953,14 @@ class Forall(MLQuant):
     @classmethod
     def symbol(cls) -> str:
         return '\\forall'
+
+    @classmethod
+    def of(cls: Type['Forall'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Forall':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        var, pattern = patterns
+        var = check_type(var, EVar)
+        return Forall(sort=sort, var=var, pattern=pattern)
 
     @classmethod
     def from_dict(cls: Type['Forall'], dct: Mapping[str, Any]) -> 'Forall':
@@ -931,6 +1017,14 @@ class Mu(MLFixpoint):
         return '\\mu'
 
     @classmethod
+    def of(cls: Type['Mu'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Mu':
+        cls._check_symbol(symbol)
+        () = sorts
+        var, pattern = patterns
+        var = check_type(var, SVar)
+        return Mu(var=var, pattern=pattern)
+
+    @classmethod
     def from_dict(cls: Type['Mu'], dct: Mapping[str, Any]) -> 'Mu':
         cls._check_tag(dct)
         return Mu(
@@ -960,6 +1054,14 @@ class Nu(MLFixpoint):
     @classmethod
     def symbol(cls) -> str:
         return '\\nu'
+
+    @classmethod
+    def of(cls: Type['Nu'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Nu':
+        cls._check_symbol(symbol)
+        () = sorts
+        var, pattern = patterns
+        var = check_type(var, SVar)
+        return Nu(var=var, pattern=pattern)
 
     @classmethod
     def from_dict(cls: Type['Nu'], dct: Mapping[str, Any]) -> 'Nu':
@@ -1029,6 +1131,13 @@ class Ceil(RoundPred):
         return '\\ceil'
 
     @classmethod
+    def of(cls: Type['Ceil'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Ceil':
+        cls._check_symbol(symbol)
+        op_sort, sort = sorts
+        (pattern,) = patterns
+        return Ceil(op_sort=op_sort, sort=sort, pattern=pattern)
+
+    @classmethod
     def from_dict(cls: Type['Ceil'], dct: Mapping[str, Any]) -> 'Ceil':
         cls._check_tag(dct)
         return Ceil(
@@ -1070,6 +1179,13 @@ class Floor(RoundPred):
     @classmethod
     def symbol(cls) -> str:
         return '\\floor'
+
+    @classmethod
+    def of(cls: Type['Floor'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Floor':
+        cls._check_symbol(symbol)
+        op_sort, sort = sorts
+        (pattern,) = patterns
+        return Floor(op_sort=op_sort, sort=sort, pattern=pattern)
 
     @classmethod
     def from_dict(cls: Type['Floor'], dct: Mapping[str, Any]) -> 'Floor':
@@ -1141,6 +1257,13 @@ class Equals(BinaryPred):
         return '\\equals'
 
     @classmethod
+    def of(cls: Type['Equals'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Equals':
+        cls._check_symbol(symbol)
+        op_sort, sort = sorts
+        left, right = patterns
+        return Equals(op_sort=op_sort, sort=sort, left=left, right=right)
+
+    @classmethod
     def from_dict(cls: Type['Equals'], dct: Mapping[str, Any]) -> 'Equals':
         cls._check_tag(dct)
         return Equals(
@@ -1188,6 +1311,13 @@ class In(BinaryPred):
         return '\\in'
 
     @classmethod
+    def of(cls: Type['In'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'In':
+        cls._check_symbol(symbol)
+        op_sort, sort = sorts
+        left, right = patterns
+        return In(op_sort=op_sort, sort=sort, left=left, right=right)
+
+    @classmethod
     def from_dict(cls: Type['In'], dct: Mapping[str, Any]) -> 'In':
         cls._check_tag(dct)
         return In(
@@ -1228,6 +1358,13 @@ class Next(MLRewrite):
     @classmethod
     def symbol(cls) -> str:
         return '\\next'
+
+    @classmethod
+    def of(cls: Type['Next'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'Next':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        (pattern,) = patterns
+        return Next(sort=sort, pattern=pattern)
 
     @classmethod
     def from_dict(cls: Type['Next'], dct: Mapping[str, Any]) -> 'Next':
@@ -1280,6 +1417,15 @@ class Rewrites(MLRewrite):
         return '\\rewrites'
 
     @classmethod
+    def of(
+        cls: Type['Rewrites'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()
+    ) -> 'Rewrites':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        left, right = patterns
+        return Rewrites(sort=sort, left=left, right=right)
+
+    @classmethod
     def from_dict(cls: Type['Rewrites'], dct: Mapping[str, Any]) -> 'Rewrites':
         cls._check_tag(dct)
         return Rewrites(
@@ -1326,6 +1472,14 @@ class DV(MLPattern, WithSort):
     @classmethod
     def symbol(cls) -> str:
         return '\\dv'
+
+    @classmethod
+    def of(cls: Type['DV'], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> 'DV':
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        (value,) = patterns
+        value = check_type(value, String)
+        return DV(sort=sort, value=value)
 
     @classmethod
     def from_dict(cls: Type['DV'], dct: Mapping[str, Any]) -> 'DV':
@@ -1406,6 +1560,19 @@ class LeftAssoc(Assoc):
         return '\\left-assoc'
 
     @classmethod
+    def of(
+        cls: Type['LeftAssoc'],
+        symbol: str,
+        sorts: Iterable[Sort] = (),
+        patterns: Iterable[Pattern] = (),
+    ) -> 'LeftAssoc':
+        cls._check_symbol(symbol)
+        () = sorts
+        (app,) = patterns
+        app = check_type(app, App)
+        return LeftAssoc(app=app)
+
+    @classmethod
     def from_dict(cls: Type['LeftAssoc'], dct: Mapping[str, Any]) -> 'LeftAssoc':
         cls._check_tag(dct)
         return LeftAssoc(app=App.from_dict(dct['app']))
@@ -1443,9 +1610,46 @@ class RightAssoc(Assoc):
         return '\\right-assoc'
 
     @classmethod
+    def of(
+        cls: Type['RightAssoc'],
+        symbol: str,
+        sorts: Iterable[Sort] = (),
+        patterns: Iterable[Pattern] = (),
+    ) -> 'RightAssoc':
+        cls._check_symbol(symbol)
+        () = sorts
+        (app,) = patterns
+        app = check_type(app, App)
+        return RightAssoc(app=app)
+
+    @classmethod
     def from_dict(cls: Type['RightAssoc'], dct: Mapping[str, Any]) -> 'RightAssoc':
         cls._check_tag(dct)
         return RightAssoc(app=App.from_dict(dct['app']))
+
+
+ML_SYMBOLS: Final = {
+    r'\top': Top,
+    r'\bottom': Bottom,
+    r'\not': Not,
+    r'\and': And,
+    r'\or': Or,
+    r'\implies': Implies,
+    r'\iff': Iff,
+    r'\exists': Exists,
+    r'\forall': Forall,
+    r'\mu': Mu,
+    r'\nu': Nu,
+    r'\ceil': Ceil,
+    r'\floor': Floor,
+    r'\equals': Equals,
+    r'\in': In,
+    r'\next': Next,
+    r'\rewrites': Rewrites,
+    r'\dv': DV,
+    r'\left-assoc': LeftAssoc,
+    r'\right-assoc': RightAssoc,
+}
 
 
 @final
