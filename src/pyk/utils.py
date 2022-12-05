@@ -236,17 +236,17 @@ def compare_short_hashes(lhs: str, rhs: str) -> bool:
 def enquote_str(orig_s: str) -> str:
     def enquote_char(orig_c: str) -> str:
         if orig_c == '"':
-            return '\\"'
+            return r'\"'
         elif orig_c == '\\':
-            return '\\\\'
+            return r'\\'
         elif orig_c == '\n':
-            return '\\n'
+            return r'\n'
         elif orig_c == '\t':
-            return '\\t'
+            return r'\t'
         elif orig_c == '\r':
-            return '\\r'
+            return r'\r'
         elif orig_c == '\f':
-            return '\\f'
+            return r'\f'
         else:
             ord_c = ord(orig_c)
             if 32 <= ord_c and ord_c < 127:
