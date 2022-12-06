@@ -341,7 +341,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         node_header = shorten_hash(node.id) + attr_string
         node_strs = [node_header]
         if node_printer:
-            node_strs.extend(node_printer(node.cterm))
+            node_strs.extend(f' {nl}' for nl in node_printer(node.cterm))
         return node_strs
 
     def pretty(
