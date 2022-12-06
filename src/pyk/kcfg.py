@@ -413,7 +413,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
                 next_ret = _print_subgraph(indent + new_indent, edge_like.target, prior_on_trace + [edge_like.source])
                 if is_branch:
-                    next_ret.append(new_indent.rstrip())
+                    next_ret.append(indent + new_indent.rstrip())
 
                 if is_last_child and len(next_ret) > 0:
                     ret.extend(add_indent(indent + node_indent, ['']))
