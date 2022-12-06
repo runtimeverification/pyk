@@ -259,9 +259,9 @@ def enquote_str(orig_s: str) -> str:
             if 32 <= ord_c and ord_c < 127:
                 return orig_c
             elif ord_c < 16:
-                return '\\x0' + hex(ord(orig_c))[2:]
+                return r'\x0' + hex(ord(orig_c))[2:]
             elif ord_c <= 255:
-                return '\\x' + hex(ord(orig_c))[2:]
+                return r'\x' + hex(ord(orig_c))[2:]
             else:
                 raise ValueError(f'Unsupported character for enquoting: {orig_c}')
 
