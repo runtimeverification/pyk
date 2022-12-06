@@ -1,13 +1,46 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cached_property, reduce
 from pathlib import Path
-from typing import Dict, Final, FrozenSet, Optional, Set, Union, final
+from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union, final
+
+from pyk.kast.inner import KApply, KInner, KLabel, KSequence, KSort, KToken, KVariable
+from pyk.kore.syntax import DV, App, EVar, MLPattern, Pattern, SortApp, SortVar, String
+from pyk.prelude.bytes import BYTES
+from pyk.prelude.string import STRING
 
 from .cli_utils import check_dir_path, check_file_path
 from .kore.parser import KoreParser
 from .kore.syntax import Definition, Sort, SymbolDecl
 from .utils import FrozenDict
+
+ML_CONN_LABELS: Final = {
+    '#Top': r'\top',
+    '#Bottom': r'\bottom',
+    '#Not': r'\not',
+    '#And': r'\and',
+    '#Or': r'\or',
+    '#Implies': r'\implies',
+    '#Iff': r'\iff',
+}
+
+ML_QUANT_LABELS: Final = {
+    '#Exists': r'\exists',
+    '#Forall': r'\forall',
+}
+
+ML_PRED_LABELS: Final = {
+    '#Ceil': r'\ceil',
+    '#Floor': r'\floor',
+    '#Equals': r'\equals',
+    '#In': r'\in',
+}
+
+ML_PATTERN_LABELS: Final = dict(
+    **ML_CONN_LABELS,
+    **ML_QUANT_LABELS,
+    **ML_PRED_LABELS,
+)
 
 
 @final
@@ -46,6 +79,135 @@ class KompiledDefn:
     @cached_property
     def _symbol_table(self) -> FrozenDict[str, SymbolDecl]:
         return FrozenDict(_symbol_table(self.definition))
+
+    def kast_to_kore(self, kast: KInner, sort: Optional[Sort] = None) -> Pattern:
+        if not sort:
+            sort = SortApp('SortKItem')
+
+        pattern = self._kast_to_kore(kast, sort)
+        pattern = self._meet_var_sorts(pattern)
+        return pattern
+
+    def _kast_to_kore(self, kast: KInner, sort: Sort) -> Pattern:
+        pattern: Pattern
+
+        if type(kast) is KVariable:
+            pattern = _kvariable_to_kore(kast, sort)
+        elif type(kast) is KToken:
+            pattern = _ktoken_to_kore(kast)
+        elif type(kast) is KSequence:
+            pattern = self._ksequence_to_kore(kast)
+        elif type(kast) is KApply:
+            pattern = self._kapply_to_kore(kast)
+        else:
+            raise ValueError(f'Unsupported KAst: {kast}')
+
+        pattern = self._inject(pattern, sort)
+        return pattern
+
+    def _ksequence_to_kore(self, kseq: KSequence) -> App:
+        patterns = tuple(self._kast_to_kore(item, SortApp('SortKItem')) for item in kseq)
+        return reduce(lambda x, y: App('kseq', (), (y, x)), reversed(patterns), App('dotk'))
+
+    def _kapply_to_kore(self, kapply: KApply) -> Pattern:
+        if kapply.label.name in ML_PATTERN_LABELS:
+            return self._kapply_to_ml_pattern(kapply)
+
+        return self._kapply_to_app(kapply)
+
+    def _kapply_to_ml_pattern(self, kapply: KApply) -> MLPattern:
+        label = kapply.label
+        symbol = ML_PATTERN_LABELS[label.name]
+        sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
+
+        sort: Sort
+        if label.name in ML_PRED_LABELS:
+            _, sort = sorts
+        else:
+            (sort,) = sorts
+
+        patterns: Iterable[Pattern]
+        if label.name in ML_QUANT_LABELS:
+            kvar, kast = kapply.args
+            var = self._kast_to_kore(kvar, SortApp('SortKItem'))
+            pattern = self._kast_to_kore(kast, sort)
+            patterns = (var, pattern)
+        else:
+            patterns = (self._kast_to_kore(arg, sort) for arg in kapply.args)
+
+        return MLPattern.of(symbol, sorts, patterns)
+
+    def _kapply_to_app(self, kapply: KApply) -> App:
+        label = kapply.label
+        symbol, _, pattern_sorts = self._resolve_label(label)
+        sorts = (_ksort_to_kore(ksort) for ksort in label.params)
+
+        nr_pattern_sorts = len(pattern_sorts)
+        if kapply.arity != nr_pattern_sorts:
+            raise ValueError(f'Expected {nr_pattern_sorts} parameters, got {kapply.arity} in: {kapply}')
+
+        patterns = (self._kast_to_kore(kast, sort) for kast, sort in zip(kapply.args, pattern_sorts))
+
+        return App(symbol, sorts, patterns)
+
+    def _resolve_label(self, label: KLabel) -> Tuple[str, Sort, Tuple[Sort, ...]]:
+        symbol_id = 'Lbl' + unmunge(label.name)
+
+        symbol_decl = self._symbol_table.get(symbol_id)
+        if not symbol_decl:
+            raise ValueError(f'Undeclared symbol: {symbol_id}')
+
+        symbol = symbol_decl.symbol
+
+        nr_sort_vars = len(symbol.vars)
+        nr_param_sorts = len(label.params)
+        if nr_sort_vars != nr_param_sorts:
+            raise ValueError(f'Expected {nr_sort_vars} sort parameters, got {nr_param_sorts} in: {label}')
+
+        sort_table: Dict[Sort, Sort] = dict(zip(symbol.vars, (_ksort_to_kore(param) for param in label.params)))
+
+        def resolve(sort: Sort) -> Sort:
+            if type(sort) is SortVar:
+                return sort_table.get(sort, sort)
+            return sort
+
+        res_sort = resolve(symbol_decl.sort)
+        param_sorts = tuple(resolve(sort) for sort in symbol_decl.param_sorts)
+
+        return symbol_id, res_sort, tuple(param_sorts)
+
+    def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
+        # TODO
+        return pattern
+
+    def _meet_var_sorts(self, pattern: Pattern) -> Pattern:
+        # TODO
+        return pattern
+
+
+def _ksort_to_kore(ksort: KSort) -> SortApp:
+    return SortApp('Sort' + ksort.name)
+
+
+def _kvariable_to_kore(kvar: KVariable, sort: Sort) -> EVar:
+    return EVar('Var' + munge(kvar.name), sort)
+
+
+def _ktoken_to_kore(ktoken: KToken) -> DV:
+    token = ktoken.token
+    sort = ktoken.sort
+
+    if sort == STRING:
+        assert token.startswith('"')
+        assert token.endswith('"')
+        return DV(_ksort_to_kore(sort), String(token[1:-1]))
+
+    if sort == BYTES:
+        assert token.startswith('b"')
+        assert token.endswith('"')
+        return DV(_ksort_to_kore(sort), String(token[2:-1]))
+
+    return DV(_ksort_to_kore(sort), String(token))
 
 
 def _subsort_table(definition: Definition) -> Dict[Sort, Set[Sort]]:
