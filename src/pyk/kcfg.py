@@ -335,7 +335,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     def from_json(s: str) -> 'KCFG':
         return KCFG.from_dict(json.loads(s))
 
-    def node_short_info(self, node: Node, node_printer: Optional[Callable[[CTerm], List[str]]] = None) -> List[str]:
+    def node_short_info(self, node: Node, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None) -> List[str]:
         attrs = self.node_attrs(node.id) + ['@' + alias for alias in sorted(self.aliases(node.id))]
         attr_string = ' (' + ', '.join(attrs) + ')' if attrs else ''
         node_header = shorten_hash(node.id) + attr_string
@@ -345,7 +345,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return node_strs
 
     def pretty(
-        self, kprint: KPrint, minimize: bool = True, node_printer: Optional[Callable[[CTerm], List[str]]] = None
+        self, kprint: KPrint, minimize: bool = True, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None
     ) -> Iterable[str]:
 
         processed_nodes: List[KCFG.Node] = []
