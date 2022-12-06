@@ -396,7 +396,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 else:
                     elbow = '┣━'
                     new_indent = '┃   '
-                    node_indent = '┃   '
+                    node_indent = '┃   │'
 
                 if isinstance(edge_like, KCFG.Edge) and edge_like.depth:
                     ret.append(indent + '│')
