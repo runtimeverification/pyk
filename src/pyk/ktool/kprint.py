@@ -52,6 +52,7 @@ from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 from ..prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
 from ..prelude.string import STRING, stringToken
+from ..utils import enquote_str
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -414,10 +415,12 @@ class KPrint:
                 assert value.startswith('"')
                 assert value.endswith('"')
                 value = value[1:-1]
-            if kast.sort == BYTES:
+            elif kast.sort == BYTES:
                 assert value.startswith('b"')
                 assert value.endswith('"')
                 value = value[2:-1]
+            else:
+                value = enquote_str(value)
             dv: Pattern = DV(SortApp('Sort' + kast.sort.name), String(value))
             if sort is not None:
                 dv = self._add_sort_injection(dv, kast.sort, sort)
