@@ -369,16 +369,19 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if curr_node in processed_nodes:
                 if not edges_from:
                     return ret
+                ret.append(indent + '┊')
                 if curr_node in prior_on_trace:
-                    ret.append(indent + '┊ (looped back)')
+                    ret.append(indent + '└╌ (looped back)')
                 else:
-                    ret.append(indent + '┊ (continues as previously)')
+                    ret.append(indent + '└╌ (continues as previously)')
                 return ret
             processed_nodes.append(curr_node)
 
             num_children = len(edges_from)
             is_cover = num_children == 1 and isinstance(edges_from[0], KCFG.Cover)
             is_branch = num_children > 1
+            if is_branch:
+                ret.append(indent + '│')
             for i, edge_like in enumerate(edges_from):
                 is_last_child = i == num_children - 1
 
@@ -396,10 +399,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     node_indent = '┃   '
 
                 if isinstance(edge_like, KCFG.Edge) and edge_like.depth:
+                    ret.append(indent + '│')
                     if self.is_verified(edge_like.source.id, edge_like.target.id):
                         ret.append(indent + '│  ' + _bold(_green('(verified)')))
                     ret.extend(add_indent(indent + '│  ', edge_like.pretty(kprint)))
                 elif isinstance(edge_like, KCFG.Cover):
+                    ret.append(indent + '┊')
                     ret.extend(add_indent(indent + '┊  ', edge_like.pretty(kprint, minimize=minimize)))
                 target_strs = _print_node(edge_like.target)
                 ret.append(indent + elbow + ' ' + target_strs[0])
@@ -410,27 +415,23 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     ret.extend(add_indent(indent + new_indent + (7 + len(target_strs[0])) * ' ', rest))
 
                 ret.extend(add_indent(indent + node_indent, target_strs[1:]))
+                ret.extend(_print_subgraph(indent + new_indent, edge_like.target, prior_on_trace + [edge_like.source]))
 
-                next_ret = _print_subgraph(indent + new_indent, edge_like.target, prior_on_trace + [edge_like.source])
-                if is_branch:
-                    next_ret.append(indent + new_indent.rstrip())
+                if is_branch and not is_last_child:
+                    ret.append(indent + new_indent)
 
-                if is_last_child and len(next_ret) > 0:
-                    ret.extend(add_indent(indent + node_indent, ['']))
-
-                ret.extend(next_ret)
             return ret
 
         ret = []
         init = sorted(self.init)
         while init:
             init_strs = _print_node(init[0])
+            ret.append('')
             ret.append('┌  ' + init_strs[0])
             ret.extend(add_indent('│  ', init_strs[1:]))
-            ret.append('│')
             ret.extend(_print_subgraph('', init[0], [init[0]]))
             init = sorted(node for node in self.nodes if node not in processed_nodes)
-        return ret
+        return (r.rstrip() for r in ret)
 
     def to_dot(self, kprint: KPrint) -> str:
         def _short_label(label: str) -> str:
