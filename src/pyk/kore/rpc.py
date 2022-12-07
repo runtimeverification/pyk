@@ -401,12 +401,13 @@ class KoreServer(ContextManager['KoreServer']):
 
     def __init__(
         self,
-        kompiled_dir: Path,
+        kompiled_dir: Union[str, Path],
         module_name: str,
         port: int,
         *,
         command: Union[str, Iterable[str]] = 'kore-rpc',
     ):
+        kompiled_dir = Path(kompiled_dir)
         check_dir_path(kompiled_dir)
 
         definition_file = kompiled_dir / 'definition.kore'
