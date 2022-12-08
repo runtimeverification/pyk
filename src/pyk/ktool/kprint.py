@@ -276,7 +276,7 @@ class KPrint:
         )
         return KInner.from_dict(json.loads(proc_res.stdout)['term'])
 
-    def kore_to_kast(self, kore: Pattern, enquote: bool = True) -> KInner:
+    def kore_to_kast(self, kore: Pattern, enquote: bool = False) -> KInner:
         _kast_out = self._kore_to_kast(kore)
         if _kast_out is None:
             _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
