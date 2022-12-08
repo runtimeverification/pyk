@@ -47,7 +47,7 @@ from ..kore.syntax import (
     String,
     Top,
 )
-from ..prelude.bytes import BYTES, bytesToken
+from ..prelude.bytes import BYTES, bytesToken, enquote_bytes
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 from ..prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
@@ -276,19 +276,21 @@ class KPrint:
         )
         return KInner.from_dict(json.loads(proc_res.stdout)['term'])
 
-    def kore_to_kast(self, kore: Pattern) -> KInner:
+    def kore_to_kast(self, kore: Pattern, enquote: bool = True) -> KInner:
         _kast_out = self._kore_to_kast(kore)
-        if _kast_out is not None:
-            return _kast_out
-        _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
-        proc_res = _kast(
-            definition_dir=self.definition_dir,
-            input=KAstInput.KORE,
-            output=KAstOutput.JSON,
-            expression=kore.text,
-            profile=self._profile,
-        )
-        return KInner.from_dict(json.loads(proc_res.stdout)['term'])
+        if _kast_out is None:
+            _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
+            proc_res = _kast(
+                definition_dir=self.definition_dir,
+                input=KAstInput.KORE,
+                output=KAstOutput.JSON,
+                expression=kore.text,
+                profile=self._profile,
+            )
+            _kast_out = KInner.from_dict(json.loads(proc_res.stdout)['term'])
+        if enquote:
+            _kast_out = enquote_bytes(_kast_out)
+        return _kast_out
 
     def _kore_to_kast(self, kore: Pattern) -> Optional[KInner]:
         _LOGGER.debug(f'_kore_to_kast: {kore}')
