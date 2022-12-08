@@ -363,9 +363,9 @@ class KProve(KPrint, ContextManager['KProve']):
         _, kore_client = self.kore_rpc()
         er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
         depth = er.depth
-        next_state = CTerm(self.kore_to_kast(er.state.kore))
+        next_state = CTerm(self.kore_to_kast(er.state.kore, enquote=True))
         _next_states = er.next_states if er.next_states is not None and len(er.next_states) > 1 else []
-        next_states = [CTerm(self.kore_to_kast(ns.kore)) for ns in _next_states]
+        next_states = [CTerm(self.kore_to_kast(ns.kore, enquote=True)) for ns in _next_states]
         return depth, next_state, next_states
 
     def simplify(self, cterm: CTerm) -> KInner:
@@ -373,7 +373,7 @@ class KProve(KPrint, ContextManager['KProve']):
         kore = self.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self.kore_rpc()
         kore_simplified = kore_client.simplify(kore)
-        kast_simplified = self.kore_to_kast(kore_simplified)
+        kast_simplified = self.kore_to_kast(kore_simplified, enquote=True)
         return kast_simplified
 
     def implies(
@@ -399,8 +399,8 @@ class KProve(KPrint, ContextManager['KProve']):
             )
         if result.substitution is None:
             return None
-        ml_subst = self.kore_to_kast(result.substitution)
-        ml_pred = self.kore_to_kast(result.predicate) if result.predicate is not None else mlTop()
+        ml_subst = self.kore_to_kast(result.substitution, enquote=True)
+        ml_pred = self.kore_to_kast(result.predicate, enquote=True) if result.predicate is not None else mlTop()
         if is_top(ml_subst):
             return (Subst({}), ml_pred)
         subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
