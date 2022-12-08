@@ -266,3 +266,27 @@ def enquote_str(orig_s: str) -> str:
                 raise ValueError(f'Unsupported character for enquoting: {orig_c}')
 
     return ''.join(enquote_char(c) for c in orig_s)
+
+
+def dequote_str(orig_str: str) -> str:
+    def dequote_str(s: str) -> Tuple[str, str]:
+        if len(s) >= 2:
+            if s[:2] == r'\"':
+                return ('"', s[2:])
+            if s[:2] == r'\\':
+                return ('\\', s[2:])
+            if s[:2] == r'\t':
+                return ('\t', s[2:])
+            if s[:2] == r'\r':
+                return ('\r', s[2:])
+            if s[:2] == r'\f':
+                return ('\f', s[2:])
+            if len(s) >= 4 and s[:2] == r'\x':
+                return (chr(int(s[2:4], 16)), s[4:])
+        return (s[0], s[1:])
+
+    new_strs = []
+    while len(orig_str) > 0:
+        next_c, orig_str = dequote_str(orig_str)
+        new_strs.append(next_c)
+    return ''.join(new_strs)
