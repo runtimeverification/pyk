@@ -1,0 +1,5 @@
+.column {
+    height: 100%;
+    width: 1fr;
+    border: solid;
+}
