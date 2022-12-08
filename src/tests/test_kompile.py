@@ -1,10 +1,13 @@
+from itertools import count
 from pathlib import Path
 from typing import Final, Iterator, Tuple
 
 import pytest
 from pytest import TempPathFactory
 
+from pyk.kast.inner import KInner, KLabel, KVariable
 from pyk.kompile import KompiledDefn, munge, unmunge
+from pyk.kore.parser import KoreParser
 from pyk.kore.syntax import SortApp
 
 
@@ -53,9 +56,9 @@ class DefnFactory:
     def __init__(self, tmp_path_factory: TempPathFactory):
         self._tmp_path_factory = tmp_path_factory
 
-    def __call__(self, kore_text: str) -> KompiledDefn:
+    def __call__(self, definition_text: str) -> KompiledDefn:
         path = self._tmp_path_factory.mktemp('kompiled-defn')
-        (path / 'definition.kore').write_text(kore_text)
+        (path / 'definition.kore').write_text(definition_text)
         (path / 'timestamp').touch()
         return KompiledDefn(path)
 
@@ -67,7 +70,7 @@ def defn_factory(tmp_path_factory: TempPathFactory) -> DefnFactory:
 
 def test_subsort_table(defn_factory: DefnFactory) -> None:
     # When
-    kore_text = r"""
+    definition_text = r"""
         []
         module MODULE-1
             axiom{R} \top{R}() [subsort{A{}, D{}}()]
@@ -77,7 +80,7 @@ def test_subsort_table(defn_factory: DefnFactory) -> None:
             axiom{R} \top{R}() [subsort{B{}, C{}}()]
         endmodule []
     """
-    defn = defn_factory(kore_text)
+    defn = defn_factory(definition_text)
 
     a, b, c, d = (SortApp(name) for name in ['A', 'B', 'C', 'D'])
     expected = {
@@ -87,6 +90,34 @@ def test_subsort_table(defn_factory: DefnFactory) -> None:
 
     # When
     actual = defn._subsort_table
+
+    # Then
+    assert actual == expected
+
+
+X, Y, Z = (KVariable(name) for name in ('X', 'Y', 'Z'))
+KAST_TO_KORE_TEST_DATA: Final = (
+    (
+        KLabel('foo', 'Int', 'String')(X, Y, Z),
+        'Lblfoo{SortInt{}, SortString{}} (VarX: SortInt{}, VarY: SortInt{}, VarZ: SortBool{})',
+    ),
+)
+
+
+@pytest.mark.parametrize('kast,expected_text', KAST_TO_KORE_TEST_DATA, ids=count())
+def test_kast_to_kore(defn_factory: DefnFactory, kast: KInner, expected_text: str) -> None:
+    # When
+    definition_text = r"""
+        []
+        module MODULE
+            symbol Lblfoo{S, T} (S, S, SortBool{}) : T []
+        endmodule []
+    """
+    defn = defn_factory(definition_text)
+    expected = KoreParser(expected_text).pattern()
+
+    # When
+    actual = defn.kast_to_kore(kast)
 
     # Then
     assert actual == expected
