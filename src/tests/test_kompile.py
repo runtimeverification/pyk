@@ -2,38 +2,10 @@ from pathlib import Path
 from typing import Final, Iterator, Tuple
 
 import pytest
+from pytest import TempPathFactory
 
-from pyk.kompile import _subsort_table, munge, unmunge
-from pyk.kore.syntax import Attr, Axiom, Definition, Module, Sort, SortApp, SortVar, Top
-
-
-def test_subsort_table() -> None:
-    def sort_axiom(subsort: Sort, supersort: Sort) -> Axiom:
-        r = SortVar('R')
-        return Axiom((r,), Top(r), attrs=(Attr('subsort', (subsort, supersort)),))
-
-    a, b, c, d = (SortApp(name) for name in ['a', 'b', 'c', 'd'])
-
-    # When
-    definition = Definition(
-        (
-            Module(
-                'MODULE-1',
-                (sort_axiom(a, d), sort_axiom(b, d)),
-            ),
-            Module('MODULE-2', (sort_axiom(b, c),)),
-        )
-    )
-    expected = {
-        c: {b},
-        d: {a, b},
-    }
-
-    # When
-    actual = _subsort_table(definition)
-
-    # Then
-    assert actual == expected
+from pyk.kompile import KompiledDefn, munge, unmunge
+from pyk.kore.syntax import SortApp
 
 
 def munge_test_data_reader() -> Iterator[Tuple[str, str]]:
@@ -70,6 +42,51 @@ def test_munge(label: str, expected: str) -> None:
 def test_unmunge(symbol: str, expected: str) -> None:
     # When
     actual = unmunge(symbol)
+
+    # Then
+    assert actual == expected
+
+
+class DefnFactory:
+    _tmp_path_factory: TempPathFactory
+
+    def __init__(self, tmp_path_factory: TempPathFactory):
+        self._tmp_path_factory = tmp_path_factory
+
+    def __call__(self, kore_text: str) -> KompiledDefn:
+        path = self._tmp_path_factory.mktemp('kompiled-defn')
+        (path / 'definition.kore').write_text(kore_text)
+        (path / 'timestamp').touch()
+        return KompiledDefn(path)
+
+
+@pytest.fixture(scope='session')
+def defn_factory(tmp_path_factory: TempPathFactory) -> DefnFactory:
+    return DefnFactory(tmp_path_factory)
+
+
+def test_subsort_table(defn_factory: DefnFactory) -> None:
+    # When
+    kore_text = r"""
+        []
+        module MODULE-1
+            axiom{R} \top{R}() [subsort{A{}, D{}}()]
+            axiom{R} \top{R}() [subsort{B{}, D{}}()]
+        endmodule []
+        module MODULE-2
+            axiom{R} \top{R}() [subsort{B{}, C{}}()]
+        endmodule []
+    """
+    defn = defn_factory(kore_text)
+
+    a, b, c, d = (SortApp(name) for name in ['A', 'B', 'C', 'D'])
+    expected = {
+        c: {b},
+        d: {a, b},
+    }
+
+    # When
+    actual = defn._subsort_table
 
     # Then
     assert actual == expected
