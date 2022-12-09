@@ -52,7 +52,6 @@ from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 from ..prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
 from ..prelude.string import STRING, stringToken
-from ..utils import enquote_str
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -628,12 +627,12 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
             assert len(kast.token) >= 3
             assert kast.token[0:2] == 'b"'
             assert kast.token[-1] == '"'
-            return 'b"' + enquote_str(kast.token[2:-1]) + '"'
+            return 'b"' + kast.token[2:-1] + '"'
         if kast.sort == STRING:
             assert len(kast.token) >= 2
             assert kast.token[0] == '"'
             assert kast.token[-1] == '"'
-            return '"' + enquote_str(kast.token[1:-1]) + '"'
+            return '"' + kast.token[1:-1] + '"'
         return kast.token
     if type(kast) is KApply:
         label = kast.label.name
