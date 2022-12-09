@@ -14,7 +14,7 @@ from .utils import KProveTest
 
 EXECUTE_TEST_DATA: Final = (('simple-branch', 3, ('a', '.Map'), 1, ('b', '.Map'), [('c', '.Map'), ('d', '.Map')]),)
 
-SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90\xa0\xa1\xf1a"', '.Map')),)
+SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90\xa0\n\xa1\xf1a"', '.Map')),)
 
 
 class TestSimpleProof(KProveTest):
