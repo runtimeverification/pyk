@@ -1,5 +1,13 @@
-.column {
-    height: 100%;
-    width: 1fr;
-    border: solid;
+#tree-view {
+    width: 33%;
+    overflow: auto scroll;
+}
+
+#text-view {
+    width: 67%;
+    overflow: auto;
+}
+
+#text {
+    width: auto;
 }

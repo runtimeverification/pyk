@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable, List, Optional, Set, Tuple, Union, final
 
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Header, Static, Tree, TreeNode
 
 from ..cli_utils import check_file_path
@@ -140,8 +140,8 @@ class Case(NodeModel):
         return f'[Case] {self.label}'
 
 
-def cfg_tree(cfg: KCFG, label: str, id: str, classes: str) -> Tree[NodeModel]:
-    tree: Tree[NodeModel] = Tree(label, id=id, classes=classes)
+def cfg_tree(cfg: KCFG, label: str, id: str) -> Tree[NodeModel]:
+    tree: Tree[NodeModel] = Tree(label, id=id)
     root = tree.root
 
     indent_model = {Init, Branch, Case}
@@ -204,13 +204,16 @@ class KcfgViewer(App):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Horizontal(
-            cfg_tree(self._cfg, label=str(self._kcfg_file), id='tree', classes='column'),
-            Static('', id='static', classes='column'),
+            cfg_tree(self._cfg, label=str(self._kcfg_file), id='tree-view'),
+            Vertical(
+                Static(id='text', expand=True),
+                id='text-view',
+            ),
         )
 
     def display_node(self, node: TreeNode) -> None:
         model = node.data
-        static = self.query_one('#static', Static)
+        static = self.query_one('#text', Static)
 
         if not model:
             static.update('')
