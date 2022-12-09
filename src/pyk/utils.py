@@ -278,6 +278,8 @@ def dequote_str(orig_str: str) -> str:
                 return ('"', s[2:])
             if s[:2] == r'\\':
                 return ('\\', s[2:])
+            if s[:2] == r'\n':
+                return ('\n', s[2:])
             if s[:2] == r'\t':
                 return ('\t', s[2:])
             if s[:2] == r'\r':
