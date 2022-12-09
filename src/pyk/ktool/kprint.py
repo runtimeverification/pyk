@@ -630,12 +630,12 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
             assert len(kast.token) >= 3
             assert kast.token[0:2] == 'b"'
             assert kast.token[-1] == '"'
-            return 'b"' + kast.token[2:-1] + '"'
+            return 'b"' + enquote_str(kast.token[2:-1]) + '"'
         if kast.sort == STRING:
             assert len(kast.token) >= 2
             assert kast.token[0] == '"'
             assert kast.token[-1] == '"'
-            return '"' + kast.token[1:-1] + '"'
+            return '"' + enquote_str(kast.token[1:-1]) + '"'
         return kast.token
     if type(kast) is KApply:
         label = kast.label.name
