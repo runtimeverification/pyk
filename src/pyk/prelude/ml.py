@@ -39,11 +39,15 @@ def mlNot(term: KInner, sort: Union[str, KSort] = GENERATED_TOP_CELL) -> KApply:
 
 
 def mlAnd(conjuncts: Iterable[KInner], sort: Union[str, KSort] = GENERATED_TOP_CELL) -> KInner:  # noqa: N802
-    return build_assoc(mlTop(sort), KLabel('#And', sort), conjuncts)
+    if any(map(is_bottom, conjuncts)):
+        return mlBottom(sort=sort)
+    return build_assoc(mlTop(sort), KLabel('#And', sort), [c for c in conjuncts if not is_top(c)])
 
 
 def mlOr(disjuncts: Iterable[KInner], sort: Union[str, KSort] = GENERATED_TOP_CELL) -> KInner:  # noqa: N802
-    return build_assoc(mlBottom(sort), KLabel('#Or', sort), disjuncts)
+    if any(map(is_top, disjuncts)):
+        return mlTop(sort=sort)
+    return build_assoc(mlBottom(sort), KLabel('#And', sort), [d for d in disjuncts if not is_bottom(d)])
 
 
 def mlImplies(  # noqa: N802
