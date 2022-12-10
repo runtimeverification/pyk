@@ -64,6 +64,14 @@ class CTerm:
     def hash(self) -> str:
         return self.kast.hash
 
+    @property
+    def is_top(self) -> bool:
+        return is_top(self.kast)
+
+    @property
+    def is_bottom(self) -> bool:
+        return is_bottom(self.kast)
+
     def match(self, cterm: 'CTerm') -> Optional[Subst]:
         match_res = self.match_with_constraint(cterm)
 
