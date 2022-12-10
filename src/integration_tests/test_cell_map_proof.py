@@ -52,10 +52,16 @@ class TestSimpleProof(KProveTest):
             _active_accounts = _parse(KToken(active_accounts, 'Set'))
             _accounts_parsed = (
                 KApply(
-                    '<account>',
+                    'AccountCellMapItem',
                     [
                         KApply('<id>', [_parse(KToken(act_id, 'Int'))]),
-                        KApply('<balance>', [_parse(KToken(act_state, 'Int'))]),
+                        KApply(
+                            '<account>',
+                            [
+                                KApply('<id>', [_parse(KToken(act_id, 'Int'))]),
+                                KApply('<balance>', [_parse(KToken(act_state, 'Int'))]),
+                            ],
+                        ),
                     ],
                 )
                 for act_id, act_state in accounts
@@ -82,4 +88,5 @@ class TestSimpleProof(KProveTest):
         actual_k = _print(get_cell(actual_post_term.kast, 'K_CELL'))
 
         # Then
+        assert actual_depth == expected_depth
         assert actual_k == expected_k
