@@ -1,4 +1,4 @@
-from typing import Final, Iterable, Tuple
+from typing import Final, Iterable, NamedTuple, Tuple
 
 import pytest
 
