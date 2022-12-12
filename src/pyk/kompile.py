@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union, final
 
 from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
-from pyk.kore.syntax import DV, App, EVar, MLPattern, Pattern, SortApp, SortVar, String, WithSort
+from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, SortVar, String, Symbol, WithSort
 from pyk.prelude.bytes import BYTES
 from pyk.prelude.string import STRING
 
@@ -69,7 +69,22 @@ class KompiledDefn:
 
     @cached_property
     def _symbol_table(self) -> FrozenDict[str, SymbolDecl]:
-        return FrozenDict(_symbol_table(self.definition))
+        S, T = (SortVar(name) for name in ('S', 'T'))  # noqa: N806
+        ml_symbol_table = {
+            r'\top': SymbolDecl(Symbol(r'\top', (S,)), (), S),
+            r'\bottom': SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
+            r'\not': SymbolDecl(Symbol(r'\not', (S,)), (S,), S),
+            r'\and': SymbolDecl(Symbol(r'\and', (S,)), (S, S), S),
+            r'\or': SymbolDecl(Symbol(r'\or', (S,)), (S, S), S),
+            r'\implies': SymbolDecl(Symbol(r'\implies', (S,)), (S, S), S),
+            r'\iff': SymbolDecl(Symbol(r'\iff', (S,)), (S, S), S),
+            r'\ceil': SymbolDecl(Symbol(r'\ceil', (S, T)), (S,), T),
+            r'\floor': SymbolDecl(Symbol(r'\floor', (S, T)), (S,), T),
+            r'\equals': SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
+            r'\in': SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
+        }
+        symbol_table = _symbol_table(self.definition)
+        return FrozenDict({**ml_symbol_table, **symbol_table})
 
     def _resolve_symbol(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> Tuple[Sort, Tuple[Sort, ...]]:
         symbol_decl = self._symbol_table.get(symbol_id)
@@ -164,36 +179,27 @@ class KompiledDefn:
         return reduce(lambda x, y: App('kseq', (), (y, x)), reversed(patterns), App('dotk'))
 
     def _kapply_to_kore(self, kapply: KApply) -> Pattern:
-        if kapply.label.name in ML_PATTERN_LABELS:
-            return self._kapply_to_ml_pattern(kapply)
+        if kapply.label.name in ML_QUANT_LABELS:
+            return self._kapply_to_ml_quant(kapply)
 
-        return self._kapply_to_app(kapply)
+        return self._kapply_to_pattern(kapply)
 
-    def _kapply_to_ml_pattern(self, kapply: KApply) -> MLPattern:
+    def _kapply_to_ml_quant(self, kapply: KApply) -> MLQuant:
         label = kapply.label
-        symbol = ML_PATTERN_LABELS[label.name]
+        symbol = ML_QUANT_LABELS[label.name]
         sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
+        (sort,) = sorts
 
-        sort: Sort
-        if label.name in ML_PRED_LABELS:
-            _, sort = sorts
-        else:
-            (sort,) = sorts
+        kvar, kast = kapply.args
+        var = self._kast_to_kore(kvar, SortApp('SortKItem'))
+        pattern = self._kast_to_kore(kast, sort)
+        patterns = (var, pattern)
 
-        patterns: Iterable[Pattern]
-        if label.name in ML_QUANT_LABELS:
-            kvar, kast = kapply.args
-            var = self._kast_to_kore(kvar, SortApp('SortKItem'))
-            pattern = self._kast_to_kore(kast, sort)
-            patterns = (var, pattern)
-        else:
-            patterns = (self._kast_to_kore(arg, sort) for arg in kapply.args)
+        return MLQuant.of(symbol, sorts, patterns)
 
-        return MLPattern.of(symbol, sorts, patterns)
-
-    def _kapply_to_app(self, kapply: KApply) -> App:
+    def _kapply_to_pattern(self, kapply: KApply) -> Pattern:
         label = kapply.label
-        symbol = 'Lbl' + unmunge(label.name)
+        symbol = _label_to_kore(label.name)
         sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
         _, pattern_sorts = self._resolve_symbol(symbol, sorts)
 
@@ -203,7 +209,17 @@ class KompiledDefn:
 
         patterns = (self._kast_to_kore(kast, sort) for kast, sort in zip(kapply.args, pattern_sorts))
 
+        if label.name in ML_PATTERN_LABELS:
+            return MLPattern.of(symbol, sorts, patterns)
+
         return App(symbol, sorts, patterns)
+
+
+def _label_to_kore(label: str) -> str:
+    if label in ML_PATTERN_LABELS:
+        return ML_PATTERN_LABELS[label]
+
+    return 'Lbl' + unmunge(label)
 
 
 def _ksort_to_kore(ksort: KSort) -> SortApp:

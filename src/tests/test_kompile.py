@@ -101,6 +101,14 @@ KAST_TO_KORE_TEST_DATA: Final = (
         KLabel('foo', 'Int', 'String')(X, Y, Z),
         'Lblfoo{SortInt{}, SortString{}} (VarX: SortInt{}, VarY: SortInt{}, VarZ: SortBool{})',
     ),
+    (
+        KLabel('#And', 'Int')(X, Y),
+        r'\and{SortInt{}} (VarX: SortInt{}, VarY: SortInt{})',
+    ),
+    (
+        KLabel('#Exists', 'Int')(X, Y),
+        r'\exists{SortInt{}} (VarX: SortKItem{}, VarY: SortInt{})',
+    ),
 )
 
 
