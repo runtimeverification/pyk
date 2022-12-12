@@ -4,8 +4,8 @@ from functools import cached_property, reduce
 from pathlib import Path
 from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union, final
 
-from pyk.kast.inner import KApply, KInner, KLabel, KSequence, KSort, KToken, KVariable
-from pyk.kore.syntax import DV, App, EVar, MLPattern, Pattern, SortApp, SortVar, String
+from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
+from pyk.kore.syntax import DV, App, EVar, MLPattern, Pattern, SortApp, SortVar, String, WithSort
 from pyk.prelude.bytes import BYTES
 from pyk.prelude.string import STRING
 
@@ -68,21 +68,68 @@ class KompiledDefn:
         return KoreParser(self.path.read_text()).definition()
 
     @cached_property
+    def _symbol_table(self) -> FrozenDict[str, SymbolDecl]:
+        return FrozenDict(_symbol_table(self.definition))
+
+    def _resolve_symbol(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> Tuple[Sort, Tuple[Sort, ...]]:
+        symbol_decl = self._symbol_table.get(symbol_id)
+        if not symbol_decl:
+            raise ValueError(f'Undeclared symbol: {symbol_id}')
+
+        symbol = symbol_decl.symbol
+        sorts = tuple(sorts)
+
+        nr_sort_vars = len(symbol.vars)
+        nr_sorts = len(sorts)
+        if nr_sort_vars != nr_sorts:
+            raise ValueError(f'Expected {nr_sort_vars} sort parameters, got {nr_sorts} for: {symbol_id}')
+
+        sort_table: Dict[Sort, Sort] = dict(zip(symbol.vars, sorts))
+
+        def resolve(sort: Sort) -> Sort:
+            if type(sort) is SortVar:
+                return sort_table.get(sort, sort)
+            return sort
+
+        sort = resolve(symbol_decl.sort)
+        param_sorts = tuple(resolve(sort) for sort in symbol_decl.param_sorts)
+
+        return sort, param_sorts
+
+    @cached_property
     def _subsort_table(self) -> FrozenDict[Sort, FrozenSet[Sort]]:
         subsort_table = _subsort_table(self.definition)
         return FrozenDict({supersort: frozenset(subsorts) for supersort, subsorts in subsort_table.items()})
 
     # Strict subsort, i.e. not reflexive
-    def _is_subsort(self, subsort: Sort, supersort: Sort) -> bool:
+    def is_subsort(self, subsort: Sort, supersort: Sort) -> bool:
         return subsort in self._subsort_table.get(supersort, set())
 
-    @cached_property
-    def _symbol_table(self) -> FrozenDict[str, SymbolDecl]:
-        return FrozenDict(_symbol_table(self.definition))
+    def infer_sort(self, pattern: Pattern) -> Sort:
+        if isinstance(pattern, WithSort):
+            return pattern.sort
+
+        if type(pattern) is App:
+            sort, _ = self._resolve_symbol(pattern.symbol, pattern.sorts)
+            return sort
+
+        raise ValueError(f'Cannot infer sort: {pattern}')
 
     def add_injections(self, pattern: Pattern, sort: Optional[Sort] = None) -> Pattern:
         # TODO
         return pattern
+
+    def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
+        actual_sort = self.infer_sort(pattern)
+        expected_sort = sort or SortApp('SortKItem')
+
+        if actual_sort == expected_sort:
+            return pattern
+
+        if self.is_subsort(actual_sort, expected_sort):
+            return App('inj', (actual_sort, expected_sort), (pattern,))
+
+        raise ValueError(f'Sort {actual_sort.name} is not a subsort of {expected_sort.name}')
 
     def kast_to_kore(self, kast: KInner, sort: Optional[Sort] = None, *, with_inj: bool = True) -> Pattern:
         if not sort:
@@ -146,8 +193,9 @@ class KompiledDefn:
 
     def _kapply_to_app(self, kapply: KApply) -> App:
         label = kapply.label
-        symbol, _, pattern_sorts = self._resolve_label(label)
-        sorts = (_ksort_to_kore(ksort) for ksort in label.params)
+        symbol = 'Lbl' + unmunge(label.name)
+        sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
+        _, pattern_sorts = self._resolve_symbol(symbol, sorts)
 
         nr_pattern_sorts = len(pattern_sorts)
         if kapply.arity != nr_pattern_sorts:
@@ -156,32 +204,6 @@ class KompiledDefn:
         patterns = (self._kast_to_kore(kast, sort) for kast, sort in zip(kapply.args, pattern_sorts))
 
         return App(symbol, sorts, patterns)
-
-    def _resolve_label(self, label: KLabel) -> Tuple[str, Sort, Tuple[Sort, ...]]:
-        symbol_id = 'Lbl' + unmunge(label.name)
-
-        symbol_decl = self._symbol_table.get(symbol_id)
-        if not symbol_decl:
-            raise ValueError(f'Undeclared symbol: {symbol_id}')
-
-        symbol = symbol_decl.symbol
-
-        nr_sort_vars = len(symbol.vars)
-        nr_param_sorts = len(label.params)
-        if nr_sort_vars != nr_param_sorts:
-            raise ValueError(f'Expected {nr_sort_vars} sort parameters, got {nr_param_sorts} in: {label}')
-
-        sort_table: Dict[Sort, Sort] = dict(zip(symbol.vars, (_ksort_to_kore(param) for param in label.params)))
-
-        def resolve(sort: Sort) -> Sort:
-            if type(sort) is SortVar:
-                return sort_table.get(sort, sort)
-            return sort
-
-        res_sort = resolve(symbol_decl.sort)
-        param_sorts = tuple(resolve(sort) for sort in symbol_decl.param_sorts)
-
-        return symbol_id, res_sort, tuple(param_sorts)
 
 
 def _ksort_to_kore(ksort: KSort) -> SortApp:
