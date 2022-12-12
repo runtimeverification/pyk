@@ -2,8 +2,8 @@ from typing import Final
 
 import pytest
 
-from pyk.kast.inner import KApply, KInner, KSort, KVariable
-from pyk.kore.syntax import DV, App, EVar, LeftAssoc, Pattern, SortApp, String
+from pyk.kast.inner import KApply, KInner, KLabel, KSort, KVariable
+from pyk.kore.syntax import DV, And, App, Equals, EVar, LeftAssoc, Pattern, SortApp, String
 from pyk.ktool import KPrint
 from pyk.prelude.kint import INT, intToken
 
@@ -20,10 +20,43 @@ BIDIRECTIONAL_TEST_DATA: Final = (
 
 KAST_TO_KORE_TEST_DATA: Final = (
     (
-        'variable-without-sort',
-        KSort('Bar'),
-        EVar('VarX', SortApp('SortBar')),
-        KVariable('X'),
+        'cell-map',
+        KSort('AccountCellMap'),
+        And(
+            SortApp('SortAccountCellMap'),
+            App(
+                "Lbl'Unds'AccountCellMap'Unds'",
+                [],
+                [
+                    EVar("VarACCOUNTS'Unds'INIT", SortApp('AccountCellMap')),
+                    App(
+                        'AccountCellMapItem',
+                        [],
+                        [EVar('VarK', SortApp('SortIdCell')), EVar('VarV', SortApp('SortKItem'))],
+                    ),
+                ],
+            ),
+            Equals(
+                SortApp('SortBool'),
+                SortApp('SortAccountCellMap'),
+                DV(SortApp('SortBool'), 'true'),
+                App(
+                    "Lbl'Unds'in'Unds'keys'LParUndsRParUnds'MAP'Unds'Bool'Unds'KItem'Unds'Map",
+                    [],
+                    [EVar('VarK', SortApp('SortIdCell')), EVar("VarACCOUNTS'Unds'INIT", SortApp('SortAccountCellMap'))],
+                ),
+            ),
+        ),
+        KApply(
+            KLabel('#And', [KSort('AccountCellMap')]),
+            [
+                KApply(
+                    '_AccountCellMap_',
+                    [KVariable('ACCOUNTS_INIT'), KApply('AccountCellMapItem', [KVariable('K'), KVariable('V')])],
+                ),
+                KApply('_in_keys(_)_MAP_Bool_KItem_Map', [KVariable('K'), KVariable('ACCOUNTS_INIT')]),
+            ],
+        ),
     ),
 )
 
