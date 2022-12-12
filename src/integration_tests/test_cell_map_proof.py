@@ -9,11 +9,12 @@ from pyk.ktool import KProve
 
 from .utils import KProveTest
 
+
 class State(NamedTuple):
     pgm: str
     active_accounts: str
     accounts: Iterable[Tuple[str, str]]
-    
+
 
 EXECUTE_TEST_DATA: Final[Iterable[Tuple[str, int, State, int, State, Iterable[State]]]] = (
     (
