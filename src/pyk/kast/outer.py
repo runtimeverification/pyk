@@ -1040,6 +1040,7 @@ class KDefinition(KOuter, WithKAtt):
 
     def sort_vars_subst(self, kast: KInner) -> Subst:
         _var_sort_occurrences = var_occurrences(kast)
+        _LOGGER.debug(f'Initial variable contexts: {_var_sort_occurrences}')
         subst = {}
 
         def _sort_contexts(_kast: KInner) -> None:
@@ -1048,13 +1049,16 @@ class KDefinition(KOuter, WithKAtt):
                 if len(prod.params) == 0:
                     for t, a in zip(prod.argument_sorts, _kast.args):
                         if type(a) is KVariable:
+                            _LOGGER.debug(f'Sort context added for {a.name}: {prod}')
                             _var_sort_occurrences[a.name].append(a.let_sort(t))
             if type(_kast) is KSequence and _kast.arity > 0:
                 for a in _kast.items[0:-1]:
                     if type(a) is KVariable:
+                        _LOGGER.debug(f'Sort context added for {a.name}: KSequence[0:-1]')
                         _var_sort_occurrences[a.name].append(a.let_sort(KSort('KItem')))
                 last_a = _kast.items[-1]
                 if type(last_a) is KVariable:
+                    _LOGGER.debug(f'Sort context added for {last_a.name}: KSequence[-1]')
                     _var_sort_occurrences[last_a.name].append(last_a.let_sort(KSort('K')))
 
         collect(_sort_contexts, kast)
