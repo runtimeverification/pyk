@@ -80,29 +80,36 @@ class KompiledDefn:
     def _symbol_table(self) -> FrozenDict[str, SymbolDecl]:
         return FrozenDict(_symbol_table(self.definition))
 
-    def kast_to_kore(self, kast: KInner, sort: Optional[Sort] = None) -> Pattern:
+    def add_injections(self, pattern: Pattern, sort: Optional[Sort] = None) -> Pattern:
+        # TODO
+        return pattern
+
+    def kast_to_kore(self, kast: KInner, sort: Optional[Sort] = None, *, with_inj: bool = True) -> Pattern:
         if not sort:
             sort = SortApp('SortKItem')
 
         pattern = self._kast_to_kore(kast, sort)
         pattern = self._meet_var_sorts(pattern)
+
+        if with_inj:
+            return self.add_injections(pattern, sort)
+
         return pattern
 
     def _kast_to_kore(self, kast: KInner, sort: Sort) -> Pattern:
-        pattern: Pattern
-
         if type(kast) is KVariable:
-            pattern = _kvariable_to_kore(kast, sort)
+            return _kvariable_to_kore(kast, sort)
         elif type(kast) is KToken:
-            pattern = _ktoken_to_kore(kast)
+            return _ktoken_to_kore(kast)
         elif type(kast) is KSequence:
-            pattern = self._ksequence_to_kore(kast)
+            return self._ksequence_to_kore(kast)
         elif type(kast) is KApply:
-            pattern = self._kapply_to_kore(kast)
-        else:
-            raise ValueError(f'Unsupported KAst: {kast}')
+            return self._kapply_to_kore(kast)
 
-        pattern = self._inject(pattern, sort)
+        raise ValueError(f'Unsupported KAst: {kast}')
+
+    def _meet_var_sorts(self, pattern: Pattern) -> Pattern:
+        # TODO
         return pattern
 
     def _ksequence_to_kore(self, kseq: KSequence) -> App:
@@ -175,14 +182,6 @@ class KompiledDefn:
         param_sorts = tuple(resolve(sort) for sort in symbol_decl.param_sorts)
 
         return symbol_id, res_sort, tuple(param_sorts)
-
-    def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
-        # TODO
-        return pattern
-
-    def _meet_var_sorts(self, pattern: Pattern) -> Pattern:
-        # TODO
-        return pattern
 
 
 def _ksort_to_kore(ksort: KSort) -> SortApp:
