@@ -9,7 +9,11 @@ from pyk.ktool import KProve
 
 from .utils import KProveTest
 
-State = Tuple[str, str, Iterable[Tuple[str, str]]]
+class State(NamedTuple):
+    pgm: str
+    active_accounts: str
+    accounts: Iterable[Tuple[str, str]]
+    
 
 EXECUTE_TEST_DATA: Final[Iterable[Tuple[str, int, State, int, State, Iterable[State]]]] = (
     (
@@ -23,7 +27,7 @@ EXECUTE_TEST_DATA: Final[Iterable[Tuple[str, int, State, int, State, Iterable[St
 )
 
 
-class TestSimpleProof(KProveTest):
+class TestCellMapProof(KProveTest):
     KOMPILE_MAIN_FILE = 'k-files/cell-map.k'
 
     @pytest.mark.parametrize(
