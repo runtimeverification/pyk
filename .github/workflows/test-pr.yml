@@ -128,5 +128,7 @@ jobs:
         with:
           name: k-framework
           authToken: '${{ secrets.CACHIX_PUBLIC_KEY }}'
-      - name: 'Build pyk'
+      - name: 'Build pyk (Python 3.9)'
         run: GC_DONT_GC=1 nix build .#pyk
+      - name: 'Build pyk (Python 3.10)'
+        run: GC_DONT_GC=1 nix build .#pyk-python310
