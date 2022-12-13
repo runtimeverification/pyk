@@ -39,7 +39,7 @@ KAST_TO_KORE_TEST_DATA: Final = (
             Equals(
                 SortApp('SortBool'),
                 SortApp('SortAccountCellMap'),
-                DV(SortApp('SortBool'), 'true'),
+                DV(SortApp('SortBool'), String('true')),
                 App(
                     "Lbl'Unds'in'Unds'keys'LParUndsRParUnds'MAP'Unds'Bool'Unds'KItem'Unds'Map",
                     [],
