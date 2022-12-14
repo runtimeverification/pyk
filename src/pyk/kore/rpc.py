@@ -149,6 +149,7 @@ class StopReason(str, Enum):
     BRANCHING = 'branching'
     CUT_POINT_RULE = 'cut-point-rule'
     TERMINAL_RULE = 'terminal-rule'
+    ABORTED = 'aborted'
 
 
 @final
@@ -183,6 +184,7 @@ class ExecuteResult(ABC):  # noqa: B024
         StopReason.BRANCHING: 'BranchingResult',
         StopReason.CUT_POINT_RULE: 'CutPointResult',
         StopReason.TERMINAL_RULE: 'TerminalResult',
+        StopReason.ABORTED: 'AbortedResult',
     }
 
     reason: ClassVar[StopReason]
@@ -301,6 +303,25 @@ class TerminalResult(ExecuteResult):
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
             rule=dct['rule'],
+        )
+
+
+@final
+@dataclass(frozen=True)
+class AbortedResult(ExecuteResult):
+    reason = StopReason.ABORTED
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+
+    @classmethod
+    def from_dict(cls: Type['AbortedResult'], dct: Mapping[str, Any]) -> 'AbortedResult':
+        cls._check_reason(dct)
+        return AbortedResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
         )
 
 
