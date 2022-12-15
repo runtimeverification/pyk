@@ -65,3 +65,4 @@ class KCFGViewer(App):
             edges = self._cfg.edges(target_id=self._curr_node)
             if len(edges) == 1:
                 self._curr_node = edges[0].source.id
+        self.query_one('#node', Static).update(self._node_text())
