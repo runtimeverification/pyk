@@ -2,6 +2,7 @@
     width: 35%;
     overflow: auto scroll;
     overflow-x: auto scroll;
+    border-right: solid;
 }
 #right-pane-view {
     width: 65%;
@@ -11,15 +12,40 @@
 
 #navigation-view {
     height: 10%;
-    width: auto;
+    width: 100%;
     overflow: auto scroll;
     overflow-x: auto scroll;
+    border: solid;
 }
 #behavior-view {
-    height: 90%;
-    width: auto;
+    min-height: 85%;
+    width: 100%;
     overflow: auto scroll;
     overflow-x: auto scroll;
+    margin: 1;
+}
+
+#display-view {
+    height: 10%;
+    width: 100%;
+    overflow: auto scroll;
+    overflow-x: auto scroll;
+    border: solid;
+}
+#node-view {
+    min-height: 60%;
+    width: 100%;
+    overflow: auto scroll;
+    overflow-x: auto scroll;
+    margin: 1;
+    border-bottom: solid;
+}
+#constraint-view {
+    height: 30%;
+    width: 100%;
+    overflow: auto scroll;
+    overflow-x: auto scroll;
+    margin: 1;
 }
 
 #navigation {
@@ -30,7 +56,15 @@
     width: auto;
     height: auto;
 }
+#display {
+    width: auto;
+    height: auto;
+}
 #node {
+    width: auto;
+    height: auto;
+}
+#constraint {
     width: auto;
     height: auto;
 }
