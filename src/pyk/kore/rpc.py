@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from subprocess import Popen
+from subprocess import DEVNULL, STDOUT, Popen
 from time import sleep
 from typing import (
     Any,
@@ -419,6 +419,7 @@ class KoreServer(ContextManager['KoreServer']):
     _proc: Popen
     _port: int
     _pid: int
+    _logs: Union[TextIO, int]
 
     def __init__(
         self,
@@ -427,6 +428,7 @@ class KoreServer(ContextManager['KoreServer']):
         port: int,
         *,
         command: Union[str, Iterable[str]] = 'kore-rpc',
+        logging: Optional[Path] = None,
     ):
         kompiled_dir = Path(kompiled_dir)
         check_dir_path(kompiled_dir)
@@ -439,9 +441,14 @@ class KoreServer(ContextManager['KoreServer']):
 
         args = tuple(command) + (str(definition_file), '--module', module_name, '--server-port', str(port))
 
+        # if log file given, log to the file (truncating it), otherwise don't log server stdout
+        self._logs = open(logging, 'w') if logging is not None else DEVNULL
+        # if log file given, merge stderr into it, otherwise use parent stderr
+        stderr = STDOUT if logging is not None else None
+
         self._port = port
         _LOGGER.info(f'Starting KoreServer: port={self._port}')
-        self._proc = Popen(args)
+        self._proc = Popen(args, stdout=self._logs, stderr=stderr)
         self._pid = self._proc.pid
         _LOGGER.info(f'KoreServer started: port={self._port}, pid={self._pid}')
 
@@ -454,4 +461,6 @@ class KoreServer(ContextManager['KoreServer']):
     def close(self) -> None:
         self._proc.terminate()
         self._proc.wait()
+        if type(self._logs) is TextIO:
+            self._logs.close
         _LOGGER.info(f'KoreServer stopped: port={self._port}, pid={self._pid}')
