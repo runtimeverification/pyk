@@ -1,13 +1,17 @@
-#tree-view {
-    width: 33%;
+#behavior-view {
+    width: 35%;
     overflow: auto scroll;
+    overflow-x: auto;
+}
+#behavior {
+    width: auto;
 }
 
-#text-view {
-    width: 67%;
-    overflow: auto;
+#node-view {
+    width: 65%;
+    overflow: auto scroll;
+    overflow-x: auto;
 }
-
-#text {
+#node {
     width: auto;
 }
