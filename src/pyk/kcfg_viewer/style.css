@@ -1,17 +1,36 @@
-#behavior-view {
+#left-pane-view {
     width: 35%;
     overflow: auto scroll;
-    overflow-x: auto;
+    overflow-x: auto scroll;
+}
+#right-pane-view {
+    width: 65%;
+    overflow: auto scroll;
+    overflow-x: auto scroll;
+}
+
+#navigation-view {
+    height: 10%;
+    width: auto;
+    overflow: auto scroll;
+    overflow-x: auto scroll;
+}
+#behavior-view {
+    height: 90%;
+    width: auto;
+    overflow: auto scroll;
+    overflow-x: auto scroll;
+}
+
+#navigation {
+    width: auto;
+    height: auto;
 }
 #behavior {
     width: auto;
-}
-
-#node-view {
-    width: 65%;
-    overflow: auto scroll;
-    overflow-x: auto;
+    height: auto;
 }
 #node {
     width: auto;
+    height: auto;
 }
