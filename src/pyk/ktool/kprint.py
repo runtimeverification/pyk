@@ -276,6 +276,15 @@ class KPrint:
         )
         return KInner.from_dict(json.loads(proc_res.stdout)['term'])
 
+    def kore_to_pretty(self, pattern: Pattern) -> str:
+        proc_res = _kast(
+            definition_dir=self.definition_dir,
+            input=KAstInput.KORE,
+            output=KAstOutput.PRETTY,
+            expression=pattern.text,
+        )
+        return proc_res.stdout
+
     def kore_to_kast(self, kore: Pattern) -> KInner:
         _kast_out = self._kore_to_kast(kore)
         if _kast_out is not None:
