@@ -24,13 +24,13 @@ from typing import (
 
 from graphviz import Digraph
 
-from .cterm import CTerm, build_claim, build_rule
-from .kast.inner import KInner, Subst
-from .kast.manip import ml_pred_to_bool, mlAnd, remove_source_attributes, simplify_bool
-from .kast.outer import KClaim, KRule
-from .ktool import KPrint
-from .prelude.ml import mlTop
-from .utils import add_indent, compare_short_hashes, shorten_hash
+from pyk.cterm import CTerm, build_claim, build_rule
+from pyk.kast.inner import KInner, Subst
+from pyk.kast.manip import ml_pred_to_bool, mlAnd, remove_source_attributes, simplify_bool
+from pyk.kast.outer import KClaim, KRule
+from pyk.ktool import KPrint
+from pyk.prelude.ml import mlTop
+from pyk.utils import add_indent, compare_short_hashes, shorten_hash
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
