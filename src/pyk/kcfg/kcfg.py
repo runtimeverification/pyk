@@ -53,7 +53,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         target: 'KCFG.Node'
 
         @abstractmethod
-        def pretty(self, kprint: KPrint) -> Iterable[str]:
+        def pretty(self, kprint: KPrint) -> Tuple[str, Iterable[str]]:
             ...
 
         def __lt__(self, other: Any) -> bool:
@@ -88,13 +88,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             claim, _ = build_claim(sentence_id, self.source.cterm.add_constraint(self.condition), self.target.cterm)
             return claim
 
-        def pretty(self, kprint: KPrint) -> Iterable[str]:
+        def pretty(self, kprint: KPrint) -> Tuple[str, Iterable[str]]:
+            edge_id = f'edge{(self.source.id, self.target.id)}'
             if self.depth == 0:
-                return ['\nandBool'.join(kprint.pretty_print(ml_pred_to_bool(self.condition)).split(' andBool'))]
+                return (edge_id, ['\nandBool'.join(kprint.pretty_print(ml_pred_to_bool(self.condition)).split(' andBool'))])
             elif self.depth == 1:
-                return ['(' + str(self.depth) + ' step)']
+                return (edge_id, ['(' + str(self.depth) + ' step)'])
             else:
-                return ['(' + str(self.depth) + ' steps)']
+                return (edge_id, ['(' + str(self.depth) + ' steps)'])
 
         # TODO: These should only be available for split case nodes and return a Node rather than a CTerm,
         # when we extract a class for them.
@@ -142,7 +143,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 'constraint': self.constraint.to_dict(),
             }
 
-        def pretty(self, kprint: KPrint, minimize: bool = True) -> Iterable[str]:
+        def pretty(self, kprint: KPrint, minimize: bool = True) -> Tuple[str, Iterable[str]]:
+            edge_id = f'cover{(self.source.id, self.target.id)}'
             subst_strs = [f'{k} <- {kprint.pretty_print(v)}' for k, v in self.subst.items()]
             subst_str = ''
             if len(subst_strs) == 0:
@@ -156,10 +158,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             constraint_str = kprint.pretty_print(ml_pred_to_bool(self.constraint, unsafe=True))
             if len(constraint_str) > 78:
                 constraint_str = 'OMITTED CONSTRAINT'
-            return [
-                f'constraint: {constraint_str}',
-                f'subst: {subst_str}',
-            ]
+            return (edge_id, [f'constraint: {constraint_str}', f'subst: {subst_str}'])
 
     _nodes: Dict[str, Node]
     _edges: Dict[str, Dict[str, Edge]]
@@ -335,14 +334,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     def from_json(s: str) -> 'KCFG':
         return KCFG.from_dict(json.loads(s))
 
-    def node_short_info(self, node: Node, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None) -> List[str]:
+    def node_short_info(self, node: Node, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None) -> Tuple[str, Iterable[str]]:
+        node_id = f'node({node.id})'
         attrs = self.node_attrs(node.id) + ['@' + alias for alias in sorted(self.aliases(node.id))]
         attr_string = ' (' + ', '.join(attrs) + ')' if attrs else ''
         node_header = shorten_hash(node.id) + attr_string
         node_strs = [node_header]
         if node_printer:
             node_strs.extend(f' {nl}' for nl in node_printer(node.cterm))
-        return node_strs
+        return (node_id, node_strs)
 
     def pretty(
         self, kprint: KPrint, minimize: bool = True, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None
@@ -357,7 +357,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return '\033[32m' + text + '\033[0m'
 
         def _print_node(node: KCFG.Node) -> List[str]:
-            short_info = self.node_short_info(node, node_printer=node_printer)
+            _, short_info = self.node_short_info(node, node_printer=node_printer)
+            short_info = list(short_info)
             if self.is_frontier(node.id):
                 short_info[0] = _bold(short_info[0])
             return short_info
@@ -402,15 +403,17 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     ret.append(indent + '│')
                     if self.is_verified(edge_like.source.id, edge_like.target.id):
                         ret.append(indent + '│  ' + _bold(_green('(verified)')))
-                    ret.extend(add_indent(indent + '│  ', edge_like.pretty(kprint)))
+                    _, pretty_edge = edge_like.pretty(kprint)
+                    ret.extend(add_indent(indent + '│  ', pretty_edge))
                 elif isinstance(edge_like, KCFG.Cover):
                     ret.append(indent + '┊')
-                    ret.extend(add_indent(indent + '┊  ', edge_like.pretty(kprint, minimize=minimize)))
+                    _, pretty_edge = edge_like.pretty(kprint, minimize=minimize)
+                    ret.extend(add_indent(indent + '┊  ', pretty_edge))
                 target_strs = _print_node(edge_like.target)
                 ret.append(indent + elbow + ' ' + target_strs[0])
 
                 if isinstance(edge_like, KCFG.Edge) and edge_like.depth == 0:
-                    first, *rest = edge_like.pretty(kprint)
+                    _, (first, *rest) = edge_like.pretty(kprint)
                     ret[-1] += '    ' + first
                     ret.extend(add_indent(indent + new_indent + (7 + len(target_strs[0])) * ' ', rest))
 
@@ -445,7 +448,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         graph = Digraph()
 
         for node in self.nodes:
-            label = '\n'.join(self.node_short_info(node))
+            _, short_node_info = self.node_short_info(node)
+            label = '\n'.join(short_node_info)
             class_attrs = ' '.join(self.node_attrs(node.id))
             attrs = {'class': class_attrs} if class_attrs else {}
             graph.node(name=node.id, label=label, **attrs)
