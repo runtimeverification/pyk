@@ -276,9 +276,8 @@ class Pattern(Kore):
     def let_patterns(self: P, patterns: Iterable['Pattern']) -> P:
         ...
 
-    @abstractmethod
     def map_patterns(self: P, f: Callable[['Pattern'], 'Pattern']) -> P:
-        ...
+        return self.let_patterns(patterns=(f(pattern) for pattern in self.patterns))
 
 
 class VarPattern(Pattern, WithSort):
@@ -321,9 +320,6 @@ class EVar(VarPattern):
         () = patterns
         return self
 
-    def map_patterns(self: 'EVar', f: Callable[[Pattern], Pattern]) -> 'EVar':
-        return self
-
     @classmethod
     def _tag(cls) -> str:
         return 'EVar'
@@ -357,9 +353,6 @@ class SVar(VarPattern):
         () = patterns
         return self
 
-    def map_patterns(self: 'SVar', f: Callable[[Pattern], Pattern]) -> 'SVar':
-        return self
-
     @classmethod
     def _tag(cls) -> str:
         return 'SVar'
@@ -381,9 +374,6 @@ class String(Pattern):
 
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'String':
         () = patterns
-        return self
-
-    def map_patterns(self: 'String', f: Callable[[Pattern], Pattern]) -> 'String':
         return self
 
     @classmethod
@@ -435,9 +425,6 @@ class App(Pattern):
 
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'App':
         return self.let(args=patterns)
-
-    def map_patterns(self: 'App', f: Callable[[Pattern], Pattern]) -> 'App':
-        return self.let(args=(f(arg) for arg in self.args))
 
     @classmethod
     def _tag(cls) -> str:
@@ -555,9 +542,6 @@ class Top(NullaryConn):
         () = patterns
         return self
 
-    def map_patterns(self: 'Top', f: Callable[[Pattern], Pattern]) -> 'Top':
-        return self
-
     @classmethod
     def _tag(cls) -> str:
         return 'Top'
@@ -593,9 +577,6 @@ class Bottom(NullaryConn):
 
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'Bottom':
         () = patterns
-        return self
-
-    def map_patterns(self: 'Bottom', f: Callable[[Pattern], Pattern]) -> 'Bottom':
         return self
 
     @classmethod
@@ -648,9 +629,6 @@ class Not(UnaryConn):
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'Not':
         (pattern,) = patterns
         return self.let(pattern=pattern)
-
-    def map_patterns(self: 'Not', f: Callable[[Pattern], Pattern]) -> 'Not':
-        return self.let(pattern=f(self.pattern))
 
     @classmethod
     def _tag(cls) -> str:
@@ -721,9 +699,6 @@ class And(BinaryConn):
         left, right = patterns
         return self.let(left=left, right=right)
 
-    def map_patterns(self: 'And', f: Callable[[Pattern], Pattern]) -> 'And':
-        return self.let(left=f(self.left), right=f(self.right))
-
     @classmethod
     def _tag(cls) -> str:
         return 'And'
@@ -775,9 +750,6 @@ class Or(BinaryConn):
         left, right = patterns
         return self.let(left=left, right=right)
 
-    def map_patterns(self: 'Or', f: Callable[[Pattern], Pattern]) -> 'Or':
-        return self.let(left=f(self.left), right=f(self.right))
-
     @classmethod
     def _tag(cls) -> str:
         return 'Or'
@@ -828,9 +800,6 @@ class Implies(BinaryConn):
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'Implies':
         left, right = patterns
         return self.let(left=left, right=right)
-
-    def map_patterns(self: 'Implies', f: Callable[[Pattern], Pattern]) -> 'Implies':
-        return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
     def _tag(cls) -> str:
@@ -884,9 +853,6 @@ class Iff(BinaryConn):
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'Iff':
         left, right = patterns
         return self.let(left=left, right=right)
-
-    def map_patterns(self: 'Iff', f: Callable[[Pattern], Pattern]) -> 'Iff':
-        return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
     def _tag(cls) -> str:
@@ -967,9 +933,6 @@ class Exists(MLQuant):
         (pattern,) = patterns
         return self.let(pattern=pattern)
 
-    def map_patterns(self: 'Exists', f: Callable[[Pattern], Pattern]) -> 'Exists':
-        return self.let(pattern=f(self.pattern))
-
     @classmethod
     def _tag(cls) -> str:
         return 'Exists'
@@ -1021,9 +984,6 @@ class Forall(MLQuant):
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'Forall':
         (pattern,) = patterns
         return self.let(pattern=pattern)
-
-    def map_patterns(self: 'Forall', f: Callable[[Pattern], Pattern]) -> 'Forall':
-        return self.let(pattern=f(self.pattern))
 
     @classmethod
     def _tag(cls) -> str:
@@ -1092,9 +1052,6 @@ class Mu(MLFixpoint):
         (pattern,) = patterns
         return self.let(pattern=pattern)
 
-    def map_patterns(self: 'Mu', f: Callable[[Pattern], Pattern]) -> 'Mu':
-        return self.let(pattern=f(self.pattern))
-
     @classmethod
     def _tag(cls) -> str:
         return 'Mu'
@@ -1134,9 +1091,6 @@ class Nu(MLFixpoint):
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'Nu':
         (pattern,) = patterns
         return self.let(pattern=pattern)
-
-    def map_patterns(self: 'Nu', f: Callable[[Pattern], Pattern]) -> 'Nu':
-        return self.let(pattern=f(self.pattern))
 
     @classmethod
     def _tag(cls) -> str:
@@ -1214,9 +1168,6 @@ class Ceil(RoundPred):
         (pattern,) = patterns
         return self.let(pattern=pattern)
 
-    def map_patterns(self: 'Ceil', f: Callable[[Pattern], Pattern]) -> 'Ceil':
-        return self.let(pattern=f(self.pattern))
-
     @classmethod
     def _tag(cls) -> str:
         return 'Ceil'
@@ -1267,9 +1218,6 @@ class Floor(RoundPred):
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'Floor':
         (pattern,) = patterns
         return self.let(pattern=pattern)
-
-    def map_patterns(self: 'Floor', f: Callable[[Pattern], Pattern]) -> 'Floor':
-        return self.let(pattern=f(self.pattern))
 
     @classmethod
     def _tag(cls) -> str:
@@ -1348,9 +1296,6 @@ class Equals(BinaryPred):
         left, right = patterns
         return self.let(left=left, right=right)
 
-    def map_patterns(self: 'Equals', f: Callable[[Pattern], Pattern]) -> 'Equals':
-        return self.let(left=f(self.left), right=f(self.right))
-
     @classmethod
     def _tag(cls) -> str:
         return 'Equals'
@@ -1406,9 +1351,6 @@ class In(BinaryPred):
         left, right = patterns
         return self.let(left=left, right=right)
 
-    def map_patterns(self: 'In', f: Callable[[Pattern], Pattern]) -> 'In':
-        return self.let(left=f(self.left), right=f(self.right))
-
     @classmethod
     def _tag(cls) -> str:
         return 'In'
@@ -1458,9 +1400,6 @@ class Next(MLRewrite):
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'Next':
         (pattern,) = patterns
         return self.let(pattern=pattern)
-
-    def map_patterns(self: 'Next', f: Callable[[Pattern], Pattern]) -> 'Next':
-        return self.let(pattern=f(self.pattern))
 
     @classmethod
     def _tag(cls) -> str:
@@ -1520,9 +1459,6 @@ class Rewrites(MLRewrite):
         left, right = patterns
         return self.let(left=left, right=right)
 
-    def map_patterns(self: 'Rewrites', f: Callable[[Pattern], Pattern]) -> 'Rewrites':
-        return self.let(left=f(self.left), right=f(self.right))
-
     @classmethod
     def _tag(cls) -> str:
         return 'Rewrites'
@@ -1579,9 +1515,6 @@ class DV(MLPattern, WithSort):
 
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'DV':
         () = patterns
-        return self
-
-    def map_patterns(self: 'DV', f: Callable[[Pattern], Pattern]) -> 'DV':
         return self
 
     @classmethod
@@ -1668,9 +1601,6 @@ class LeftAssoc(Assoc):
         () = patterns
         return self
 
-    def map_patterns(self: 'LeftAssoc', f: Callable[[Pattern], Pattern]) -> 'LeftAssoc':
-        return self
-
     @property
     def pattern(self) -> Pattern:
         if len(self.app.sorts) > 0:
@@ -1720,9 +1650,6 @@ class RightAssoc(Assoc):
 
     def let_patterns(self, patterns: Iterable[Pattern]) -> 'RightAssoc':
         () = patterns
-        return self
-
-    def map_patterns(self: 'RightAssoc', f: Callable[[Pattern], Pattern]) -> 'RightAssoc':
         return self
 
     @property
