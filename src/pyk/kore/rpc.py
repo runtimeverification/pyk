@@ -450,7 +450,7 @@ class KoreServer(ContextManager['KoreServer']):
         stderr = STDOUT if logging is not None else None
 
         self._port = port
-        _LOGGER.warn(f'Starting KoreServer: port={self._port}, log file {logging}')
+        _LOGGER.info(f'Starting KoreServer: port={self._port}, log file {logging}')
         self._proc = Popen(args, stdout=self._logs, stderr=stderr)
         self._pid = self._proc.pid
         _LOGGER.info(f'KoreServer started: port={self._port}, pid={self._pid}')
