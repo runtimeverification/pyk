@@ -268,7 +268,7 @@ class SortApp(Sort):
 
 class Pattern(Kore):
     @abstractmethod
-    def map_pattern(self: P, f: Callable[['Pattern'], 'Pattern']) -> P:
+    def map_patterns(self: P, f: Callable[['Pattern'], 'Pattern']) -> P:
         ...
 
 
@@ -304,7 +304,7 @@ class EVar(VarPattern):
     def let_sort(self, sort: Sort) -> 'EVar':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'EVar', f: Callable[[Pattern], Pattern]) -> 'EVar':
+    def map_patterns(self: 'EVar', f: Callable[[Pattern], Pattern]) -> 'EVar':
         return self
 
     @classmethod
@@ -336,7 +336,7 @@ class SVar(VarPattern):
     def let_sort(self, sort: Sort) -> 'SVar':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'SVar', f: Callable[[Pattern], Pattern]) -> 'SVar':
+    def map_patterns(self: 'SVar', f: Callable[[Pattern], Pattern]) -> 'SVar':
         return self
 
     @classmethod
@@ -358,7 +358,7 @@ class String(Pattern):
         value = value if value is not None else self.value
         return String(value=value)
 
-    def map_pattern(self: 'String', f: Callable[[Pattern], Pattern]) -> 'String':
+    def map_patterns(self: 'String', f: Callable[[Pattern], Pattern]) -> 'String':
         return self
 
     @classmethod
@@ -404,7 +404,7 @@ class App(Pattern):
         patterns = patterns if patterns is not None else self.patterns
         return App(symbol=symbol, sorts=sorts, patterns=patterns)
 
-    def map_pattern(self: 'App', f: Callable[[Pattern], Pattern]) -> 'App':
+    def map_patterns(self: 'App', f: Callable[[Pattern], Pattern]) -> 'App':
         return self.let(patterns=(f(pattern) for pattern in self.patterns))
 
     @classmethod
@@ -512,7 +512,7 @@ class Top(NullaryConn):
     def let_sort(self: 'Top', sort: Sort) -> 'Top':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Top', f: Callable[[Pattern], Pattern]) -> 'Top':
+    def map_patterns(self: 'Top', f: Callable[[Pattern], Pattern]) -> 'Top':
         return self
 
     @classmethod
@@ -548,7 +548,7 @@ class Bottom(NullaryConn):
     def let_sort(self: 'Bottom', sort: Sort) -> 'Bottom':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Bottom', f: Callable[[Pattern], Pattern]) -> 'Bottom':
+    def map_patterns(self: 'Bottom', f: Callable[[Pattern], Pattern]) -> 'Bottom':
         return self
 
     @classmethod
@@ -598,7 +598,7 @@ class Not(UnaryConn):
     def let_sort(self: 'Not', sort: Sort) -> 'Not':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Not', f: Callable[[Pattern], Pattern]) -> 'Not':
+    def map_patterns(self: 'Not', f: Callable[[Pattern], Pattern]) -> 'Not':
         return self.let(pattern=f(self.pattern))
 
     @classmethod
@@ -666,7 +666,7 @@ class And(BinaryConn):
     def let_sort(self: 'And', sort: Sort) -> 'And':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'And', f: Callable[[Pattern], Pattern]) -> 'And':
+    def map_patterns(self: 'And', f: Callable[[Pattern], Pattern]) -> 'And':
         return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
@@ -716,7 +716,7 @@ class Or(BinaryConn):
     def let_sort(self: 'Or', sort: Sort) -> 'Or':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Or', f: Callable[[Pattern], Pattern]) -> 'Or':
+    def map_patterns(self: 'Or', f: Callable[[Pattern], Pattern]) -> 'Or':
         return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
@@ -766,7 +766,7 @@ class Implies(BinaryConn):
     def let_sort(self: 'Implies', sort: Sort) -> 'Implies':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Implies', f: Callable[[Pattern], Pattern]) -> 'Implies':
+    def map_patterns(self: 'Implies', f: Callable[[Pattern], Pattern]) -> 'Implies':
         return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
@@ -818,7 +818,7 @@ class Iff(BinaryConn):
     def let_sort(self: 'Iff', sort: Sort) -> 'Iff':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Iff', f: Callable[[Pattern], Pattern]) -> 'Iff':
+    def map_patterns(self: 'Iff', f: Callable[[Pattern], Pattern]) -> 'Iff':
         return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
@@ -892,7 +892,7 @@ class Exists(MLQuant):
     def let_sort(self, sort: Sort) -> 'Exists':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Exists', f: Callable[[Pattern], Pattern]) -> 'Exists':
+    def map_patterns(self: 'Exists', f: Callable[[Pattern], Pattern]) -> 'Exists':
         return self.let(pattern=f(self.pattern))
 
     @classmethod
@@ -943,7 +943,7 @@ class Forall(MLQuant):
     def let_sort(self, sort: Sort) -> 'Forall':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Forall', f: Callable[[Pattern], Pattern]) -> 'Forall':
+    def map_patterns(self: 'Forall', f: Callable[[Pattern], Pattern]) -> 'Forall':
         return self.let(pattern=f(self.pattern))
 
     @classmethod
@@ -1005,7 +1005,7 @@ class Mu(MLFixpoint):
         pattern = pattern if pattern is not None else self.pattern
         return Mu(var=var, pattern=pattern)
 
-    def map_pattern(self: 'Mu', f: Callable[[Pattern], Pattern]) -> 'Mu':
+    def map_patterns(self: 'Mu', f: Callable[[Pattern], Pattern]) -> 'Mu':
         return self.let(pattern=f(self.pattern))
 
     @classmethod
@@ -1044,7 +1044,7 @@ class Nu(MLFixpoint):
         pattern = pattern if pattern is not None else self.pattern
         return Nu(var=var, pattern=pattern)
 
-    def map_pattern(self: 'Nu', f: Callable[[Pattern], Pattern]) -> 'Nu':
+    def map_patterns(self: 'Nu', f: Callable[[Pattern], Pattern]) -> 'Nu':
         return self.let(pattern=f(self.pattern))
 
     @classmethod
@@ -1119,7 +1119,7 @@ class Ceil(RoundPred):
     def let_sort(self, sort: Sort) -> 'Ceil':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Ceil', f: Callable[[Pattern], Pattern]) -> 'Ceil':
+    def map_patterns(self: 'Ceil', f: Callable[[Pattern], Pattern]) -> 'Ceil':
         return self.let(pattern=f(self.pattern))
 
     @classmethod
@@ -1169,7 +1169,7 @@ class Floor(RoundPred):
     def let_sort(self, sort: Sort) -> 'Floor':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Floor', f: Callable[[Pattern], Pattern]) -> 'Floor':
+    def map_patterns(self: 'Floor', f: Callable[[Pattern], Pattern]) -> 'Floor':
         return self.let(pattern=f(self.pattern))
 
     @classmethod
@@ -1245,7 +1245,7 @@ class Equals(BinaryPred):
     def let_sort(self, sort: Sort) -> 'Equals':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Equals', f: Callable[[Pattern], Pattern]) -> 'Equals':
+    def map_patterns(self: 'Equals', f: Callable[[Pattern], Pattern]) -> 'Equals':
         return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
@@ -1299,7 +1299,7 @@ class In(BinaryPred):
     def let_sort(self, sort: Sort) -> 'In':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'In', f: Callable[[Pattern], Pattern]) -> 'In':
+    def map_patterns(self: 'In', f: Callable[[Pattern], Pattern]) -> 'In':
         return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
@@ -1348,7 +1348,7 @@ class Next(MLRewrite):
     def let_sort(self, sort: Sort) -> 'Next':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Next', f: Callable[[Pattern], Pattern]) -> 'Next':
+    def map_patterns(self: 'Next', f: Callable[[Pattern], Pattern]) -> 'Next':
         return self.let(pattern=f(self.pattern))
 
     @classmethod
@@ -1405,7 +1405,7 @@ class Rewrites(MLRewrite):
     def let_sort(self, sort: Sort) -> 'Rewrites':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'Rewrites', f: Callable[[Pattern], Pattern]) -> 'Rewrites':
+    def map_patterns(self: 'Rewrites', f: Callable[[Pattern], Pattern]) -> 'Rewrites':
         return self.let(left=f(self.left), right=f(self.right))
 
     @classmethod
@@ -1462,7 +1462,7 @@ class DV(MLPattern, WithSort):
     def let_sort(self, sort: Sort) -> 'DV':
         return self.let(sort=sort)
 
-    def map_pattern(self: 'DV', f: Callable[[Pattern], Pattern]) -> 'DV':
+    def map_patterns(self: 'DV', f: Callable[[Pattern], Pattern]) -> 'DV':
         return self
 
     @classmethod
@@ -1537,7 +1537,7 @@ class LeftAssoc(Assoc):
         app = app if app is not None else self.app
         return LeftAssoc(app=app)
 
-    def map_pattern(self: 'LeftAssoc', f: Callable[[Pattern], Pattern]) -> 'LeftAssoc':
+    def map_patterns(self: 'LeftAssoc', f: Callable[[Pattern], Pattern]) -> 'LeftAssoc':
         return self
 
     @property
@@ -1587,7 +1587,7 @@ class RightAssoc(Assoc):
         app = app if app is not None else self.app
         return RightAssoc(app=app)
 
-    def map_pattern(self: 'RightAssoc', f: Callable[[Pattern], Pattern]) -> 'RightAssoc':
+    def map_patterns(self: 'RightAssoc', f: Callable[[Pattern], Pattern]) -> 'RightAssoc':
         return self
 
     @property
