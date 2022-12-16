@@ -267,6 +267,11 @@ class SortApp(Sort):
 
 
 class Pattern(Kore):
+    @property
+    @abstractmethod
+    def patterns(self) -> Tuple['Pattern', ...]:
+        ...
+
     @abstractmethod
     def map_patterns(self: P, f: Callable[['Pattern'], 'Pattern']) -> P:
         ...
@@ -275,6 +280,10 @@ class Pattern(Kore):
 class VarPattern(Pattern, WithSort):
     name: str
     sort: Sort
+
+    @property
+    def patterns(self) -> Tuple[()]:
+        return ()
 
     @property
     def dict(self) -> Dict[str, Any]:
@@ -371,6 +380,10 @@ class String(Pattern):
         return String(value=dct['value'])
 
     @property
+    def patterns(self) -> Tuple[()]:
+        return ()
+
+    @property
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'value': self.value}
 
@@ -421,6 +434,10 @@ class App(Pattern):
         )
 
     @property
+    def patterns(self) -> Tuple[Pattern, ...]:
+        return self.args
+
+    @property
     def dict(self) -> Dict[str, Any]:
         return {
             'tag': self._tag(),
@@ -469,10 +486,12 @@ class MLPattern(Pattern):
         ...
 
     @property
-    @abstractmethod
     def ctor_patterns(self) -> Tuple[Pattern, ...]:
-        """Patterns used to construct the term in `of`."""
-        ...
+        """
+        Patterns used to construct the term with `of`.
+        Except for `Assoc`, `DV`, `MLFixpoint` and `MLQuant` it coincides with `patterns`.
+        """
+        return self.patterns
 
     @property
     def text(self) -> str:
@@ -497,7 +516,7 @@ class NullaryConn(MLConn):
         return {'tag': self._tag(), 'sort': self.sort.dict}
 
     @property
-    def ctor_patterns(self) -> Tuple[()]:
+    def patterns(self) -> Tuple[()]:
         return ()
 
 
@@ -577,7 +596,7 @@ class UnaryConn(MLConn):
     pattern: Pattern
 
     @property
-    def ctor_patterns(self) -> Tuple[Pattern]:
+    def patterns(self) -> Tuple[Pattern]:
         return (self.pattern,)
 
     @property
@@ -632,7 +651,7 @@ class BinaryConn(MLConn):
         yield self.right
 
     @property
-    def ctor_patterns(self) -> Tuple[Pattern, Pattern]:
+    def patterns(self) -> Tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
     @property
@@ -857,6 +876,10 @@ class MLQuant(MLPattern, WithSort):
         return (self.sort,)
 
     @property
+    def patterns(self) -> Tuple[Pattern]:
+        return (self.pattern,)
+
+    @property
     def ctor_patterns(self) -> Tuple[EVar, Pattern]:
         return (self.var, self.pattern)
 
@@ -982,6 +1005,10 @@ class MLFixpoint(MLPattern):
         return ()
 
     @property
+    def patterns(self) -> Tuple[Pattern]:
+        return (self.pattern,)
+
+    @property
     def ctor_patterns(self) -> Tuple[SVar, Pattern]:
         return (self.var, self.pattern)
 
@@ -1085,7 +1112,7 @@ class RoundPred(MLPred):
         return (self.op_sort, self.sort)
 
     @property
-    def ctor_patterns(self) -> Tuple[Pattern]:
+    def patterns(self) -> Tuple[Pattern]:
         return (self.pattern,)
 
     @property
@@ -1207,7 +1234,7 @@ class BinaryPred(MLPred):
         return (self.op_sort, self.sort)
 
     @property
-    def ctor_patterns(self) -> Tuple[Pattern, Pattern]:
+    def patterns(self) -> Tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
     @property
@@ -1376,7 +1403,7 @@ class Next(MLRewrite):
         )
 
     @property
-    def ctor_patterns(self) -> Tuple[Pattern]:
+    def patterns(self) -> Tuple[Pattern]:
         return (self.pattern,)
 
     @property
@@ -1436,7 +1463,7 @@ class Rewrites(MLRewrite):
         )
 
     @property
-    def ctor_patterns(self) -> Tuple[Pattern, Pattern]:
+    def patterns(self) -> Tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
     @property
@@ -1495,6 +1522,10 @@ class DV(MLPattern, WithSort):
         return (self.sort,)
 
     @property
+    def patterns(self) -> Tuple[()]:
+        return ()
+
+    @property
     def ctor_patterns(self) -> Tuple[String]:
         return (self.value,)
 
@@ -1518,6 +1549,10 @@ class Assoc(MLSyntaxSugar):
 
     @property
     def sorts(self) -> Tuple[()]:
+        return ()
+
+    @property
+    def patterns(self) -> Tuple[()]:
         return ()
 
     @property
