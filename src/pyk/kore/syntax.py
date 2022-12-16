@@ -470,7 +470,8 @@ class MLPattern(Pattern):
 
     @property
     @abstractmethod
-    def patterns(self) -> Tuple[Pattern, ...]:
+    def ctor_patterns(self) -> Tuple[Pattern, ...]:
+        """Patterns used to construct the term in `of`."""
         ...
 
     @property
@@ -480,7 +481,7 @@ class MLPattern(Pattern):
             + ' '
             + _braced(sort.text for sort in self.sorts)
             + ' '
-            + _parend(pattern.text for pattern in self.patterns)
+            + _parend(pattern.text for pattern in self.ctor_patterns)
         )
 
 
@@ -496,7 +497,7 @@ class NullaryConn(MLConn):
         return {'tag': self._tag(), 'sort': self.sort.dict}
 
     @property
-    def patterns(self) -> Tuple[()]:
+    def ctor_patterns(self) -> Tuple[()]:
         return ()
 
 
@@ -576,7 +577,7 @@ class UnaryConn(MLConn):
     pattern: Pattern
 
     @property
-    def patterns(self) -> Tuple[Pattern]:
+    def ctor_patterns(self) -> Tuple[Pattern]:
         return (self.pattern,)
 
     @property
@@ -631,7 +632,7 @@ class BinaryConn(MLConn):
         yield self.right
 
     @property
-    def patterns(self) -> Tuple[Pattern, Pattern]:
+    def ctor_patterns(self) -> Tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
     @property
@@ -856,7 +857,7 @@ class MLQuant(MLPattern, WithSort):
         return (self.sort,)
 
     @property
-    def patterns(self) -> Tuple[EVar, Pattern]:
+    def ctor_patterns(self) -> Tuple[EVar, Pattern]:
         return (self.var, self.pattern)
 
     @property
@@ -981,7 +982,7 @@ class MLFixpoint(MLPattern):
         return ()
 
     @property
-    def patterns(self) -> Tuple[SVar, Pattern]:
+    def ctor_patterns(self) -> Tuple[SVar, Pattern]:
         return (self.var, self.pattern)
 
     @property
@@ -1084,7 +1085,7 @@ class RoundPred(MLPred):
         return (self.op_sort, self.sort)
 
     @property
-    def patterns(self) -> Tuple[Pattern]:
+    def ctor_patterns(self) -> Tuple[Pattern]:
         return (self.pattern,)
 
     @property
@@ -1206,7 +1207,7 @@ class BinaryPred(MLPred):
         return (self.op_sort, self.sort)
 
     @property
-    def patterns(self) -> Tuple[Pattern, Pattern]:
+    def ctor_patterns(self) -> Tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
     @property
@@ -1375,7 +1376,7 @@ class Next(MLRewrite):
         )
 
     @property
-    def patterns(self) -> Tuple[Pattern]:
+    def ctor_patterns(self) -> Tuple[Pattern]:
         return (self.pattern,)
 
     @property
@@ -1435,7 +1436,7 @@ class Rewrites(MLRewrite):
         )
 
     @property
-    def patterns(self) -> Tuple[Pattern, Pattern]:
+    def ctor_patterns(self) -> Tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
     @property
@@ -1494,7 +1495,7 @@ class DV(MLPattern, WithSort):
         return (self.sort,)
 
     @property
-    def patterns(self) -> Tuple[String]:
+    def ctor_patterns(self) -> Tuple[String]:
         return (self.value,)
 
     @property
@@ -1520,7 +1521,7 @@ class Assoc(MLSyntaxSugar):
         return ()
 
     @property
-    def patterns(self) -> Tuple[App]:
+    def ctor_patterns(self) -> Tuple[App]:
         return (self.app,)
 
     @property
