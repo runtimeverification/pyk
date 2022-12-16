@@ -279,6 +279,12 @@ class Pattern(Kore):
     def map_patterns(self: P, f: Callable[['Pattern'], 'Pattern']) -> P:
         return self.let_patterns(patterns=(f(pattern) for pattern in self.patterns))
 
+    def bottom_up(self, f: Callable[['Pattern'], 'Pattern']) -> 'Pattern':
+        return f(self.map_patterns(lambda pattern: pattern.bottom_up(f)))
+
+    def top_down(self, f: Callable[['Pattern'], 'Pattern']) -> 'Pattern':
+        return f(self).map_patterns(lambda pattern: pattern.top_down(f))
+
 
 class VarPattern(Pattern, WithSort):
     name: str
