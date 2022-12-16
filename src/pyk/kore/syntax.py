@@ -384,28 +384,28 @@ class String(Pattern):
 class App(Pattern):
     symbol: str
     sorts: Tuple[Sort, ...]
-    patterns: Tuple[Pattern, ...]
+    args: Tuple[Pattern, ...]
 
-    def __init__(self, symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()):
+    def __init__(self, symbol: str, sorts: Iterable[Sort] = (), args: Iterable[Pattern] = ()):
         check_symbol_id(symbol)
         object.__setattr__(self, 'symbol', symbol)
         object.__setattr__(self, 'sorts', tuple(sorts))
-        object.__setattr__(self, 'patterns', tuple(patterns))
+        object.__setattr__(self, 'args', tuple(args))
 
     def let(
         self,
         *,
         symbol: Optional[str] = None,
         sorts: Optional[Iterable] = None,
-        patterns: Optional[Iterable] = None,
+        args: Optional[Iterable] = None,
     ) -> 'App':
         symbol = symbol if symbol is not None else self.symbol
         sorts = sorts if sorts is not None else self.sorts
-        patterns = patterns if patterns is not None else self.patterns
-        return App(symbol=symbol, sorts=sorts, patterns=patterns)
+        args = args if args is not None else self.args
+        return App(symbol=symbol, sorts=sorts, args=args)
 
     def map_patterns(self: 'App', f: Callable[[Pattern], Pattern]) -> 'App':
-        return self.let(patterns=(f(pattern) for pattern in self.patterns))
+        return self.let(args=(f(arg) for arg in self.args))
 
     @classmethod
     def _tag(cls) -> str:
@@ -417,7 +417,7 @@ class App(Pattern):
         return App(
             symbol=dct['name'],
             sorts=(Sort.from_dict(sort) for sort in dct['sorts']),
-            patterns=(Pattern.from_dict(arg) for arg in dct['args']),
+            args=(Pattern.from_dict(arg) for arg in dct['args']),
         )
 
     @property
@@ -426,7 +426,7 @@ class App(Pattern):
             'tag': self._tag(),
             'name': self.symbol,
             'sorts': [sort.dict for sort in self.sorts],
-            'args': [pattern.dict for pattern in self.patterns],
+            'args': [pattern.dict for pattern in self.args],
         }
 
     @property
@@ -436,7 +436,7 @@ class App(Pattern):
             + ' '
             + _braced(sort.text for sort in self.sorts)
             + ' '
-            + _parend(pattern.text for pattern in self.patterns)
+            + _parend(args.text for args in self.args)
         )
 
 
@@ -1545,10 +1545,10 @@ class LeftAssoc(Assoc):
     def pattern(self) -> Pattern:
         if len(self.app.sorts) > 0:
             raise ValueError(f'Cannot associate a pattern with sort parameters: {self}')
-        if len(self.app.patterns) == 0:
+        if len(self.app.args) == 0:
             raise ValueError(f'Cannot associate a pattern with no arguments: {self}')
-        ret = self.app.patterns[0]
-        for a in self.app.patterns[1:]:
+        ret = self.app.args[0]
+        for a in self.app.args[1:]:
             ret = App(self.app.symbol, [], [ret, a])
         return ret
 
@@ -1595,10 +1595,10 @@ class RightAssoc(Assoc):
     def pattern(self) -> Pattern:
         if len(self.app.sorts) > 0:
             raise ValueError(f'Cannot associate a pattern with sort parameters: {self}')
-        if len(self.app.patterns) == 0:
+        if len(self.app.args) == 0:
             raise ValueError(f'Cannot associate a pattern with no arguments: {self}')
-        ret = self.app.patterns[-1]
-        for a in reversed(self.app.patterns[:-1]):
+        ret = self.app.args[-1]
+        for a in reversed(self.app.args[:-1]):
             ret = App(self.app.symbol, [], [a, ret])
         return ret
 
