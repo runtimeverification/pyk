@@ -374,7 +374,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     ret_edge_lines.append(indent + '└╌ (looped back)')
                 else:
                     ret_edge_lines.append(indent + '└╌ (continues as previously)')
-                ret_lines.append(('', ret_edge_lines))
+                ret_lines.append(('unknown', ret_edge_lines))
                 return
             processed_nodes.append(curr_node)
 
@@ -382,7 +382,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             is_cover = num_children == 1 and isinstance(edges_from[0], KCFG.Cover)
             is_branch = num_children > 1
             if is_branch:
-                ret_lines.append(('', [indent + '│']))
+                ret_lines.append(('unknown', [indent + '│']))
             for i, edge_like in enumerate(edges_from):
                 is_last_child = i == num_children - 1
 
@@ -419,23 +419,35 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     ret_node_lines.extend(add_indent(indent + new_indent + (7 + len(target_strs[0])) * ' ', rest))
 
                 ret_node_lines.extend(add_indent(indent + node_indent, target_strs[1:]))
-                ret_lines.append((f'node({edge_like.target})', ret_node_lines))
+                ret_lines.append((f'node({edge_like.target.id})', ret_node_lines))
 
                 _print_subgraph(indent + new_indent, edge_like.target, prior_on_trace + [edge_like.source])
 
                 if is_branch and not is_last_child:
-                    ret_lines.append(('', [indent + new_indent]))
+                    ret_lines.append(('unknown', [indent + new_indent]))
 
         init = sorted(self.init)
         while init:
             init_strs = _print_node(init[0])
-            ret_init = ['']
-            ret_init.append('┌  ' + init_strs[0])
+            ret_lines.append(('unknown', ['']))
+            ret_init = [('┌  ' + init_strs[0])]
             ret_init.extend(add_indent('│  ', init_strs[1:]))
             ret_lines.append((f'node({init[0].id})', ret_init))
             _print_subgraph('', init[0], [init[0]])
             init = sorted(node for node in self.nodes if node not in processed_nodes)
-        return [(id, [l.rstrip() for l in seg_lines]) for id, seg_lines in ret_lines]
+
+        _ret_lines = []
+        used_ids = []
+        for id, seg_lines in ret_lines:
+            suffix = ''
+            counter = 0
+            while f'{id}{suffix}' in used_ids:
+                suffix = f'_{counter}'
+                counter += 1
+            new_id = f'{id}{suffix}'
+            used_ids.append(new_id)
+            _ret_lines.append((f'{new_id}', [l.rstrip() for l in seg_lines]))
+        return _ret_lines
 
     def pretty(
         self, kprint: KPrint, minimize: bool = True, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None
