@@ -389,15 +389,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 if not (is_branch or is_cover):
                     elbow = '├ ' if len(self.edge_likes(source_id=edge_like.target.id)) else '└ '
                     new_indent = ''
-                    node_indent = '│  '
+                    node_indent = '│ '
                 elif is_last_child:
                     elbow = '└╌' if is_cover else '┗━'
-                    new_indent = '    '
-                    node_indent = '    │'
+                    new_indent = '   '
+                    node_indent = '   │'
                 else:
                     elbow = '┣━'
-                    new_indent = '┃   '
-                    node_indent = '┃   │'
+                    new_indent = '┃  '
+                    node_indent = '┃  │'
 
                 if isinstance(edge_like, KCFG.Edge) and edge_like.depth:
                     ret_edge_lines = [(indent + '│')]
@@ -416,7 +416,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 if isinstance(edge_like, KCFG.Edge) and edge_like.depth == 0:
                     first, *rest = edge_like.pretty(kprint)
                     ret_node_lines[-1] += '    ' + first
-                    ret_node_lines.extend(add_indent(indent + new_indent + (7 + len(target_strs[0])) * ' ', rest))
+                    ret_node_lines.extend(add_indent(indent + new_indent + '       ' + len(target_strs[0]) * ' ', rest))
 
                 ret_node_lines.extend(add_indent(indent + node_indent, target_strs[1:]))
                 ret_lines.append((f'node({edge_like.target.id})', ret_node_lines))
