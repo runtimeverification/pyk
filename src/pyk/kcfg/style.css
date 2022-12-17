@@ -1,15 +1,11 @@
 #navigation {
     dock: left;
-    width: 25%;
+    width: 35%;
     height: 100%;
     layout: vertical;
 }
-#navigation-info {
-    height: 1fr;
-    border: solid;
-}
 #behavior {
-    height: 8fr;
+    height: 1fr;
     border: solid;
     overflow-x: auto;
     overflow-y: auto;
@@ -24,17 +20,17 @@
     layout: vertical;
 }
 #info-view {
-    height: 1fr;
+    height: 2fr;
     border: solid;
     overflow: auto scroll;
 }
 #term-view {
-    height: 12fr;
+    height: 15fr;
     border: solid;
     overflow: auto scroll;
 }
 #constraint-view {
-    height: 4fr;
+    height: 5fr;
     border: solid;
     overflow: auto scroll;
 }
