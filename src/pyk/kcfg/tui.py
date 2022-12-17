@@ -1,21 +1,78 @@
 import json
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Callable, Iterable, List, Optional, Union
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.reactive import var
-from textual.widgets import Header, Static
+from textual.events import Click
+from textual.message import Message, MessageTarget
+from textual.widget import Widget
+from textual.widgets import Static
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KApply
-from pyk.kast.manip import minimize_term
+from pyk.kast.inner import KApply, KInner, KRewrite
+from pyk.kast.manip import minimize_term, push_down_rewrites
 from pyk.ktool import KPrint
-from pyk.prelude.kbool import FALSE, TRUE, notBool
+from pyk.prelude.kbool import TRUE
 
 from ..cli_utils import check_file_path
 from ..kcfg import KCFG
 from ..utils import shorten_hashes
+
+
+class GraphChunk(Static):
+    _node_text: str
+
+    class Selected(Message):
+        chunk_id: str
+
+        def __init__(self, sender: MessageTarget, chunk_id: str) -> None:
+            self.chunk_id = chunk_id
+            super().__init__(sender)
+
+    def __init__(self, id: str, node_text: Iterable[str] = ()) -> None:
+        self._node_text = '\n'.join(node_text)
+        super().__init__(self._node_text, id=id, classes='cfg-node')
+
+    def on_enter(self) -> None:
+        self.styles.border_left = ('double', 'red')  # type: ignore
+
+    def on_leave(self) -> None:
+        self.styles.border_left = None  # type: ignore
+
+    async def on_click(self, click: Click) -> None:
+        await self.emit(GraphChunk.Selected(self, self.id or ''))
+        click.stop()
+
+
+class BehaviorView(Widget):
+    _kcfg: KCFG
+    _kprint: KPrint
+    _minimize: bool
+    _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
+    _nodes: Iterable[GraphChunk]
+
+    def __init__(
+        self,
+        kcfg: KCFG,
+        kprint: KPrint,
+        minimize: bool = True,
+        node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
+        id: str = '',
+    ):
+        super().__init__(id=id)
+        self._kcfg = kcfg
+        self._kprint = kprint
+        self._minimize = minimize
+        self._node_printer = node_printer
+        self._nodes = []
+        for lseg_id, node_lines in self._kcfg.pretty_segments(
+            self._kprint, minimize=self._minimize, node_printer=self._node_printer
+        ):
+            self._nodes.append(GraphChunk(lseg_id, node_lines))
+
+    def compose(self) -> ComposeResult:
+        return self._nodes
 
 
 class KCFGViewer(App):
@@ -24,40 +81,15 @@ class KCFGViewer(App):
     _kcfg_file: Path
     _cfg: KCFG
     _kprint: KPrint
-    _curr_node: str
     _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
-    _custom_printer: Optional[Callable[[CTerm], Iterable[str]]]
     _minimize: bool
-
-    _term_view = var(True)
-    _constraint_view = var(True)
-    _user_view = var(False)
-
-    BINDINGS = [
-        ('p', 'keystroke("p")', 'Select previous node'),
-        ('n', 'keystroke("n")', 'Select next node'),
-        ('0', 'keystroke("0")', 'Select node 0'),
-        ('1', 'keystroke("1")', 'Select node 1'),
-        ('2', 'keystroke("2")', 'Select node 2'),
-        ('3', 'keystroke("3")', 'Select node 3'),
-        ('4', 'keystroke("4")', 'Select node 4'),
-        ('5', 'keystroke("5")', 'Select node 5'),
-        ('6', 'keystroke("6")', 'Select node 6'),
-        ('7', 'keystroke("7")', 'Select node 7'),
-        ('8', 'keystroke("8")', 'Select node 8'),
-        ('9', 'keystroke("9")', 'Select node 9'),
-        ('m', 'keystroke("m")', 'Toggle term minimization'),
-        ('t', 'keystroke("t")', 'Toggle term view'),
-        ('c', 'keystroke("c")', 'Toggle constraint view'),
-        ('u', 'keystroke("u")', 'Toggle user supplied view'),
-    ]
 
     def __init__(
         self,
         kcfg_file: Union[str, Path],
         kprint: KPrint,
         node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
-        custom_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
+        minimize: bool = True,
     ) -> None:
         kcfg_file = Path(kcfg_file)
         check_file_path(kcfg_file)
@@ -65,143 +97,57 @@ class KCFGViewer(App):
         self._kcfg_file = kcfg_file
         self._cfg = KCFG.from_dict(json.loads(kcfg_file.read_text()))
         self._kprint = kprint
-        self._curr_node = self._cfg.get_unique_init().id
         self._node_printer = node_printer
-        self._custom_printer = custom_printer
         self._minimize = True
-        self._term_view = True
-        self._constraint_view = True
-        self._user_view = False
-
-    def _navigation_options(self) -> Dict[str, Tuple[str, str]]:
-        nav_opts = {}
-        in_edges: List[KCFG.EdgeLike] = []
-        out_edges: List[KCFG.EdgeLike] = []
-        for e in self._cfg.edges(target_id=self._curr_node):
-            in_edges.append(e)
-        for c in self._cfg.covers(target_id=self._curr_node):
-            in_edges.append(c)
-        for e in self._cfg.edges(source_id=self._curr_node):
-            out_edges.append(e)
-        for c in self._cfg.covers(source_id=self._curr_node):
-            out_edges.append(c)
-        counter = 0
-        if len(in_edges) == 1:
-            nav_opts['p'] = ('prev', in_edges[0].source.id)
-        else:
-            for ie in in_edges:
-                if counter > 9:
-                    break
-                nav_opts[str(counter)] = ('prev', ie.source.id)
-                counter += 1
-        if len(out_edges) == 1:
-            nav_opts['n'] = ('next', out_edges[0].target.id)
-        else:
-            for oe in out_edges:
-                if counter > 9:
-                    break
-                nav_opts[str(counter)] = ('next', oe.target.id)
-                counter += 1
-        return nav_opts
-
-    def _navigation_text(self) -> str:
-        text_lines = [f'current node: {shorten_hashes(self._curr_node)}']
-        for k, (d, n) in self._navigation_options().items():
-            text_lines.append(f'    {k}: {d} {shorten_hashes(n)}')
-        return '\n'.join(text_lines)
-
-    def _behavior_text(self) -> str:
-        text_lines = self._cfg.pretty(self._kprint, minimize=self._minimize, node_printer=self._node_printer)
-        return '\n'.join(text_lines)
-
-    def _display_text(self) -> str:
-        text_lines = ['display options:']
-        text_lines.append(f'    m: toggle minimization: {self._minimize}')
-        text_lines.append(f'    t: toggle term view: {self._term_view}')
-        text_lines.append(f'    c: toggle constraint view: {self._constraint_view}')
-        text_lines.append(f'    u: toggle user view: {self._user_view}')
-        return '\n'.join(text_lines)
-
-    def _term_text(self) -> str:
-        if not self._term_view:
-            return ''
-        kast = self._cfg.node(self._curr_node).cterm.config
-        if self._minimize:
-            kast = minimize_term(kast)
-        return self._kprint.pretty_print(kast)
-
-    def _constraint_text(self) -> str:
-        if not self._constraint_view:
-            return ''
-        constraints = self._cfg.node(self._curr_node).cterm.constraints
-        text_lines = []
-        for c in constraints:
-            if type(c) is KApply and c.label.name == '#Equals' and c.args[0] == TRUE:
-                text_lines.append(self._kprint.pretty_print(c.args[1]))
-            elif type(c) is KApply and c.label.name == '#Equals' and c.args[0] == FALSE:
-                text_lines.append(self._kprint.pretty_print(notBool(c.args[1])))
-            else:
-                text_lines.append(self._kprint.pretty_print(c))
-        return '\n'.join(text_lines)
-
-    def _user_text(self) -> str:
-        if not self._user_view:
-            return ''
-        if self._custom_printer is None:
-            return 'No custom_printer supplied!'
-        return '\n'.join(self._custom_printer(self._cfg.node(self._curr_node).cterm))
 
     def compose(self) -> ComposeResult:
-        yield Header()
-        right_pane_views = [Horizontal(Static(id='display'), id='display-view')]
-        if self._term_view:
-            right_pane_views.append(Horizontal(Static(id='term'), id='term-view'))
-        if self._constraint_view:
-            right_pane_views.append(Horizontal(Static(id='constraint'), id='constraint-view'))
-        if self._user_view:
-            right_pane_views.append(Horizontal(Static(id='user'), id='user-view'))
-        yield Horizontal(
-            Vertical(
-                Horizontal(Static(id='navigation'), id='navigation-view'),
-                Horizontal(Static(id='behavior'), id='behavior-view'),
-                id='left-pane-view',
-            ),
-            Vertical(
-                *right_pane_views,
-                id='right-pane-view',
-            ),
+        yield Vertical(
+            BehaviorView(self._cfg, self._kprint, node_printer=self._node_printer, id='behavior'),
+            id='navigation',
+        )
+        yield Vertical(
+            Horizontal(Static('Info', id='info'), id='info-view'),
+            Horizontal(Static('Term', id='term'), id='term-view'),
+            Horizontal(Static('Constraint', id='constraint'), id='constraint-view'),
+            id='display',
         )
 
-    def update(self, components: Optional[Iterable[str]] = None) -> None:
-        if components is None or 'navigation' in components:
-            self.query_one('#navigation', Static).update(self._navigation_text())
-        if components is None or 'behavior' in components:
-            self.query_one('#behavior', Static).update(self._behavior_text())
-        if components is None or 'display' in components:
-            self.query_one('#display', Static).update(self._display_text())
-        if components is None or 'term' in components:
-            self.query_one('#term', Static).update(self._term_text())
-        if components is None or 'constraint' in components:
-            self.query_one('#constraint', Static).update(self._constraint_text())
+    def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
+        def _mostly_bool_constraints(cs: List[KInner]) -> List[KInner]:
+            new_cs = []
+            for c in cs:
+                if type(c) is KApply and c.label.name == '#Equals' and c.args[0] == TRUE:
+                    new_cs.append(c.args[1])
+                else:
+                    new_cs.append(c)
+            return new_cs
 
-    def on_mount(self) -> None:
-        self.update()
+        if message.chunk_id.startswith('node(') and message.chunk_id.endswith(')'):
+            node = message.chunk_id[5:-1]
+            config, *_constraints = self._cfg.node(node).cterm
+            if self._minimize:
+                config = minimize_term(config)
+            constraints = _mostly_bool_constraints(_constraints)
+            self.query_one('#info', Static).update(f'node({shorten_hashes(node)})')
+            self.query_one('#term', Static).update(self._kprint.pretty_print(config))
+            self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
 
-    def action_keystroke(self, nid: str) -> None:
-        nav_opts = self._navigation_options()
-        if nid in nav_opts:
-            _, next_node = nav_opts[nid]
-            self._curr_node = next_node
-            self.update(['navigation', 'term', 'constraint'])
-        elif nid == 'm':
-            self._minimize = not self._minimize
-            self.update(['display', 'term'])
-        elif nid == 't':
-            self._term_view = not self._term_view
-            self.update(['display', 'term'])
-        elif nid == 'c':
-            self._constraint_view = not self._constraint_view
-            self.update(['display', 'constraint'])
-        elif nid == 'u':
-            self._user_view = not self._user_view
-            self.update(['display', 'user'])
+        elif message.chunk_id.startswith('edge(') and message.chunk_id.endswith(')'):
+            node_source, node_target = message.chunk_id[5:-1].split(',')
+            config_source, *_constraints_source = self._cfg.node(node_source).cterm
+            config_target, *_constraints_target = self._cfg.node(node_target).cterm
+            constraints_source = _mostly_bool_constraints(_constraints_source)
+            constraints_target = _mostly_bool_constraints(_constraints_target)
+            constraints_new = [c for c in constraints_target if c not in constraints_source]
+            config = push_down_rewrites(KRewrite(config_source, config_target))
+            if self._minimize:
+                config = minimize_term(config)
+            self.query_one('#info', Static).update(
+                f'edge({shorten_hashes(node_source)}, {shorten_hashes(node_target)})'
+            )
+            self.query_one('#term', Static).update(
+                '\n'.join(self._kprint.pretty_print(c) for c in [config] + constraints_source)
+            )
+            self.query_one('#constraint', Static).update(
+                '\n'.join(self._kprint.pretty_print(c) for c in constraints_new)
+            )
