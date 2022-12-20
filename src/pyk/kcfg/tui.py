@@ -59,7 +59,7 @@ class BehaviorView(Widget):
         minimize: bool = True,
         node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
         id: str = '',
-    ):
+    ) -> None:
         super().__init__(id=id)
         self._kcfg = kcfg
         self._kprint = kprint
