@@ -22,27 +22,42 @@
 #info-view {
     height: 2fr;
     border: solid;
-    overflow: auto scroll;
 }
 #term-view {
     height: 15fr;
     border: solid;
-    overflow: auto scroll;
 }
 #constraint-view {
     height: 5fr;
     border: solid;
-    overflow: auto scroll;
+}
+#info-header {
+    dock: top;
+    width: auto;
+    height: 1;
+}
+#term-header {
+    dock: top;
+    width: auto;
+    height: 1;
+}
+#constraint-header {
+    dock: top;
+    width: auto;
+    height: 1;
 }
 #info {
     width: auto;
     height: auto;
+    overflow: auto;
 }
 #term {
     width: auto;
     height: auto;
+    overflow: auto;
 }
 #constraint {
     width: auto;
     height: auto;
+    overflow: auto;
 }

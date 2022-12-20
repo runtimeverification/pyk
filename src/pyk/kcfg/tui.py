@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Callable, Iterable, List, Optional, Union
 
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Vertical
 from textual.events import Click
 from textual.message import Message, MessageTarget
 from textual.widget import Widget
@@ -106,9 +106,9 @@ class KCFGViewer(App):
             id='navigation',
         )
         yield Vertical(
-            Horizontal(Static('Info', id='info'), id='info-view'),
-            Horizontal(Static('Term', id='term'), id='term-view'),
-            Horizontal(Static('Constraint', id='constraint'), id='constraint-view'),
+            Vertical(Static('Info', id='info-header'), Static(id='info'), id='info-view'),
+            Vertical(Static('Term', id='term-header'), Static(id='term'), id='term-view'),
+            Vertical(Static('Constraint', id='constraint-header'), Static(id='constraint'), id='constraint-view'),
             id='display',
         )
 
