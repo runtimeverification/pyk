@@ -453,9 +453,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         self, kprint: KPrint, minimize: bool = True, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None
     ) -> Iterable[str]:
         return (
-            l
+            line
             for _, seg_lines in self.pretty_segments(kprint, minimize=minimize, node_printer=node_printer)
-            for l in seg_lines
+            for line in seg_lines
         )
 
     def to_dot(self, kprint: KPrint) -> str:
