@@ -347,6 +347,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     def pretty_segments(
         self, kprint: KPrint, minimize: bool = True, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None
     ) -> Iterable[Tuple[str, Iterable[str]]]:
+        """Return a pretty version of the KCFG in segments.
+
+        Each segment is a tuple of an identifier and a list of lines to be printed for that segment (Tuple[str, Iterable[str]).
+        The identifier tells you whether that segment is for a given node, edge, or just pretty spacing ('unknown').
+        This is useful for applications which want to pretty print in chunks, so that they can know which printed region corresponds to each node/edge.
+        """
 
         processed_nodes: List[KCFG.Node] = []
         ret_lines: List[Tuple[str, List[str]]] = []
