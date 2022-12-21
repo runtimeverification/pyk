@@ -19,15 +19,15 @@
 #display {
     layout: vertical;
 }
-#info-view {
+#info {
     height: 2fr;
     border: solid;
 }
-#term-view {
+#term {
     height: 15fr;
     border: solid;
 }
-#constraint-view {
+#constraint {
     height: 5fr;
     border: solid;
 }
@@ -46,17 +46,17 @@
     width: auto;
     height: 1;
 }
-#info {
+#info-content {
     width: auto;
     height: auto;
     overflow: auto;
 }
-#term {
+#term-content {
     width: auto;
     height: auto;
     overflow: auto;
 }
-#constraint {
+#constraint-content {
     width: auto;
     height: auto;
     overflow: auto;

@@ -75,6 +75,38 @@ class BehaviorView(Widget):
         return self._nodes
 
 
+class DisplayHeader(Static):
+    _open: bool
+    _header_arrow: str
+    _header_text: str
+
+    def __init__(self, header_text: str, id: str = '') -> None:
+        super().__init__(id=f'{id}')
+        self._open = True
+        self._header_arrow = '▶'
+        self._header_arrow = '▼'
+        self._header_text = header_text
+        self.update(f'{self._header_arrow} {self._header_text}')
+
+    def compose(self) -> ComposeResult:
+        yield self
+
+
+class DisplayView(Vertical):
+    _open: bool
+    _header: DisplayHeader
+    _content_text: str
+
+    def __init__(self, header_text: str, content_text: str = '', id: str = '') -> None:
+        super().__init__(id=f'{id}')
+        self._header = DisplayHeader(header_text, id=f'{self.id}-header')
+        self._content_text = content_text
+
+    def compose(self) -> ComposeResult:
+        yield self._header
+        yield Static(self._content_text, id=f'{self.id}-content')
+
+
 class KCFGViewer(App):
     CSS_PATH = 'style.css'
 
@@ -106,9 +138,9 @@ class KCFGViewer(App):
             id='navigation',
         )
         yield Vertical(
-            Vertical(Static('Info', id='info-header'), Static(id='info'), id='info-view'),
-            Vertical(Static('Term', id='term-header'), Static(id='term'), id='term-view'),
-            Vertical(Static('Constraint', id='constraint-header'), Static(id='constraint'), id='constraint-view'),
+            DisplayView('Info', id='info'),
+            DisplayView('Term', id='term'),
+            DisplayView('Constraint', id='constraint'),
             id='display',
         )
 
@@ -128,9 +160,11 @@ class KCFGViewer(App):
             if self._minimize:
                 config = minimize_term(config)
             constraints = _mostly_bool_constraints(_constraints)
-            self.query_one('#info', Static).update(f'node({shorten_hashes(node)})')
-            self.query_one('#term', Static).update(self._kprint.pretty_print(config))
-            self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
+            self.query_one('#info-content', Static).update(f'node({shorten_hashes(node)})')
+            self.query_one('#term-content', Static).update(self._kprint.pretty_print(config))
+            self.query_one('#constraint-content', Static).update(
+                '\n'.join(self._kprint.pretty_print(c) for c in constraints)
+            )
 
         elif message.chunk_id.startswith('edge(') and message.chunk_id.endswith(')'):
             node_source, node_target = message.chunk_id[5:-1].split(',')
@@ -142,12 +176,12 @@ class KCFGViewer(App):
             config = push_down_rewrites(KRewrite(config_source, config_target))
             if self._minimize:
                 config = minimize_term(config)
-            self.query_one('#info', Static).update(
+            self.query_one('#info-content', Static).update(
                 f'edge({shorten_hashes(node_source)}, {shorten_hashes(node_target)})'
             )
-            self.query_one('#term', Static).update(
+            self.query_one('#term-content', Static).update(
                 '\n'.join(self._kprint.pretty_print(c) for c in [config] + constraints_source)
             )
-            self.query_one('#constraint', Static).update(
+            self.query_one('#constraint-content', Static).update(
                 '\n'.join(self._kprint.pretty_print(c) for c in constraints_new)
             )
