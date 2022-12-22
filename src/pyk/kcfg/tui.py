@@ -6,6 +6,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Vertical
 from textual.events import Click
 from textual.message import Message, MessageTarget
+from textual.scroll_view import ScrollView
 from textual.widget import Widget
 from textual.widgets import Static
 
@@ -80,8 +81,15 @@ class DisplayHeader(Static):
     _header_arrow: str
     _header_text: str
 
+    class Toggled(Message):
+        open: bool
+
+        def __init__(self, sender: MessageTarget, open: bool) -> None:
+            self.open = open
+            super().__init__(sender)
+
     def __init__(self, header_text: str, id: str = '') -> None:
-        super().__init__(id=f'{id}')
+        super().__init__(id=f'{id}', classes='display-view-header')
         self._open = True
         self._header_arrow = '▶'
         self._header_arrow = '▼'
@@ -91,20 +99,29 @@ class DisplayHeader(Static):
     def compose(self) -> ComposeResult:
         yield self
 
+    async def on_click(self, click: Click) -> None:
+        await self.emit(DisplayHeader.Toggled(self, self._open))
+        click.stop()
+
 
 class DisplayView(Vertical):
-    _open: bool
     _header: DisplayHeader
     _content_text: str
 
     def __init__(self, header_text: str, content_text: str = '', id: str = '') -> None:
-        super().__init__(id=f'{id}')
+        super().__init__(id=f'{id}', classes='display-view-wrapper')
         self._header = DisplayHeader(header_text, id=f'{self.id}-header')
         self._content_text = content_text
 
     def compose(self) -> ComposeResult:
-        yield self._header
-        yield Static(self._content_text, id=f'{self.id}-content')
+        yield ScrollView(
+            self._header,
+            Static(self._content_text, id=f'{self.id}-content', classes='display-view-content'),
+            id=f'{self.id}-scroll',
+        )
+
+    def on_display_header_toggled(self, message: DisplayHeader.Toggled) -> None:
+        self.query_one(f'{self.id}-content', Static).styles.display = None
 
 
 class KCFGViewer(App):

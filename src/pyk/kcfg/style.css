@@ -21,43 +21,29 @@
 }
 #info {
     height: 2fr;
-    border: solid;
 }
 #term {
     height: 15fr;
-    border: solid;
 }
 #constraint {
     height: 5fr;
+}
+
+.display-view-wrapper {
+    height: auto;
+    width: 100%;
     border: solid;
+    overflow-x: auto;
+    overflow-y: auto;
 }
-#info-header {
+
+.display-view-header {
     dock: top;
     width: auto;
     height: 1;
 }
-#term-header {
-    dock: top;
+
+.display-view-content {
     width: auto;
-    height: 1;
-}
-#constraint-header {
-    dock: top;
-    width: auto;
-    height: 1;
-}
-#info-content {
-    width: auto;
-    height: auto;
-    overflow: auto;
-}
-#term-content {
-    width: auto;
-    height: auto;
-    overflow: auto;
-}
-#constraint-content {
-    width: auto;
-    height: auto;
-    overflow: auto;
+    height: 100%;
 }
