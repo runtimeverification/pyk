@@ -50,6 +50,7 @@ class BehaviorView(Widget):
     _kcfg: KCFG
     _kprint: KPrint
     _minimize: bool
+    _compact: bool
     _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
     _nodes: Iterable[GraphChunk]
 
@@ -58,6 +59,7 @@ class BehaviorView(Widget):
         kcfg: KCFG,
         kprint: KPrint,
         minimize: bool = True,
+        compact: bool = True,
         node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
         id: str = '',
     ) -> None:
@@ -65,15 +67,24 @@ class BehaviorView(Widget):
         self._kcfg = kcfg
         self._kprint = kprint
         self._minimize = minimize
+        self._compact = compact
         self._node_printer = node_printer
         self._nodes = []
-        for lseg_id, node_lines in self._kcfg.pretty_segments(
-            self._kprint, minimize=self._minimize, node_printer=self._node_printer
-        ):
-            self._nodes.append(GraphChunk(lseg_id, node_lines))
+        self.update()
 
     def compose(self) -> ComposeResult:
         return self._nodes
+
+    def toggle_compact(self) -> None:
+        self._compact = not self._compact
+        self.update()
+
+    def update(self) -> None:
+        self._nodes = []
+        for lseg_id, node_lines in self._kcfg.pretty_segments(
+            self._kprint, minimize=self._minimize, node_printer=(None if self._compact else self._node_printer)
+        ):
+            self._nodes.append(GraphChunk(lseg_id, node_lines))
 
 
 class DisplayHeader(Static):
@@ -132,6 +143,11 @@ class KCFGViewer(App):
     _kprint: KPrint
     _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
     _minimize: bool
+    _compact_cfg: bool
+
+    BINDINGS = [
+        ('c', 'keystroke("c")', 'Toggle compact behavior view'),
+    ]
 
     def __init__(
         self,
@@ -202,3 +218,7 @@ class KCFGViewer(App):
             self.query_one('#constraint-content', Static).update(
                 '\n'.join(self._kprint.pretty_print(c) for c in constraints_new)
             )
+
+    def action_keystroke(self, nid: str) -> None:
+        if nid == 'c':
+            self.query_one('#behavior', BehaviorView).toggle_compact()

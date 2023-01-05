@@ -4,8 +4,13 @@
     height: 100%;
     layout: vertical;
 }
-#behavior {
+#display-options {
     height: 1fr;
+    border: solid;
+    overflow-y: auto;
+}
+#behavior {
+    height: 10fr;
     border: solid;
     overflow-x: auto;
     overflow-y: auto;
