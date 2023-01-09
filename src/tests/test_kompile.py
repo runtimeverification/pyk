@@ -118,6 +118,8 @@ def test_kast_to_kore(defn_factory: DefnFactory, kast: KInner, expected_text: st
     definition_text = r"""
         []
         module MODULE
+            axiom{R} \top{R}() [subsort{SortBool{}, SortKItem{}}()]
+            axiom{R} \top{R}() [subsort{SortInt{}, SortKItem{}}()]
             symbol Lblfoo{S, T} (S, S, SortBool{}) : T []
         endmodule []
     """

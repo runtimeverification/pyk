@@ -5,9 +5,24 @@ from pathlib import Path
 from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union, final
 
 from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
-from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, SortVar, String, Symbol, WithSort
+from pyk.kore.syntax import (
+    DV,
+    App,
+    EVar,
+    Exists,
+    Forall,
+    MLPattern,
+    MLQuant,
+    Pattern,
+    SortApp,
+    SortVar,
+    String,
+    Symbol,
+    WithSort,
+)
 from pyk.prelude.bytes import BYTES
 from pyk.prelude.string import STRING
+from pyk.utils import Scope
 
 from .cli_utils import check_dir_path, check_file_path
 from .kore.parser import KoreParser
@@ -116,9 +131,26 @@ class KompiledDefn:
         subsort_table = _subsort_table(self.definition)
         return FrozenDict({supersort: frozenset(subsorts) for supersort, subsorts in subsort_table.items()})
 
-    # Strict subsort, i.e. not reflexive
-    def is_subsort(self, subsort: Sort, supersort: Sort) -> bool:
-        return subsort in self._subsort_table.get(supersort, set())
+    def subsorts(self, sort: Sort) -> Set[Sort]:
+        subsorts = set(self._subsort_table.get(sort, frozenset()))
+        subsorts.add(sort)
+        return subsorts
+
+    def meet_sorts(self, sort1: Sort, sort2: Sort) -> Sort:
+        subsorts1 = self.subsorts(sort1)
+        subsorts2 = self.subsorts(sort2)
+        common_subsorts = subsorts1.intersection(subsorts2)
+        if not common_subsorts:
+            raise ValueError(f'Sorts have no common subsort: {sort1}, {sort2}')
+        nr_subsorts = {sort: len(self._subsort_table.get(sort, {})) for sort in common_subsorts}
+        max_subsort_nr = max(n for _, n in nr_subsorts.items())
+        max_subsorts = {sort for sort, n in nr_subsorts.items() if n == max_subsort_nr}
+        (subsort,) = max_subsorts
+        return subsort
+
+    def meet_all_sorts(self, sorts: Iterable[Sort]) -> Sort:
+        unit: Sort = SortApp('SortKItem')
+        return reduce(self.meet_sorts, sorts, unit)
 
     def infer_sort(self, pattern: Pattern) -> Sort:
         if isinstance(pattern, WithSort):
@@ -141,7 +173,7 @@ class KompiledDefn:
         if actual_sort == expected_sort:
             return pattern
 
-        if self.is_subsort(actual_sort, expected_sort):
+        if actual_sort in self.subsorts(expected_sort):
             return App('inj', (actual_sort, expected_sort), (pattern,))
 
         raise ValueError(f'Sort {actual_sort.name} is not a subsort of {expected_sort.name}')
@@ -171,8 +203,42 @@ class KompiledDefn:
         raise ValueError(f'Unsupported KAst: {kast}')
 
     def _meet_var_sorts(self, pattern: Pattern) -> Pattern:
-        # TODO
-        return pattern
+        def var_sorts(pattern: Pattern) -> Scope[Set[Sort]]:
+            def collect(pattern: Pattern, scope: Scope[Set[Sort]]) -> None:
+                if isinstance(pattern, MLQuant):
+                    child = scope.push_scope(str(id(pattern.var)))
+                    scope[pattern.var.name] = set()
+                    collect(pattern.pattern, child)
+
+                elif isinstance(pattern, EVar):
+                    if pattern.name in scope:
+                        scope[pattern.name].add(pattern.sort)
+                    else:
+                        root[pattern.name] = {pattern.sort}
+
+                else:
+                    for subpattern in pattern.patterns:
+                        collect(subpattern, scope)
+
+            root: Scope[Set[Sort]] = Scope('.')
+            collect(pattern, root)
+            return root
+
+        def rewrite(pattern: Pattern, scope: Scope[Sort]) -> Pattern:
+            if type(pattern) is EVar:
+                return pattern.let(sort=scope[pattern.name])
+
+            if isinstance(pattern, MLQuant):
+                child = scope.child_scope(str(id(pattern.var)))
+                sort = child[pattern.var.name]
+                assert type(pattern) is Exists or type(pattern) is Forall  # This enables pattern.let
+                return pattern.let(var=pattern.var.let(sort=sort), pattern=rewrite(pattern.pattern, child))
+
+            return pattern.map_patterns(lambda p: rewrite(p, scope))
+
+        vars_scope = var_sorts(pattern)
+        sort_scope = vars_scope.map(self.meet_all_sorts)
+        return rewrite(pattern, sort_scope)
 
     def _ksequence_to_kore(self, kseq: KSequence) -> App:
         patterns = tuple(self._kast_to_kore(item, SortApp('SortKItem')) for item in kseq)
