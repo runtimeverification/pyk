@@ -1,8 +1,10 @@
+from pathlib import Path
 from typing import Final
 
 import pytest
 
 from pyk.kast.inner import KApply, KInner, KLabel, KSequence, KSort, KToken, KVariable
+from pyk.kompile import KompiledDefn, _ksort_to_kore
 from pyk.kore.syntax import (
     DV,
     And,
@@ -28,7 +30,7 @@ from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
 
-from .utils import KPrintTest
+from .utils import KompiledTest, KPrintTest
 
 BIDIRECTIONAL_TEST_DATA: Final = (
     (
@@ -436,3 +438,28 @@ class TestKoreToKast(KPrintTest):
 
         # Then
         assert actual_kast == kast
+
+
+BIDIRECTIONAL_EXCLUDED: Final = {'variable-with-super-sort'}
+
+
+class TestKoreToKastNew(KompiledTest):
+    KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
+
+    @pytest.fixture(scope='class')
+    def kompiled_defn(self, definition_dir: Path) -> KompiledDefn:
+        return KompiledDefn(definition_dir)
+
+    @pytest.mark.parametrize(
+        'test_id,sort,expected,kast',
+        [td for td in BIDIRECTIONAL_TEST_DATA if td[0] not in BIDIRECTIONAL_EXCLUDED],
+        ids=[test_id for test_id, *_ in BIDIRECTIONAL_TEST_DATA if test_id not in BIDIRECTIONAL_EXCLUDED],
+    )
+    def test_bidirectional(
+        self, kompiled_defn: KompiledDefn, test_id: str, sort: KSort, expected: Pattern, kast: KInner
+    ) -> None:
+        # When
+        actual = kompiled_defn.kast_to_kore(kast, sort=_ksort_to_kore(sort), with_inj=True)
+
+        # Then
+        assert actual == expected
