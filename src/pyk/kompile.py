@@ -188,15 +188,14 @@ class KompiledDefn:
 
     def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
         actual_sort = self.infer_sort(pattern)
-        expected_sort = sort or SortApp('SortKItem')
 
-        if actual_sort == expected_sort:
+        if actual_sort == sort:
             return pattern
 
-        if actual_sort in self.subsorts(expected_sort):
-            return App('inj', (actual_sort, expected_sort), (pattern,))
+        if actual_sort in self.subsorts(sort):
+            return App('inj', (actual_sort, sort), (pattern,))
 
-        raise ValueError(f'Sort {actual_sort.name} is not a subsort of {expected_sort.name}')
+        raise ValueError(f'Sort {actual_sort.name} is not a subsort of {sort.name}')
 
     def kast_to_kore(self, kast: KInner, sort: Optional[Sort] = None, *, with_inj: bool = False) -> Pattern:
         if not sort:
