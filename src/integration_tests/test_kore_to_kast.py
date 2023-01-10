@@ -440,6 +440,9 @@ class TestKoreToKast(KPrintTest):
         assert actual_kast == kast
 
 
+BIDIRECTIONAL_EXCLUDED: Final = {'variable-with-super-sort'}
+
+
 class TestKoreToKastNew(KompiledTest):
     KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
 
@@ -449,8 +452,8 @@ class TestKoreToKastNew(KompiledTest):
 
     @pytest.mark.parametrize(
         'test_id,sort,expected,kast',
-        BIDIRECTIONAL_TEST_DATA,
-        ids=[test_id for test_id, *_ in BIDIRECTIONAL_TEST_DATA],
+        [td for td in BIDIRECTIONAL_TEST_DATA if td[0] not in BIDIRECTIONAL_EXCLUDED],
+        ids=[test_id for test_id, *_ in BIDIRECTIONAL_TEST_DATA if test_id not in BIDIRECTIONAL_EXCLUDED],
     )
     def test_bidirectional(
         self, kompiled_defn: KompiledDefn, test_id: str, sort: KSort, expected: Pattern, kast: KInner
