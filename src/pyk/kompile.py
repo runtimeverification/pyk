@@ -163,8 +163,22 @@ class KompiledDefn:
         raise ValueError(f'Cannot infer sort: {pattern}')
 
     def add_injections(self, pattern: Pattern, sort: Optional[Sort] = None) -> Pattern:
-        # TODO
-        return pattern
+        if not sort:
+            sort = SortApp('SortKItem')
+
+        sorts: Tuple[Sort, ...]
+        if isinstance(pattern, MLQuant):
+            sorts = (pattern.sort,)
+
+        elif isinstance(pattern, MLPattern):
+            _, sorts = self._resolve_symbol(pattern.symbol(), pattern.sorts)
+
+        elif isinstance(pattern, App):
+            _, sorts = self._resolve_symbol(pattern.symbol, pattern.sorts)
+
+        assert len(sorts) == len(pattern.patterns)
+        pattern = pattern.let_patterns(self._inject(p, s) for p, s in zip(pattern.patterns, sorts))
+        return self._inject(pattern, sort)
 
     def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
         actual_sort = self.infer_sort(pattern)
@@ -178,7 +192,7 @@ class KompiledDefn:
 
         raise ValueError(f'Sort {actual_sort.name} is not a subsort of {expected_sort.name}')
 
-    def kast_to_kore(self, kast: KInner, sort: Optional[Sort] = None, *, with_inj: bool = True) -> Pattern:
+    def kast_to_kore(self, kast: KInner, sort: Optional[Sort] = None, *, with_inj: bool = False) -> Pattern:
         if not sort:
             sort = SortApp('SortKItem')
 

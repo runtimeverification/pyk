@@ -100,26 +100,40 @@ KAST_TO_KORE_TEST_DATA: Final = (
     (
         KLabel('foo', 'Int', 'String')(X, Y, Z),
         'Lblfoo{SortInt{}, SortString{}} (VarX: SortInt{}, VarY: SortInt{}, VarZ: SortBool{})',
+        False,
     ),
     (
         KLabel('#And', 'Int')(X, Y),
         r'\and{SortInt{}} (VarX: SortInt{}, VarY: SortInt{})',
+        False,
     ),
     (
         KLabel('#Exists', 'Int')(X, Y),
         r'\exists{SortInt{}} (VarX: SortKItem{}, VarY: SortInt{})',
+        False,
+    ),
+    (
+        KLabel('#Exists', 'Int')(X, X),
+        r'\exists{SortInt{}} (VarX: SortInt{}, VarX: SortInt{})',
+        False,
+    ),
+    (
+        KLabel('#Exists', 'KItem')(X, KLabel('#And', 'Int')(X, Y)),
+        r'\exists{SortKItem{}} (VarX: SortInt{}, inj{SortInt{}, SortKItem{}} (\and{SortInt{}} (VarX: SortInt{}, VarY: SortInt{})))',
+        True,
     ),
 )
 
 
-@pytest.mark.parametrize('kast,expected_text', KAST_TO_KORE_TEST_DATA, ids=count())
-def test_kast_to_kore(defn_factory: DefnFactory, kast: KInner, expected_text: str) -> None:
+@pytest.mark.parametrize('kast,expected_text,with_inj', KAST_TO_KORE_TEST_DATA, ids=count())
+def test_kast_to_kore(defn_factory: DefnFactory, kast: KInner, expected_text: str, with_inj: bool) -> None:
     # When
     definition_text = r"""
         []
         module MODULE
             axiom{R} \top{R}() [subsort{SortBool{}, SortKItem{}}()]
             axiom{R} \top{R}() [subsort{SortInt{}, SortKItem{}}()]
+            axiom{R} \top{R}() [subsort{SortString{}, SortKItem{}}()]
             symbol Lblfoo{S, T} (S, S, SortBool{}) : T []
         endmodule []
     """
@@ -127,7 +141,7 @@ def test_kast_to_kore(defn_factory: DefnFactory, kast: KInner, expected_text: st
     expected = KoreParser(expected_text).pattern()
 
     # When
-    actual = defn.kast_to_kore(kast)
+    actual = defn.kast_to_kore(kast, with_inj=with_inj)
 
     # Then
     assert actual == expected
