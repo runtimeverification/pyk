@@ -170,11 +170,17 @@ class KompiledDefn:
         if isinstance(pattern, MLQuant):
             sorts = (pattern.sort,)
 
+        if isinstance(pattern, DV):
+            sorts = ()
+
         elif isinstance(pattern, MLPattern):
             _, sorts = self._resolve_symbol(pattern.symbol(), pattern.sorts)
 
         elif isinstance(pattern, App):
             _, sorts = self._resolve_symbol(pattern.symbol, pattern.sorts)
+
+        else:
+            sorts = ()
 
         assert len(sorts) == len(pattern.patterns)
         pattern = pattern.let_patterns(self._inject(p, s) for p, s in zip(pattern.patterns, sorts))
