@@ -1,31 +1,147 @@
-from pyk.kompile import _subsort_dict
-from pyk.kore.syntax import Attr, Axiom, Definition, Module, Sort, SortApp, SortVar, Top
+from itertools import count
+from pathlib import Path
+from typing import Final, Iterator, Tuple
+
+import pytest
+from pytest import TempPathFactory
+
+from pyk.kast.inner import KInner, KLabel, KVariable
+from pyk.kompile import KompiledDefn, munge, unmunge
+from pyk.kore.parser import KoreParser
+from pyk.kore.syntax import SortApp
 
 
-def test_subsort_dict() -> None:
-    def sort_axiom(subsort: Sort, supersort: Sort) -> Axiom:
-        r = SortVar('R')
-        return Axiom((r,), Top(r), attrs=(Attr('subsort', (subsort, supersort)),))
+def munge_test_data_reader() -> Iterator[Tuple[str, str]]:
+    test_data_file = Path(__file__).parent / 'test-data/munge-tests'
+    with open(test_data_file, 'r') as f:
+        while True:
+            try:
+                label = next(f)
+                symbol = next(f)
+            except StopIteration:
+                raise AssertionError('Malformed test data') from None
 
-    a, b, c, d = (SortApp(name) for name in ['a', 'b', 'c', 'd'])
+            yield label.rstrip('\n'), symbol.rstrip('\n')
 
+            try:
+                next(f)
+            except StopIteration:
+                return
+
+
+MUNGE_TEST_DATA: Final = tuple(munge_test_data_reader())
+
+
+@pytest.mark.parametrize('label,expected', MUNGE_TEST_DATA, ids=[label for label, _ in MUNGE_TEST_DATA])
+def test_munge(label: str, expected: str) -> None:
     # When
-    definition = Definition(
-        (
-            Module(
-                'MODULE-1',
-                (sort_axiom(a, d), sort_axiom(b, d)),
-            ),
-            Module('MODULE-2', (sort_axiom(b, c),)),
-        )
-    )
+    actual = munge(label)
+
+    # Then
+    assert actual == expected
+
+
+@pytest.mark.parametrize('expected,symbol', MUNGE_TEST_DATA, ids=[symbol for _, symbol in MUNGE_TEST_DATA])
+def test_unmunge(symbol: str, expected: str) -> None:
+    # When
+    actual = unmunge(symbol)
+
+    # Then
+    assert actual == expected
+
+
+class DefnFactory:
+    _tmp_path_factory: TempPathFactory
+
+    def __init__(self, tmp_path_factory: TempPathFactory):
+        self._tmp_path_factory = tmp_path_factory
+
+    def __call__(self, definition_text: str) -> KompiledDefn:
+        path = self._tmp_path_factory.mktemp('kompiled-defn')
+        (path / 'definition.kore').write_text(definition_text)
+        (path / 'timestamp').touch()
+        return KompiledDefn(path)
+
+
+@pytest.fixture(scope='session')
+def defn_factory(tmp_path_factory: TempPathFactory) -> DefnFactory:
+    return DefnFactory(tmp_path_factory)
+
+
+def test_subsort_table(defn_factory: DefnFactory) -> None:
+    # When
+    definition_text = r"""
+        []
+        module MODULE-1
+            axiom{R} \top{R}() [subsort{A{}, D{}}()]
+            axiom{R} \top{R}() [subsort{B{}, D{}}()]
+        endmodule []
+        module MODULE-2
+            axiom{R} \top{R}() [subsort{B{}, C{}}()]
+        endmodule []
+    """
+    defn = defn_factory(definition_text)
+
+    a, b, c, d = (SortApp(name) for name in ['A', 'B', 'C', 'D'])
     expected = {
         c: {b},
         d: {a, b},
     }
 
     # When
-    actual = _subsort_dict(definition)
+    actual = defn._subsort_table
+
+    # Then
+    assert actual == expected
+
+
+X, Y, Z = (KVariable(name) for name in ('X', 'Y', 'Z'))
+KAST_TO_KORE_TEST_DATA: Final = (
+    (
+        KLabel('foo', 'Int', 'String')(X, Y, Z),
+        'Lblfoo{SortInt{}, SortString{}} (VarX: SortInt{}, VarY: SortInt{}, VarZ: SortBool{})',
+        False,
+    ),
+    (
+        KLabel('#And', 'Int')(X, Y),
+        r'\and{SortInt{}} (VarX: SortInt{}, VarY: SortInt{})',
+        False,
+    ),
+    (
+        KLabel('#Exists', 'Int')(X, Y),
+        r'\exists{SortInt{}} (VarX: SortKItem{}, VarY: SortInt{})',
+        False,
+    ),
+    (
+        KLabel('#Exists', 'Int')(X, X),
+        r'\exists{SortInt{}} (VarX: SortInt{}, VarX: SortInt{})',
+        False,
+    ),
+    (
+        KLabel('#Exists', 'KItem')(X, KLabel('#And', 'Int')(X, Y)),
+        r'\exists{SortKItem{}} (VarX: SortInt{}, inj{SortInt{}, SortKItem{}} (\and{SortInt{}} (VarX: SortInt{}, VarY: SortInt{})))',
+        True,
+    ),
+)
+
+
+@pytest.mark.parametrize('kast,expected_text,with_inj', KAST_TO_KORE_TEST_DATA, ids=count())
+def test_kast_to_kore(defn_factory: DefnFactory, kast: KInner, expected_text: str, with_inj: bool) -> None:
+    # When
+    definition_text = r"""
+        []
+        module MODULE
+            axiom{R} \top{R}() [subsort{SortBool{}, SortKItem{}}()]
+            axiom{R} \top{R}() [subsort{SortInt{}, SortKItem{}}()]
+            axiom{R} \top{R}() [subsort{SortString{}, SortKItem{}}()]
+            symbol Lblfoo{S, T} (S, S, SortBool{}) : T []
+        endmodule []
+    """
+    defn = defn_factory(definition_text)
+    expected = KoreParser(expected_text).pattern()
+
+    # When
+    actual = defn.kast_to_kore(kast, with_inj=with_inj)
 
     # Then
     assert actual == expected
