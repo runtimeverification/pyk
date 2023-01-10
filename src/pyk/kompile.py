@@ -167,11 +167,11 @@ class KompiledDefn:
             sort = SortApp('SortKItem')
 
         sorts: Tuple[Sort, ...]
-        if isinstance(pattern, MLQuant):
-            sorts = (pattern.sort,)
-
         if isinstance(pattern, DV):
             sorts = ()
+
+        elif isinstance(pattern, MLQuant):
+            sorts = (pattern.sort,)
 
         elif isinstance(pattern, MLPattern):
             _, sorts = self._resolve_symbol(pattern.symbol(), pattern.sorts)
