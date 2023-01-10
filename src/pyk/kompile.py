@@ -305,7 +305,7 @@ def _label_to_kore(label: str) -> str:
     if label in ML_PATTERN_LABELS:
         return ML_PATTERN_LABELS[label]
 
-    return 'Lbl' + unmunge(label)
+    return 'Lbl' + munge(label)
 
 
 def _ksort_to_kore(ksort: KSort) -> SortApp:
