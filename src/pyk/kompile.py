@@ -183,7 +183,7 @@ class KompiledDefn:
             sorts = ()
 
         assert len(sorts) == len(pattern.patterns)
-        pattern = pattern.let_patterns(self._inject(p, s) for p, s in zip(pattern.patterns, sorts))
+        pattern = pattern.let_patterns(self.add_injections(p, s) for p, s in zip(pattern.patterns, sorts))
         return self._inject(pattern, sort)
 
     def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
