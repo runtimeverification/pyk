@@ -270,11 +270,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         _LOGGER.warning(f'{claim_body.label}')
 
         claim_lhs = CTerm(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
+        _LOGGER.warning(f'{claim_lhs.config.label}')
         init_state = cfg.create_node(claim_lhs)
+        _LOGGER.warning(f'{init_state.cterm.config.label}')
         cfg.add_init(init_state.id)
 
         claim_rhs = CTerm(extract_rhs(claim_body)).add_constraint(bool_to_ml_pred(claim.ensures))
+        _LOGGER.warning(f'{claim_rhs.config.label}')
         target_state = cfg.create_node(claim_rhs)
+        _LOGGER.warning(f'{target_state.cterm.config.label}')
         cfg.add_target(target_state.id)
 
         return cfg
