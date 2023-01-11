@@ -42,7 +42,7 @@ from pyk.ktool import KPrint
 from pyk.prelude.ml import mlTop
 from pyk.utils import add_indent, compare_short_hashes, shorten_hash
 
-_LOGGER: Final = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__name__)
 
 
 
