@@ -20,6 +20,9 @@ SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90
 class TestSimpleProof(KProveTest):
     KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
 
+    def test_kcfg_from_claim(self, kprove: KProve) -> None:
+        return
+
     def test_prove_claim_with_lemmas(self, kprove: KProve) -> None:
         # Given
         claim = KClaim(

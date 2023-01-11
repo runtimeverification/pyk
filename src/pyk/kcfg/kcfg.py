@@ -1,4 +1,5 @@
 import json
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import reduce
@@ -40,6 +41,9 @@ from pyk.kast.outer import KClaim, KDefinition, KRule
 from pyk.ktool import KPrint
 from pyk.prelude.ml import mlTop
 from pyk.utils import add_indent, compare_short_hashes, shorten_hash
+
+_LOGGER: Final = logging.getLogger(__name__)
+
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
@@ -259,8 +263,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     def from_claim(defn: KDefinition, claim: KClaim) -> 'KCFG':
         cfg = KCFG()
         claim_body = claim.body
+        _LOGGER.warning(f'{claim_body.label}')
         claim_body = defn.instantiate_cell_vars(claim_body)
+        _LOGGER.warning(f'{claim_body.label}')
         claim_body = rename_generated_vars(claim_body)
+        _LOGGER.warning(f'{claim_body.label}')
 
         claim_lhs = CTerm(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
         init_state = cfg.create_node(claim_lhs)
