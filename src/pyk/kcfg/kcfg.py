@@ -603,10 +603,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return bool(self.get_node(node.id))
 
     def create_node(self, cterm: CTerm) -> Node:
+        _LOGGER.warning(f'create_node.1: {cterm.config.label}')
         term = cterm.kast
+        _LOGGER.warning(f'create_node.2: {term.label}')
         term = remove_source_attributes(term)
+        _LOGGER.warning(f'term1: {term.label}')
         cterm = CTerm(term)
+        _LOGGER.warning(f'term2: {cterm.config.label}')
         node = KCFG.Node(cterm)
+        _LOGGER.warning(f'term3: {node.cterm.config.label}')
 
         if node.id in self._nodes:
             raise ValueError(f'Node already exists: {node.id}')
