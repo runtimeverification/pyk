@@ -5,7 +5,7 @@ from typing import Callable, Final, Iterable, Optional
 from pyk.cterm import CTerm
 from pyk.kast.inner import KInner
 from pyk.ktool import KProve
-from pyk.prelude.ml import mlAnd, mlTop
+from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlTop
 from pyk.utils import shorten_hashes
 
 from .kcfg import KCFG
@@ -18,6 +18,23 @@ class KCFGExplore:
 
     def __init__(self, kprove: KProve):
         self._kprove = kprove
+
+    def simplify(
+        self,
+        cfgid: str,
+        cfg: KCFG,
+        rpc_port: Optional[int] = None,
+    ) -> KCFG:
+        for node in cfg.nodes:
+            _LOGGER.info(f'Simplifying node {cfgid}: {shorten_hashes(node.id)}')
+            new_term = self._kprove.simplify(node.cterm)
+            if is_top(new_term):
+                raise ValueError(f'Node simplified to #Top {cfgid}: {shorten_hashes(node.id)}')
+            if is_bottom(new_term):
+                raise ValueError(f'Node simplified to #Bottom {cfgid}: {shorten_hashes(node.id)}')
+            if new_term != node.cterm.kast:
+                cfg.replace_node(node.id, CTerm(new_term))
+        return cfg
 
     def rpc_prove(
         self,
