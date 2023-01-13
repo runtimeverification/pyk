@@ -19,6 +19,9 @@ class KCFGExplore:
     def __init__(self, kprove: KProve):
         self._kprove = kprove
 
+    def close(self) -> None:
+        self._kprove.close()
+
     def simplify(
         self,
         cfgid: str,
