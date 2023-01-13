@@ -123,13 +123,15 @@ class KCFGExplore:
 
             else:
                 _LOGGER.warning(f'Falling back to manual branch extraction {cfgid}: {shorten_hashes(curr_node.id)}')
-                branch_constraints = [[c for c in s.constraints if c not in cterm.constraints] for s in next_cterms]
+                branch_constraints = [
+                    mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms
+                ]
                 _LOGGER.info(
-                    f'Found {len(list(next_cterms))} branches manually at depth 1 for {cfgid}: {[self._kprove.pretty_print(mlAnd(bc)) for bc in branch_constraints]}'
+                    f'Found {len(list(next_cterms))} branches manually at depth 1 for {cfgid}: {[self._kprove.pretty_print(bc) for bc in branch_constraints]}'
                 )
                 for bs, bc in zip(next_cterms, branch_constraints, strict=True):
                     branch_node = cfg.get_or_create_node(bs)
-                    cfg.create_edge(curr_node.id, branch_node.id, mlAnd(bc), 1)
+                    cfg.create_edge(curr_node.id, branch_node.id, bc, 1)
 
         _write_cfg(cfg)
         return cfg
