@@ -234,7 +234,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _LOGGER.info(
                     f'Found {len(list(next_cterms))} branches manually at depth 1 for {cfgid}: {[self.kprint.pretty_print(bc) for bc in branch_constraints]}'
                 )
-                for bs, bc in zip(next_cterms, branch_constraints, strict=True):
+                for bs, bc in zip(next_cterms, branch_constraints):
                     branch_node = cfg.get_or_create_node(bs)
                     cfg.create_edge(curr_node.id, branch_node.id, bc, 1)
 
