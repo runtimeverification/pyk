@@ -4,10 +4,11 @@ from typing import Callable, Final, Iterable, Optional
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KInner
-from pyk.kcfg import KCFG
 from pyk.ktool import KProve
 from pyk.prelude.ml import mlAnd, mlTop
 from pyk.utils import shorten_hashes
+
+from .kcfg import KCFG
 
 _LOGGER: Final = logging.getLogger(__name__)
 
