@@ -283,7 +283,7 @@ class KProve(KPrint):
                 dry_run=True,
                 args=['--emit-json-spec', ntf.name],
             )
-            flat_module_list = KFlatModuleList.from_json(ntf.read_text())
+            flat_module_list = KFlatModuleList.from_dict(json.loads(Path(ntf.name).read_text())['term'])
             all_claims = {c.label: c for m in flat_module_list.modules for c in m.claims}
 
             unfound_labels = []
