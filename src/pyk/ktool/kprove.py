@@ -238,6 +238,7 @@ class KProve(KPrint, ContextManager['KProve']):
             kompiled_dir=self.definition_dir,
             spec_module_name=spec_module_name,
             include_dirs=include_dirs,
+            md_selector=md_selector,
             output=KProveOutput.JSON,
             dry_run=dry_run,
             args=self.prover_args + list(args),
