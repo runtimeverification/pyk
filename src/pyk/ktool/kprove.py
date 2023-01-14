@@ -42,6 +42,7 @@ def _kprove(
     command: Iterable[str] = ('kprove',),
     kompiled_dir: Optional[Path] = None,
     spec_module_name: Optional[str] = None,
+    md_selector: Optional[str] = None,
     include_dirs: Iterable[Path] = (),
     emit_json_spec: Optional[Path] = None,
     output: Optional[KProveOutput] = None,
@@ -63,6 +64,7 @@ def _kprove(
     typed_args = _build_arg_list(
         kompiled_dir=kompiled_dir,
         spec_module_name=spec_module_name,
+        md_selector=md_selector,
         include_dirs=include_dirs,
         emit_json_spec=emit_json_spec,
         output=output,
@@ -83,6 +85,7 @@ def _build_arg_list(
     *,
     kompiled_dir: Optional[Path],
     spec_module_name: Optional[str],
+    md_selector: Optional[str],
     include_dirs: Iterable[Path],
     emit_json_spec: Optional[Path],
     output: Optional[KProveOutput],
@@ -96,6 +99,9 @@ def _build_arg_list(
 
     if spec_module_name:
         args += ['--spec-module', spec_module_name]
+
+    if md_selector:
+        args += ['--md-selector', md_selector]
 
     for include_dir in include_dirs:
         args += ['-I', str(include_dir)]
@@ -143,6 +149,7 @@ class KProve(KPrint):
         spec_file: Path,
         spec_module_name: Optional[str] = None,
         args: Iterable[str] = (),
+        md_selector: Optional[str] = None,
         haskell_args: Iterable[str] = (),
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Optional[Path] = None,
@@ -259,6 +266,7 @@ class KProve(KPrint):
         self,
         spec_file: Path,
         spec_module_name: Optional[str] = None,
+        md_selector: Optional[str] = None,
         claim_labels: Optional[Iterable[str]] = (),
         exclude_claim_labels: Optional[Iterable[str]] = (),
     ) -> List[KClaim]:
@@ -266,6 +274,7 @@ class KProve(KPrint):
             self.prove(
                 spec_file,
                 spec_module_name=spec_module_name,
+                md_selector=md_selector,
                 dry_run=True,
                 args=['--emit-json-spec', ntf.name],
             )
