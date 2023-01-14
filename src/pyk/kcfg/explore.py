@@ -57,7 +57,7 @@ class KCFGExplore:
         def _write_cfg(_cfg: KCFG) -> None:
             if cfg_path is not None:
                 cfg_path.write_text(_cfg.to_json())
-                _LOGGER.info(f'Updated CFG file: {cfg_path}')
+                _LOGGER.info(f'Updated CFG file {cfgid}: {cfg_path}')
 
         if rpc_port is not None:
             self._kprove.set_kore_rpc_port(rpc_port)
