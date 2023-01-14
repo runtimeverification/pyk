@@ -98,6 +98,15 @@ class KSentence(KOuter, WithKAtt):
 
         raise ValueError(f"Expected KSentence label as 'node' value, found: '{node}'")
 
+    @property
+    def label(self) -> str:
+        if 'label' in self.att:
+            return self.att['label']
+        elif 'UNIQUE_ID' in self.att:
+            return self.att['UNIQUE_ID']
+        else:
+            raise ValueError(f'Found sentence without label or UNIQUE_ID: {self}')
+
 
 @final
 @dataclass(frozen=True)
