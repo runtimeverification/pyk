@@ -270,16 +270,7 @@ class KProve(KPrint):
                 args=['--emit-json-spec', ntf.name],
             )
             flat_module_list = KFlatModuleList.from_json(ntf.read_text())
-
-            all_claims = {}
-            for m in flat_module_list.modules:
-                for c in m.claims:
-                    if 'label' in c.att:
-                        all_claims[c.att['label']] = c
-                    elif 'UNIQUE_ID' in c.att:
-                        all_claims[c.att['UNIQUE_ID']] = c
-                    else:
-                        raise ValueError(f'Found claim without label or UNIQUE_ID attribute: {c}')
+            all_claims = {c.label: c for m in flat_module_list.modules for c in m.claims}
 
             unfound_labels = []
             claim_labels = list(all_claims.keys()) if claim_labels is None else claim_labels
