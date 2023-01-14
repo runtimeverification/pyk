@@ -5,13 +5,24 @@ from enum import Enum
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
+from tempfile import NamedTemporaryFile
 from typing import Any, ContextManager, Dict, Final, Iterable, List, Mapping, Optional, Tuple
 
 from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
 from ..cterm import CTerm, build_claim
 from ..kast.inner import KApply, KInner, KLabel, Subst
 from ..kast.manip import extract_subst, flatten_label, free_vars
-from ..kast.outer import KClaim, KDefinition, KFlatModule, KImport, KRequire, KRule, KSentence, KVariable
+from ..kast.outer import (
+    KClaim,
+    KDefinition,
+    KFlatModule,
+    KFlatModuleList,
+    KImport,
+    KRequire,
+    KRule,
+    KSentence,
+    KVariable,
+)
 from ..kore.rpc import KoreClient, KoreServer
 from ..kore.syntax import Top
 from ..prelude.k import GENERATED_TOP_CELL
@@ -295,6 +306,42 @@ class KProve(KPrint, ContextManager['KProve']):
         constraint_subst, _ = extract_subst(init_cterm.kast)
         next_states = [mlAnd([constraint_subst.unapply(ns), constraint_subst.ml_pred]) for ns in next_states]
         return next_states if len(next_states) > 0 else [mlTop()]
+
+    def get_claims(
+        self,
+        spec_file: Path,
+        spec_module_name: Optional[str] = None,
+        claim_labels: Optional[Iterable[str]] = (),
+        exclude_claim_labels: Optional[Iterable[str]] = (),
+    ) -> List[KClaim]:
+        with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
+            self.prove(
+                spec_file,
+                spec_module_name=spec_module_name,
+                dry_run=True,
+                args=['--emit-json-spec', ntf.name],
+            )
+            flat_module_list = KFlatModuleList.from_json(ntf.read_text())
+
+            all_claims = {}
+            for m in flat_module_list.modules:
+                for c in m.claims:
+                    if 'label' in c.att:
+                        all_claims[c.att['label']] = c
+                    elif 'UNIQUE_ID' in c.att:
+                        all_claims[c.att['UNIQUE_ID']] = c
+                    else:
+                        raise ValueError(f'Found claim without label or UNIQUE_ID attribute: {c}')
+
+            unfound_labels = []
+            claim_labels = list(all_claims.keys()) if claim_labels is None else claim_labels
+            exclude_claim_labels = [] if exclude_claim_labels is None else exclude_claim_labels
+            unfound_labels.extend([cl for cl in claim_labels if cl not in all_claims])
+            unfound_labels.extend([cl for cl in exclude_claim_labels if cl not in all_claims])
+            if len(unfound_labels) > 0:
+                raise ValueError(f'Claim labels not found: {unfound_labels}')
+
+            return [all_claims[cl] for cl in all_claims if cl in claim_labels and cl not in exclude_claim_labels]
 
     def get_claim_basic_block(
         self,
