@@ -166,7 +166,7 @@ class BugReport:
         remapped_args = [_remap_arg(a) for a in args]
         arcname = Path(f'commands/{self._command_id:03}.sh')
         shebang = '#!/usr/bin/env bash\nset -euxo pipefail\n'
-        self.add_file_contents(shebang + ' '.join(remapped_args), arcname)
+        self.add_file_contents(shebang + ' '.join(remapped_args) + '\n', arcname)
         self._command_id += 1
 
     def add_definition(self, defn_path: Path) -> None:
