@@ -8,7 +8,10 @@ from pyk.ktool.kprint import SymbolTable
 
 from ..utils import KProveTest
 
-IMP_SIMPLE_TEST_DATA = (('imp-simple-addition-1', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-1', 1),)
+IMP_SIMPLE_TEST_DATA = (
+    ('imp-simple-addition-1', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-1', 1),
+    ('imp-simple-addition-2', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-2', 7),
+)
 
 
 class TestImpSimpleKCFGExplore(KProveTest):
