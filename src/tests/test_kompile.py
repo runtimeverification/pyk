@@ -1,38 +1,31 @@
-from pathlib import Path
-from unittest import TestCase
-
-from pyk.ktool.kompile import KompileBackend, _build_arg_list
+from pyk.kompile import _subsort_dict
+from pyk.kore.syntax import Attr, Axiom, Definition, Module, Sort, SortApp, SortVar, Top
 
 
-class BuildArgsTest(TestCase):
-    def test_all_args(self) -> None:
-        actual = _build_arg_list(
-            main_module='MAIN-MODULE',
-            syntax_module='SYNTAX-MODULE',
-            backend=KompileBackend.HASKELL,
-            output_dir=Path('path/to/kompiled'),
-            include_dirs=(Path(path) for path in ['/', '/include/lib']),
-            md_selector='k & ! nobytes & ! node',
-            hook_namespaces=['JSON', 'KRYPTO', 'BLOCKCHAIN'],
-            emit_json=True,
-            post_process='echo "hello"',
-            concrete_rules=['foo', 'bar'],
-            args=['--new-fangled-option', 'buzz'],
+def test_subsort_dict() -> None:
+    def sort_axiom(subsort: Sort, supersort: Sort) -> Axiom:
+        r = SortVar('R')
+        return Axiom((r,), Top(r), attrs=(Attr('subsort', (subsort, supersort)),))
+
+    a, b, c, d = (SortApp(name) for name in ['a', 'b', 'c', 'd'])
+
+    # When
+    definition = Definition(
+        (
+            Module(
+                'MODULE-1',
+                (sort_axiom(a, d), sort_axiom(b, d)),
+            ),
+            Module('MODULE-2', (sort_axiom(b, c),)),
         )
-        # fmt: off
-        expected = [
-            '--main-module', 'MAIN-MODULE',
-            '--syntax-module', 'SYNTAX-MODULE',
-            '--backend', 'haskell',
-            '--output-definition', 'path/to/kompiled',
-            '-I', '/',
-            '-I', '/include/lib',
-            '--md-selector', 'k & ! nobytes & ! node',
-            '--hook-namespaces', 'JSON KRYPTO BLOCKCHAIN',
-            '--emit-json',
-            '--post-process', "'echo \"hello\"'",
-            '--concrete-rules', 'foo,bar',
-            '--new-fangled-option', 'buzz'
-        ]
-        # fmt: on
-        self.assertEqual(actual, expected)
+    )
+    expected = {
+        c: {b},
+        d: {a, b},
+    }
+
+    # When
+    actual = _subsort_dict(definition)
+
+    # Then
+    assert actual == expected

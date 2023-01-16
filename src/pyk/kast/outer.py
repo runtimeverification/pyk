@@ -1,15 +1,33 @@
 import json
+import logging
 from abc import abstractmethod
 from dataclasses import InitVar, dataclass
 from enum import Enum
 from os import PathLike
 from typing import Any, Dict, Final, FrozenSet, Iterable, Iterator, List, Optional, Tuple, Type, TypeVar, Union, final
 
+from ..prelude.kbool import TRUE
 from ..utils import filter_none, single, unique
-from .inner import TRUE, KApply, KInner, KLabel, KRewrite, KSort, KToken, KVariable, Subst, top_down, var_occurrences
+from .inner import (
+    KApply,
+    KInner,
+    KLabel,
+    KRewrite,
+    KSequence,
+    KSort,
+    KToken,
+    KVariable,
+    Subst,
+    bottom_up,
+    collect,
+    top_down,
+    var_occurrences,
+)
 from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt
 
 RL = TypeVar('RL', bound='KRuleLike')
+
+_LOGGER: Final = logging.getLogger(__name__)
 
 
 class KOuter(KAst):
@@ -195,6 +213,10 @@ class KProduction(KSentence):
     @property
     def arity(self) -> int:
         return len(self.items)
+
+    @property
+    def argument_sorts(self) -> List[KSort]:
+        return [knt.sort for knt in self.items if type(knt) is KNonTerminal]
 
     @classmethod
     def from_dict(cls: Type['KProduction'], d: Dict[str, Any]) -> 'KProduction':
@@ -783,7 +805,7 @@ class KFlatModuleList(KOuter):
 
     def __init__(self, main_module: str, modules: Iterable[KFlatModule]):
         object.__setattr__(self, 'main_module', main_module)
-        object.__setattr__(self, 'modules', modules)
+        object.__setattr__(self, 'modules', tuple(modules))
 
     @classmethod
     def from_dict(cls: Type['KFlatModuleList'], d: Dict[str, Any]) -> 'KFlatModuleList':
@@ -952,6 +974,12 @@ class KDefinition(KOuter, WithKAtt):
     def production_for_klabel(self, klabel: KLabel) -> KProduction:
         if klabel not in self._production_for_klabel:
             prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
+            _prods = [prod for prod in prods if 'unparseAvoid' not in prod.att]
+            if len(_prods) < len(prods):
+                prods = _prods
+                _LOGGER.warning(
+                    f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}'
+                )
             try:
                 self._production_for_klabel[klabel] = single(prods)
             except ValueError as err:
@@ -975,15 +1003,18 @@ class KDefinition(KOuter, WithKAtt):
         except ValueError as err:
             raise ValueError(f'Expected a single cell production for sort {sort}') from err
 
+    def module(self, name: str) -> KFlatModule:
+        return single(module for module in self if module.name == name)
+
     def return_sort(self, label: KLabel) -> KSort:
         return self.production_for_klabel(label).sort
 
     def argument_sorts(self, label: KLabel) -> List[KSort]:
-        return [nt.sort for nt in self.production_for_klabel(label).items if type(nt) is KNonTerminal]
+        return self.production_for_klabel(label).argument_sorts
 
     def subsorts(self, sort: KSort) -> List[KSort]:
         if sort not in self._subsorts:
-            self._subsorts[sort] = list(set(self._compute_subsorts(sort)))
+            self._subsorts[sort] = self._compute_subsorts(sort)
         return self._subsorts[sort]
 
     def _compute_subsorts(self, sort: KSort) -> List[KSort]:
@@ -992,13 +1023,30 @@ class KDefinition(KOuter, WithKAtt):
             if prod.sort == sort and len(prod.items) == 1 and type(prod.items[0]) is KNonTerminal:
                 _subsort = prod.items[0].sort
                 _subsorts.extend([_subsort] + self.subsorts(prod.items[0].sort))
-        return _subsorts
+        return list(set(_subsorts))
 
     def sort_vars_subst(self, kast: KInner) -> Subst:
-        # TODO: Should also take sort inferences from KApply children.
-        # TODO: Should also take into account subsorts.
+        _var_sort_occurrences = var_occurrences(kast)
         subst = {}
-        for vname, _voccurrences in var_occurrences(kast).items():
+
+        def _sort_contexts(_kast: KInner) -> None:
+            if type(_kast) is KApply:
+                prod = self.production_for_klabel(_kast.label)
+                if len(prod.params) == 0:
+                    for t, a in zip(prod.argument_sorts, _kast.args):
+                        if type(a) is KVariable:
+                            _var_sort_occurrences[a.name].append(a.let_sort(t))
+            if type(_kast) is KSequence and _kast.arity > 0:
+                for a in _kast.items[0:-1]:
+                    if type(a) is KVariable:
+                        _var_sort_occurrences[a.name].append(a.let_sort(KSort('KItem')))
+                last_a = _kast.items[-1]
+                if type(last_a) is KVariable:
+                    _var_sort_occurrences[last_a.name].append(last_a.let_sort(KSort('K')))
+
+        collect(_sort_contexts, kast)
+
+        for vname, _voccurrences in _var_sort_occurrences.items():
             voccurrences = list(unique(_voccurrences))
             if len(voccurrences) > 0:
                 vsort = voccurrences[0].sort
@@ -1006,11 +1054,16 @@ class KDefinition(KOuter, WithKAtt):
                     for v in voccurrences[1:]:
                         if vsort is None and v.sort is not None:
                             vsort = v.sort
-                        elif vsort is not None and v.sort is not None and vsort != v.sort:
-                            raise ValueError(
-                                f'Could not find common subsort among variable occurrences: {voccurrences}'
-                            )
+                        elif vsort is not None and v.sort is not None:
+                            if vsort != v.sort:
+                                if v.sort in self.subsorts(vsort):
+                                    vsort = v.sort
+                                elif vsort not in self.subsorts(v.sort):
+                                    raise ValueError(
+                                        f'Could not find common subsort among variable occurrences: {voccurrences}'
+                                    )
                 subst[vname] = KVariable(vname, sort=vsort)
+
         return Subst(subst)
 
     def sort_vars(self, kast: KInner) -> KInner:
@@ -1044,6 +1097,22 @@ class KDefinition(KOuter, WithKAtt):
             return KApply(cell_klabel, args)
 
         return _kdefinition_empty_config(sort)
+
+    def instantiate_cell_vars(self, term: KInner) -> KInner:
+        def _cell_vars_to_labels(_kast: KInner) -> KInner:
+            if type(_kast) is KApply and _kast.is_cell:
+                production = self.production_for_klabel(_kast.label)
+                production_arity = [prod_item.sort for prod_item in production.items if type(prod_item) is KNonTerminal]
+                new_args = []
+                for sort, arg in zip(production_arity, _kast.args):
+                    if sort.name.endswith('Cell') and type(arg) is KVariable:
+                        new_args.append(self.empty_config(sort))
+                    else:
+                        new_args.append(arg)
+                return KApply(_kast.label, new_args)
+            return _kast
+
+        return bottom_up(_cell_vars_to_labels, term)
 
     def init_config(self, sort: KSort) -> KInner:
         if sort not in self._init_config:

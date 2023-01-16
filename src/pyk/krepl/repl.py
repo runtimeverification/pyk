@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
 from argparse import ArgumentParser, Namespace
+from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
-from typing import Any, Final, Generic, Iterator, Optional, Tuple, TypeVar
+from typing import Any, Final, Generic, Iterator, Optional, Tuple, TypeVar, final
 
 from cmd2 import Cmd, with_argparser, with_category
 
 from ..cli_utils import check_dir_path, check_file_path, file_path
 from ..kore.parser import KoreParser
 from ..kore.syntax import Pattern
-from ..ktool.kprint import KAstInput, KAstOutput, _kast
+from ..ktool.kprint import KPrint
 from ..ktool.krun import KRun, KRunOutput, _krun
 
 T = TypeVar('T')
@@ -29,11 +31,28 @@ class Interpreter(Generic[T], ABC):
     def next_state(self, state: T, steps: Optional[int] = None) -> T:
         ...
 
-    def show_state(self, state: T) -> str:
-        return str(state)
+
+@final
+@dataclass(frozen=True)
+class KState:
+    definition_dir: Path
+    pattern: Pattern
+
+    def __init__(self, definition_dir: Path, pattern: Pattern):
+        definition_dir = definition_dir.resolve()
+        check_dir_path(definition_dir)
+        object.__setattr__(self, 'pattern', pattern)
+        object.__setattr__(self, 'definition_dir', definition_dir)
+
+    @cached_property
+    def pretty(self) -> str:
+        return KPrint(self.definition_dir).kore_to_pretty(self.pattern)
+
+    def __str__(self) -> str:
+        return self.pretty
 
 
-class KInterpreter(Interpreter[Pattern]):
+class KInterpreter(Interpreter[KState]):
     definition_dir: Path
     program_file: Path
 
@@ -43,7 +62,7 @@ class KInterpreter(Interpreter[Pattern]):
         self.definition_dir = definition_dir
         self.program_file = program_file
 
-    def init_state(self) -> Pattern:
+    def init_state(self) -> KState:
         try:
             proc_res = _krun(
                 input_file=self.program_file,
@@ -54,21 +73,12 @@ class KInterpreter(Interpreter[Pattern]):
         except RuntimeError as err:
             raise ReplError('Failed to load program') from err
 
-        state = KoreParser(proc_res.stdout).pattern()
-        return state
+        pattern = KoreParser(proc_res.stdout).pattern()
+        return KState(self.definition_dir, pattern)
 
-    def next_state(self, state: Pattern, steps: Optional[int] = None) -> Pattern:
-        state = KRun(self.definition_dir).run_kore_term(state, depth=steps)
-        return state
-
-    def show_state(self, state: Pattern) -> str:
-        proc_res = _kast(
-            definition_dir=self.definition_dir,
-            input=KAstInput.KORE,
-            output=KAstOutput.PRETTY,
-            expression=state.text,
-        )
-        return proc_res.stdout
+    def next_state(self, state: KState, steps: Optional[int] = None) -> KState:
+        pattern = KRun(self.definition_dir).run_kore_term(state.pattern, depth=steps)
+        return KState(self.definition_dir, pattern)
 
 
 def _step_parser() -> ArgumentParser:
@@ -126,8 +136,8 @@ class BaseRepl(Cmd, Generic[T], ABC):
     @with_category(CAT_DEBUG)
     def do_show(self, args: Namespace) -> None:
         try:
-            interpreter, state = self._check_state()
-            self.poutput(interpreter.show_state(state))
+            _, state = self._check_state()
+            self.poutput(state)
         except ReplError as err:
             self.poutput(err)
 
@@ -148,7 +158,7 @@ def _load_parser() -> ArgumentParser:
     return parser
 
 
-class KRepl(BaseRepl[Pattern]):
+class KRepl(BaseRepl[KState]):
     intro = 'K-REPL Shell\nType "help" or "?" for more information.'
 
     def __init__(self, definition_dir: Path):
@@ -159,5 +169,8 @@ class KRepl(BaseRepl[Pattern]):
     @with_argparser(_load_parser())
     @with_category(BaseRepl.CAT_DEBUG)
     def do_load(self, args: Namespace) -> None:
-        self.interpreter = KInterpreter(self.definition_dir, args.program)
-        self.state = self.interpreter.init_state()
+        try:
+            self.interpreter = KInterpreter(self.definition_dir, args.program)
+            self.state = self.interpreter.init_state()
+        except ReplError as err:
+            self.poutput(err)

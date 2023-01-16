@@ -1,21 +1,7 @@
 import logging
 import typing
 from collections import Counter
-from typing import (
-    Any,
-    Callable,
-    Collection,
-    Dict,
-    Final,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    TypeVar,
-)
+from typing import Any, Callable, Collection, Dict, Final, Iterable, List, Optional, Sequence, Tuple, Type, TypeVar
 
 from ..prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
@@ -51,13 +37,6 @@ def if_ktype(ktype: Type[KI], then: Callable[[KI], KInner]) -> Callable[[KInner]
         return term
 
     return fun
-
-
-# TODO remove
-def substitute(pattern: KInner, subst: Mapping[str, KInner]) -> KInner:
-    if not isinstance(subst, Subst):
-        subst = Subst(subst)
-    return subst(pattern)
 
 
 def bool_to_ml_pred(kast: KInner) -> KInner:
@@ -541,7 +520,7 @@ def set_cell(constrained_term: KInner, cell_variable: str, cell_value: KInner) -
     state, constraint = split_config_and_constraints(constrained_term)
     config, subst = split_config_from(state)
     subst[cell_variable] = cell_value
-    return mlAnd([substitute(config, subst), constraint])
+    return mlAnd([Subst(subst)(config), constraint])
 
 
 def remove_constraint_clauses_for(var_names: Collection[str], constraint: KInner) -> KInner:
@@ -635,7 +614,7 @@ def apply_existential_substitutions(constrained_term: KInner) -> KInner:
             subst[match['#VAR'].name] = match['#VAL']
         else:
             new_constraints.append(c)
-    return substitute(mlAnd([state] + new_constraints), subst)
+    return Subst(subst)(mlAnd([state] + new_constraints))
 
 
 def constraint_subsume(constraint1: KInner, constraint2: KInner) -> bool:
@@ -664,7 +643,7 @@ def match_with_constraint(constrained_term_1: KInner, constrained_term_2: KInner
     state1, constraint1 = split_config_and_constraints(constrained_term_1)
     state2, constraint2 = split_config_and_constraints(constrained_term_2)
     subst = state1.match(state2)
-    if subst is not None and constraint_subsume(substitute(constraint1, subst), constraint2):
+    if subst is not None and constraint_subsume(Subst(subst)(constraint1), constraint2):
         return subst
     return None
 
@@ -677,3 +656,23 @@ def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
             raise ValueError(f'Expected KRewrite as alias body, found: {rewrite}')
         kast = rewrite(kast)
     return kast
+
+
+def rename_generated_vars(term: KInner) -> KInner:
+    state, _ = split_config_and_constraints(term)
+    _, config_subst = split_config_from(state)
+    config_var_count = {cvar: count_vars(ccontents) for cvar, ccontents in config_subst.items()}
+    vs = free_vars(term)
+    var_subst: Dict[str, KInner] = {}
+    for v in vs:
+        if v.startswith('_Gen') or v.startswith('?_Gen') or v.startswith('_DotVar') or v.startswith('?_DotVar'):
+            cvars = [cv for cv in config_var_count if v in config_var_count[cv]]
+            if len(cvars) > 1:
+                raise ValueError(f'Found "Gen*" or "DotVar*" variable with multiple occurrences: {v}')
+            cvar = cvars[0]
+            new_v = abstract_term_safely(KVariable(v), base_name=cvar)
+            while new_v.name in vs:
+                new_v = abstract_term_safely(KVariable(new_v.name), base_name=cvar)
+            var_subst[v] = new_v
+            vs.append(new_v.name)
+    return Subst(var_subst).apply(term)

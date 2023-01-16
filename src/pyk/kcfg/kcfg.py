@@ -5,16 +5,41 @@ from functools import reduce
 from itertools import chain
 from threading import RLock
 from types import TracebackType
-from typing import Any, Container, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Container,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from graphviz import Digraph
 
-from .cterm import CTerm, build_claim, build_rule
-from .kast.inner import KInner, Subst
-from .kast.manip import ml_pred_to_bool, mlAnd, remove_source_attributes, simplify_bool
-from .kast.outer import KClaim, KRule
-from .ktool import KPrint
-from .utils import add_indent, compare_short_hashes, shorten_hash
+from pyk.cterm import CTerm, build_claim, build_rule
+from pyk.kast.inner import KInner, Subst
+from pyk.kast.manip import (
+    bool_to_ml_pred,
+    extract_lhs,
+    extract_rhs,
+    ml_pred_to_bool,
+    mlAnd,
+    remove_source_attributes,
+    rename_generated_vars,
+    simplify_bool,
+)
+from pyk.kast.outer import KClaim, KDefinition, KRule
+from pyk.ktool import KPrint
+from pyk.prelude.ml import mlTop
+from pyk.utils import add_indent, compare_short_hashes, shorten_hash
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
@@ -95,26 +120,54 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         subst: Subst
         constraint: KInner
 
-        def __init__(self, source: 'KCFG.Node', target: 'KCFG.Node'):
+        def __init__(
+            self,
+            source: 'KCFG.Node',
+            target: 'KCFG.Node',
+            subst: Optional[Subst] = None,
+            constraint: Optional[KInner] = None,
+        ):
             object.__setattr__(self, 'source', source)
             object.__setattr__(self, 'target', target)
 
-            match_res = target.cterm.match_with_constraint(source.cterm)
-            if not match_res:
-                raise ValueError(f'No matching between: {source.id} and {target.id}')
+            if subst is None and constraint is not None:
+                subst = Subst({})
+            elif subst is not None and constraint is None:
+                constraint = mlTop()
+            elif subst is None and constraint is None:
+                match_res = target.cterm.match_with_constraint(source.cterm)
+                if not match_res:
+                    raise ValueError(f'No matching between: {source.id} and {target.id}')
+                subst, constraint = match_res
 
-            subst, constraint = match_res
             object.__setattr__(self, 'subst', subst)
             object.__setattr__(self, 'constraint', constraint)
 
         def to_dict(self) -> Dict[str, Any]:
-            return {'source': self.source.id, 'target': self.target.id}
+            return {
+                'source': self.source.id,
+                'target': self.target.id,
+                'subst': self.subst.to_dict(),
+                'constraint': self.constraint.to_dict(),
+            }
 
-        def pretty(self, kprint: KPrint) -> Iterable[str]:
+        def pretty(self, kprint: KPrint, minimize: bool = True) -> Iterable[str]:
+            subst_strs = [f'{k} <- {kprint.pretty_print(v)}' for k, v in self.subst.items()]
+            subst_str = ''
+            if len(subst_strs) == 0:
+                subst_str = '.Subst'
+            if len(subst_strs) == 1:
+                subst_str = subst_strs[0]
+            if len(subst_strs) > 1 and minimize:
+                subst_str = 'OMITTED SUBST'
+            if len(subst_strs) > 1 and not minimize:
+                subst_str = '{\n    ' + '\n    '.join(subst_strs) + '\n}'
+            constraint_str = kprint.pretty_print(ml_pred_to_bool(self.constraint, unsafe=True))
+            if len(constraint_str) > 78:
+                constraint_str = 'OMITTED CONSTRAINT'
             return [
-                'constraint: ' + kprint.pretty_print(ml_pred_to_bool(self.constraint)),
-                'subst:',
-                *add_indent('  ', self.subst.minimize().pretty(kprint)),
+                f'constraint: {constraint_str}',
+                f'subst: {subst_str}',
             ]
 
     _nodes: Dict[str, Node]
@@ -202,6 +255,23 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     def stuck(self) -> List[Node]:
         return [node for node in self.nodes if self.is_stuck(node.id)]
 
+    @staticmethod
+    def from_claim(defn: KDefinition, claim: KClaim) -> 'KCFG':
+        cfg = KCFG()
+        claim_body = claim.body
+        claim_body = defn.instantiate_cell_vars(claim_body)
+        claim_body = rename_generated_vars(claim_body)
+
+        claim_lhs = CTerm(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
+        init_state = cfg.create_node(claim_lhs)
+        cfg.add_init(init_state.id)
+
+        claim_rhs = CTerm(extract_rhs(claim_body)).add_constraint(bool_to_ml_pred(claim.ensures))
+        target_state = cfg.create_node(claim_rhs)
+        cfg.add_target(target_state.id)
+
+        return cfg
+
     def to_dict(self) -> Dict[str, Any]:
         nodes = [node.to_dict() for node in self.nodes]
         edges = [edge.to_dict() for edge in self.edges()]
@@ -255,7 +325,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for cover_dict in dct.get('covers') or []:
             source_id = resolve(cover_dict['source'])
             target_id = resolve(cover_dict['target'])
-            cfg.create_cover(source_id, target_id)
+            subst = None
+            constraint = None
+            if 'subst' in cover_dict:
+                subst = Subst.from_dict(cover_dict['subst'])
+            if 'constraint' in cover_dict:
+                constraint = KInner.from_dict(cover_dict['constraint'])
+            cfg.create_cover(source_id, target_id, subst=subst, constraint=constraint)
 
         for init_id in dct.get('init') or []:
             cfg.add_init(resolve(init_id))
@@ -285,14 +361,27 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     def from_json(s: str) -> 'KCFG':
         return KCFG.from_dict(json.loads(s))
 
-    def node_short_info(self, node: Node) -> str:
+    def node_short_info(self, node: Node, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None) -> List[str]:
         attrs = self.node_attrs(node.id) + ['@' + alias for alias in sorted(self.aliases(node.id))]
         attr_string = ' (' + ', '.join(attrs) + ')' if attrs else ''
-        return shorten_hash(node.id) + attr_string
+        node_header = shorten_hash(node.id) + attr_string
+        node_strs = [node_header]
+        if node_printer:
+            node_strs.extend(f' {nl}' for nl in node_printer(node.cterm))
+        return node_strs
 
-    def pretty(self, kprint: KPrint) -> Iterable[str]:
+    def pretty_segments(
+        self, kprint: KPrint, minimize: bool = True, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None
+    ) -> Iterable[Tuple[str, Iterable[str]]]:
+        """Return a pretty version of the KCFG in segments.
+
+        Each segment is a tuple of an identifier and a list of lines to be printed for that segment (Tuple[str, Iterable[str]).
+        The identifier tells you whether that segment is for a given node, edge, or just pretty spacing ('unknown').
+        This is useful for applications which want to pretty print in chunks, so that they can know which printed region corresponds to each node/edge.
+        """
 
         processed_nodes: List[KCFG.Node] = []
+        ret_lines: List[Tuple[str, List[str]]] = []
 
         def _bold(text: str) -> str:
             return '\033[1m' + text + '\033[0m'
@@ -300,72 +389,106 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         def _green(text: str) -> str:
             return '\033[32m' + text + '\033[0m'
 
-        def _print_node(node: KCFG.Node) -> str:
-            short_info = self.node_short_info(node)
+        def _print_node(node: KCFG.Node) -> List[str]:
+            short_info = self.node_short_info(node, node_printer=node_printer)
             if self.is_frontier(node.id):
-                short_info = _bold(short_info)
+                short_info[0] = _bold(short_info[0])
             return short_info
 
-        def _is_rewrite_edge(edge_like: KCFG.EdgeLike) -> bool:
-            return isinstance(edge_like, KCFG.Edge) and edge_like.depth != 0
-
-        def _is_case_split_edge(edge_like: KCFG.EdgeLike) -> bool:
-            return isinstance(edge_like, KCFG.Edge) and edge_like.depth == 0
-
-        def _print_subgraph(indent: str, curr_node: KCFG.Node, prior_on_trace: List[KCFG.Node]) -> List[str]:
-            ret: List[str] = []
+        def _print_subgraph(indent: str, curr_node: KCFG.Node, prior_on_trace: List[KCFG.Node]) -> None:
 
             edges_from = sorted(self.edge_likes(source_id=curr_node.id))
             if curr_node in processed_nodes:
                 if not edges_from:
-                    return ret
+                    return
+                ret_edge_lines = [(indent + '┊')]
                 if curr_node in prior_on_trace:
-                    ret.append(indent + '┊ (looped back)')
+                    ret_edge_lines.append(indent + '└╌ (looped back)')
                 else:
-                    ret.append(indent + '┊ (continues as previously)')
-                return ret
+                    ret_edge_lines.append(indent + '└╌ (continues as previously)')
+                ret_lines.append(('unknown', ret_edge_lines))
+                return
             processed_nodes.append(curr_node)
 
             num_children = len(edges_from)
             is_cover = num_children == 1 and isinstance(edges_from[0], KCFG.Cover)
             is_branch = num_children > 1
+            if is_branch:
+                ret_lines.append(('unknown', [indent + '│']))
             for i, edge_like in enumerate(edges_from):
                 is_last_child = i == num_children - 1
 
                 if not (is_branch or is_cover):
                     elbow = '├ ' if len(self.edge_likes(source_id=edge_like.target.id)) else '└ '
-                    new_indent = indent
+                    new_indent = ''
+                    node_indent = '│ '
                 elif is_last_child:
                     elbow = '└╌' if is_cover else '┗━'
-                    new_indent = indent + '    '
+                    new_indent = '   '
+                    node_indent = '   │'
                 else:
                     elbow = '┣━'
-                    new_indent = indent + '┃   '
+                    new_indent = '┃  '
+                    node_indent = '┃  │'
 
                 if isinstance(edge_like, KCFG.Edge) and edge_like.depth:
+                    ret_edge_lines = [(indent + '│')]
                     if self.is_verified(edge_like.source.id, edge_like.target.id):
-                        ret.append(indent + '│  ' + _bold(_green('(verified)')))
-                    ret.extend(add_indent(indent + '│  ', edge_like.pretty(kprint)))
+                        ret_edge_lines.append(indent + '│  ' + _bold(_green('(verified)')))
+                    ret_edge_lines.extend(add_indent(indent + '│  ', edge_like.pretty(kprint)))
+                    ret_lines.append((f'edge({edge_like.source.id},{edge_like.target.id})', ret_edge_lines))
                 elif isinstance(edge_like, KCFG.Cover):
-                    ret.extend(add_indent(indent + '┊  ', edge_like.pretty(kprint)))
-                ret.append(indent + elbow + ' ' + _print_node(edge_like.target))
+                    ret_edge_lines = [(indent + '┊')]
+                    ret_edge_lines.extend(add_indent(indent + '┊  ', edge_like.pretty(kprint, minimize=minimize)))
+                    ret_lines.append((f'cover({edge_like.source.id},{edge_like.target.id})', ret_edge_lines))
+
+                target_strs = _print_node(edge_like.target)
+                ret_node_lines = [(indent + elbow + ' ' + target_strs[0])]
+
                 if isinstance(edge_like, KCFG.Edge) and edge_like.depth == 0:
                     first, *rest = edge_like.pretty(kprint)
-                    ret[-1] += '    ' + first
-                    ret.extend(add_indent(new_indent + (7 + len(_print_node(edge_like.target))) * ' ', rest))
+                    ret_node_lines[-1] += '    ' + first
+                    ret_node_lines.extend(add_indent(indent + new_indent + '       ' + len(target_strs[0]) * ' ', rest))
 
-                ret.extend(_print_subgraph(new_indent, edge_like.target, prior_on_trace + [edge_like.source]))
-                if is_branch:
-                    ret.append(new_indent.rstrip())
-            return ret
+                ret_node_lines.extend(add_indent(indent + node_indent, target_strs[1:]))
+                ret_lines.append((f'node({edge_like.target.id})', ret_node_lines))
 
-        ret = []
+                _print_subgraph(indent + new_indent, edge_like.target, prior_on_trace + [edge_like.source])
+
+                if is_branch and not is_last_child:
+                    ret_lines.append(('unknown', [indent + new_indent]))
+
         init = sorted(self.init)
         while init:
-            ret.append(_print_node(init[0]))
-            ret.extend(_print_subgraph('', init[0], [init[0]]))
+            init_strs = _print_node(init[0])
+            ret_lines.append(('unknown', ['']))
+            ret_init = [('┌  ' + init_strs[0])]
+            ret_init.extend(add_indent('│  ', init_strs[1:]))
+            ret_lines.append((f'node({init[0].id})', ret_init))
+            _print_subgraph('', init[0], [init[0]])
             init = sorted(node for node in self.nodes if node not in processed_nodes)
-        return ret
+
+        _ret_lines = []
+        used_ids = []
+        for id, seg_lines in ret_lines:
+            suffix = ''
+            counter = 0
+            while f'{id}{suffix}' in used_ids:
+                suffix = f'_{counter}'
+                counter += 1
+            new_id = f'{id}{suffix}'
+            used_ids.append(new_id)
+            _ret_lines.append((f'{new_id}', [l.rstrip() for l in seg_lines]))
+        return _ret_lines
+
+    def pretty(
+        self, kprint: KPrint, minimize: bool = True, node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None
+    ) -> Iterable[str]:
+        return (
+            line
+            for _, seg_lines in self.pretty_segments(kprint, minimize=minimize, node_printer=node_printer)
+            for line in seg_lines
+        )
 
     def to_dot(self, kprint: KPrint) -> str:
         def _short_label(label: str) -> str:
@@ -379,7 +502,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         graph = Digraph()
 
         for node in self.nodes:
-            label = self.node_short_info(node)
+            label = '\n'.join(self.node_short_info(node))
             class_attrs = ' '.join(self.node_attrs(node.id))
             attrs = {'class': class_attrs} if class_attrs else {}
             graph.node(name=node.id, label=label, **attrs)
@@ -556,7 +679,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         source = self.node(source_id)
 
         def _add_case_edge(_constraint: KInner) -> str:
-            _cterm = CTerm(mlAnd([source.cterm.kast, _constraint]))
+            _cterm = source.cterm.add_constraint(_constraint)
             _node = self.get_or_create_node(_cterm)
             self.create_edge(source.id, _node.id, _constraint, 0)
             self.add_verified(source.id, _node.id)
@@ -600,7 +723,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return cover == other
         return False
 
-    def create_cover(self, source_id: str, target_id: str) -> Cover:
+    def create_cover(
+        self, source_id: str, target_id: str, subst: Optional[Subst] = None, constraint: Optional[KInner] = None
+    ) -> Cover:
         source = self.node(source_id)
         target = self.node(target_id)
 
@@ -610,7 +735,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         if source.id not in self._covers:
             self._covers[source.id] = {}
 
-        cover = KCFG.Cover(source, target)
+        cover = KCFG.Cover(source, target, subst=subst, constraint=constraint)
         self._covers[source.id][target.id] = cover
         return cover
 

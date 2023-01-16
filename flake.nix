@@ -3,7 +3,7 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs";
-  inputs.poetry2nix.url = "github:nix-community/poetry2nix/1.35.0";
+  inputs.poetry2nix.url = "github:nix-community/poetry2nix/master";
 
   outputs = { self, nixpkgs, flake-utils, poetry2nix }:
     {
@@ -24,6 +24,16 @@
                       buildInputs = (oldAttrs.buildInputs or [ ])
                         ++ [ prevPython.setuptools ];
                     });
+                  nanoid = prevPython.nanoid.overridePythonAttrs
+                    (oldAttrs: {
+                      buildInputs = (oldAttrs.buildInputs or [ ])
+                        ++ [ prevPython.setuptools ];
+                    });
+                  packaging = prevPython.packaging.overridePythonAttrs
+                    (oldAttrs: {
+                      buildInputs = (oldAttrs.buildInputs or [ ])
+                        ++ [ prevPython.flit-core ];
+                    });
                 });
             };
         in {
@@ -39,6 +49,7 @@
       in {
         packages = {
           inherit (pkgs) pyk;
+          pyk-python310 = pkgs.python310Packages.pyk;
           default = pkgs.pyk;
         };
       }));
