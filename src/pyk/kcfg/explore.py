@@ -157,7 +157,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         simplify_init: bool = True,
-        implication_every_block: bool = False,
+        implication_every_block: bool = True,
     ) -> KCFG:
         def _write_cfg(_cfg: KCFG) -> None:
             if cfg_path is not None:
