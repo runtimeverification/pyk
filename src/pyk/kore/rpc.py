@@ -26,7 +26,7 @@ from typing import (
     final,
 )
 
-from ..cli_utils import check_dir_path, check_file_path
+from ..cli_utils import BugReport, check_dir_path, check_file_path
 from ..utils import filter_none
 from .syntax import And, Pattern, SortApp
 
@@ -58,12 +58,15 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
     _file: TextIO
     _req_id: int
 
-    def __init__(self, host: str, port: int, *, timeout: Optional[int] = None):
+    _bug_report: Optional[BugReport]
+
+    def __init__(self, host: str, port: int, *, timeout: Optional[int] = None, bug_report: Optional[BugReport] = None):
         if timeout is not None and timeout < 0:
             raise ValueError(f'Expected nonnegative timeout value, got: {timeout}')
 
         self._host = host
         self._port = port
+        self._bug_report = bug_report
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._file = self._sock.makefile('r')
         self._req_id = 1
@@ -103,8 +106,6 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
             'method': method,
             'params': params,
         }
-        old_id = self._req_id
-        self._req_id += 1
 
         server_addr = f'{self._host}:{self._port}'
         req = json.dumps(payload)
@@ -114,10 +115,24 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         resp = self._file.readline().rstrip()
         _LOGGER.info(f'Received response from {server_addr}: {resp}')
 
+        if self._bug_report:
+            bug_report_request = f'rpc/{self._req_id:03}_request.json'
+            bug_report_response = f'rpc/{self._req_id:03}_response.json'
+            bug_report_actual = f'rpc/{self._req_id:03}_actual.json'
+            self._bug_report.add_file_contents(req, Path(bug_report_request))
+            self._bug_report.add_file_contents(resp, Path(bug_report_response))
+            self._bug_report.add_command(
+                ['cat', bug_report_request]
+                + ['|', 'nc', self._host, str(self._port)]
+                + ['|', 'tee', bug_report_actual]
+                + ['&&', 'diff', bug_report_actual, bug_report_response]
+            )
+
         data = json.loads(resp)
         self._check(data)
 
-        assert data['id'] == old_id
+        assert data['id'] == self._req_id
+        self._req_id += 1
         return data['result']
 
     @staticmethod
@@ -329,8 +344,8 @@ class KoreClient(ContextManager['KoreClient']):
 
     _client: JsonRpcClient
 
-    def __init__(self, host: str, port: int, *, timeout: Optional[int] = None):
-        self._client = JsonRpcClient(host, port, timeout=timeout)
+    def __init__(self, host: str, port: int, *, timeout: Optional[int] = None, bug_report: Optional[BugReport] = None):
+        self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report)
 
     def __enter__(self) -> 'KoreClient':
         return self
@@ -406,6 +421,7 @@ class KoreServer(ContextManager['KoreServer']):
         port: int,
         *,
         command: Union[str, Iterable[str]] = 'kore-rpc',
+        bug_report: Optional[BugReport] = None,
     ):
         kompiled_dir = Path(kompiled_dir)
         check_dir_path(kompiled_dir)
@@ -420,6 +436,8 @@ class KoreServer(ContextManager['KoreServer']):
 
         self._port = port
         _LOGGER.info(f'Starting KoreServer: port={self._port}')
+        if bug_report is not None:
+            bug_report.add_command(args)
         self._proc = Popen(args)
         self._pid = self._proc.pid
         _LOGGER.info(f'KoreServer started: port={self._port}, pid={self._pid}')
