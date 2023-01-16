@@ -69,6 +69,11 @@ def abs_or_rel_to(path: Path, base: Path) -> Path:
     return base / path
 
 
+# Implementation because of outdated Python versions: https://github.com/python/cpython/blob/1de4395f62bb140563761ef5cbdf46accef3c550/Lib/pathlib.py#L554
+def is_relative_to(_self: Path, other: Path) -> bool:
+    return _self == other or _self in other.parents
+
+
 def run_process(
     args: Union[str, Iterable[str]],
     *,
@@ -154,7 +159,7 @@ class BugReport:
             _a_path = Path(_a)
             for _f in self._file_remap:
                 _f_path = Path(_f)
-                if _a_path.is_relative_to(_f_path):
+                if is_relative_to(_a_path, _f_path):
                     return str(Path(self._file_remap[_f]) / _a_path.relative_to(_f_path))
             return _a
 
