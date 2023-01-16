@@ -39,7 +39,7 @@ class KCFGExplore:
                 cfg.replace_node(node.id, CTerm(new_term))
         return cfg
 
-    def rpc_prove(
+    def all_path_reachability(
         self,
         cfgid: str,
         cfg: KCFG,
