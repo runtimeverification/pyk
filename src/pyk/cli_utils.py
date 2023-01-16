@@ -71,7 +71,7 @@ def abs_or_rel_to(path: Path, base: Path) -> Path:
 
 # Implementation because of outdated Python versions: https://github.com/python/cpython/blob/1de4395f62bb140563761ef5cbdf46accef3c550/Lib/pathlib.py#L554
 def is_relative_to(_self: Path, other: Path) -> bool:
-    return _self == other or _self in other.parents
+    return _self == other or other in _self.parents
 
 
 def run_process(
