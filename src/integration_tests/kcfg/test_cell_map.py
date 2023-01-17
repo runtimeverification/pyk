@@ -36,7 +36,7 @@ class TestCellMapProof(KCFGExploreTest):
         EXECUTE_TEST_DATA,
         ids=[test_id for test_id, *_ in EXECUTE_TEST_DATA],
     )
-    def test_my_execute(
+    def test_execute(
         self,
         kcfg_explore: KCFGExplore,
         test_id: str,
