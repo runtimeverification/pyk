@@ -5,9 +5,9 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KInner, KSequence, KToken, KVariable, build_assoc
 from pyk.kast.manip import get_cell
-from pyk.ktool import KProve
+from pyk.kcfg import KCFGExplore
 
-from .utils import KProveTest
+from ..utils import KCFGExploreTest
 
 
 class State(NamedTuple):
@@ -28,7 +28,7 @@ EXECUTE_TEST_DATA: Final[Iterable[Tuple[str, int, State, int, State, Iterable[St
 )
 
 
-class TestCellMapProof(KProveTest):
+class TestCellMapProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = 'k-files/cell-map.k'
 
     @pytest.mark.parametrize(
@@ -38,7 +38,7 @@ class TestCellMapProof(KProveTest):
     )
     def test_my_execute(
         self,
-        kprove: KProve,
+        kcfg_explore: KCFGExplore,
         test_id: str,
         depth: int,
         pre: State,
@@ -47,10 +47,10 @@ class TestCellMapProof(KProveTest):
         expected_next_states: Iterable[State],
     ) -> None:
         def _parse(kt: KToken) -> KInner:
-            return kprove.parse_token(kt, as_rule=True)
+            return kcfg_explore.kprint.parse_token(kt, as_rule=True)
 
         def _print(k: KInner) -> str:
-            return kprove.pretty_print(k)
+            return kcfg_explore.kprint.pretty_print(k)
 
         def _config(k: str, active_accounts: str, accounts: Iterable[Tuple[str, str]]) -> CTerm:
             _k_parsed = _parse(KToken(k, 'KItem'))
@@ -89,7 +89,7 @@ class TestCellMapProof(KProveTest):
         expected_k, _, _ = expected_post
 
         # When
-        actual_depth, actual_post_term, _ = kprove.execute(_config(k, aacounts, accounts), depth=depth)
+        actual_depth, actual_post_term, _ = kcfg_explore.cterm_execute(_config(k, aacounts, accounts), depth=depth)
         actual_k = _print(get_cell(actual_post_term.kast, 'K_CELL'))
 
         # Then

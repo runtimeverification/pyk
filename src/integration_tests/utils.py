@@ -8,6 +8,7 @@ import pytest
 from pytest import TempPathFactory
 
 from pyk.kast.outer import KDefinition, read_kast_definition
+from pyk.kcfg import KCFGExplore
 from pyk.ktool import KompileBackend, KPrint, KProve, KRun, kompile
 from pyk.ktool.kprint import SymbolTable
 
@@ -88,14 +89,22 @@ class KProveTest(KompiledTest):
 
     @pytest.fixture
     def kprove(self, definition_dir: Path, tmp_path_factory: TempPathFactory) -> Iterator[KProve]:
-        kprove = KProve(definition_dir, port=free_port_on_host(), use_directory=tmp_path_factory.mktemp('kprove'))
+        kprove = KProve(definition_dir, use_directory=tmp_path_factory.mktemp('kprove'))
         self._update_symbol_table(kprove.symbol_table)
         yield kprove
-        kprove.close_kore_rpc()
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass
+
+
+class KCFGExploreTest(KProveTest):
+    @pytest.fixture
+    def kcfg_explore(self, definition_dir: Path, tmp_path_factory: TempPathFactory) -> Iterator[KCFGExplore]:
+        kprove = next(self.kprove(definition_dir, tmp_path_factory))
+        kcfg_explore = KCFGExplore(kprove, free_port_on_host())
+        yield kcfg_explore
+        kcfg_explore.close_kore_rpc()
 
 
 # Based on: https://stackoverflow.com/a/45690594
