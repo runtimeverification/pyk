@@ -121,8 +121,6 @@ class KProve(KPrint, ContextManager['KProve']):
     main_file: Optional[Path]
     prover: List[str]
     prover_args: List[str]
-    backend: str
-    main_module: str
     port: int
 
     _kore_rpc: Optional[Tuple[KoreServer, KoreClient]]
@@ -146,10 +144,6 @@ class KProve(KPrint, ContextManager['KProve']):
         self.prover = [command]
         self.prover_args = []
         self.port = 3000 if port is None else port
-        with open(self.definition_dir / 'backend.txt', 'r') as ba:
-            self.backend = ba.read()
-        with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
-            self.main_module = mm.read()
         self._kore_rpc = None
 
     def __enter__(self) -> 'KProve':
