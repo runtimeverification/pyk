@@ -106,11 +106,13 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
             'method': method,
             'params': params,
         }
+        old_id = self._req_id
+        self._req_id += 1
 
         server_addr = f'{self._host}:{self._port}'
         req = json.dumps(payload)
         if self._bug_report:
-            bug_report_request = f'rpc/{self._req_id:03}_request.json'
+            bug_report_request = f'rpc/{old_id:03}_request.json'
             self._bug_report.add_file_contents(req, Path(bug_report_request))
             self._bug_report.add_command(
                 [
@@ -122,7 +124,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
                     self._host,
                     str(self._port),
                     '>',
-                    f'rpc/{self._req_id:03}_actual.json',
+                    f'rpc/{old_id:03}_actual.json',
                 ]
             )
 
@@ -133,17 +135,16 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         _LOGGER.info(f'Received response from {server_addr}: {resp}')
 
         if self._bug_report:
-            bug_report_response = f'rpc/{self._req_id:03}_response.json'
+            bug_report_response = f'rpc/{old_id:03}_response.json'
             self._bug_report.add_file_contents(resp, Path(bug_report_response))
             self._bug_report.add_command(
-                ['diff', '-b', '-s', f'rpc/{self._req_id:03}_actual.json', f'rpc/{self._req_id:03}_response.json']
+                ['diff', '-b', '-s', f'rpc/{old_id:03}_actual.json', f'rpc/{old_id:03}_response.json']
             )
 
         data = json.loads(resp)
         self._check(data)
+        assert data['id'] == old_id
 
-        assert data['id'] == self._req_id
-        self._req_id += 1
         return data['result']
 
     @staticmethod
