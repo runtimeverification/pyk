@@ -284,17 +284,18 @@ class KProve(KPrint):
                 args=['--emit-json-spec', ntf.name],
             )
             flat_module_list = KFlatModuleList.from_dict(json.loads(Path(ntf.name).read_text())['term'])
-            all_claims = {c.label: c for m in flat_module_list.modules for c in m.claims}
 
-            unfound_labels = []
-            claim_labels = list(all_claims.keys()) if claim_labels is None else claim_labels
-            exclude_claim_labels = [] if exclude_claim_labels is None else exclude_claim_labels
-            unfound_labels.extend([cl for cl in claim_labels if cl not in all_claims])
-            unfound_labels.extend([cl for cl in exclude_claim_labels if cl not in all_claims])
-            if len(unfound_labels) > 0:
-                raise ValueError(f'Claim labels not found: {unfound_labels}')
+        all_claims = {c.label: c for m in flat_module_list.modules for c in m.claims}
 
-            return [all_claims[cl] for cl in all_claims if cl in claim_labels and cl not in exclude_claim_labels]
+        unfound_labels = []
+        claim_labels = list(all_claims.keys()) if claim_labels is None else claim_labels
+        exclude_claim_labels = [] if exclude_claim_labels is None else exclude_claim_labels
+        unfound_labels.extend([cl for cl in claim_labels if cl not in all_claims])
+        unfound_labels.extend([cl for cl in exclude_claim_labels if cl not in all_claims])
+        if len(unfound_labels) > 0:
+            raise ValueError(f'Claim labels not found: {unfound_labels}')
+
+        return [all_claims[cl] for cl in all_claims if cl in claim_labels and cl not in exclude_claim_labels]
 
     def get_claim_basic_block(
         self,
