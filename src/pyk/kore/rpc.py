@@ -100,14 +100,15 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         self._sock.close()
 
     def request(self, method: str, **params: Any) -> Dict[str, Any]:
+        old_id = self._req_id
+        self._req_id += 1
+
         payload = {
             'jsonrpc': self._JSON_RPC_VERSION,
-            'id': self._req_id,
+            'id': old_id,
             'method': method,
             'params': params,
         }
-        old_id = self._req_id
-        self._req_id += 1
 
         server_addr = f'{self._host}:{self._port}'
         req = json.dumps(payload)
