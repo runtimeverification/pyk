@@ -112,7 +112,19 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         if self._bug_report:
             bug_report_request = f'rpc/{self._req_id:03}_request.json'
             self._bug_report.add_file_contents(req, Path(bug_report_request))
-            self._bug_report.add_command(['cat', bug_report_request, '|', 'nc', self._host, str(self._port)])
+            self._bug_report.add_command(
+                [
+                    'cat',
+                    bug_report_request,
+                    '|',
+                    'nc',
+                    '-Nv',
+                    self._host,
+                    str(self._port),
+                    '>',
+                    f'rpc/{self._req_id:03}_actual.json',
+                ]
+            )
 
         _LOGGER.info(f'Sending request to {server_addr}: {req}')
         self._sock.sendall(req.encode())
@@ -123,6 +135,9 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         if self._bug_report:
             bug_report_response = f'rpc/{self._req_id:03}_response.json'
             self._bug_report.add_file_contents(resp, Path(bug_report_response))
+            self._bug_report.add_command(
+                ['diff', '-b', '-s', f'rpc/{self._req_id:03}_actual.json', f'rpc/{self._req_id:03}_response.json']
+            )
 
         data = json.loads(resp)
         self._check(data)
