@@ -100,8 +100,7 @@ class KProveTest(KompiledTest):
 
 class KCFGExploreTest(KProveTest):
     @pytest.fixture
-    def kcfg_explore(self, definition_dir: Path, tmp_path_factory: TempPathFactory) -> Iterator[KCFGExplore]:
-        kprove = next(self.kprove(definition_dir, tmp_path_factory))
+    def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
         kcfg_explore = KCFGExplore(kprove, free_port_on_host())
         yield kcfg_explore
         kcfg_explore.close_kore_rpc()
