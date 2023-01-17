@@ -6,6 +6,7 @@ from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable
 from pyk.kast.manip import get_cell
 from pyk.kcfg import KCFGExplore
+from pyk.ktool import KPrint
 
 from ..utils import KCFGExploreTest
 
@@ -16,6 +17,22 @@ SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90
 
 class TestSimpleProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
+
+    @staticmethod
+    def config(kprint: KPrint, k: str, state: str) -> CTerm:
+        _k_parsed = kprint.parse_token(KToken(k, 'KItem'), as_rule=True)
+        _state_parsed = kprint.parse_token(KToken(state, 'Map'), as_rule=True)
+        # TODO: Why does kompile put <generatedCounter> before <state>?
+        return CTerm(
+            KApply(
+                '<generatedTop>',
+                [
+                    KApply('<k>', [KSequence([_k_parsed])]),
+                    KVariable('GENERATED_COUNTER_CELL'),
+                    KApply('<state>', [_state_parsed]),
+                ],
+            )
+        )
 
     @pytest.mark.parametrize(
         'test_id,depth,pre,expected_depth,expected_post,expected_next_states',
@@ -32,27 +49,14 @@ class TestSimpleProof(KCFGExploreTest):
         expected_post: Tuple[str, str],
         expected_next_states: Iterable[Tuple[str, str]],
     ) -> None:
-        def _config(k: str, state: str) -> CTerm:
-            _k_parsed = kcfg_explore.kprint.parse_token(KToken(k, 'KItem'), as_rule=True)
-            _state_parsed = kcfg_explore.kprint.parse_token(KToken(state, 'Map'), as_rule=True)
-            # TODO: Why does kompile put <generatedCounter> before <state>?
-            return CTerm(
-                KApply(
-                    '<generatedTop>',
-                    [
-                        KApply('<k>', [KSequence([_k_parsed])]),
-                        KVariable('GENERATED_COUNTER_CELL'),
-                        KApply('<state>', [_state_parsed]),
-                    ],
-                )
-            )
-
         # Given
         k, state = pre
         expected_k, expected_state = expected_post
 
         # When
-        actual_depth, actual_post_term, actual_next_terms = kcfg_explore.cterm_execute(_config(k, state), depth=depth)
+        actual_depth, actual_post_term, actual_next_terms = kcfg_explore.cterm_execute(
+            self.config(kcfg_explore.kprint, k, state), depth=depth
+        )
         actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post_term.kast, 'K_CELL'))
         actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post_term.kast, 'STATE_CELL'))
         actual_next_states = [
@@ -81,27 +85,12 @@ class TestSimpleProof(KCFGExploreTest):
         pre: Tuple[str, str],
         expected_post: Tuple[str, str],
     ) -> None:
-        def _config(k: str, state: str) -> CTerm:
-            _k_parsed = kcfg_explore.kprint.parse_token(KToken(k, 'KItem'), as_rule=True)
-            _state_parsed = kcfg_explore.kprint.parse_token(KToken(state, 'Map'), as_rule=True)
-            # TODO: Why does kompile put <generatedCounter> before <state>?
-            return CTerm(
-                KApply(
-                    '<generatedTop>',
-                    [
-                        KApply('<k>', [KSequence([_k_parsed])]),
-                        KVariable('GENERATED_COUNTER_CELL'),
-                        KApply('<state>', [_state_parsed]),
-                    ],
-                )
-            )
-
         # Given
         k, state = pre
         expected_k, expected_state = expected_post
 
         # When
-        actual_post = kcfg_explore.cterm_simplify(_config(k, state))
+        actual_post = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, k, state))
         actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post, 'K_CELL'))
         actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post, 'STATE_CELL'))
 
