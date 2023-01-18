@@ -134,11 +134,12 @@ class KProve(KPrint, ContextManager['KProve']):
         use_directory: Optional[Path] = None,
         profile: bool = False,
         command: str = 'kprove',
+        kore_rpc_command : Union[str, Iterable[str]] = 'kore-rpc',
         port: Optional[int] = None,
         bug_report: Optional[BugReport] = None,
     ):
         super(KProve, self).__init__(
-            definition_dir, use_directory=use_directory, profile=profile, bug_report=bug_report
+            definition_dir, use_directory=use_directory, profile=profile, bug_report=bug_report, command=kore_rpc_command,
         )
         # TODO: we should not have to supply main_file, it should be read
         # TODO: setting use_directory manually should set temp files to not be deleted and a log message
