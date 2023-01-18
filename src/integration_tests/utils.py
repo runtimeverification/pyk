@@ -103,7 +103,6 @@ class KCFGExploreTest(KProveTest):
     def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
         kcfg_explore = KCFGExplore(kprove, free_port_on_host())
         yield kcfg_explore
-        kcfg_explore.close_kore_rpc()
 
 
 # Based on: https://stackoverflow.com/a/45690594

@@ -17,14 +17,18 @@ _LOGGER: Final = logging.getLogger(__name__)
 class KCFGExplore(ContextManager['KCFGExplore']):
     kprint: KPrint
     _port: int
-    _kore_rpc: Optional[Tuple[KoreServer, KoreClient]]
+    _kore_server: Optional[KoreServer]
+    _kore_client: Optional[KoreClient]
+    _rpc_closed: bool
     _bug_report: Optional[BugReport]
 
     def __init__(self, kprint: KPrint, port: int, bug_report: Optional[BugReport] = None):
         self.kprint = kprint
         self._port = port
         self._bug_report = bug_report
-        self._kore_rpc = None
+        self._kore_server = None
+        self._kore_client = None
+        self._rpc_closed = False
 
     def __enter__(self) -> 'KCFGExplore':
         return self
@@ -32,24 +36,26 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def __exit__(self, *args: Any) -> None:
         self.close()
 
-    def kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
-        if not self._kore_rpc:
-            _kore_server = KoreServer(
+    @property
+    def _kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
+        if self._rpc_closed:
+            raise ValueError('RPC server already closed!')
+        if not self._kore_server:
+            self._kore_server = KoreServer(
                 self.kprint.definition_dir, self.kprint.main_module, self._port, bug_report=self._bug_report
             )
-            _kore_client = KoreClient('localhost', self._port, bug_report=self._bug_report)
-            self._kore_rpc = (_kore_server, _kore_client)
-        return self._kore_rpc
-
-    def close_kore_rpc(self) -> None:
-        if self._kore_rpc is not None:
-            _kore_server, _kore_client = self._kore_rpc
-            _kore_client.close()
-            _kore_server.close()
-            self._kore_rpc = None
+        if not self._kore_client:
+            self._kore_client = KoreClient('localhost', self._port, bug_report=self._bug_report)
+        return (self._kore_server, self._kore_client)
 
     def close(self) -> None:
-        self.close_kore_rpc()
+        self._rpc_closed = True
+        if self._kore_server is not None:
+            self._kore_server.close()
+            self._kore_server = None
+        if self._kore_client is not None:
+            self._kore_client.close()
+            self._kore_client = None
 
     def cterm_execute(
         self,
@@ -65,7 +71,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             )
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        _, kore_client = self.kore_rpc()
+        _, kore_client = self._kore_rpc
         er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
         depth = er.depth
         next_state = CTerm(self.kprint.kore_to_kast(er.state.kore))
@@ -76,7 +82,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def cterm_simplify(self, cterm: CTerm) -> KInner:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        _, kore_client = self.kore_rpc()
+        _, kore_client = self._kore_rpc
         kore_simplified = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified
@@ -96,7 +102,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
         consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
-        _, kore_client = self.kore_rpc()
+        _, kore_client = self._kore_rpc
         result = kore_client.implies(antecedent_kore, consequent_kore)
         if type(result.implication) is not Top:
             _LOGGER.warning(
