@@ -24,6 +24,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self.kprint = kprint
         self._port = port
         self._bug_report = bug_report
+        self._kore_rpc = None
 
     def __enter__(self) -> 'KCFGExplore':
         return self
