@@ -5,7 +5,7 @@ from enum import Enum
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
-from typing import Any, ContextManager, Dict, Final, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, ContextManager, Dict, Final, Iterable, List, Mapping, Optional, Tuple, Union
 
 from ..cli_utils import BugReport, check_dir_path, check_file_path, gen_file_timestamp, run_process
 from ..cterm import CTerm, build_claim
