@@ -132,7 +132,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self,
         cfgid: str,
         cfg: KCFG,
-        rpc_port: Optional[int] = None,
     ) -> KCFG:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {cfgid}: {shorten_hashes(node.id)}')
