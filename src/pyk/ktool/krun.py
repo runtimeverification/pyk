@@ -59,6 +59,7 @@ class KRun(KPrint):
                 pmap=pmap,
                 profile=self._profile,
                 bug_report=self._bug_report,
+                check=(expect_rc == 0),
             )
 
         if result.returncode != expect_rc:
@@ -91,6 +92,7 @@ class KRun(KPrint):
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
                 bug_report=self._bug_report,
+                check=(expect_rc == 0),
             )
 
         if result.returncode != expect_rc:
@@ -124,6 +126,7 @@ class KRun(KPrint):
                 no_expand_macros=not expand_macros,
                 profile=self._profile,
                 bug_report=self._bug_report,
+                check=(expect_rc == 0),
             )
 
         if proc_res.returncode != expect_rc:
