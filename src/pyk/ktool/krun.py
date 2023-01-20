@@ -38,6 +38,7 @@ class KRun(KPrint):
         config: Optional[Mapping[str, KInner]] = None,
         depth: Optional[int] = None,
         expand_macros: bool = False,
+        expect_rc: int = 0,
     ) -> CTerm:
         if config is not None and 'PGM' in config:
             raise ValueError('Cannot supply both pgm and config with PGM variable.')
@@ -60,8 +61,8 @@ class KRun(KPrint):
                 bug_report=self._bug_report,
             )
 
-        if result.returncode != 0:
-            raise RuntimeError('Non-zero exit-code from krun.')
+        if result.returncode != expect_rc:
+            raise RuntimeError('Unexpected exit-code from krun.')
 
         result_kast = KInner.from_dict(json.loads(result.stdout)['term'])
         return CTerm(result_kast)
@@ -73,6 +74,7 @@ class KRun(KPrint):
         sort: Optional[KSort] = None,
         depth: Optional[int] = None,
         expand_macros: bool = False,
+        expect_rc: int = 0,
     ) -> CTerm:
         kore_pgm = self.kast_to_kore(pgm, sort=sort)
         with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
@@ -91,8 +93,8 @@ class KRun(KPrint):
                 bug_report=self._bug_report,
             )
 
-        if result.returncode != 0:
-            raise RuntimeError('Non-zero exit-code from krun.')
+        if result.returncode != expect_rc:
+            raise RuntimeError('Unexpected exit-code from krun.')
 
         result_kore = KoreParser(result.stdout).pattern()
         result_kast = self.kore_to_kast(result_kore)
@@ -105,6 +107,7 @@ class KRun(KPrint):
         depth: Optional[int] = None,
         expand_macros: bool = False,
         bug_report: Optional[BugReport] = None,
+        expect_rc: int = 0,
     ) -> Pattern:
         with NamedTemporaryFile('w', dir=self.use_directory) as f:
             f.write(pattern.text)
@@ -123,8 +126,8 @@ class KRun(KPrint):
                 bug_report=self._bug_report,
             )
 
-        if proc_res.returncode != 0:
-            raise RuntimeError('Non-zero exit-code from krun')
+        if proc_res.returncode != expect_rc:
+            raise RuntimeError('Unexpected exit-code from krun')
 
         parser = KoreParser(proc_res.stdout)
         res = parser.pattern()
@@ -138,6 +141,7 @@ class KRun(KPrint):
         depth: Optional[int] = None,
         expand_macros: bool = False,
         bug_report: Optional[BugReport] = None,
+        expect_rc: int = 0,
     ) -> Pattern:
         def _config_var_token(s: str) -> DV:
             return DV(SortApp('SortKConfigVar'), String(f'${s}'))
@@ -165,7 +169,9 @@ class KRun(KPrint):
         config_var_map = _map([_map_item(k, v, _sort(v)) for k, v in config.items()])
         term = App('LblinitGeneratedTopCell', [], [config_var_map])
 
-        return self.run_kore_term(term, depth=depth, expand_macros=expand_macros, bug_report=bug_report)
+        return self.run_kore_term(
+            term, depth=depth, expand_macros=expand_macros, bug_report=bug_report, expect_rc=expect_rc
+        )
 
 
 class KRunOutput(Enum):
