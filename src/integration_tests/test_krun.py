@@ -108,7 +108,8 @@ class TestConfigRun(KRunTest):
 class TestReturnCodeRun(KRunTest):
     KOMPILE_MAIN_FILE = 'k-files/return-code.k'
 
-    def _input(self, value: int) -> KToken:
+    @staticmethod
+    def _input(value: int) -> KToken:
         return KToken(f'foo({value})', 'Foo')
 
     def test_run_expect_rc(self, krun: KRun) -> None:
