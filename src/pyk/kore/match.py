@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple, TypeVar, Union, overload
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union, overload
 
 from ..utils import case, check_type
 from .prelude import BOOL, INT, STRING
@@ -145,9 +145,44 @@ def args(n1: int, n2: int, n3: int, n4: int, /) -> Callable[[App], Tuple[Pattern
     ...
 
 
-def args(*ns: int) -> Callable[[App], Tuple]:
-    def res(app: App) -> Tuple:
-        return tuple(app.args[n] for n in ns)
+@overload
+def args(s1: str, s2: str, /) -> Callable[[App], Tuple[App, App]]:
+    ...
+
+
+@overload
+def args(s1: str, s2: str, s3: str, /) -> Callable[[App], Tuple[App, App, App]]:
+    ...
+
+
+@overload
+def args(s1: str, s2: str, s3: str, s4: str, /) -> Callable[[App], Tuple[App, App, App, App]]:
+    ...
+
+
+def args(*ids: Any) -> Callable[[App], Tuple]:
+    def res(app: App) -> Tuple[Pattern, ...]:
+        if not ids:
+            return ()
+
+        fst = ids[0]
+        if type(fst) is int:
+            return tuple(app.args[n] for n in ids)
+
+        symbol_match: Dict[str, App] = {}
+        symbols = set(ids)
+
+        for arg in app.args:
+            if type(arg) is App and arg.symbol in symbols and arg.symbol not in symbol_match:
+                symbol_match[arg.symbol] = arg
+
+            if len(symbol_match) == len(symbols):
+                return tuple(symbol_match[symbol] for symbol in ids)
+
+        unmatched_symbols = symbols - set(symbol_match)
+        assert unmatched_symbols
+        unmatched_symbol_str = ', '.join(unmatched_symbols)
+        raise ValueError(f'No matching arguments found for symbols: {unmatched_symbol_str}')
 
     return res
 
