@@ -131,6 +131,16 @@ def arg(id: Union[int, str]) -> Callable[[App], Union[Pattern, App]]:
 
 
 @overload
+def args() -> Callable[[App], Tuple[()]]:
+    ...
+
+
+@overload
+def args(n1: int, /) -> Callable[[App], Tuple[Pattern]]:
+    ...
+
+
+@overload
 def args(n1: int, n2: int, /) -> Callable[[App], Tuple[Pattern, Pattern]]:
     ...
 
@@ -142,6 +152,11 @@ def args(n1: int, n2: int, n3: int, /) -> Callable[[App], Tuple[Pattern, Pattern
 
 @overload
 def args(n1: int, n2: int, n3: int, n4: int, /) -> Callable[[App], Tuple[Pattern, Pattern, Pattern, Pattern]]:
+    ...
+
+
+@overload
+def args(s1: str, /) -> Callable[[App], Tuple[App]]:
     ...
 
 
