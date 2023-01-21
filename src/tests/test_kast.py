@@ -119,7 +119,7 @@ def test_klabel_init(params: List[KSort]) -> None:
 @pytest.mark.parametrize('params', KLABEL_TEST_DATA[1:], ids=count())
 def test_klabel_init_multiple_values(params: List[KSort]) -> None:
     # Given
-    expected_message = "KLabel() got multiple values for argument 'params'"
+    expected_message = 'KLabel() got multiple values for argument: params'
 
     with pytest.raises(TypeError) as excinfo:
         # When
@@ -134,7 +134,7 @@ def test_klabel_init_multiple_values(params: List[KSort]) -> None:
 @pytest.mark.parametrize('params', KLABEL_TEST_DATA, ids=count())
 def test_klabel_init_unkown_keyword(params: List[KSort]) -> None:
     # Given
-    expected_message = "KLabel() got an unexpected keyword argument 'key'"
+    expected_message = 'KLabel() got an unexpected keyword argument: key'
 
     with pytest.raises(TypeError) as excinfo:
         # When
@@ -172,7 +172,7 @@ def test_kapply_init(args: List[KInner]) -> None:
 @pytest.mark.parametrize('args', KAPPLY_TEST_DATA[1:], ids=count())
 def test_kapply_init_multiple_values(args: List[KInner]) -> None:
     # Given
-    expected_message = "KApply() got multiple values for argument 'args'"
+    expected_message = 'KApply() got multiple values for argument: args'
 
     with pytest.raises(TypeError) as excinfo:
         # When
@@ -187,7 +187,7 @@ def test_kapply_init_multiple_values(args: List[KInner]) -> None:
 @pytest.mark.parametrize('args', KAPPLY_TEST_DATA, ids=count())
 def test_kapply_init_unkown_keyword(args: List[KInner]) -> None:
     # Given
-    expected_message = "KApply() got an unexpected keyword argument 'key'"
+    expected_message = 'KApply() got an unexpected keyword argument: key'
 
     with pytest.raises(TypeError) as excinfo:
         # When
@@ -224,7 +224,7 @@ def test_ksequence_init(items: List[KInner]) -> None:
 @pytest.mark.parametrize('items', KSEQUENCE_TEST_DATA[1:], ids=count())
 def test_ksequence_init_multiple_values(items: List[KInner]) -> None:
     # Given
-    expected_message = "KSequence() got multiple values for argument 'items'"
+    expected_message = 'KSequence() got multiple values for argument: items'
 
     with pytest.raises(TypeError) as excinfo:
         # When
@@ -239,7 +239,7 @@ def test_ksequence_init_multiple_values(items: List[KInner]) -> None:
 @pytest.mark.parametrize('items', KSEQUENCE_TEST_DATA, ids=count())
 def test_ksequence_init_unkown_keyword(items: List[KInner]) -> None:
     # Given
-    expected_message = "KSequence() got an unexpected keyword argument 'key'"
+    expected_message = 'KSequence() got an unexpected keyword argument: key'
 
     with pytest.raises(TypeError) as excinfo:
         # When
