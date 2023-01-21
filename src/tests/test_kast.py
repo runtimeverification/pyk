@@ -1,5 +1,5 @@
 from itertools import count
-from typing import Final, List, Tuple
+from typing import Any, Dict, Final, List, Tuple
 
 import pytest
 
@@ -14,35 +14,32 @@ from pyk.utils import FrozenDict
 from .utils import f, x, y, z
 
 KVARIABLE_TEST_DATA: Final = (
-    ('no-sort', KVariable('Foo'), KVariable('Foo', att=KAtt({}))),
+    ('no-sort', KVariable('Foo'), {'node': 'KVariable', 'name': 'Foo', 'att': {'node': 'KAtt', 'att': {}}}),
     (
         'sort',
-        KVariable('Foo', att=KAtt({'org.kframework.kore.Sort': FrozenDict(INT.to_dict())})),
-        KVariable('Foo', sort=INT),
+        KVariable('Foo', sort=KSort('Int'), att=KAtt({})),
+        {
+            'node': 'KVariable',
+            'name': 'Foo',
+            'att': {'node': 'KAtt', 'att': {'org.kframework.kore.Sort': {'node': 'KSort', 'name': 'Int'}}},
+        },
     ),
 )
 
 
 @pytest.mark.parametrize(
-    'test_id,actual,expected',
+    'test_id,var,dct',
     KVARIABLE_TEST_DATA,
     ids=[test_id for test_id, *_ in KVARIABLE_TEST_DATA],
 )
-def test_kvariable_construct(test_id: str, actual: KVariable, expected: KVariable) -> None:
-    assert actual == expected
-
-
-@pytest.mark.parametrize(
-    'test_id,var,expected',
-    KVARIABLE_TEST_DATA,
-    ids=[test_id for test_id, *_ in KVARIABLE_TEST_DATA],
-)
-def test_kvariable_to_dict(test_id: str, var: KVariable, expected: KVariable) -> None:
+def test_kvariable_to_dict(test_id: str, var: KVariable, dct: Dict[str, Any]) -> None:
     # When
-    actual = KVariable.from_dict(var.to_dict())
+    actual_var = KVariable.from_dict(dct)
+    actual_dct = var.to_dict()
 
     # Then
-    assert actual == expected
+    assert actual_var == var
+    assert actual_dct == dct
 
 
 def test_kvariable_construct_error() -> None:
