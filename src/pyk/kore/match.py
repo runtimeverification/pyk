@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple, TypeVar, overload
+from typing import Callable, Optional, Tuple, TypeVar, Union, overload
 
 from ..utils import case, check_type
 from .prelude import BOOL, INT, STRING
@@ -106,9 +106,26 @@ def app(symbol: Optional[str] = None) -> Callable[[Pattern], App]:
     return res
 
 
-def arg(n: int) -> Callable[[App], Pattern]:
-    def res(app: App) -> Pattern:
-        return app.args[n]
+@overload
+def arg(n: int, /) -> Callable[[App], Pattern]:
+    ...
+
+
+@overload
+def arg(symbol: str, /) -> Callable[[App], App]:
+    ...
+
+
+def arg(id: Union[int, str]) -> Callable[[App], Union[Pattern, App]]:
+    def res(app: App) -> Union[Pattern, App]:
+        if type(id) is int:
+            return app.args[id]
+
+        try:
+            arg, *_ = (arg for arg in app.args if type(arg) is App and arg.symbol == id)
+        except ValueError:
+            raise ValueError(f'No matching argument found for symbol: {id}') from None
+        return arg
 
     return res
 
