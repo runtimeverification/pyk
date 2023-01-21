@@ -156,6 +156,11 @@ def args(n1: int, n2: int, n3: int, n4: int, /) -> Callable[[App], Tuple[Pattern
 
 
 @overload
+def args(*ns: int) -> Callable[[App], Tuple[Pattern, ...]]:
+    ...
+
+
+@overload
 def args(s1: str, /) -> Callable[[App], Tuple[App]]:
     ...
 
@@ -172,6 +177,11 @@ def args(s1: str, s2: str, s3: str, /) -> Callable[[App], Tuple[App, App, App]]:
 
 @overload
 def args(s1: str, s2: str, s3: str, s4: str, /) -> Callable[[App], Tuple[App, App, App, App]]:
+    ...
+
+
+@overload
+def args(*ss: str) -> Callable[[App], Tuple[App, ...]]:
     ...
 
 
