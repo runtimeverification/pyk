@@ -283,6 +283,10 @@ class KVariable(KInner, WithKAtt):
     def match(self, term: KInner) -> Subst:
         return Subst({self.name: term})
 
+    # TODO: must override this because default definition converts to Dict, and Dict representation stores sort as attribute, which means it cannot be part of the comparison.
+    def _as_shallow_tuple(self) -> Tuple[Any, ...]:
+        return (self.name, self.sort, self.att)
+
 
 @final
 @dataclass(frozen=True)
