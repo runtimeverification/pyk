@@ -4,11 +4,7 @@ from ..utils import case, check_type
 from .prelude import BOOL, INT, STRING
 from .syntax import DV, App, LeftAssoc, Pattern, Sort
 
-P = TypeVar('P')
-R1 = TypeVar('R1')
-R2 = TypeVar('R2')
-R3 = TypeVar('R3')
-R4 = TypeVar('R4')
+T = TypeVar('T')
 K = TypeVar('K')
 V = TypeVar('V')
 
@@ -219,15 +215,15 @@ def inj(pattern: Pattern) -> Pattern:
     return arg(0)(app('inj')(pattern))
 
 
-def kore_list_of(item: Callable[[Pattern], P]) -> Callable[[Pattern], Tuple[P, ...]]:
-    def res(pattern: Pattern) -> Tuple[P, ...]:
+def kore_list_of(item: Callable[[Pattern], T]) -> Callable[[Pattern], Tuple[T, ...]]:
+    def res(pattern: Pattern) -> Tuple[T, ...]:
         return tuple(item(e) for e in match_list(pattern))
 
     return res
 
 
-def kore_set_of(item: Callable[[Pattern], P]) -> Callable[[Pattern], Tuple[P, ...]]:
-    def res(pattern: Pattern) -> Tuple[P, ...]:
+def kore_set_of(item: Callable[[Pattern], T]) -> Callable[[Pattern], Tuple[T, ...]]:
+    def res(pattern: Pattern) -> Tuple[T, ...]:
         return tuple(item(e) for e in match_set(pattern))
 
     return res
@@ -246,13 +242,13 @@ def kore_map_of(
 
 
 def case_symbol(
-    *cases: Tuple[str, Callable[[App], P]],
-    default: Optional[Callable[[App], P]] = None,
-) -> Callable[[Pattern], P]:
+    *cases: Tuple[str, Callable[[App], T]],
+    default: Optional[Callable[[App], T]] = None,
+) -> Callable[[Pattern], T]:
     def cond(symbol: str) -> Callable[[App], bool]:
         return lambda app: app.symbol == symbol
 
-    def res(pattern: Pattern) -> P:
+    def res(pattern: Pattern) -> T:
         app = match_app(pattern)
         return case(
             cases=((cond(symbol), then) for symbol, then in cases),
