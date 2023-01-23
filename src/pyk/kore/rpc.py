@@ -67,25 +67,28 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         self._host = host
         self._port = port
         self._bug_report = bug_report
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._file = self._sock.makefile('r')
         self._req_id = 1
 
         connected = False
         timeout_datetime = datetime.now() + timedelta(milliseconds=timeout) if timeout is not None else None
 
         _LOGGER.info(f'Connecting to host: {host}:{port}')
+
+        sock: socket.socket
         while not connected and (timeout_datetime is None or datetime.now() < timeout_datetime):
             try:
-                self._sock.connect((host, port))
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.connect((host, port))
                 connected = True
-            except BaseException:  # TODO refine
+            except ConnectionRefusedError:
+                sock.close()
                 sleep(0.1)
 
         if not connected:
-            self.close()
-            raise RuntimeError(f"Couldn't connect to host: {host}:{port}")
+            raise RuntimeError(f'Connection timed out: {host}:{port}')
 
+        self._sock = sock
+        self._file = sock.makefile('r')
         _LOGGER.info(f'Connected to host: {host}:{port}')
 
     def __enter__(self) -> 'JsonRpcClient':
