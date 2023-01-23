@@ -5,7 +5,7 @@ from logging import Logger
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
 from tempfile import NamedTemporaryFile
-from typing import Final, List, Mapping, Optional
+from typing import Final, Iterable, List, Mapping, Optional, Union
 
 from ..cli_utils import BugReport, check_dir_path, check_file_path, run_process
 from ..cterm import CTerm
@@ -38,7 +38,7 @@ class KRun(KPrint):
         config: Optional[Mapping[str, KInner]] = None,
         depth: Optional[int] = None,
         expand_macros: bool = False,
-        expect_rc: int = 0,
+        expect_rc: Union[int, Iterable[int]] = 0,
     ) -> CTerm:
         if config is not None and 'PGM' in config:
             raise ValueError('Cannot supply both pgm and config with PGM variable.')
@@ -74,7 +74,7 @@ class KRun(KPrint):
         sort: Optional[KSort] = None,
         depth: Optional[int] = None,
         expand_macros: bool = False,
-        expect_rc: int = 0,
+        expect_rc: Union[int, Iterable[int]] = 0,
     ) -> CTerm:
         kore_pgm = self.kast_to_kore(pgm, sort=sort)
         with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
@@ -107,7 +107,7 @@ class KRun(KPrint):
         depth: Optional[int] = None,
         expand_macros: bool = False,
         bug_report: Optional[BugReport] = None,
-        expect_rc: int = 0,
+        expect_rc: Union[int, Iterable[int]] = 0,
     ) -> Pattern:
         with NamedTemporaryFile('w', dir=self.use_directory) as f:
             f.write(pattern.text)
@@ -127,7 +127,7 @@ class KRun(KPrint):
                 check=(expect_rc == 0),
             )
 
-        self._check_return_code(result.returncode, expect_rc)
+        self._check_return_code(proc_res.returncode, expect_rc)
 
         parser = KoreParser(proc_res.stdout)
         res = parser.pattern()
@@ -174,8 +174,11 @@ class KRun(KPrint):
         )
 
     @staticmethod
-    def _check_return_code(actual: int, expected: int) -> None:
-        if actual != expected:
+    def _check_return_code(actual: int, expected: Union[int, Iterable[int]]) -> None:
+        if isinstance(expected, int):
+            expected = [expected]
+
+        if actual not in expected:
             raise RuntimeError(f'Expected {expected} as exit code from krun, but got {actual}')
 
 
