@@ -235,32 +235,31 @@ class KToken(KInner):
 @dataclass(frozen=True)
 class KVariable(KInner, WithKAtt):
     name: str
+    sort: Optional[KSort]
     att: KAtt
 
     def __init__(self, name: str, *, sort: Optional[KSort] = None, att: KAtt = EMPTY_ATT):
+        if KAtt.SORT in att:
+            raise ValueError('Do not construct KVariable sort with attributes, use sort parameter.')
         object.__setattr__(self, 'name', name)
-        if sort is not None:
-            if KAtt.SORT in att:
-                raise ValueError('Both sort and sort attribute provided.')
-            att = att.update({KAtt.SORT: sort.to_dict()})
+        object.__setattr__(self, 'sort', sort)
         object.__setattr__(self, 'att', att)
-
-    @property
-    def sort(self) -> Optional[KSort]:
-        if KAtt.SORT in self.att:
-            return KSort.from_dict(self.att[KAtt.SORT])
-        return None
 
     @classmethod
     def from_dict(cls: Type['KVariable'], d: Dict[str, Any]) -> 'KVariable':
         cls._check_node(d)
-        return KVariable(
-            name=d['name'],
-            att=KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT,
-        )
+        sort = None
+        att = KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT
+        if KAtt.SORT in att:
+            sort = KSort.from_dict(att[KAtt.SORT])
+            att = att.remove([KAtt.SORT])
+        return KVariable(name=d['name'], sort=sort, att=att)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {'node': 'KVariable', 'name': self.name, 'att': self.att.to_dict()}
+        _att = self.att
+        if self.sort is not None:
+            _att = _att.update({KAtt.SORT: self.sort.to_dict()})
+        return {'node': 'KVariable', 'name': self.name, 'att': _att.to_dict()}
 
     def let(
         self, *, name: Optional[str] = None, sort: Optional[KSort] = None, att: Optional[KAtt] = None
@@ -283,6 +282,10 @@ class KVariable(KInner, WithKAtt):
 
     def match(self, term: KInner) -> Subst:
         return Subst({self.name: term})
+
+    # TODO: must override this because default definition converts to Dict, and Dict representation stores sort as attribute, which means it cannot be part of the comparison.
+    def _as_shallow_tuple(self) -> Tuple[Any, ...]:
+        return (self.name, self.sort, self.att)
 
 
 @final
