@@ -62,8 +62,7 @@ class KRun(KPrint):
                 check=(expect_rc == 0),
             )
 
-        if result.returncode != expect_rc:
-            raise RuntimeError('Unexpected exit-code from krun.')
+        self._check_return_code(result.returncode, expect_rc)
 
         result_kast = KInner.from_dict(json.loads(result.stdout)['term'])
         return CTerm(result_kast)
@@ -95,8 +94,7 @@ class KRun(KPrint):
                 check=(expect_rc == 0),
             )
 
-        if result.returncode != expect_rc:
-            raise RuntimeError('Unexpected exit-code from krun.')
+        self._check_return_code(result.returncode, expect_rc)
 
         result_kore = KoreParser(result.stdout).pattern()
         result_kast = self.kore_to_kast(result_kore)
@@ -129,8 +127,7 @@ class KRun(KPrint):
                 check=(expect_rc == 0),
             )
 
-        if proc_res.returncode != expect_rc:
-            raise RuntimeError('Unexpected exit-code from krun')
+        self._check_return_code(result.returncode, expect_rc)
 
         parser = KoreParser(proc_res.stdout)
         res = parser.pattern()
@@ -175,6 +172,11 @@ class KRun(KPrint):
         return self.run_kore_term(
             term, depth=depth, expand_macros=expand_macros, bug_report=bug_report, expect_rc=expect_rc
         )
+
+    @staticmethod
+    def _check_return_code(actual: int, expected: int) -> None:
+        if actual != expected:
+            raise RuntimeError(f'Expected {expected} as exit code from krun, but got {actual}')
 
 
 class KRunOutput(Enum):
