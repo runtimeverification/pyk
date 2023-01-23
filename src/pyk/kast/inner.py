@@ -233,17 +233,13 @@ class KToken(KInner):
 
 @final
 @dataclass(frozen=True)
-class KVariable(KInner, WithKAtt):
+class KVariable(KInner):
     name: str
     sort: Optional[KSort]
-    att: KAtt
 
-    def __init__(self, name: str, *, sort: Optional[KSort] = None, att: KAtt = EMPTY_ATT):
-        if KAtt.SORT in att:
-            raise ValueError('Do not construct KVariable sort with attributes, use sort parameter.')
+    def __init__(self, name: str, *, sort: Optional[KSort] = None):
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'sort', sort)
-        object.__setattr__(self, 'att', att)
 
     @classmethod
     def from_dict(cls: Type['KVariable'], d: Dict[str, Any]) -> 'KVariable':
@@ -253,39 +249,27 @@ class KVariable(KInner, WithKAtt):
         if KAtt.SORT in att:
             sort = KSort.from_dict(att[KAtt.SORT])
             att = att.remove([KAtt.SORT])
-        return KVariable(name=d['name'], sort=sort, att=att)
+        return KVariable(name=d['name'], sort=sort)
 
     def to_dict(self) -> Dict[str, Any]:
-        _att = self.att
+        _att = KAtt({})
         if self.sort is not None:
             _att = _att.update({KAtt.SORT: self.sort.to_dict()})
         return {'node': 'KVariable', 'name': self.name, 'att': _att.to_dict()}
 
-    def let(
-        self, *, name: Optional[str] = None, sort: Optional[KSort] = None, att: Optional[KAtt] = None
-    ) -> 'KVariable':
-        # TODO: We actually want `sort: Optional[Optional['KSort']]`
+    def let(self, *, name: Optional[str] = None, sort: Optional[KSort] = None) -> 'KVariable':
         name = name if name is not None else self.name
-        att = att if att is not None else self.att
-        if sort is not None:
-            att = att.update({KAtt.SORT: None})
-        return KVariable(name=name, sort=sort, att=att)
-
-    def let_att(self, att: KAtt) -> 'KVariable':
-        return self.let(att=att)
+        sort = sort if sort is not None else self.sort
+        return KVariable(name=name, sort=sort)
 
     def let_sort(self, sort: KSort) -> 'KVariable':
-        return self.let_att(self.att.update({KAtt.SORT: sort.to_dict()}))
+        return KVariable(self.name, sort=sort)
 
     def map_inner(self: 'KVariable', f: Callable[[KInner], KInner]) -> 'KVariable':
         return self
 
     def match(self, term: KInner) -> Subst:
         return Subst({self.name: term})
-
-    # TODO: must override this because default definition converts to Dict, and Dict representation stores sort as attribute, which means it cannot be part of the comparison.
-    def _as_shallow_tuple(self) -> Tuple[Any, ...]:
-        return (self.name, self.sort, self.att)
 
 
 @final
