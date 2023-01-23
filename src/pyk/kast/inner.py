@@ -248,7 +248,6 @@ class KVariable(KInner):
         att = KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT
         if KAtt.SORT in att:
             sort = KSort.from_dict(att[KAtt.SORT])
-            att = att.remove([KAtt.SORT])
         return KVariable(name=d['name'], sort=sort)
 
     def to_dict(self) -> Dict[str, Any]:
