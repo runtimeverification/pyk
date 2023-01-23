@@ -119,6 +119,9 @@ def arg(symbol: str, /) -> Callable[[App], App]:
 def arg(id: Union[int, str]) -> Callable[[App], Union[Pattern, App]]:
     def res(app: App) -> Union[Pattern, App]:
         if type(id) is int:
+            if len(app.args) <= id:
+                raise ValueError('Argument index is out of range')
+
             return app.args[id]
 
         try:
@@ -192,14 +195,14 @@ def args(*ids: Any) -> Callable[[App], Tuple]:
 
         fst = ids[0]
         if type(fst) is int:
-            return tuple(app.args[n] for n in ids)
+            return tuple(arg(n)(app) for n in ids)
 
         symbol_match: Dict[str, App] = {}
         symbols = set(ids)
 
-        for arg in app.args:
-            if type(arg) is App and arg.symbol in symbols and arg.symbol not in symbol_match:
-                symbol_match[arg.symbol] = arg
+        for _arg in app.args:
+            if type(_arg) is App and _arg.symbol in symbols and _arg.symbol not in symbol_match:
+                symbol_match[_arg.symbol] = _arg
 
             if len(symbol_match) == len(symbols):
                 return tuple(symbol_match[symbol] for symbol in ids)
@@ -216,21 +219,21 @@ def inj(pattern: Pattern) -> Pattern:
     return arg(0)(app('inj')(pattern))
 
 
-def kore_list(item: Callable[[Pattern], P]) -> Callable[[Pattern], Tuple[P, ...]]:
+def kore_list_of(item: Callable[[Pattern], P]) -> Callable[[Pattern], Tuple[P, ...]]:
     def res(pattern: Pattern) -> Tuple[P, ...]:
         return tuple(item(e) for e in match_list(pattern))
 
     return res
 
 
-def kore_set(item: Callable[[Pattern], P]) -> Callable[[Pattern], Tuple[P, ...]]:
+def kore_set_of(item: Callable[[Pattern], P]) -> Callable[[Pattern], Tuple[P, ...]]:
     def res(pattern: Pattern) -> Tuple[P, ...]:
         return tuple(item(e) for e in match_set(pattern))
 
     return res
 
 
-def kore_map(
+def kore_map_of(
     key: Callable[[Pattern], K],
     value: Callable[[Pattern], V],
     *,
