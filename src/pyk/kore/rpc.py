@@ -57,39 +57,35 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
     _sock: socket.socket
     _file: TextIO
     _req_id: int
-
     _bug_report: Optional[BugReport]
 
     def __init__(self, host: str, port: int, *, timeout: Optional[int] = None, bug_report: Optional[BugReport] = None):
+        self._host = host
+        self._port = port
+        self._sock = self._create_connection(host, port, timeout)
+        self._file = self._sock.makefile('r')
+        self._req_id = 1
+        self._bug_report = bug_report
+
+    @staticmethod
+    def _create_connection(host: str, port: int, timeout: Optional[int]) -> socket.socket:
         if timeout is not None and timeout < 0:
             raise ValueError(f'Expected nonnegative timeout value, got: {timeout}')
 
-        self._host = host
-        self._port = port
-        self._bug_report = bug_report
-        self._req_id = 1
-
-        connected = False
-        timeout_datetime = datetime.now() + timedelta(milliseconds=timeout) if timeout is not None else None
-
         _LOGGER.info(f'Connecting to host: {host}:{port}')
 
-        sock: socket.socket
-        while not connected and (timeout_datetime is None or datetime.now() < timeout_datetime):
+        timeout_datetime = datetime.now() + timedelta(milliseconds=timeout) if timeout is not None else None
+        while timeout_datetime is None or datetime.now() < timeout_datetime:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((host, port))
-                connected = True
+                _LOGGER.info(f'Connected to host: {host}:{port}')
+                return sock
             except ConnectionRefusedError:
                 sock.close()
                 sleep(0.1)
 
-        if not connected:
-            raise RuntimeError(f'Connection timed out: {host}:{port}')
-
-        self._sock = sock
-        self._file = sock.makefile('r')
-        _LOGGER.info(f'Connected to host: {host}:{port}')
+        raise RuntimeError(f'Connection timed out: {host}:{port}')
 
     def __enter__(self) -> 'JsonRpcClient':
         return self
