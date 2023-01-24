@@ -246,6 +246,10 @@ class KVariable(KInner):
         cls._check_node(d)
         sort = None
         att = KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT
+        for a in [KAtt.LOCATION, KAtt.SOURCE, 'anonymous', 'cellSort']:
+            if a in att:
+                _LOGGER.warning(f'Removing attribute from KVariable: {a}: {att[a]}, from KVariable {d}')
+                att = att.remove([a])
         if KAtt.SORT in att:
             sort = KSort.from_dict(att[KAtt.SORT])
             if len(att) > 1:
