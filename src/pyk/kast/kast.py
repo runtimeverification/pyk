@@ -126,8 +126,8 @@ class KAtt(KAst, Mapping[str, Any]):
     def update(self, atts: Mapping[str, Any]) -> 'KAtt':
         return self.let(atts={k: v for k, v in {**self.atts, **atts}.items() if v is not None})
 
-    def remove(self, remove_atts: Iterable[str]) -> 'KAtt':
-        return KAtt({k: v for k, v in self.atts.items() if k not in remove_atts})
+    def remove(self, atts: Iterable[str]) -> 'KAtt':
+        return KAtt({k: v for k, v in self.atts.items() if k not in atts})
 
 
 EMPTY_ATT: Final = KAtt()
