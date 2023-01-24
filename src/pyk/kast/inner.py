@@ -248,6 +248,10 @@ class KVariable(KInner):
         att = KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT
         if KAtt.SORT in att:
             sort = KSort.from_dict(att[KAtt.SORT])
+            if len(att) > 1:
+                raise ValueError(f'Attributes other than {KAtt.SORT} attached to KVariable: {d}')
+        elif len(att) > 0:
+            raise ValueError(f'Attributes other than {KAtt.SORT} attached to KVariable: {d}')
         return KVariable(name=d['name'], sort=sort)
 
     def to_dict(self) -> Dict[str, Any]:
