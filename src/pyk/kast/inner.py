@@ -261,7 +261,7 @@ class KVariable(KInner):
         sort = sort if sort is not None else self.sort
         return KVariable(name=name, sort=sort)
 
-    def let_sort(self, sort: KSort) -> 'KVariable':
+    def let_sort(self, sort: Optional[KSort]) -> 'KVariable':
         return KVariable(self.name, sort=sort)
 
     def map_inner(self: 'KVariable', f: Callable[[KInner], KInner]) -> 'KVariable':
