@@ -58,11 +58,6 @@ class FrozenDict(Mapping[K, V]):
     def __repr__(self) -> str:
         return f'FrozenDict({repr(self._dict)})'
 
-    def __lt__(self, other: 'FrozenDict') -> bool:
-        if len(self._dict) == 0 and len(other._dict) == 0:
-            return False
-        raise ValueError(f'Unimplemented comparison: {self} < {other}')
-
 
 EMPTY_FROZEN_DICT: Final[FrozenDict] = FrozenDict()
 
