@@ -448,6 +448,7 @@ class KoreServer(ContextManager['KoreServer']):
 
         self._port = port
         _LOGGER.info(f'Starting KoreServer: port={self._port}')
+        _LOGGER.debug(f'KoreServer command: {args}')
         if bug_report is not None:
             bug_report.add_command(args)
         self._proc = Popen(args)
