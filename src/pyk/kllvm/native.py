@@ -1,6 +1,7 @@
 import atexit
 import logging
 import shutil
+import sys
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import Final, Union
@@ -20,7 +21,7 @@ def compile_kllvm(target_dir: Union[str, Path], *, verbose: bool = False) -> Pat
 
     module_file = target_dir / KLLVM_MODULE_FILE_NAME
 
-    args = ['llvm-kompile', 'pythonast', '--', '-o', str(module_file)]
+    args = ['llvm-kompile', 'pythonast', '--python', sys.executable, '--', '-o', str(module_file)]
     if verbose:
         args.append('-v')
 
