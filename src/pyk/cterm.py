@@ -18,7 +18,7 @@ from .kast.manip import (
 )
 from .kast.outer import KClaim, KRule
 from .prelude.k import GENERATED_TOP_CELL
-from .prelude.ml import mlAnd, mlImplies, mlTop
+from .prelude.ml import is_bottom, is_top, mlAnd, mlImplies, mlTop
 from .utils import unique
 
 
@@ -28,7 +28,11 @@ class CTerm:
     constraints: Tuple[KInner, ...]
 
     def __init__(self, term: KInner) -> None:
-        config, constraint = split_config_and_constraints(term)
+        if is_top(term) or is_bottom(term):
+            config = term
+            constraint = term
+        else:
+            config, constraint = split_config_and_constraints(term)
         constraints = CTerm._normalize_constraints(flatten_label('#And', constraint))
         object.__setattr__(self, 'config', config)
         object.__setattr__(self, 'constraints', constraints)
@@ -59,6 +63,14 @@ class CTerm:
     @property
     def hash(self) -> str:
         return self.kast.hash
+
+    @property
+    def is_top(self) -> bool:
+        return is_top(self.kast)
+
+    @property
+    def is_bottom(self) -> bool:
+        return is_bottom(self.kast)
 
     def match(self, cterm: 'CTerm') -> Optional[Subst]:
         match_res = self.match_with_constraint(cterm)
