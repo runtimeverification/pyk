@@ -144,6 +144,33 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 cfg.replace_node(node.id, CTerm(new_term))
         return cfg
 
+    def step(
+        self,
+        cfgid: str,
+        cfg: KCFG,
+        node_id: str,
+    ) -> KCFG:
+        node = cfg.node(node_id)
+        out_edges = cfg.edges(source_id=node.id)
+        if len(out_edges) > 1:
+            raise ValueError(
+                f'Only support stepping from nodes with 0 or 1 out edges {cfgid}: {(node.id, [e.target.id for e in out_edges])}'
+            )
+        depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=1)
+        if depth != 1:
+            raise ValueError(f'Unable to take single step from node {cfgid}: {node.id}')
+        if len(next_cterms) > 0:
+            raise ValueError(f'Found branch with single step {cfgid}: {node.id}')
+        new_node = cfg.get_or_create_node(cterm)
+        if len(out_edges) == 0:
+            cfg.create_edge(node.id, new_node.id, condition=mlTop(), depth=1)
+        else:
+            edge = out_edges[0]
+            cfg.remove_edge(edge.source.id, edge.target.id)
+            cfg.create_edge(edge.source.id, new_node.id, condition=mlTop(), depth=1)
+            cfg.create_edge(new_node.id, edge.target.id, condition=edge.condition, depth=(edge.depth - 1))
+        return cfg
+
     def all_path_reachability_prove(
         self,
         cfgid: str,
