@@ -122,8 +122,8 @@ class KCFGViewer(App):
                     new_cs.append(c)
             return new_cs
 
-        if message.chunk_id.startswith('node(') and message.chunk_id.endswith(')'):
-            node = message.chunk_id[5:-1]
+        if message.chunk_id.startswith('node_'):
+            node = message.chunk_id[5:]
             config, *_constraints = self._cfg.node(node).cterm
             if self._minimize:
                 config = minimize_term(config)
@@ -132,8 +132,8 @@ class KCFGViewer(App):
             self.query_one('#term', Static).update(self._kprint.pretty_print(config))
             self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
 
-        elif message.chunk_id.startswith('edge(') and message.chunk_id.endswith(')'):
-            node_source, node_target = message.chunk_id[5:-1].split(',')
+        elif message.chunk_id.startswith('edge_'):
+            node_source, node_target = message.chunk_id[5:].split('_')
             config_source, *_constraints_source = self._cfg.node(node_source).cterm
             config_target, *_constraints_target = self._cfg.node(node_target).cterm
             constraints_source = _mostly_bool_constraints(_constraints_source)
