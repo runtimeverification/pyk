@@ -1040,7 +1040,17 @@ class KDefinition(KOuter, WithKAtt):
 
     def sort_vars_subst(self, kast: KInner) -> Subst:
         _var_sort_occurrences = var_occurrences(kast)
+        _LOGGER.debug(f'Initial variable contexts: {_var_sort_occurrences}')
         subst = {}
+
+        def _greatest_common_subsort(sort1: KSort, sort2: KSort) -> Optional[KSort]:
+            if sort1 == sort2:
+                return sort1
+            if sort1 in self.subsorts(sort2):
+                return sort1
+            if sort2 in self.subsorts(sort1):
+                return sort2
+            return None
 
         def _sort_contexts(_kast: KInner) -> None:
             if type(_kast) is KApply:
@@ -1048,33 +1058,29 @@ class KDefinition(KOuter, WithKAtt):
                 if len(prod.params) == 0:
                     for t, a in zip(prod.argument_sorts, _kast.args):
                         if type(a) is KVariable:
+                            _LOGGER.debug(f'Sort context added for {a.name}: {prod}')
                             _var_sort_occurrences[a.name].append(a.let_sort(t))
             if type(_kast) is KSequence and _kast.arity > 0:
                 for a in _kast.items[0:-1]:
                     if type(a) is KVariable:
+                        _LOGGER.debug(f'Sort context added for {a.name}: KSequence[0:-1]')
                         _var_sort_occurrences[a.name].append(a.let_sort(KSort('KItem')))
                 last_a = _kast.items[-1]
                 if type(last_a) is KVariable:
+                    _LOGGER.debug(f'Sort context added for {last_a.name}: KSequence[-1]')
                     _var_sort_occurrences[last_a.name].append(last_a.let_sort(KSort('K')))
 
         collect(_sort_contexts, kast)
 
         for vname, _voccurrences in _var_sort_occurrences.items():
-            voccurrences = list(unique(_voccurrences))
-            if len(voccurrences) > 0:
-                vsort = voccurrences[0].sort
-                if len(voccurrences) > 1:
-                    for v in voccurrences[1:]:
-                        if vsort is None and v.sort is not None:
-                            vsort = v.sort
-                        elif vsort is not None and v.sort is not None:
-                            if vsort != v.sort:
-                                if v.sort in self.subsorts(vsort):
-                                    vsort = v.sort
-                                elif vsort not in self.subsorts(v.sort):
-                                    raise ValueError(
-                                        f'Could not find common subsort among variable occurrences: {voccurrences}'
-                                    )
+            vsorts = list(unique(v.sort for v in _voccurrences if v.sort is not None))
+            if len(vsorts) > 0:
+                vsort = vsorts[0]
+                for s in vsorts[1:]:
+                    _vsort = _greatest_common_subsort(vsort, s)
+                    if _vsort is None:
+                        raise ValueError(f'Cannot compute greatest common subsort of {vname}: {(vsort, s)}')
+                    vsort = _vsort
                 subst[vname] = KVariable(vname, sort=vsort)
 
         return Subst(subst)
