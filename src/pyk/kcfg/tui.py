@@ -1,6 +1,4 @@
-import json
-from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Union
+from typing import Callable, Iterable, List, Optional
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -15,7 +13,6 @@ from pyk.kast.manip import minimize_term, push_down_rewrites
 from pyk.ktool import KPrint
 from pyk.prelude.kbool import TRUE
 
-from ..cli_utils import check_file_path
 from ..kcfg import KCFG
 from ..utils import shorten_hashes
 
@@ -78,7 +75,6 @@ class BehaviorView(Widget):
 class KCFGViewer(App):
     CSS_PATH = 'style.css'
 
-    _kcfg_file: Path
     _cfg: KCFG
     _kprint: KPrint
     _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
@@ -88,16 +84,13 @@ class KCFGViewer(App):
 
     def __init__(
         self,
-        kcfg_file: Union[str, Path],
+        cfg: KCFG,
         kprint: KPrint,
         node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
         minimize: bool = True,
     ) -> None:
-        kcfg_file = Path(kcfg_file)
-        check_file_path(kcfg_file)
         super().__init__()
-        self._kcfg_file = kcfg_file
-        self._cfg = KCFG.from_dict(json.loads(kcfg_file.read_text()))
+        self._cfg = cfg
         self._kprint = kprint
         self._node_printer = node_printer
         self._minimize = True
