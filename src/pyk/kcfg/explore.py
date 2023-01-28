@@ -12,7 +12,7 @@ from pyk.kore.syntax import Top
 from pyk.ktool import KPrint
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
-from pyk.utils import hash_str, shorten_hashes
+from pyk.utils import hash_str, shorten_hashes, single
 
 from .kcfg import KCFG
 
@@ -170,6 +170,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             raise ValueError(
                 f'Only support stepping from nodes with 0 or 1 out edges {cfgid}: {(node.id, [e.target.id for e in out_edges])}'
             )
+        _LOGGER.info(f'Taking 1 step from node {cfgid}: {shorten_hashes(node.id)}')
         depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=1)
         if depth != 1:
             raise ValueError(f'Unable to take single step from node {cfgid}: {node.id}')
@@ -183,6 +184,40 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             cfg.remove_edge(edge.source.id, edge.target.id)
             cfg.create_edge(edge.source.id, new_node.id, condition=mlTop(), depth=1)
             cfg.create_edge(new_node.id, edge.target.id, condition=edge.condition, depth=(edge.depth - 1))
+        return cfg
+
+    def bisect_edge(self, cfgid: str, cfg: KCFG, source_id: str, target_id: str, sections: int = 2) -> KCFG:
+        if sections <= 1:
+            raise ValueError(f'Cannot section an edge less than twice: {sections}')
+        edge = single(cfg.edges(source_id=source_id, target_id=target_id))
+        if not is_top(edge.condition):
+            raise ValueError(f'Cannot bisect edge with non-#Top condition: {edge.condition}')
+        section_depth = int(edge.depth / sections)
+        if section_depth == 0:
+            raise ValueError(f'Too many sections, results in 0-length bisection: {sections}')
+        cfg.remove_edge(source_id=source_id, target_id=target_id)
+        remainder_depth = edge.depth - (section_depth * sections)
+        if remainder_depth < edge.depth:
+            sections += 1
+        else:
+            remainder_depth = section_depth
+        curr_node = edge.source
+        for _i in range(sections - 1):
+            _LOGGER.info(f'Taking {section_depth} steps from node {cfgid}: {shorten_hashes(curr_node.id)}')
+            new_depth, cterm, next_cterms = self.cterm_execute(curr_node.cterm, depth=section_depth)
+            if new_depth != section_depth:
+                raise ValueError(
+                    f'Found section with differing depth than section depth: {new_depth} vs {section_depth}'
+                )
+            if len(next_cterms) != 0:
+                raise ValueError('Found branch when bisecting section.')
+            new_node = cfg.get_or_create_node(cterm)
+            _LOGGER.info(
+                f'Found new node at {section_depth} steps from node {cfgid}: {shorten_hashes((curr_node.id, new_node.id))}'
+            )
+            cfg.create_edge(curr_node.id, new_node.id, condition=mlTop(), depth=section_depth)
+            curr_node = new_node
+        cfg.create_edge(source_id=curr_node.id, target_id=edge.target.id, condition=mlTop(), depth=remainder_depth)
         return cfg
 
     def all_path_reachability_prove(
