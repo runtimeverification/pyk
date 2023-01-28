@@ -144,11 +144,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         cfg_path.write_text(json.dumps(cfg_dict))
         _LOGGER.info(f'Updated CFG file {cfgid}: {cfg_path}')
 
-    def simplify(
-        self,
-        cfgid: str,
-        cfg: KCFG,
-    ) -> KCFG:
+    def simplify(self, cfgid: str, cfg: KCFG) -> KCFG:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {cfgid}: {shorten_hashes(node.id)}')
             new_term = self.cterm_simplify(node.cterm)
@@ -160,12 +156,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 cfg.replace_node(node.id, CTerm(new_term))
         return cfg
 
-    def step(
-        self,
-        cfgid: str,
-        cfg: KCFG,
-        node_id: str,
-    ) -> KCFG:
+    def step(self, cfgid: str, cfg: KCFG, node_id: str) -> KCFG:
         node = cfg.node(node_id)
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) > 1:
