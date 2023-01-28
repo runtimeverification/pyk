@@ -9,7 +9,7 @@ from textual.widgets import Static
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KInner, KRewrite
-from pyk.kast.manip import minimize_term, push_down_rewrites
+from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites
 from pyk.ktool import KPrint
 from pyk.prelude.kbool import TRUE
 
@@ -75,7 +75,7 @@ class BehaviorView(Widget):
 class KCFGViewer(App):
     CSS_PATH = 'style.css'
 
-    _cfg: KCFG
+    _kcfg: KCFG
     _kprint: KPrint
     _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
     _minimize: bool
@@ -84,13 +84,13 @@ class KCFGViewer(App):
 
     def __init__(
         self,
-        cfg: KCFG,
+        kcfg: KCFG,
         kprint: KPrint,
         node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
         minimize: bool = True,
     ) -> None:
         super().__init__()
-        self._cfg = cfg
+        self._kcfg = kcfg
         self._kprint = kprint
         self._node_printer = node_printer
         self._minimize = True
@@ -99,7 +99,7 @@ class KCFGViewer(App):
 
     def compose(self) -> ComposeResult:
         yield Vertical(
-            BehaviorView(self._cfg, self._kprint, node_printer=self._node_printer, id='behavior'),
+            BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
             id='navigation',
         )
         yield Vertical(
@@ -122,7 +122,7 @@ class KCFGViewer(App):
         if message.chunk_id.startswith('node_'):
             self._selected_chunk = message.chunk_id
             node = message.chunk_id[5:]
-            config, *_constraints = self._cfg.node(node).cterm
+            config, *_constraints = self._kcfg.node(node).cterm
             if self._minimize:
                 config = minimize_term(config)
             constraints = _mostly_bool_constraints(_constraints)
@@ -133,8 +133,8 @@ class KCFGViewer(App):
         elif message.chunk_id.startswith('edge_'):
             self._selected_chunk = None
             node_source, node_target = message.chunk_id[5:].split('_')
-            config_source, *_constraints_source = self._cfg.node(node_source).cterm
-            config_target, *_constraints_target = self._cfg.node(node_target).cterm
+            config_source, *_constraints_source = self._kcfg.node(node_source).cterm
+            config_target, *_constraints_target = self._kcfg.node(node_target).cterm
             constraints_source = _mostly_bool_constraints(_constraints_source)
             constraints_target = _mostly_bool_constraints(_constraints_target)
             constraints_new = [c for c in constraints_target if c not in constraints_source]
@@ -153,6 +153,15 @@ class KCFGViewer(App):
 
         elif message.chunk_id.startswith('cover_'):
             self._selected_chunk = None
+            node_source, node_target = message.chunk_id[6:].split('_')
+            cover = self._kcfg.covers(source_id=node_source, target_id=node_target)[0]
+            self.query_one('#info', Static).update(
+                f'cover({shorten_hashes(node_source)}, {shorten_hashes(node_target)})'
+            )
+            subst_equalities = flatten_label('#And', cover.subst.ml_pred)
+            self.query_one('#term', Static).update('\n'.join(self._kprint.pretty_print(se) for se in subst_equalities))
+            constraints = flatten_label('#And', cover.constraint)
+            self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
 
     BINDINGS = [
         ('h', 'keystroke("h")', 'Hide selected node from graph.'),
