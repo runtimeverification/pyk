@@ -163,7 +163,11 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 cfg.replace_node(node.id, CTerm(new_term))
         return cfg
 
-    def step(self, cfgid: str, cfg: KCFG, node_id: str) -> KCFG:
+    def step(self, cfgid: str, cfg: KCFG, node_id: str, repeat: int = 1) -> KCFG:
+        if repeat == 0:
+            return cfg
+        if repeat < 0:
+            raise ValueError(f'Repeat parameter must be non-negative: {repeat}')
         node = cfg.node(node_id)
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) > 1:
@@ -184,7 +188,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             cfg.remove_edge(edge.source.id, edge.target.id)
             cfg.create_edge(edge.source.id, new_node.id, condition=mlTop(), depth=1)
             cfg.create_edge(new_node.id, edge.target.id, condition=edge.condition, depth=(edge.depth - 1))
-        return cfg
+        return self.step(cfgid, cfg, new_node.id, repeat=(repeat - 1))
 
     def bisect_edge(self, cfgid: str, cfg: KCFG, source_id: str, target_id: str, sections: int = 2) -> KCFG:
         if sections <= 1:
