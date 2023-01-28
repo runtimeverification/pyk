@@ -41,6 +41,23 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def __exit__(self, *args: Any) -> None:
         self.close()
 
+    @staticmethod
+    def read_cfg(cfgid: str, cfgs_directory: Path) -> Optional[KCFG]:
+        cfg_path = cfgs_directory / f'{hash_str(cfgid)}.json'
+        if cfg_path.exists():
+            cfg_dict = json.loads(cfg_path.read_text())
+            _LOGGER.info(f'Reading KCFG from file {cfgid}: {cfg_path}')
+            return KCFG.from_dict(cfg_dict)
+        return None
+
+    @staticmethod
+    def write_cfg(cfgid: str, cfg_directory: Path, cfg: KCFG) -> None:
+        cfg_dict = cfg.to_dict()
+        cfg_dict['cfgid'] = cfgid
+        cfg_path = cfg_directory / f'{hash_str(cfgid)}.json'
+        cfg_path.write_text(json.dumps(cfg_dict))
+        _LOGGER.info(f'Updated CFG file {cfgid}: {cfg_path}')
+
     @property
     def _kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
         if self._rpc_closed:
@@ -129,21 +146,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         return (Subst(_subst), ml_pred)
 
-    def read_cfg(self, cfgid: str, cfgs_directory: Path) -> Optional[KCFG]:
-        cfg_path = cfgs_directory / f'{hash_str(cfgid)}.json'
-        if cfg_path.exists():
-            cfg_dict = json.loads(cfg_path.read_text())
-            _LOGGER.info(f'Reading KCFG from file {cfgid}: {cfg_path}')
-            return KCFG.from_dict(cfg_dict)
-        return None
-
-    def write_cfg(self, cfgid: str, cfg: KCFG, cfg_directory: Path) -> None:
-        cfg_dict = cfg.to_dict()
-        cfg_dict['cfgid'] = cfgid
-        cfg_path = cfg_directory / f'{hash_str(cfgid)}.json'
-        cfg_path.write_text(json.dumps(cfg_dict))
-        _LOGGER.info(f'Updated CFG file {cfgid}: {cfg_path}')
-
     def simplify(self, cfgid: str, cfg: KCFG) -> KCFG:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {cfgid}: {shorten_hashes(node.id)}')
@@ -194,7 +196,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     ) -> KCFG:
         def _write_cfg(_cfg: KCFG) -> None:
             if cfg_dir is not None:
-                self.write_cfg(cfgid, _cfg, cfg_dir)
+                KCFGExplore.write_cfg(cfgid, cfg_dir, _cfg)
 
         target_node = cfg.get_unique_target()
         iterations = 0
