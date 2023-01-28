@@ -191,18 +191,18 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             cfg.create_edge(new_node.id, edge.target.id, condition=edge.condition, depth=(edge.depth - 1))
         return self.step(cfgid, cfg, new_node.id, repeat=(repeat - 1))
 
-    def bisect_edge(self, cfgid: str, cfg: KCFG, source_id: str, target_id: str, sections: int = 2) -> KCFG:
+    def section_edge(self, cfgid: str, cfg: KCFG, source_id: str, target_id: str, sections: int = 2) -> KCFG:
         if sections <= 1:
             raise ValueError(f'Cannot section an edge less than twice: {sections}')
         edge = single(cfg.edges(source_id=source_id, target_id=target_id))
         if not is_top(edge.condition):
-            raise ValueError(f'Cannot bisect edge with non-#Top condition: {edge.condition}')
+            raise ValueError(f'Cannot section edge with non-#Top condition: {edge.condition}')
         section_depth = int(edge.depth / sections)
         if section_depth == 0:
-            raise ValueError(f'Too many sections, results in 0-length bisection: {sections}')
+            raise ValueError(f'Too many sections, results in 0-length section: {sections}')
         cfg.remove_edge(source_id=source_id, target_id=target_id)
         remainder_depth = edge.depth - (section_depth * sections)
-        if remainder_depth < edge.depth:
+        if remainder_depth > 0:
             sections += 1
         else:
             remainder_depth = section_depth
@@ -215,7 +215,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     f'Found section with differing depth than section depth: {new_depth} vs {section_depth}'
                 )
             if len(next_cterms) != 0:
-                raise ValueError('Found branch when bisecting section.')
+                raise ValueError('Found branch when sectioning edge.')
             new_node = cfg.get_or_create_node(cterm)
             _LOGGER.info(
                 f'Found new node at {section_depth} steps from node {cfgid}: {shorten_hashes((curr_node.id, new_node.id))}'
