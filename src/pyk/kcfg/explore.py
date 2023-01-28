@@ -42,8 +42,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self.close()
 
     @staticmethod
-    def read_cfg(cfgid: str, cfgs_directory: Path) -> Optional[KCFG]:
-        cfg_path = cfgs_directory / f'{hash_str(cfgid)}.json'
+    def read_cfg(cfgid: str, kcfgs_dir: Path) -> Optional[KCFG]:
+        cfg_path = kcfgs_dir / f'{hash_str(cfgid)}.json'
         if cfg_path.exists():
             cfg_dict = json.loads(cfg_path.read_text())
             _LOGGER.info(f'Reading KCFG from file {cfgid}: {cfg_path}')
@@ -51,10 +51,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         return None
 
     @staticmethod
-    def write_cfg(cfgid: str, cfg_directory: Path, cfg: KCFG) -> None:
+    def write_cfg(cfgid: str, kcfgs_dir: Path, cfg: KCFG) -> None:
         cfg_dict = cfg.to_dict()
         cfg_dict['cfgid'] = cfgid
-        cfg_path = cfg_directory / f'{hash_str(cfgid)}.json'
+        cfg_path = kcfgs_dir / f'{hash_str(cfgid)}.json'
         cfg_path.write_text(json.dumps(cfg_dict))
         _LOGGER.info(f'Updated CFG file {cfgid}: {cfg_path}')
 
