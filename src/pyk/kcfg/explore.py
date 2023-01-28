@@ -144,6 +144,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
+        # TODO: remove this extra consequent checking logic or this comment after resolution: https://github.com/runtimeverification/haskell-backend/issues/3469
         new_consequent = self.cterm_simplify(CTerm(Subst(_subst)(consequent.add_constraint(ml_pred).kast)))
         if is_bottom(new_consequent):
             _LOGGER.warning(f'Simplifying instantiated consquent resulted in #Bottom: {antecedent} -> {consequent}')
