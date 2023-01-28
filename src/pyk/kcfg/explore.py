@@ -182,7 +182,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self,
         cfgid: str,
         cfg: KCFG,
-        cfg_path: Optional[Path] = None,
+        cfg_dir: Optional[Path] = None,
         is_terminal: Optional[Callable[[CTerm], bool]] = None,
         extract_branches: Optional[Callable[[CTerm], Iterable[KInner]]] = None,
         max_iterations: Optional[int] = None,
@@ -193,9 +193,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         implication_every_block: bool = True,
     ) -> KCFG:
         def _write_cfg(_cfg: KCFG) -> None:
-            if cfg_path is not None:
-                cfg_path.write_text(_cfg.to_json())
-                _LOGGER.info(f'Updated CFG file {cfgid}: {cfg_path}')
+            if cfg_dir is not None:
+                self.write_cfg(cfgid, _cfg, cfg_dir)
 
         target_node = cfg.get_unique_target()
         iterations = 0
