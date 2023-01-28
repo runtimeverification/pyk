@@ -181,6 +181,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if len(next_cterms) > 0:
             raise ValueError(f'Found branch with single step {cfgid}: {node.id}')
         new_node = cfg.get_or_create_node(cterm)
+        _LOGGER.info(f'Found new node at depth 1 {cfgid}: {shorten_hashes((node.id, new_node.id))}')
         if len(out_edges) == 0:
             cfg.create_edge(node.id, new_node.id, condition=mlTop(), depth=1)
         else:
