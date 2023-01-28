@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, Final, Iterable, List, Optional, Tuple
@@ -11,7 +12,7 @@ from pyk.kore.syntax import Top
 from pyk.ktool import KPrint
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
-from pyk.utils import shorten_hashes
+from pyk.utils import hash_str, shorten_hashes
 
 from .kcfg import KCFG
 
@@ -127,6 +128,21 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         return (Subst(_subst), ml_pred)
+
+    def read_cfg(self, cfgid: str, cfgs_directory: Path) -> Optional[KCFG]:
+        cfg_path = cfgs_directory / f'{hash_str(cfgid)}.json'
+        if cfg_path.exists():
+            cfg_dict = json.loads(cfg_path.read_text())
+            _LOGGER.info(f'Reading KCFG from file {cfgid}: {cfg_path}')
+            return KCFG.from_dict(cfg_dict)
+        return None
+
+    def write_cfg(self, cfgid: str, cfg: KCFG, cfg_directory: Path) -> None:
+        cfg_dict = cfg.to_dict()
+        cfg_dict['cfgid'] = cfgid
+        cfg_path = cfg_directory / f'{hash_str(cfgid)}.json'
+        cfg_path.write_text(json.dumps(cfg_dict))
+        _LOGGER.info(f'Updated CFG file {cfgid}: {cfg_path}')
 
     def simplify(
         self,
