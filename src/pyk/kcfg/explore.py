@@ -144,6 +144,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
+        new_consequent = self.cterm_simplify(CTerm(Subst(_subst)(consequent.add_constraint(ml_pred).kast)))
+        if is_bottom(new_consequent):
+            _LOGGER.warning(f'Simplifying instantiated consquent resulted in #Bottom: {antecedent} -> {consequent}')
+            return None
         return (Subst(_subst), ml_pred)
 
     def simplify(self, cfgid: str, cfg: KCFG) -> KCFG:
