@@ -774,13 +774,13 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
 
     @staticmethod
     def _is_function(prod: KProduction) -> bool:
-        def is_non_free_constructor(label: str) -> bool:
+        def is_not_actually_function(label: str) -> bool:
             is_cell_map_constructor = label.endswith('CellMapItem') or label.endswith('CellMap_')
             is_builtin_data_constructor = label in {'_Set_', '_List_', '_Map_', 'SetItem', 'ListItem', '_|->_'}
             return is_cell_map_constructor or is_builtin_data_constructor
 
-        return ('function' in prod.att.atts or 'functional' in prod.att.atts) and (
-            not prod.klabel or not is_non_free_constructor(prod.klabel.name)
+        return ('function' in prod.att.atts or 'functional' in prod.att.atts) and not (
+            prod.klabel and is_not_actually_function(prod.klabel.name)
         )
 
     @cached_property
