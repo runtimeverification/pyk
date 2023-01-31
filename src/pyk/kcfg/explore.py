@@ -139,7 +139,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _, kore_client = self._kore_rpc
         result = kore_client.implies(antecedent_kore, consequent_kore)
         if type(result.implication) is not Top:
-            _LOGGER.warning(
+            _LOGGER.info(
                 f'Received a non-trivial implication back from check implication endpoint: {result.implication}'
             )
         if result.substitution is None:
