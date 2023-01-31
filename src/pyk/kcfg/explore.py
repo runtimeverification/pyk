@@ -175,7 +175,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 cfg.replace_node(node.id, CTerm(new_term))
         return cfg
 
-    def step(self, cfgid: str, cfg: KCFG, node_id: str) -> KCFG:
+    def step(self, cfgid: str, cfg: KCFG, node_id: str) -> Tuple[KCFG, str]:
         node = cfg.node(node_id)
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) > 1:
@@ -197,9 +197,11 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             cfg.remove_edge(edge.source.id, edge.target.id)
             cfg.create_edge(edge.source.id, new_node.id, condition=mlTop(), depth=1)
             cfg.create_edge(new_node.id, edge.target.id, condition=edge.condition, depth=(edge.depth - 1))
-        return cfg
+        return (cfg, new_node.id)
 
-    def section_edge(self, cfgid: str, cfg: KCFG, source_id: str, target_id: str, sections: int = 2) -> KCFG:
+    def section_edge(
+        self, cfgid: str, cfg: KCFG, source_id: str, target_id: str, sections: int = 2
+    ) -> Tuple[KCFG, Tuple[str, ...]]:
         if sections <= 1:
             raise ValueError(f'Cannot section an edge less than twice: {sections}')
         edge = single(cfg.edges(source_id=source_id, target_id=target_id))
@@ -215,6 +217,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         else:
             remainder_depth = section_depth
         curr_node = edge.source
+        new_nodes = []
         for _i in range(sections - 1):
             _LOGGER.info(f'Taking {section_depth} steps from node {cfgid}: {shorten_hashes(curr_node.id)}')
             new_depth, cterm, next_cterms = self.cterm_execute(curr_node.cterm, depth=section_depth)
@@ -225,13 +228,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if len(next_cterms) != 0:
                 raise ValueError('Found branch when sectioning edge.')
             new_node = cfg.get_or_create_node(cterm)
+            new_nodes.append(new_node.id)
             _LOGGER.info(
                 f'Found new node at {section_depth} steps from node {cfgid}: {shorten_hashes((curr_node.id, new_node.id))}'
             )
             cfg.create_edge(curr_node.id, new_node.id, condition=mlTop(), depth=section_depth)
             curr_node = new_node
         cfg.create_edge(source_id=curr_node.id, target_id=edge.target.id, condition=mlTop(), depth=remainder_depth)
-        return cfg
+        return (cfg, tuple(new_nodes))
 
     def all_path_reachability_prove(
         self,
