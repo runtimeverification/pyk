@@ -1,5 +1,11 @@
+from pathlib import Path
+from typing import Final, Iterator, Tuple
+
+import pytest
+
 from pyk.kompile import _subsort_dict
 from pyk.kore.syntax import Attr, Axiom, Definition, Module, Sort, SortApp, SortVar, Top
+from pyk.ktool.kprint import _munge, _unmunge
 
 
 def test_subsort_dict() -> None:
@@ -26,6 +32,45 @@ def test_subsort_dict() -> None:
 
     # When
     actual = _subsort_dict(definition)
+
+    # Then
+    assert actual == expected
+
+
+def munge_test_data_reader() -> Iterator[Tuple[str, str]]:
+    test_data_file = Path(__file__).parent / 'test-data/munge-tests'
+    with open(test_data_file, 'r') as f:
+        while True:
+            try:
+                label = next(f)
+                symbol = next(f)
+            except StopIteration:
+                raise AssertionError('Malformed test data') from None
+
+            yield label.rstrip('\n'), symbol.rstrip('\n')
+
+            try:
+                next(f)
+            except StopIteration:
+                return
+
+
+MUNGE_TEST_DATA: Final = tuple(munge_test_data_reader())
+
+
+@pytest.mark.parametrize('label,expected', MUNGE_TEST_DATA, ids=[label for label, _ in MUNGE_TEST_DATA])
+def test_munge(label: str, expected: str) -> None:
+    # When
+    actual = _munge(label)
+
+    # Then
+    assert actual == expected
+
+
+@pytest.mark.parametrize('expected,symbol', MUNGE_TEST_DATA, ids=[symbol for _, symbol in MUNGE_TEST_DATA])
+def test_unmunge(symbol: str, expected: str) -> None:
+    # When
+    actual = _unmunge(symbol)
 
     # Then
     assert actual == expected
