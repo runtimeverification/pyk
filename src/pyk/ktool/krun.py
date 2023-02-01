@@ -10,7 +10,7 @@ from typing import Final, Iterable, List, Mapping, Optional, Union
 from ..cli_utils import BugReport, check_dir_path, check_file_path, run_process
 from ..cterm import CTerm
 from ..kast.inner import KInner, KLabel, KSort
-from ..kompile import unmunge
+from ..konvert import unmunge
 from ..kore.parser import KoreParser
 from ..kore.syntax import DV, App, Pattern, SortApp, String
 from .kprint import KPrint

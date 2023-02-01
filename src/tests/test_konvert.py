@@ -3,7 +3,7 @@ from typing import Final, Iterator, Tuple
 
 import pytest
 
-from pyk.kompile import _subsort_dict, munge, unmunge
+from pyk.konvert import _subsort_dict, munge, unmunge
 from pyk.kore.syntax import Attr, Axiom, Definition, Module, Sort, SortApp, SortVar, Top
 
 

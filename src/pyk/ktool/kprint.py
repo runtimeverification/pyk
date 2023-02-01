@@ -29,7 +29,7 @@ from ..kast.outer import (
     KTerminal,
     read_kast_definition,
 )
-from ..kompile import munge, unmunge
+from ..konvert import munge, unmunge
 from ..kore.parser import KoreParser
 from ..kore.prelude import BYTES as KORE_BYTES
 from ..kore.prelude import STRING as KORE_STRING
