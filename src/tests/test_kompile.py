@@ -3,7 +3,7 @@ from typing import Final, Iterator, Tuple
 
 import pytest
 
-from pyk.kompile import _munge, _subsort_dict, _unmunge
+from pyk.kompile import _subsort_dict, munge, unmunge
 from pyk.kore.syntax import Attr, Axiom, Definition, Module, Sort, SortApp, SortVar, Top
 
 
@@ -60,7 +60,7 @@ MUNGE_TEST_DATA: Final = tuple(munge_test_data_reader())
 @pytest.mark.parametrize('label,expected', MUNGE_TEST_DATA, ids=[label for label, _ in MUNGE_TEST_DATA])
 def test_munge(label: str, expected: str) -> None:
     # When
-    actual = _munge(label)
+    actual = munge(label)
 
     # Then
     assert actual == expected
@@ -69,7 +69,7 @@ def test_munge(label: str, expected: str) -> None:
 @pytest.mark.parametrize('expected,symbol', MUNGE_TEST_DATA, ids=[symbol for _, symbol in MUNGE_TEST_DATA])
 def test_unmunge(symbol: str, expected: str) -> None:
     # When
-    actual = _unmunge(symbol)
+    actual = unmunge(symbol)
 
     # Then
     assert actual == expected
