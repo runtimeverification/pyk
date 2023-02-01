@@ -3,9 +3,8 @@ from typing import Final, Iterator, Tuple
 
 import pytest
 
-from pyk.kompile import _subsort_dict
+from pyk.kompile import _munge, _subsort_dict, _unmunge
 from pyk.kore.syntax import Attr, Axiom, Definition, Module, Sort, SortApp, SortVar, Top
-from pyk.ktool.kprint import _munge, _unmunge
 
 
 def test_subsort_dict() -> None:

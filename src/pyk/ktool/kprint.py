@@ -29,6 +29,7 @@ from ..kast.outer import (
     KTerminal,
     read_kast_definition,
 )
+from ..kompile import _munge, _unmunge
 from ..kore.parser import KoreParser
 from ..kore.prelude import BYTES as KORE_BYTES
 from ..kore.prelude import STRING as KORE_STRING
@@ -59,84 +60,6 @@ from ..utils import enquote_str
 _LOGGER: Final = logging.getLogger(__name__)
 
 SymbolTable = Dict[str, Callable[..., str]]
-
-_unmunge_codes: Dict[str, str] = {
-    'Spce': ' ',
-    'Bang': '!',
-    'Quot': '"',
-    'Hash': '#',
-    'Dolr': '$',
-    'Perc': '%',
-    'And-': '&',
-    'Apos': "'",
-    'LPar': '(',
-    'RPar': ')',
-    'Star': '*',
-    'Plus': '+',
-    'Comm': ',',
-    'Stop': '.',
-    'Slsh': '/',
-    'Coln': ':',
-    'SCln': ';',
-    '-LT-': '<',
-    'Eqls': '=',
-    '-GT-': '>',
-    'Ques': '?',
-    '-AT-': '@',
-    'LSqB': '[',
-    'RSqB': ']',
-    'Bash': '\\',
-    'Xor-': '^',
-    'Unds': '_',
-    'BQuo': '`',
-    'LBra': '{',
-    'Pipe': '|',
-    'RBra': '}',
-    'Tild': '~',
-}
-_munge_codes: Dict[str, str] = {v: k for k, v in _unmunge_codes.items()}
-
-
-def _munge(label: str) -> str:
-    global _munge_codes
-    _symbol = ''
-    literal_mode = True
-    while len(label) > 0:
-        if label[0] in _munge_codes:
-            if not literal_mode:
-                _symbol += _munge_codes[label[0]]
-                label = label[1:]
-            else:
-                _symbol += "'"
-                literal_mode = False
-        else:
-            if literal_mode:
-                _symbol += label[0]
-                label = label[1:]
-            else:
-                _symbol += "'"
-                literal_mode = True
-    if not literal_mode:
-        _symbol += "'"
-    return _symbol
-
-
-def _unmunge(symbol: str) -> str:
-    global _unmunge_codes
-    _label = ''
-    literal_mode = True
-    while len(symbol) > 0:
-        if symbol[0] == "'":
-            literal_mode = not literal_mode
-            symbol = symbol[1:]
-        else:
-            if literal_mode:
-                _label += symbol[0]
-                symbol = symbol[1:]
-            else:
-                _label += _unmunge_codes[symbol[0:4]]
-                symbol = symbol[4:]
-    return _label
 
 
 class KAstInput(Enum):
@@ -232,9 +155,6 @@ class KPrint:
     _definition: Optional[KDefinition]
     _symbol_table: Optional[SymbolTable]
     _temp_dir: Optional[TemporaryDirectory] = None
-
-    _unmunge_codes: Dict[str, str]
-    _munge_codes: Dict[str, str]
 
     _bug_report: Optional[BugReport]
 
