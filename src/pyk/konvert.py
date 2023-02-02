@@ -1,8 +1,13 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cached_property, reduce
 from pathlib import Path
-from typing import Dict, Final, FrozenSet, Optional, Set, Union, final
+from typing import Dict, Final, FrozenSet, Optional, Set, Tuple, Union, final
+
+from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
+from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, String
+from pyk.prelude.bytes import BYTES
+from pyk.prelude.string import STRING
 
 from .cli_utils import check_dir_path, check_file_path
 from .kore.parser import KoreParser
@@ -56,6 +61,145 @@ def _subsort_dict(definition: Definition) -> Dict[Sort, Set[Sort]]:
 
     return res
 
+
+# ------------
+# KAST-to-KORE
+# ------------
+
+ML_CONN_LABELS: Final = {
+    '#Top': r'\top',
+    '#Bottom': r'\bottom',
+    '#Not': r'\not',
+    '#And': r'\and',
+    '#Or': r'\or',
+    '#Implies': r'\implies',
+    '#Iff': r'\iff',
+}
+
+ML_QUANT_LABELS: Final = {
+    '#Exists': r'\exists',
+    '#Forall': r'\forall',
+}
+
+ML_PRED_LABELS: Final = {
+    '#Ceil': r'\ceil',
+    '#Floor': r'\floor',
+    '#Equals': r'\equals',
+    '#In': r'\in',
+}
+
+ML_PATTERN_LABELS: Final = dict(
+    **ML_CONN_LABELS,
+    **ML_QUANT_LABELS,
+    **ML_PRED_LABELS,
+)
+
+
+def kast_to_kore(kast: KInner) -> Pattern:
+    if type(kast) is KToken:
+        return _ktoken_to_kore(kast)
+    elif type(kast) is KVariable:
+        return _kvariable_to_kore(kast)
+    elif type(kast) is KSequence:
+        return _ksequence_to_kore(kast)
+    elif type(kast) is KApply:
+        return _kapply_to_kore(kast)
+
+    raise ValueError(f'Unsupported KInner: {kast}')
+
+
+def _ktoken_to_kore(ktoken: KToken) -> DV:
+    token = ktoken.token
+    sort = ktoken.sort
+
+    if sort == STRING:
+        assert token.startswith('"')
+        assert token.endswith('"')
+        return DV(_ksort_to_kore(sort), String(token[1:-1]))
+
+    if sort == BYTES:
+        assert token.startswith('b"')
+        assert token.endswith('"')
+        return DV(_ksort_to_kore(sort), String(token[2:-1]))
+
+    return DV(_ksort_to_kore(sort), String(token))
+
+
+def _ksort_to_kore(ksort: KSort) -> SortApp:
+    return SortApp('Sort' + ksort.name)
+
+
+def _kvariable_to_kore(kvar: KVariable) -> EVar:
+    sort: Sort
+    if kvar.sort:
+        sort = _ksort_to_kore(kvar.sort)
+    else:
+        sort = SortApp('SortK')
+    return EVar('Var' + munge(kvar.name), sort)
+
+
+def _ksequence_to_kore(kseq: KSequence) -> Pattern:
+    if not kseq:
+        return App('dotk')
+
+    unit: Pattern
+    items: Tuple[KInner, ...]
+
+    last = kseq[-1]
+    if type(last) is KVariable and (not last.sort or last.sort == KSort('K')):
+        unit = _kvariable_to_kore(last)
+        items = kseq[:-1]
+    else:
+        unit = App('dotk')
+        items = kseq.items
+
+    patterns = tuple(kast_to_kore(item) for item in items)
+    return reduce(lambda x, y: App('kseq', (), (y, x)), reversed(patterns), unit)
+
+
+def _kapply_to_kore(kapply: KApply) -> Pattern:
+    if kapply.label.name in ML_QUANT_LABELS:
+        return _kapply_to_ml_quant(kapply)
+
+    return _kapply_to_pattern(kapply)
+
+
+def _kapply_to_ml_quant(kapply: KApply) -> MLQuant:
+    label = kapply.label
+    symbol = ML_QUANT_LABELS[label.name]
+    sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
+    (_,) = sorts
+
+    kvar, kast = kapply.args
+    var = kast_to_kore(kvar)
+    pattern = kast_to_kore(kast)
+    patterns = (var, pattern)
+
+    return MLQuant.of(symbol, sorts, patterns)
+
+
+def _kapply_to_pattern(kapply: KApply) -> Pattern:
+    label = kapply.label
+    symbol = _label_to_kore(label.name)
+    sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
+    patterns = tuple(kast_to_kore(kast) for kast in kapply.args)
+
+    if label.name in ML_PATTERN_LABELS:
+        return MLPattern.of(symbol, sorts, patterns)
+
+    return App(symbol, sorts, patterns)
+
+
+def _label_to_kore(label: str) -> str:
+    if label in ML_PATTERN_LABELS:
+        return ML_PATTERN_LABELS[label]
+
+    return 'Lbl' + munge(label)
+
+
+# --------------
+# Symbol munging
+# --------------
 
 UNMUNGE_TABLE: Final[FrozenDict[str, str]] = FrozenDict(
     {
