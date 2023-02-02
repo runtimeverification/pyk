@@ -8,7 +8,6 @@ from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KInner, KLabel, KVariable, Subst
 from pyk.kast.manip import flatten_label, free_vars
 from pyk.kore.rpc import KoreClient, KoreServer
-from pyk.kore.syntax import Top
 from pyk.ktool import KPrint
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
@@ -138,10 +137,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
         result = kore_client.implies(antecedent_kore, consequent_kore)
-        if type(result.implication) is not Top:
-            _LOGGER.info(
-                f'Received a non-trivial implication back from check implication endpoint: {result.implication}'
-            )
         if result.substitution is None:
             return None
         ml_subst = self.kprint.kore_to_kast(result.substitution)
