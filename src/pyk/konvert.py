@@ -12,7 +12,7 @@ from .utils import FrozenDict
 
 @final
 @dataclass(frozen=True)
-class KompiledDefn:
+class KompiledKore:
     path: Path
     timestamp: int
 
