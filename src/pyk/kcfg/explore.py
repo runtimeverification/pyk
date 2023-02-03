@@ -10,7 +10,7 @@ from pyk.kast.manip import flatten_label, free_vars
 from pyk.kore.rpc import KoreClient, KoreServer
 from pyk.ktool import KPrint
 from pyk.prelude.k import GENERATED_TOP_CELL
-from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
+from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlBottom, mlEquals, mlTop
 from pyk.utils import hash_str, shorten_hashes, single
 
 from .kcfg import KCFG
@@ -124,16 +124,19 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self, antecedent: CTerm, consequent: CTerm, bind_consequent_variables: bool = True
     ) -> Optional[Tuple[Subst, KInner]]:
         _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
+        _simplified_antecedent = self.cterm_simplify(antecedent)
+        if is_bottom(_simplified_antecedent):
+            _LOGGER.warning(f'Trivial implication check, antecedent is #Bottom: {antecedent} #Implies {consequent}')
+            return (Subst({}), mlBottom())
         _consequent = consequent.kast
         if bind_consequent_variables:
-            _consequent = consequent.kast
-            fv_antecedent = free_vars(antecedent.kast)
-            unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
-            if len(unbound_consequent) > 0:
-                _LOGGER.info(f'Binding variables in consequent: {unbound_consequent}')
-                for uc in unbound_consequent:
+            fv_antecedent = free_vars(_simplified_antecedent)
+            unbound_consequent_vars = [v for v in free_vars(_consequent) if v not in fv_antecedent]
+            if len(unbound_consequent_vars) > 0:
+                _LOGGER.info(f'Binding variables in consequent: {unbound_consequent_vars}')
+                for uc in unbound_consequent_vars:
                     _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
-        antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
+        antecedent_kore = self.kprint.kast_to_kore(_simplified_antecedent, GENERATED_TOP_CELL)
         consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
         result = kore_client.implies(antecedent_kore, consequent_kore)
