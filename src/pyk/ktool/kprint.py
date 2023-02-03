@@ -153,6 +153,7 @@ class KPrint:
     backend: str
     _profile: bool
     _definition: Optional[KDefinition]
+    _patch_symbol_table: Optional[Callable[[SymbolTable], None]]
 
     _temp_dir: Optional[TemporaryDirectory] = None
 
@@ -165,6 +166,7 @@ class KPrint:
         profile: bool = False,
         bug_report: Optional[BugReport] = None,
         definition: Optional[KDefinition] = None,
+        patch_symbol_table: Optional[Callable[[SymbolTable], None]] = None,
     ) -> None:
         self.definition_dir = Path(definition_dir)
         if use_directory:
@@ -181,6 +183,7 @@ class KPrint:
         with open(self.definition_dir / 'backend.txt', 'r') as ba:
             self.backend = ba.read()
         self._definition = definition
+        self._patch_symbol_table = patch_symbol_table
         self._bug_report = bug_report
         if self._bug_report:
             self._bug_report.add_definition(self.definition_dir)
@@ -201,7 +204,10 @@ class KPrint:
 
     @cached_property
     def symbol_table(self) -> SymbolTable:
-        return build_symbol_table(self.definition, opinionated=True)
+        symb_table = build_symbol_table(self.definition, opinionated=True)
+        if self._patch_symbol_table is not None:
+            self._patch_symbol_table(symb_table)
+        return symb_table
 
     def parse_token(self, ktoken: KToken, *, as_rule: bool = False) -> KInner:
         input = KAstInput('rule' if as_rule else 'program')
