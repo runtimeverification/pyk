@@ -5,24 +5,9 @@ from pathlib import Path
 from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union, final
 
 from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
-from pyk.kore.syntax import (
-    DV,
-    App,
-    EVar,
-    Exists,
-    Forall,
-    MLPattern,
-    MLQuant,
-    Pattern,
-    SortApp,
-    SortVar,
-    String,
-    Symbol,
-    WithSort,
-)
+from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, SortVar, String, Symbol, WithSort
 from pyk.prelude.bytes import BYTES
 from pyk.prelude.string import STRING
-from pyk.utils import Scope
 
 from .cli_utils import check_dir_path, check_file_path
 from .kore.parser import KoreParser
@@ -166,55 +151,6 @@ class KompiledKore:
 
         assert len(sorts) == len(pattern.patterns)
         return sorts
-
-    def kast_to_kore(self, kast: KInner, *, sort: Optional[Sort] = None, with_inj: bool = False) -> Pattern:
-        if sort is None:
-            sort = SortApp('SortK')
-
-        pattern = kast_to_kore(kast)
-        pattern = self._strengthen_sorts(pattern, sort)
-
-        if with_inj:
-            pattern = self.add_injections(pattern, sort)
-
-        return pattern
-
-    def _strengthen_sorts(self, pattern: Pattern, sort: Sort) -> Pattern:
-        root: Scope[Set[Sort]] = Scope('.')
-
-        def collect(scope: Scope[Set[Sort]], pattern: Pattern, sort: Sort) -> None:
-            if isinstance(pattern, MLQuant):
-                child = scope.push_scope(str(id(pattern.var)))
-                child[pattern.var.name] = {pattern.var.sort}
-                (sort,) = self.pattern_sorts(pattern)
-                collect(child, pattern.pattern, sort)
-
-            elif isinstance(pattern, EVar):
-                if pattern.name in scope:
-                    scope[pattern.name].add(sort)
-                    scope[pattern.name].add(pattern.sort)
-                else:
-                    root[pattern.name] = {sort, pattern.sort}
-
-            else:
-                for subpattern, subsort in zip(pattern.patterns, self.pattern_sorts(pattern)):
-                    collect(scope, subpattern, subsort)
-
-        def rewrite(scope: Scope[Sort], pattern: Pattern) -> Pattern:
-            if type(pattern) is EVar:
-                return pattern.let(sort=scope[pattern.name])
-
-            if isinstance(pattern, MLQuant):
-                child = scope.child_scope(str(id(pattern.var)))
-                sort = child[pattern.var.name]
-                assert type(pattern) is Exists or type(pattern) is Forall  # This enables pattern.let
-                return pattern.let(var=pattern.var.let(sort=sort), pattern=rewrite(child, pattern.pattern))
-
-            return pattern.map_patterns(lambda p: rewrite(scope, p))
-
-        collect(root, pattern, sort)
-        scope = root.map(self.meet_all_sorts)
-        return rewrite(scope, pattern)
 
     def add_injections(self, pattern: Pattern, sort: Optional[Sort] = None) -> Pattern:
         if sort is None:
