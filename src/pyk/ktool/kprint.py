@@ -579,7 +579,8 @@ def build_symbol_table(
     -   Return: Python dictionary mapping klabels to automatically generated unparsers.
     """
     symbol_table = {}
-    for module in definition.modules:
+    all_modules = list(definition.modules) + ([] if extra_modules is None else list(extra_modules.modules))
+    for module in all_modules:
         for prod in module.syntax_productions:
             assert prod.klabel
             label = prod.klabel.name
