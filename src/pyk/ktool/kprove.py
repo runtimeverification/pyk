@@ -6,7 +6,7 @@ from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
 from tempfile import NamedTemporaryFile
-from typing import Callable, Final, Iterable, List, Mapping, Optional, Tuple
+from typing import Final, Iterable, List, Mapping, Optional, Tuple
 
 from ..cli_utils import BugReport, check_dir_path, check_file_path, gen_file_timestamp, run_process
 from ..cterm import CTerm, build_claim
@@ -15,7 +15,7 @@ from ..kast.manip import extract_subst, flatten_label, free_vars
 from ..kast.outer import KClaim, KDefinition, KFlatModule, KFlatModuleList, KImport, KRequire, KRule, KSentence
 from ..prelude.ml import is_top, mlAnd, mlBottom, mlTop
 from ..utils import unique
-from .kprint import KPrint, SymbolTable
+from .kprint import KPrint
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -134,16 +134,14 @@ class KProve(KPrint):
         profile: bool = False,
         command: str = 'kprove',
         bug_report: Optional[BugReport] = None,
-        definition: Optional[KDefinition] = None,
-        patch_symbol_table: Optional[Callable[[SymbolTable], None]] = None,
+        extra_unparsing_modules: Optional[KFlatModuleList] = None,
     ):
         super(KProve, self).__init__(
             definition_dir,
             use_directory=use_directory,
             profile=profile,
             bug_report=bug_report,
-            definition=definition,
-            patch_symbol_table=patch_symbol_table,
+            extra_unparsing_modules=extra_unparsing_modules,
         )
         # TODO: we should not have to supply main_file, it should be read
         # TODO: setting use_directory manually should set temp files to not be deleted and a log message

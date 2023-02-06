@@ -16,6 +16,7 @@ from ..kast.outer import (
     KContext,
     KDefinition,
     KFlatModule,
+    KFlatModuleList,
     KImport,
     KNonTerminal,
     KProduction,
@@ -152,8 +153,7 @@ class KPrint:
     main_module: str
     backend: str
     _profile: bool
-    _definition: Optional[KDefinition]
-    _patch_symbol_table: Optional[Callable[[SymbolTable], None]]
+    _extra_unparsing_modules: Optional[KFlatModuleList]
 
     _temp_dir: Optional[TemporaryDirectory] = None
 
@@ -165,8 +165,7 @@ class KPrint:
         use_directory: Optional[Path] = None,
         profile: bool = False,
         bug_report: Optional[BugReport] = None,
-        definition: Optional[KDefinition] = None,
-        patch_symbol_table: Optional[Callable[[SymbolTable], None]] = None,
+        extra_unparsing_modules: Optional[KFlatModuleList] = None,
     ) -> None:
         self.definition_dir = Path(definition_dir)
         if use_directory:
@@ -182,8 +181,7 @@ class KPrint:
             self.main_module = mm.read()
         with open(self.definition_dir / 'backend.txt', 'r') as ba:
             self.backend = ba.read()
-        self._definition = definition
-        self._patch_symbol_table = patch_symbol_table
+        self._extra_unparsing_modules = extra_unparsing_modules
         self._bug_report = bug_report
         if self._bug_report:
             self._bug_report.add_definition(self.definition_dir)
@@ -194,8 +192,6 @@ class KPrint:
 
     @cached_property
     def definition(self) -> KDefinition:
-        if self._definition is not None:
-            return self._definition
         return read_kast_definition(self.definition_dir / 'compiled.json')
 
     @property
@@ -204,10 +200,13 @@ class KPrint:
 
     @cached_property
     def symbol_table(self) -> SymbolTable:
-        symb_table = build_symbol_table(self.definition, opinionated=True)
-        if self._patch_symbol_table is not None:
-            self._patch_symbol_table(symb_table)
+        symb_table = build_symbol_table(self.definition, extra_modules=self._extra_unparsing_modules, opinionated=True)
+        self._patch_symbol_table(symb_table)
         return symb_table
+
+    @classmethod
+    def _patch_symbol_table(cls, symbol_table: SymbolTable) -> None:
+        pass
 
     def parse_token(self, ktoken: KToken, *, as_rule: bool = False) -> KInner:
         input = KAstInput('rule' if as_rule else 'program')
@@ -571,7 +570,9 @@ def unparser_for_production(prod: KProduction) -> Callable[..., str]:
     return _unparser
 
 
-def build_symbol_table(definition: KDefinition, opinionated: bool = False) -> SymbolTable:
+def build_symbol_table(
+    definition: KDefinition, extra_modules: Optional[KFlatModuleList] = None, opinionated: bool = False
+) -> SymbolTable:
     """Build the unparsing symbol table given a JSON encoded definition.
 
     -   Input: JSON encoded K definition.

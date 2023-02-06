@@ -5,16 +5,16 @@ from logging import Logger
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
 from tempfile import NamedTemporaryFile
-from typing import Callable, Final, Iterable, List, Mapping, Optional, Union
+from typing import Final, Iterable, List, Mapping, Optional, Union
 
 from ..cli_utils import BugReport, check_dir_path, check_file_path, run_process
 from ..cterm import CTerm
 from ..kast.inner import KInner, KLabel, KSort
-from ..kast.outer import KDefinition
+from ..kast.outer import KFlatModuleList
 from ..konvert import unmunge
 from ..kore.parser import KoreParser
 from ..kore.syntax import DV, App, Pattern, SortApp, String
-from .kprint import KPrint, SymbolTable
+from .kprint import KPrint
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -29,16 +29,14 @@ class KRun(KPrint):
         profile: bool = False,
         command: str = 'krun',
         bug_report: Optional[BugReport] = None,
-        definition: Optional[KDefinition] = None,
-        patch_symbol_table: Optional[Callable[[SymbolTable], None]] = None,
+        extra_unparsing_modules: Optional[KFlatModuleList] = None,
     ) -> None:
         super(KRun, self).__init__(
             definition_dir,
             use_directory=use_directory,
             profile=profile,
             bug_report=bug_report,
-            definition=definition,
-            patch_symbol_table=patch_symbol_table,
+            extra_unparsing_modules=extra_unparsing_modules,
         )
         self.command = command
 
