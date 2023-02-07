@@ -32,7 +32,7 @@ jobs:
           git push --delete origin "${version}" || true
           git tag "${version}" HEAD
           git push origin "${version}:${version}"
-          curl                                                                 \
+          curl --fail                                                          \
             -X POST                                                            \
             -H "Accept: application/vnd.github+json"                           \
             -H "Authorization: Bearer ${GITHUB_TOKEN}"                         \
