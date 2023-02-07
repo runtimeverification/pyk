@@ -12,6 +12,8 @@ jobs:
   tag-release:
     name: 'Tag Release and Bump Dependents'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
@@ -20,6 +22,7 @@ jobs:
           # fetch-depth 0 means deep clone the repo
           fetch-depth: 0
       - name: 'Update Version'
+        id: version
         run: |
           git config user.name devops
           git config user.email devops@runtimeverification.com
@@ -28,9 +31,13 @@ jobs:
           git push --delete origin "${version}" || true
           git tag "${version}" HEAD
           git push origin "${version}:${version}"
-          echo "release_version=${version}" >> "${GITHUB_ENV}"
-      - name: 'Update dependents'
-        uses: runtimeverification/devops/.github/workflows/update-deps.yml@master
-        with:
-          repo: runtimeverification/pyk
-          version: ${{ env.release_version }}
+          echo "::set-output name=version::$(cat package/version)"
+
+  call-auto-update:
+    name: 'Invoke the auto-updater'
+    needs: tag-release
+    runs-on: ubuntu-latest
+    uses: runtimeverification/devops/.github/workflows/update-deps.yml@master
+    with:
+      repo: runtimeverification/pyk
+      version: ${{ needs.tag-release.outputs.version }}
