@@ -88,31 +88,11 @@ class KompiledKore:
         unit: Sort = SortApp('SortK')
         return reduce(self.meet_sorts, sorts, unit)
 
-    def pattern_sorts(self, pattern: Pattern) -> Tuple[Sort, ...]:
-        sorts: Tuple[Sort, ...]
-        if isinstance(pattern, DV):
-            sorts = ()
-
-        elif isinstance(pattern, MLQuant):
-            sorts = (pattern.sort,)
-
-        elif isinstance(pattern, MLPattern):
-            _, sorts = self.definition.resolve(pattern.symbol(), pattern.sorts)
-
-        elif isinstance(pattern, App):
-            _, sorts = self.definition.resolve(pattern.symbol, pattern.sorts)
-
-        else:
-            sorts = ()
-
-        assert len(sorts) == len(pattern.patterns)
-        return sorts
-
     def add_injections(self, pattern: Pattern, sort: Optional[Sort] = None) -> Pattern:
         if sort is None:
             sort = SortApp('SortK')
         patterns = pattern.patterns
-        sorts = self.pattern_sorts(pattern)
+        sorts = self.definition.pattern_sorts(pattern)
         pattern = pattern.let_patterns(self.add_injections(p, s) for p, s in zip(patterns, sorts))
         return self._inject(pattern, sort)
 

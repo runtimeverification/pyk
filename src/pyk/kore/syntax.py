@@ -2329,6 +2329,26 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
         raise ValueError(f'Cannot infer sort: {pattern}')
 
+    def pattern_sorts(self, pattern: Pattern) -> Tuple[Sort, ...]:
+        sorts: Tuple[Sort, ...]
+        if isinstance(pattern, DV):
+            sorts = ()
+
+        elif isinstance(pattern, MLQuant):
+            sorts = (pattern.sort,)
+
+        elif isinstance(pattern, MLPattern):
+            _, sorts = self.resolve(pattern.symbol(), pattern.sorts)
+
+        elif isinstance(pattern, App):
+            _, sorts = self.resolve(pattern.symbol, pattern.sorts)
+
+        else:
+            sorts = ()
+
+        assert len(sorts) == len(pattern.patterns)
+        return sorts
+
 
 def kore_term(dct: Mapping[str, Any], cls: Type[T] = Kore) -> T:  # type: ignore
     if dct['format'] != 'KORE':
