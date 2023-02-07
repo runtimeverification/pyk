@@ -20,7 +20,7 @@ from typing import (
     final,
 )
 
-from ..utils import check_type
+from ..utils import FrozenDict, check_type
 from .lexer import KoreLexer, KoreStringLexer
 
 
@@ -2268,6 +2268,12 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
                 _brackd(attr.text for attr in self.attrs),
             ]
             + [module.text for module in self.modules]
+        )
+
+    @cached_property
+    def symbol_table(self) -> FrozenDict[str, SymbolDecl]:
+        return FrozenDict(
+            (symbol_decl.symbol.name, symbol_decl) for module in self for symbol_decl in module.symbol_decls
         )
 
 

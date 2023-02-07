@@ -57,7 +57,7 @@ class KompiledKore:
             r'\equals': SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
             r'\in': SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
         }
-        symbol_table = _symbol_table(self.definition)
+        symbol_table = self.definition.symbol_table
         return FrozenDict({**ml_symbol_table, **symbol_table})
 
     def _resolve_symbol(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> Tuple[Sort, Tuple[Sort, ...]]:
@@ -185,11 +185,6 @@ def _subsort_table(definition: Definition) -> Dict[Sort, Set[Sort]]:
         res[supersort].add(subsort)
 
     return res
-
-
-def _symbol_table(definition: Definition) -> Dict[str, SymbolDecl]:
-    symbol_decls = (symbol_decl for module in definition for symbol_decl in module.symbol_decls)
-    return {symbol_decl.symbol.name: symbol_decl for symbol_decl in symbol_decls}
 
 
 # ------------
