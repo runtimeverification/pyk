@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - 'master'
+      - 'new-auto-updater'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
