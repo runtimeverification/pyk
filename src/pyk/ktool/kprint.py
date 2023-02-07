@@ -1,5 +1,6 @@
 import json
 import logging
+from contextlib import suppress
 from enum import Enum
 from functools import cached_property
 from pathlib import Path
@@ -30,13 +31,13 @@ from ..kast.outer import (
     KTerminal,
     read_kast_definition,
 )
-from ..konvert import KompiledKore, _ksort_to_kore, kast_to_kore, unmunge
+from ..konvert import KompiledKore, kast_to_kore, unmunge
 from ..kore.parser import KoreParser
 from ..kore.prelude import BYTES as KORE_BYTES
 from ..kore.prelude import STRING as KORE_STRING
 from ..kore.syntax import DV, And, App, Assoc, Bottom, Ceil, Equals, EVar, Exists, Implies, Not, Pattern, SortApp, Top
 from ..prelude.bytes import BYTES, bytesToken
-from ..prelude.k import DOTS, EMPTY_K, K
+from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 from ..prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
 from ..prelude.string import STRING, stringToken
@@ -339,25 +340,20 @@ class KPrint:
         return None
 
     def kast_to_kore(self, kast: KInner, sort: Optional[KSort] = None) -> Pattern:
-        if sort is None:
-            sort = K
+        with suppress(ValueError):
+            return kast_to_kore(self.definition, self.kompiled_kore, kast, sort)
 
-        kast = self.definition.sort_vars(kast, sort)
-        try:
-            kore = kast_to_kore(kast)
-        except ValueError:
-            _LOGGER.warning(f'Falling back to using `kast` for KAst -> Kore: {kast}')
-            kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
-            proc_res = _kast(
-                definition_dir=self.definition_dir,
-                input=KAstInput.JSON,
-                output=KAstOutput.KORE,
-                expression=json.dumps(kast_json),
-                sort=sort.name if sort is not None else None,
-                profile=self._profile,
-            )
-            return KoreParser(proc_res.stdout).pattern()
-        return self.kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
+        _LOGGER.warning(f'Falling back to using `kast` for KAst -> Kore: {kast}')
+        kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
+        proc_res = _kast(
+            definition_dir=self.definition_dir,
+            input=KAstInput.JSON,
+            output=KAstOutput.KORE,
+            expression=json.dumps(kast_json),
+            sort=sort.name if sort is not None else None,
+            profile=self._profile,
+        )
+        return KoreParser(proc_res.stdout).pattern()
 
     def _add_sort_injection(self, pat: Pattern, isort: KSort, osort: KSort) -> Pattern:
         if isort == osort:

@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union, final
 
 from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
+from pyk.kast.outer import KDefinition
 from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, SortVar, String, Symbol, WithSort
 from pyk.prelude.bytes import BYTES
+from pyk.prelude.k import K
 from pyk.prelude.string import STRING
 
 from .cli_utils import check_dir_path, check_file_path
@@ -223,7 +225,20 @@ ML_PATTERN_LABELS: Final = dict(
 )
 
 
-def kast_to_kore(kast: KInner) -> Pattern:
+def kast_to_kore(
+    kast_defn: KDefinition,
+    kompiled_kore: KompiledKore,
+    kast: KInner,
+    sort: Optional[KSort] = None,
+) -> Pattern:
+    if sort is None:
+        sort = K
+    kast = kast_defn.sort_vars(kast, sort)
+    kore = _kast_to_kore(kast)
+    return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
+
+
+def _kast_to_kore(kast: KInner) -> Pattern:
     if type(kast) is KToken:
         return _ktoken_to_kore(kast)
     elif type(kast) is KVariable:
@@ -281,7 +296,7 @@ def _ksequence_to_kore(kseq: KSequence) -> Pattern:
         unit = App('dotk')
         items = kseq.items
 
-    patterns = tuple(kast_to_kore(item) for item in items)
+    patterns = tuple(_kast_to_kore(item) for item in items)
     return reduce(lambda x, y: App('kseq', (), (y, x)), reversed(patterns), unit)
 
 
@@ -299,8 +314,8 @@ def _kapply_to_ml_quant(kapply: KApply) -> MLQuant:
     (_,) = sorts
 
     kvar, kast = kapply.args
-    var = kast_to_kore(kvar)
-    pattern = kast_to_kore(kast)
+    var = _kast_to_kore(kvar)
+    pattern = _kast_to_kore(kast)
     patterns = (var, pattern)
 
     return MLQuant.of(symbol, sorts, patterns)
@@ -310,7 +325,7 @@ def _kapply_to_pattern(kapply: KApply) -> Pattern:
     label = kapply.label
     symbol = _label_to_kore(label.name)
     sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
-    patterns = tuple(kast_to_kore(kast) for kast in kapply.args)
+    patterns = tuple(_kast_to_kore(kast) for kast in kapply.args)
 
     if label.name in ML_PATTERN_LABELS:
         return MLPattern.of(symbol, sorts, patterns)
