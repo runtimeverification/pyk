@@ -27,14 +27,9 @@ jobs:
           git push --delete origin "${version}" || true
           git tag "${version}" HEAD
           git push origin "${version}:${version}"
+          echo "release_version=${version}" >> "${GITHUB_ENV}"
       - name: 'Update dependents'
-        env:
-          JENKINS_DEVOPS_TOKEN: ${{ secrets.JENKINS_DEVOPS_TOKEN }}
-        run: |
-          version="v$(cat package/version)"
-          curl --fail 'https://ci.runtimeverification.com/jenkins/buildByToken/buildWithParameters' \
-              --data job=Devops/master                                                              \
-              --data token=${JENKINS_DEVOPS_TOKEN}                                                  \
-              --data UPDATE_DEPS=true                                                               \
-              --data UPDATE_DEPS_REPO=runtimeverification/pyk                                       \
-              --data UPDATE_DEPS_VERSION=${version}
+        uses: runtimeverification/devops/.github/workflows/update-deps.yml@master
+        with:
+          repo: runtimeverification/pyk
+          version: ${{ env.release_version }}
