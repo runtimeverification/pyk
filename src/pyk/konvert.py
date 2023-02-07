@@ -6,14 +6,14 @@ from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union
 
 from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
 from pyk.kast.outer import KDefinition
-from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, SortVar, String, Symbol, WithSort
+from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, SortVar, String, WithSort
 from pyk.prelude.bytes import BYTES
 from pyk.prelude.k import K
 from pyk.prelude.string import STRING
 
 from .cli_utils import check_dir_path, check_file_path
 from .kore.parser import KoreParser
-from .kore.syntax import Definition, Sort, SymbolDecl
+from .kore.syntax import Definition, Sort
 from .utils import FrozenDict
 
 
@@ -41,27 +41,8 @@ class KompiledKore:
     def definition(self) -> Definition:
         return KoreParser(self.path.read_text()).definition()
 
-    @cached_property
-    def _symbol_table(self) -> FrozenDict[str, SymbolDecl]:
-        S, T = (SortVar(name) for name in ('S', 'T'))  # noqa: N806
-        ml_symbol_table = {
-            r'\top': SymbolDecl(Symbol(r'\top', (S,)), (), S),
-            r'\bottom': SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
-            r'\not': SymbolDecl(Symbol(r'\not', (S,)), (S,), S),
-            r'\and': SymbolDecl(Symbol(r'\and', (S,)), (S, S), S),
-            r'\or': SymbolDecl(Symbol(r'\or', (S,)), (S, S), S),
-            r'\implies': SymbolDecl(Symbol(r'\implies', (S,)), (S, S), S),
-            r'\iff': SymbolDecl(Symbol(r'\iff', (S,)), (S, S), S),
-            r'\ceil': SymbolDecl(Symbol(r'\ceil', (S, T)), (S,), T),
-            r'\floor': SymbolDecl(Symbol(r'\floor', (S, T)), (S,), T),
-            r'\equals': SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
-            r'\in': SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
-        }
-        symbol_table = self.definition.symbol_table
-        return FrozenDict({**ml_symbol_table, **symbol_table})
-
     def _resolve_symbol(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> Tuple[Sort, Tuple[Sort, ...]]:
-        symbol_decl = self._symbol_table.get(symbol_id)
+        symbol_decl = self.definition.weak_symbol_table.get(symbol_id)
         if not symbol_decl:
             raise ValueError(f'Undeclared symbol: {symbol_id}')
 

@@ -2276,6 +2276,24 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
             (symbol_decl.symbol.name, symbol_decl) for module in self for symbol_decl in module.symbol_decls
         )
 
+    @cached_property
+    def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
+        S, T = (SortVar(name) for name in ('S', 'T'))  # noqa: N806
+        ml_symbol_table = {
+            r'\top': SymbolDecl(Symbol(r'\top', (S,)), (), S),
+            r'\bottom': SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
+            r'\not': SymbolDecl(Symbol(r'\not', (S,)), (S,), S),
+            r'\and': SymbolDecl(Symbol(r'\and', (S,)), (S, S), S),
+            r'\or': SymbolDecl(Symbol(r'\or', (S,)), (S, S), S),
+            r'\implies': SymbolDecl(Symbol(r'\implies', (S,)), (S, S), S),
+            r'\iff': SymbolDecl(Symbol(r'\iff', (S,)), (S, S), S),
+            r'\ceil': SymbolDecl(Symbol(r'\ceil', (S, T)), (S,), T),
+            r'\floor': SymbolDecl(Symbol(r'\floor', (S, T)), (S,), T),
+            r'\equals': SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
+            r'\in': SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
+        }
+        return FrozenDict({**ml_symbol_table, **self.symbol_table})
+
 
 def kore_term(dct: Mapping[str, Any], cls: Type[T] = Kore) -> T:  # type: ignore
     if dct['format'] != 'KORE':
