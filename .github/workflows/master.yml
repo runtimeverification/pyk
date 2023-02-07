@@ -11,8 +11,6 @@ jobs:
   tag-release:
     name: 'Tag Release and Bump Dependents'
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
@@ -21,9 +19,6 @@ jobs:
           # fetch-depth 0 means deep clone the repo
           fetch-depth: 0
       - name: 'Update Version'
-        id: version
-        env:
-          GITHUB_TOKEN: ${{ secrets.JENKINS_GITHUB_PAT }}
         run: |
           git config user.name devops
           git config user.email devops@runtimeverification.com
@@ -32,6 +27,11 @@ jobs:
           git push --delete origin "${version}" || true
           git tag "${version}" HEAD
           git push origin "${version}:${version}"
+      - name: 'Update dependents'
+        env:
+          GITHUB_TOKEN: ${{ secrets.JENKINS_GITHUB_PAT }}
+        run: |
+          version=v"$(cat package/version)"
           curl --fail                                                          \
             -X POST                                                            \
             -H "Accept: application/vnd.github+json"                           \
