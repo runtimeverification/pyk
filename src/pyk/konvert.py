@@ -6,7 +6,7 @@ from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union
 
 from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
 from pyk.kast.outer import KDefinition
-from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, SortVar, String, WithSort
+from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, String, WithSort
 from pyk.prelude.bytes import BYTES
 from pyk.prelude.k import K
 from pyk.prelude.string import STRING
@@ -40,31 +40,6 @@ class KompiledKore:
     @cached_property
     def definition(self) -> Definition:
         return KoreParser(self.path.read_text()).definition()
-
-    def _resolve_symbol(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> Tuple[Sort, Tuple[Sort, ...]]:
-        symbol_decl = self.definition.weak_symbol_table.get(symbol_id)
-        if not symbol_decl:
-            raise ValueError(f'Undeclared symbol: {symbol_id}')
-
-        symbol = symbol_decl.symbol
-        sorts = tuple(sorts)
-
-        nr_sort_vars = len(symbol.vars)
-        nr_sorts = len(sorts)
-        if nr_sort_vars != nr_sorts:
-            raise ValueError(f'Expected {nr_sort_vars} sort parameters, got {nr_sorts} for: {symbol_id}')
-
-        sort_table: Dict[Sort, Sort] = dict(zip(symbol.vars, sorts))
-
-        def resolve(sort: Sort) -> Sort:
-            if type(sort) is SortVar:
-                return sort_table.get(sort, sort)
-            return sort
-
-        sort = resolve(symbol_decl.sort)
-        param_sorts = tuple(resolve(sort) for sort in symbol_decl.param_sorts)
-
-        return sort, param_sorts
 
     @cached_property
     def _subsort_table(self) -> FrozenDict[Sort, FrozenSet[Sort]]:
@@ -118,7 +93,7 @@ class KompiledKore:
             return pattern.sort
 
         if type(pattern) is App:
-            sort, _ = self._resolve_symbol(pattern.symbol, pattern.sorts)
+            sort, _ = self.definition.resolve(pattern.symbol, pattern.sorts)
             return sort
 
         raise ValueError(f'Cannot infer sort: {pattern}')
@@ -132,10 +107,10 @@ class KompiledKore:
             sorts = (pattern.sort,)
 
         elif isinstance(pattern, MLPattern):
-            _, sorts = self._resolve_symbol(pattern.symbol(), pattern.sorts)
+            _, sorts = self.definition.resolve(pattern.symbol(), pattern.sorts)
 
         elif isinstance(pattern, App):
-            _, sorts = self._resolve_symbol(pattern.symbol, pattern.sorts)
+            _, sorts = self.definition.resolve(pattern.symbol, pattern.sorts)
 
         else:
             sorts = ()

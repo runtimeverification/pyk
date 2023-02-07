@@ -2294,6 +2294,31 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
         }
         return FrozenDict({**ml_symbol_table, **self.symbol_table})
 
+    def resolve(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> Tuple[Sort, Tuple[Sort, ...]]:
+        symbol_decl = self.weak_symbol_table.get(symbol_id)
+        if not symbol_decl:
+            raise ValueError(f'Undeclared symbol: {symbol_id}')
+
+        symbol = symbol_decl.symbol
+        sorts = tuple(sorts)
+
+        nr_sort_vars = len(symbol.vars)
+        nr_sorts = len(sorts)
+        if nr_sort_vars != nr_sorts:
+            raise ValueError(f'Expected {nr_sort_vars} sort parameters, got {nr_sorts} for: {symbol_id}')
+
+        sort_table: Dict[Sort, Sort] = dict(zip(symbol.vars, sorts))
+
+        def resolve_sort(sort: Sort) -> Sort:
+            if type(sort) is SortVar:
+                return sort_table.get(sort, sort)
+            return sort
+
+        sort = resolve_sort(symbol_decl.sort)
+        param_sorts = tuple(resolve_sort(sort) for sort in symbol_decl.param_sorts)
+
+        return sort, param_sorts
+
 
 def kore_term(dct: Mapping[str, Any], cls: Type[T] = Kore) -> T:  # type: ignore
     if dct['format'] != 'KORE':
