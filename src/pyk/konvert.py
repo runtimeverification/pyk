@@ -87,7 +87,15 @@ class KompiledKore:
 
     @cached_property
     def _subsort_table(self) -> FrozenDict[Sort, FrozenSet[Sort]]:
-        subsort_table = _subsort_table(self.definition)
+        axioms = (axiom for module in self.definition for axiom in module.axioms)
+        attrs = (attr for axiom in axioms for attr in axiom.attrs)
+        subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
+        subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
+
+        subsort_table: Dict[Sort, Set[Sort]] = defaultdict(set)
+        for subsort, supersort in subsort_attr_sorts:
+            subsort_table[supersort].add(subsort)
+
         return FrozenDict({supersort: frozenset(subsorts) for supersort, subsorts in subsort_table.items()})
 
     def is_subsort(self, sort1: Sort, sort2: Sort) -> bool:
@@ -172,19 +180,6 @@ class KompiledKore:
             return App('inj', (actual_sort, sort), (pattern,))
 
         raise ValueError(f'Sort {actual_sort.name} is not a subsort of {sort.name}')
-
-
-def _subsort_table(definition: Definition) -> Dict[Sort, Set[Sort]]:
-    axioms = (axiom for module in definition for axiom in module.axioms)
-    attrs = (attr for axiom in axioms for attr in axiom.attrs)
-    subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
-    subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
-
-    res: Dict[Sort, Set[Sort]] = defaultdict(set)
-    for subsort, supersort in subsort_attr_sorts:
-        res[supersort].add(subsort)
-
-    return res
 
 
 # ------------
