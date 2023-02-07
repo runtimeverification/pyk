@@ -250,6 +250,20 @@ KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
         KApply(KLabel('#Exists', [KSort('Foo')]), [KVariable('X'), KApply('foo', [KVariable('X')])]),
     ),
     (
+        'ml-exists-scope-conflict',
+        KSort('Foo'),
+        r"""
+        \and{SortFoo{}}(
+            VarX : SortFoo{},
+            \exists{SortFoo{}}(
+                VarX : SortBar{},
+                Lblfoo{}(VarX : SortBar{})
+            )
+        )
+        """,
+        KLabel('#And', 'Foo')(KVariable('X'), KLabel('#Exists', 'Foo')(KVariable('X'), KApply('foo', KVariable('X')))),
+    ),
+    (
         'ksequence-empty',
         KSort('K'),
         'dotk{}()',
