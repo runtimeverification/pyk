@@ -60,6 +60,15 @@ def kast_to_kore(
     return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
 
 
+def kast_to_kore_2(kompiled_kore: KompiledKore, kast: KInner, *, sort: Optional[Sort] = None) -> Pattern:
+    if sort is None:
+        sort = SortApp('SortK')
+    pattern = _kast_to_kore(kast)
+    pattern = kompiled_kore.strengthen_sorts(pattern, sort)
+    pattern = kompiled_kore.add_injections(pattern, sort)
+    return pattern
+
+
 def _kast_to_kore(kast: KInner) -> Pattern:
     _LOGGER.debug(f'_kast_to_kore: {kast}')
     if type(kast) is KToken:

@@ -6,7 +6,7 @@ from typing import Dict, FrozenSet, Iterable, Optional, Set, Union, final
 
 from ..cli_utils import check_dir_path, check_file_path
 from ..kore.parser import KoreParser
-from ..kore.syntax import Definition, Sort
+from ..kore.syntax import Definition, EVar, Exists, Forall, MLQuant, Sort
 from ..utils import FrozenDict
 from .syntax import App, Pattern, SortApp
 
@@ -111,3 +111,31 @@ class KompiledKore:
             return App('inj', (actual_sort, sort), (pattern,))
 
         raise ValueError(f'Sort {actual_sort.name} is not a subsort of {sort.name}: {pattern}')
+
+    def strengthen_sorts(self, pattern: Pattern, sort: Sort) -> Pattern:
+        scope: Dict[str, Set[Sort]] = defaultdict(set)
+
+        def collect(pattern: Pattern, sort: Sort) -> None:
+            if isinstance(pattern, EVar):
+                scope[pattern.name].add(sort)
+                scope[pattern.name].add(pattern.sort)
+                return
+
+            if isinstance(pattern, MLQuant):
+                scope[pattern.var.name].add(pattern.var.sort)
+
+            for subpattern, subsort in zip(pattern.patterns, self.definition.pattern_sorts(pattern)):
+                collect(subpattern, subsort)
+
+        collect(pattern, sort)
+        var_sorts = {name: self.meet_all_sorts(sorts) for name, sorts in scope.items()}
+
+        def rewrite(pattern: Pattern) -> Pattern:
+            if type(pattern) is EVar:
+                return pattern.let(sort=var_sorts[pattern.name])
+            if isinstance(pattern, MLQuant):
+                assert type(pattern) is Forall or type(pattern) is Exists
+                return pattern.let(var=pattern.var.let(sort=var_sorts[pattern.var.name]))
+            return pattern
+
+        return pattern.bottom_up(rewrite)

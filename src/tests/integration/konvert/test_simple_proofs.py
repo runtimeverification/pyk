@@ -4,7 +4,7 @@ from typing import Final
 import pytest
 
 from pyk.kast.inner import KApply, KInner, KLabel, KSequence, KSort, KToken, KVariable
-from pyk.konvert import kast_to_kore
+from pyk.konvert import _ksort_to_kore, kast_to_kore, kast_to_kore_2
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
 from pyk.ktool.kprint import KPrint
@@ -329,9 +329,11 @@ class TestKonvertSimpleProofs(KPrintTest):
 
         # When
         actual_kore = kast_to_kore(kprint.definition, kompiled_kore, kast, sort=sort)
+        actual_kore_2 = kast_to_kore_2(kompiled_kore, kast, sort=_ksort_to_kore(sort))
 
         # Then
         assert actual_kore == kore
+        assert actual_kore_2 == kore
 
     @pytest.mark.parametrize(
         'test_id,_sort,kore_text,kast',
