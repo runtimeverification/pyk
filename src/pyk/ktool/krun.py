@@ -10,7 +10,7 @@ from typing import Final, Iterable, List, Mapping, Optional, Union
 from ..cli_utils import BugReport, check_dir_path, check_file_path, run_process
 from ..cterm import CTerm
 from ..kast.inner import KInner, KLabel, KSort
-from ..kast.outer import KFlatModuleList
+from ..kast.outer import KFlatModule
 from ..konvert import unmunge
 from ..kore.parser import KoreParser
 from ..kore.syntax import DV, App, Pattern, SortApp, String
@@ -29,7 +29,7 @@ class KRun(KPrint):
         profile: bool = False,
         command: str = 'krun',
         bug_report: Optional[BugReport] = None,
-        extra_unparsing_modules: Optional[KFlatModuleList] = None,
+        extra_unparsing_modules: Iterable[KFlatModule] = (),
     ) -> None:
         super(KRun, self).__init__(
             definition_dir,

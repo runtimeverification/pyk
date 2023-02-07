@@ -5,7 +5,7 @@ from functools import cached_property
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Dict, Final, List, Optional
+from typing import Any, Callable, Dict, Final, Iterable, List, Optional
 
 from ..cli_utils import BugReport, check_dir_path, check_file_path, run_process
 from ..kast.inner import KApply, KAs, KAst, KAtt, KInner, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
@@ -16,7 +16,6 @@ from ..kast.outer import (
     KContext,
     KDefinition,
     KFlatModule,
-    KFlatModuleList,
     KImport,
     KNonTerminal,
     KProduction,
@@ -153,7 +152,7 @@ class KPrint:
     main_module: str
     backend: str
     _profile: bool
-    _extra_unparsing_modules: Optional[KFlatModuleList]
+    _extra_unparsing_modules: Iterable[KFlatModule]
 
     _temp_dir: Optional[TemporaryDirectory] = None
 
@@ -165,7 +164,7 @@ class KPrint:
         use_directory: Optional[Path] = None,
         profile: bool = False,
         bug_report: Optional[BugReport] = None,
-        extra_unparsing_modules: Optional[KFlatModuleList] = None,
+        extra_unparsing_modules: Iterable[KFlatModule] = (),
     ) -> None:
         self.definition_dir = Path(definition_dir)
         if use_directory:
@@ -571,7 +570,7 @@ def unparser_for_production(prod: KProduction) -> Callable[..., str]:
 
 
 def build_symbol_table(
-    definition: KDefinition, extra_modules: Optional[KFlatModuleList] = None, opinionated: bool = False
+    definition: KDefinition, extra_modules: Iterable[KFlatModule] = (), opinionated: bool = False
 ) -> SymbolTable:
     """Build the unparsing symbol table given a JSON encoded definition.
 
@@ -579,7 +578,7 @@ def build_symbol_table(
     -   Return: Python dictionary mapping klabels to automatically generated unparsers.
     """
     symbol_table = {}
-    all_modules = list(definition.modules) + ([] if extra_modules is None else list(extra_modules.modules))
+    all_modules = list(definition.modules) + ([] if extra_modules is None else list(extra_modules))
     for module in all_modules:
         for prod in module.syntax_productions:
             assert prod.klabel

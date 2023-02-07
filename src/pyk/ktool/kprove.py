@@ -134,7 +134,7 @@ class KProve(KPrint):
         profile: bool = False,
         command: str = 'kprove',
         bug_report: Optional[BugReport] = None,
-        extra_unparsing_modules: Optional[KFlatModuleList] = None,
+        extra_unparsing_modules: Iterable[KFlatModule] = (),
     ):
         super(KProve, self).__init__(
             definition_dir,
