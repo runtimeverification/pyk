@@ -2319,6 +2319,16 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
         return sort, param_sorts
 
+    def infer_sort(self, pattern: Pattern) -> Sort:
+        if isinstance(pattern, WithSort):
+            return pattern.sort
+
+        if type(pattern) is App:
+            sort, _ = self.resolve(pattern.symbol, pattern.sorts)
+            return sort
+
+        raise ValueError(f'Cannot infer sort: {pattern}')
+
 
 def kore_term(dct: Mapping[str, Any], cls: Type[T] = Kore) -> T:  # type: ignore
     if dct['format'] != 'KORE':

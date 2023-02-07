@@ -6,7 +6,7 @@ from typing import Dict, Final, FrozenSet, Iterable, Optional, Set, Tuple, Union
 
 from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable
 from pyk.kast.outer import KDefinition
-from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, String, WithSort
+from pyk.kore.syntax import DV, App, EVar, MLPattern, MLQuant, Pattern, SortApp, String
 from pyk.prelude.bytes import BYTES
 from pyk.prelude.k import K
 from pyk.prelude.string import STRING
@@ -88,16 +88,6 @@ class KompiledKore:
         unit: Sort = SortApp('SortK')
         return reduce(self.meet_sorts, sorts, unit)
 
-    def infer_sort(self, pattern: Pattern) -> Sort:
-        if isinstance(pattern, WithSort):
-            return pattern.sort
-
-        if type(pattern) is App:
-            sort, _ = self.definition.resolve(pattern.symbol, pattern.sorts)
-            return sort
-
-        raise ValueError(f'Cannot infer sort: {pattern}')
-
     def pattern_sorts(self, pattern: Pattern) -> Tuple[Sort, ...]:
         sorts: Tuple[Sort, ...]
         if isinstance(pattern, DV):
@@ -127,7 +117,7 @@ class KompiledKore:
         return self._inject(pattern, sort)
 
     def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
-        actual_sort = self.infer_sort(pattern)
+        actual_sort = self.definition.infer_sort(pattern)
 
         if actual_sort == sort:
             return pattern
