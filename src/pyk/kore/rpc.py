@@ -177,6 +177,7 @@ class StopReason(str, Enum):
     CUT_POINT_RULE = 'cut-point-rule'
     TERMINAL_RULE = 'terminal-rule'
     ABORTED = 'aborted'
+    TIMEOUT = 'timeout'
 
 
 @final
@@ -347,6 +348,25 @@ class AbortedResult(ExecuteResult):
     def from_dict(cls: Type['AbortedResult'], dct: Mapping[str, Any]) -> 'AbortedResult':
         cls._check_reason(dct)
         return AbortedResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
+        )
+
+
+@final
+@dataclass(frozen=True)
+class TimeoutResult(ExecuteResult):
+    reason = StopReason.TIMEOUT
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+
+    @classmethod
+    def from_dict(cls: Type['TimeoutResult'], dct: Mapping[str, Any]) -> 'TimeoutResult':
+        cls._check_reason(dct)
+        return TimeoutResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
         )
