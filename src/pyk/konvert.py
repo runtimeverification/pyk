@@ -129,13 +129,10 @@ def _kapply_to_ml_quant(kapply: KApply) -> MLQuant:
     label = kapply.label
     symbol = ML_QUANT_LABELS[label.name]
     sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
-    (_,) = sorts
-
     kvar, kast = kapply.args
     var = _kast_to_kore(kvar)
     pattern = _kast_to_kore(kast)
     patterns = (var, pattern)
-
     return MLQuant.of(symbol, sorts, patterns)
 
 
