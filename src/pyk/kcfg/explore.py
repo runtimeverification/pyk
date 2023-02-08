@@ -109,6 +109,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth = er.depth
         next_state = CTerm(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None and len(er.next_states) > 1 else []
+        # TODO: should not have to prune bottom branches, the backend should do this for us.
         next_states = []
         for ns in _next_states:
             _ns = self.cterm_simplify(CTerm(self.kprint.kore_to_kast(ns.kore)))
