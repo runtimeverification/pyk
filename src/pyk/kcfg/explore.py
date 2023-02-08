@@ -7,7 +7,7 @@ from pyk.cli_utils import BugReport
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KInner, KLabel, KVariable, Subst
 from pyk.kast.manip import flatten_label, free_vars
-from pyk.kore.rpc import KoreClient, KoreServer
+from pyk.kore.rpc import KoreClient, KoreServer, StopReason
 from pyk.ktool.kprint import KPrint
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
@@ -51,9 +51,20 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             self._booster_server = None
             self._booster_client = None
         else:
-            assert(booster_port != 0)
-            #self._booster_server = die "start the server"
-            #self._booster_client = die "initialise the client"
+            assert booster_port != 0
+            self._booster_port = booster_port
+            self._booster_server = KoreServer(
+                self.kprint.definition_dir,
+                self.kprint.main_module,
+                self._booster_port,
+                bug_report=self._bug_report,
+                command=booster_rpc_command,
+            )
+            self._booster_client = KoreClient(
+                'localhost',
+                self._booster_port,
+                bug_report=self._bug_report,
+            )
 
     def __enter__(self) -> 'KCFGExplore':
         return self
@@ -102,6 +113,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if self._kore_client is not None:
             self._kore_client.close()
             self._kore_client = None
+        if self._booster_server is not None:
+            self._booster_server.close()
+            self._booster_server = None
+        if self._booster_client is not None:
+            self._booster_client.close()
+            self._booster_client = None
 
     def cterm_execute(
         self,
@@ -122,14 +139,21 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if self._booster_client is None:
             # proceed normally if booster not configured
             _, kore_client = self._kore_rpc
-            er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+            er = kore_client.execute(
+                kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+            )
         else:
-            booster_er = self._booster_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+            booster_er = self._booster_client.execute(
+                kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+            )
             if booster_er.depth > 0 or booster_er.reason != StopReason.BRANCHING:
                 er = booster_er
             else:
                 # if no progress was made, use kprove for a single step
-                er = self._kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+                _, kore_client = self._kore_rpc
+                er = kore_client.execute(
+                    kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+                )
 
         depth = er.depth
         next_state = CTerm(self.kprint.kore_to_kast(er.state.kore))
