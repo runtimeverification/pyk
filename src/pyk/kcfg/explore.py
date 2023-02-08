@@ -289,14 +289,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 curr_node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
 
-            # Nonsense case.
+            # only possible when reason == cut-point-rule
             if len(next_cterms) == 1:
                 raise ValueError(f'Found a single successor cterm {cfgid}: {(depth, cterm, next_cterms)}')
 
+            # only possible when reason == stuck (or depth-bound and max-depth 0)
             if len(next_cterms) == 0 and depth == 0:
                 _LOGGER.info(f'Found stuck node {cfgid}: {shorten_hashes(curr_node.id)}')
                 continue
 
+            # possible reasons: depth-bound, branching, terminal-rule
             if depth > 0:
                 next_node = cfg.get_or_create_node(cterm)
                 cfg.create_edge(curr_node.id, next_node.id, mlTop(), depth)
@@ -315,6 +317,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     continue
 
             else:
+                # if we are here, we know that:
+                # - depth == 0 (in else-branch)
+                # - len(next_cterms) >= 2 (other cases above catch length 0 or 1)
+                # Therefore, necessarily reason == branching
                 _LOGGER.warning(f'Falling back to manual branch extraction {cfgid}: {shorten_hashes(curr_node.id)}')
                 branch_constraints = [
                     mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms
