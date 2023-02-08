@@ -109,7 +109,15 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth = er.depth
         next_state = CTerm(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None and len(er.next_states) > 1 else []
-        next_states = [CTerm(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
+        next_states = []
+        for ns in _next_states:
+            _ns = self.cterm_simplify(CTerm(self.kprint.kore_to_kast(ns.kore)))
+            if is_bottom(_ns):
+                _LOGGER.warning(f'Found bottom branch: {ns}')
+            else:
+                next_states.append(CTerm(_ns))
+        if len(next_states) == 1 and len(next_states) < len(_next_states):
+            return depth + 1, next_states[0], []
         return depth, next_state, next_states
 
     def cterm_simplify(self, cterm: CTerm) -> KInner:
