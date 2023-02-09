@@ -42,7 +42,6 @@ pyk = "pyk.__main__:main"
 kbuild = "pyk.kbuild.__main__:main"
 krepl = "pyk.krepl.__main__:main"
 krepl-server = "pyk.krepl_web.server.__main__:main"
-"kit.py" = "pyk.ktool.kit:main"
 
 [tool.isort]
 profile = "black"
