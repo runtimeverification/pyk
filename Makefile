@@ -76,16 +76,3 @@ black: poetry-install
 
 check-black: poetry-install
 	$(POETRY_RUN) black --check src
-
-
-# GraphQL schema
-
-SCHEMA_FILE := src/pyk/krepl_web/docs/schema.graphql
-GEN_SCHEMA := $(POETRY_RUN) python3 -c 'from pyk.krepl_web.server.schema import SCHEMA ; print(SCHEMA)'
-
-schema: poetry-install
-	$(GEN_SCHEMA) > $(SCHEMA_FILE)
-.PHONY: schema
-
-check-schema: poetry-install
-	echo "$$($(GEN_SCHEMA))" | diff $(SCHEMA_FILE) -
