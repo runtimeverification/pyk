@@ -1,7 +1,7 @@
-.PHONY: default all clean build install          \
-        poetry-install                           \
-        test test-unit test-integration test-pyk \
-        format isort autoflake black             \
+.PHONY: default all clean build install \
+        poetry-install                  \
+        test test-unit test-integration \
+        format isort autoflake black    \
         check check-isort check-autoflake check-black check-flake8 check-mypy
 
 default: check test-unit
@@ -11,7 +11,6 @@ all: check test
 clean:
 	rm -rf dist .mypy_cache
 	find -type d -name __pycache__ -prune -exec rm -rf {} \;
-	$(MAKE) -C pyk-tests clean
 
 build:
 	poetry build
@@ -29,16 +28,13 @@ POETRY_RUN := poetry run
 
 TEST_ARGS :=
 
-test: test-unit test-integration test-pyk
+test: test-unit test-integration
 
 test-unit: poetry-install
 	$(POETRY_RUN) pytest src/tests/unit --maxfail=1 --verbose $(TEST_ARGS)
 
 test-integration: poetry-install
 	$(POETRY_RUN) pytest src/tests/integration --numprocesses=4 --durations=0 --maxfail=1 --verbose $(TEST_ARGS)
-
-test-pyk: poetry-install
-	$(POETRY_RUN) $(MAKE) -C pyk-tests
 
 
 # Checks and formatting
