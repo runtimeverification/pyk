@@ -1,9 +1,3 @@
-K_ROOT := $(abspath ..)
-K_BIN  := $(K_ROOT)/k-distribution/target/release/k/bin
-
-export PATH := $(K_BIN):$(PATH)
-
-
 .PHONY: default all clean build install          \
         poetry-install                           \
         test test-unit test-integration test-pyk \
@@ -34,7 +28,6 @@ POETRY_RUN := poetry run
 # Tests
 
 TEST_ARGS :=
-CHECK = git --no-pager diff --no-index -R
 
 test: test-unit test-integration test-pyk
 
