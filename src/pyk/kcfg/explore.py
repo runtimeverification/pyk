@@ -59,6 +59,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 self._booster_port,
                 bug_report=self._bug_report,
                 command=booster_rpc_command,
+                logging=Path('hs-boost.log'),
             )
             self._booster_client = KoreClient(
                 'localhost',
@@ -143,13 +144,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
         else:
+            _LOGGER.info(f'Trying booster execution')
             booster_er = self._booster_client.execute(
                 kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
+            _LOGGER.info(f'{booster_er.reason} after {booster_er.depth} steps')
             if booster_er.depth > 0 or booster_er.reason != StopReason.BRANCHING:
                 er = booster_er
             else:
                 # if no progress was made, use kprove for a single step
+                _LOGGER.info(f'No progress, re-trying with kprove')
                 _, kore_client = self._kore_rpc
                 er = kore_client.execute(
                     kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
