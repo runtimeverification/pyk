@@ -129,19 +129,23 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         terminal_rules: Optional[Iterable[str]] = None,
         assume_defined: bool = True,
     ) -> Tuple[int, CTerm, List[CTerm]]:
-        if assume_defined:
-            cterm = cterm.add_constraint(
-                KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.kast])
-            )
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
+        if assume_defined:
+            cterm_ceil = cterm.add_constraint(
+                KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.kast])
+            )
+            kore_ceil = self.kprint.kast_to_kore(cterm_ceil.kast, GENERATED_TOP_CELL) if assume_defined else kore
+        else:
+            kore_ceil = kore
 
+        _LOGGER.debug(f'Executing: {cterm}')
         # use booster first if configured
         if self._booster_client is None:
             # proceed normally if booster not configured
             _, kore_client = self._kore_rpc
             er = kore_client.execute(
-                kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+                kore_ceil, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
         else:
             _LOGGER.info(f'Trying booster execution')
@@ -149,14 +153,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
             _LOGGER.info(f'{booster_er.reason} after {booster_er.depth} steps')
-            if booster_er.depth > 0 or booster_er.reason != StopReason.BRANCHING:
+            if booster_er.depth > 0 or booster_er.reason == StopReason.BRANCHING:
                 er = booster_er
             else:
                 # if no progress was made, use kprove for a single step
                 _LOGGER.info(f'No progress, re-trying with kprove')
                 _, kore_client = self._kore_rpc
                 er = kore_client.execute(
-                    kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+                    kore_ceil, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
                 )
 
         depth = er.depth
