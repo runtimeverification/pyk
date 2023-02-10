@@ -160,7 +160,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _LOGGER.info(f'No progress, re-trying with kprove')
                 _, kore_client = self._kore_rpc
                 er = kore_client.execute(
-                    kore_ceil, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+                    kore_ceil, max_depth=1, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
                 )
 
         depth = er.depth
