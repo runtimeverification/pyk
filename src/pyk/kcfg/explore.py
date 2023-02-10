@@ -112,6 +112,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         # TODO: should not have to prune bottom branches, the backend should do this for us.
         next_states = []
         for ns in _next_states:
+            _LOGGER.info(f'Checking for bottom branch: {ns}')
             _ns = self.cterm_simplify(CTerm(self.kprint.kore_to_kast(ns.kore)))
             if is_bottom(_ns):
                 _LOGGER.warning(f'Found bottom branch: {ns}')
