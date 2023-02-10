@@ -47,14 +47,15 @@ class KompiledKore:
             direct_subsorts[supersort].add(subsort)
 
         supersorts = direct_subsorts.keys()
-        sorts = set(direct_subsorts).union(*direct_subsorts.values())
 
         subsort_table = dict(direct_subsorts)
         for sort_k in supersorts:
-            for sort_i in sorts:
-                for sort_j in supersorts:
-                    if sort_i in subsort_table[sort_k] and sort_k in subsort_table[sort_j]:
-                        subsort_table[sort_j].add(sort_i)
+            for sort_j in supersorts:
+                if sort_k not in subsort_table[sort_j]:
+                    continue
+
+                for sort_i in subsort_table[sort_k]:
+                    subsort_table[sort_j].add(sort_i)
 
         return FrozenDict((supersort, frozenset(subsorts)) for supersort, subsorts in subsort_table.items())
 
