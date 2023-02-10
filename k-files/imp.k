@@ -43,7 +43,16 @@ module IMP
                   <state color="red"> .Map </state>
                 </T>
 
-  rule <k> X:Id => STATE[X] ... </k> <state> STATE </state> requires X in_keys(STATE)
+  // rule <k> X:Id => I ...</k> <state>... X |-> I ...</state>
+  rule <k> X:Id => #lookup(X, M) ...</k> <state> M</state>
+
+  syntax KItem ::= #lookup(Id, Map) [function, total]
+  syntax KItem ::= Error(Id, Map)
+
+  rule #lookup(X, M) => M[X]
+    requires X in_keys(M)
+  rule #lookup(X, M) => Error(X, M)
+    [owise]
 
   rule <k> I1 / I2 => I1 /Int I2 ... </k>  requires I2 =/=Int 0
   rule <k> I1 + I2 => I1 +Int I2 ... </k>
