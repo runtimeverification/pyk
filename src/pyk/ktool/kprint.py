@@ -220,7 +220,7 @@ class KPrint:
     def kore_to_kast(self, kore: Pattern) -> KInner:
         _kast_out = self._kore_to_kast(kore)
         if _kast_out is not None:
-            return _kast_out
+            return self.definition.remove_cell_map_items(_kast_out)
         _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
         proc_res = _kast(
             definition_dir=self.definition_dir,
