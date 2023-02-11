@@ -7,7 +7,7 @@ from pyk.kast.inner import KApply, KInner, KSort, KVariable
 from pyk.konvert import kast_to_kore
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.prelude import int_dv
-from pyk.kore.syntax import App, EVar, LeftAssoc, Pattern, SortApp
+from pyk.kore.syntax import DV, App, EVar, LeftAssoc, Pattern, SortApp, String
 from pyk.ktool import KPrint
 from pyk.prelude.kint import INT, intToken
 
@@ -19,6 +19,62 @@ BIDIRECTIONAL_TEST_DATA: Final = (
         INT,
         int_dv(3),
         intToken(3),
+    ),
+    (
+        'account-cell-map',
+        KSort('AccountsCell'),
+        App(
+            "Lbl'-LT-'accounts'-GT-'",
+            [],
+            [
+                App(
+                    "Lbl'Unds'AccountCellMap'Unds'",
+                    [],
+                    [
+                        App(
+                            'AccountCellMapItem',
+                            [],
+                            [
+                                App(
+                                    "Lbl'-LT-'id'-GT-'",
+                                    [],
+                                    [DV(SortApp('SortInt'), String('3'))],
+                                ),
+                                App(
+                                    "Lbl'-LT-'account'-GT-'",
+                                    [],
+                                    [
+                                        App(
+                                            "Lbl'-LT-'id'-GT-'",
+                                            [],
+                                            [DV(SortApp('SortInt'), String('3'))],
+                                        ),
+                                        App(
+                                            "Lbl'-LT-'balance'-GT-'",
+                                            [],
+                                            [DV(SortApp('SortInt'), String('0'))],
+                                        ),
+                                    ],
+                                ),
+                            ],
+                        ),
+                        EVar("Var'Unds'DotVar2", SortApp('SortAccountCellMap')),
+                    ],
+                ),
+            ],
+        ),
+        KApply(
+            '<accounts>',
+            [
+                KApply(
+                    '_AccountCellMap_',
+                    [
+                        KApply('<account>', [KApply('<id>', [intToken(3)]), KApply('<balance>', [intToken(0)])]),
+                        KVariable('_DotVar2', sort=KSort('AccountCellMap')),
+                    ],
+                )
+            ],
+        ),
     ),
 )
 
