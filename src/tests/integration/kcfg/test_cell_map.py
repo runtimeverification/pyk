@@ -31,7 +31,7 @@ EXECUTE_TEST_DATA: Final[Iterable[Tuple[str, int, State, int, State, Iterable[St
 
 
 APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[int], Iterable[str]]] = (
-    ('cell-map-no-branch', 'k-files/cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 1, 1, []),
+    ('cell-map-no-branch', 'k-files/cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 2, 1, []),
 )
 
 
