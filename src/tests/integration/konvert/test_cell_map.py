@@ -32,7 +32,7 @@ BIDIRECTIONAL_TEST_DATA: Final = (
                     [],
                     [
                         App(
-                            'AccountCellMapItem',
+                            'LblAccountCellMapItem',
                             [],
                             [
                                 App(
