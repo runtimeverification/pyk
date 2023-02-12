@@ -16,11 +16,10 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
-    Union,
     final,
 )
 
-from ..utils import check_type
+from ..utils import FrozenDict, check_type
 from .lexer import KoreLexer, KoreStringLexer
 
 
@@ -1720,62 +1719,14 @@ ML_SYMBOLS: Final = {
 }
 
 
-@final
-@dataclass(frozen=True)
-class Attr(Kore):
-    symbol: str
-    sorts: Tuple[Sort, ...]
-    params: Tuple[Union[String, 'Attr'], ...]
-
-    def __init__(self, symbol: str, sorts: Iterable[Sort] = (), params: Iterable[Union[String, 'Attr']] = ()):
-        check_symbol_id(symbol)
-        object.__setattr__(self, 'symbol', symbol)
-        object.__setattr__(self, 'sorts', tuple(sorts))
-        object.__setattr__(self, 'params', tuple(params))
-
-    def let(
-        self,
-        *,
-        symbol: Optional[str] = None,
-        sorts: Iterable[Sort] = (),
-        params: Optional[Iterable[Union[String, 'Attr']]] = None,
-    ) -> 'Attr':
-        symbol = symbol if symbol is not None else self.symbol
-        sorts = sorts if sorts is not None else self.sorts
-        params = params if params is not None else self.params
-        return Attr(symbol=symbol, sorts=sorts, params=params)
-
-    @classmethod
-    def _tag(cls) -> str:
-        return 'Attr'
-
-    @classmethod
-    def from_dict(cls: Type['Attr'], dct: Mapping[str, Any]) -> 'Attr':
-        return unsupported()
-
-    @property
-    def dict(self) -> Dict[str, Any]:
-        return unsupported()
-
-    @property
-    def text(self) -> str:
-        return (
-            self.symbol
-            + ' '
-            + _braced(sort.text for sort in self.sorts)
-            + ' '
-            + _parend(param.text for param in self.params)
-        )
-
-
 class WithAttrs(ABC):
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
 
     @abstractmethod
-    def let_attrs(self: WA, attrs: Iterable[Attr]) -> WA:
+    def let_attrs(self: WA, attrs: Iterable[App]) -> WA:
         ...
 
-    def map_attrs(self: WA, f: Callable[[Tuple[Attr, ...]], Iterable[Attr]]) -> WA:
+    def map_attrs(self: WA, f: Callable[[Tuple[App, ...]], Iterable[App]]) -> WA:
         return self.let_attrs(f(self.attrs))
 
 
@@ -1789,19 +1740,19 @@ class Sentence(Kore, WithAttrs):
 @dataclass(frozen=True)
 class Import(Sentence):
     module_name: str
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
 
-    def __init__(self, module_name: str, attrs: Iterable[Attr] = ()):
+    def __init__(self, module_name: str, attrs: Iterable[App] = ()):
         check_id(module_name)
         object.__setattr__(self, 'module_name', module_name)
         object.__setattr__(self, 'attrs', tuple(attrs))
 
-    def let(self, *, module_name: Optional[str] = None, attrs: Optional[Iterable[Attr]] = None) -> 'Import':
+    def let(self, *, module_name: Optional[str] = None, attrs: Optional[Iterable[App]] = None) -> 'Import':
         module_name = module_name if module_name is not None else self.module_name
         attrs = attrs if attrs is not None else self.attrs
         return Import(module_name=module_name, attrs=attrs)
 
-    def let_attrs(self: 'Import', attrs: Iterable[Attr]) -> 'Import':
+    def let_attrs(self: 'Import', attrs: Iterable[App]) -> 'Import':
         return self.let(attrs=attrs)
 
     @classmethod
@@ -1832,10 +1783,10 @@ class Import(Sentence):
 class SortDecl(Sentence):
     name: str
     vars: Tuple[SortVar, ...]
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
     hooked: bool
 
-    def __init__(self, name: str, vars: Iterable[SortVar], attrs: Iterable[Attr] = (), *, hooked: bool = False):
+    def __init__(self, name: str, vars: Iterable[SortVar], attrs: Iterable[App] = (), *, hooked: bool = False):
         check_id(name)
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'vars', tuple(vars))
@@ -1847,7 +1798,7 @@ class SortDecl(Sentence):
         *,
         name: Optional[str] = None,
         vars: Optional[Iterable[SortVar]] = None,
-        attrs: Optional[Iterable[Attr]] = None,
+        attrs: Optional[Iterable[App]] = None,
         hooked: Optional[bool] = None,
     ) -> 'SortDecl':
         name = name if name is not None else self.name
@@ -1856,7 +1807,7 @@ class SortDecl(Sentence):
         hooked = hooked if hooked is not None else self.hooked
         return SortDecl(name=name, vars=vars, attrs=attrs, hooked=hooked)
 
-    def let_attrs(self: 'SortDecl', attrs: Iterable[Attr]) -> 'SortDecl':
+    def let_attrs(self: 'SortDecl', attrs: Iterable[App]) -> 'SortDecl':
         return self.let(attrs=attrs)
 
     @classmethod
@@ -1922,7 +1873,7 @@ class SymbolDecl(Sentence):
     symbol: Symbol
     param_sorts: Tuple[Sort, ...]
     sort: Sort
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
     hooked: bool
 
     def __init__(
@@ -1930,7 +1881,7 @@ class SymbolDecl(Sentence):
         symbol: Symbol,
         param_sorts: Iterable[Sort],
         sort: Sort,
-        attrs: Iterable[Attr] = (),
+        attrs: Iterable[App] = (),
         *,
         hooked: bool = False,
     ):
@@ -1946,7 +1897,7 @@ class SymbolDecl(Sentence):
         symbol: Optional[Symbol] = None,
         param_sorts: Optional[Iterable[Sort]] = None,
         sort: Optional[Sort] = None,
-        attrs: Optional[Iterable[Attr]] = None,
+        attrs: Optional[Iterable[App]] = None,
         hooked: Optional[bool] = None,
     ) -> 'SymbolDecl':
         symbol = symbol if symbol is not None else self.symbol
@@ -1956,7 +1907,7 @@ class SymbolDecl(Sentence):
         hooked = hooked if hooked is not None else self.hooked
         return SymbolDecl(symbol=symbol, param_sorts=param_sorts, sort=sort, attrs=attrs, hooked=hooked)
 
-    def let_attrs(self: 'SymbolDecl', attrs: Iterable[Attr]) -> 'SymbolDecl':
+    def let_attrs(self: 'SymbolDecl', attrs: Iterable[App]) -> 'SymbolDecl':
         return self.let(attrs=attrs)
 
     @classmethod
@@ -1993,7 +1944,7 @@ class AliasDecl(Sentence):
     sort: Sort
     left: App
     right: Pattern
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
 
     def __init__(
         self,
@@ -2002,7 +1953,7 @@ class AliasDecl(Sentence):
         sort: Sort,
         left: App,
         right: Pattern,
-        attrs: Iterable[Attr] = (),
+        attrs: Iterable[App] = (),
     ):
         object.__setattr__(self, 'alias', alias)
         object.__setattr__(self, 'param_sorts', tuple(param_sorts))
@@ -2019,7 +1970,7 @@ class AliasDecl(Sentence):
         sort: Optional[Sort] = None,
         left: Optional[App] = None,
         right: Optional[Pattern] = None,
-        attrs: Optional[Iterable[Attr]] = None,
+        attrs: Optional[Iterable[App]] = None,
     ) -> 'AliasDecl':
         alias = alias if alias is not None else self.alias
         param_sorts = param_sorts if param_sorts is not None else self.param_sorts
@@ -2029,7 +1980,7 @@ class AliasDecl(Sentence):
         attrs = attrs if attrs is not None else self.attrs
         return AliasDecl(alias=alias, param_sorts=param_sorts, sort=sort, left=left, right=right, attrs=attrs)
 
-    def let_attrs(self: 'AliasDecl', attrs: Iterable[Attr]) -> 'AliasDecl':
+    def let_attrs(self: 'AliasDecl', attrs: Iterable[App]) -> 'AliasDecl':
         return self.let(attrs=attrs)
 
     @classmethod
@@ -2091,9 +2042,9 @@ class Axiom(AxiomLike):
 
     vars: Tuple[SortVar, ...]
     pattern: Pattern
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
 
-    def __init__(self, vars: Iterable[SortVar], pattern: Pattern, attrs: Iterable[Attr] = ()):
+    def __init__(self, vars: Iterable[SortVar], pattern: Pattern, attrs: Iterable[App] = ()):
         object.__setattr__(self, 'vars', tuple(vars))
         object.__setattr__(self, 'pattern', pattern)
         object.__setattr__(self, 'attrs', tuple(attrs))
@@ -2103,14 +2054,14 @@ class Axiom(AxiomLike):
         *,
         vars: Optional[Iterable[SortVar]] = None,
         pattern: Optional[Pattern] = None,
-        attrs: Optional[Iterable[Attr]] = None,
+        attrs: Optional[Iterable[App]] = None,
     ) -> 'Axiom':
         vars = vars if vars is not None else self.vars
         pattern = pattern if pattern is not None else self.pattern
         attrs = attrs if attrs is not None else self.attrs
         return Axiom(vars=vars, pattern=pattern, attrs=attrs)
 
-    def let_attrs(self: 'Axiom', attrs: Iterable[Attr]) -> 'Axiom':
+    def let_attrs(self: 'Axiom', attrs: Iterable[App]) -> 'Axiom':
         return self.let(attrs=attrs)
 
     @classmethod
@@ -2133,9 +2084,9 @@ class Claim(AxiomLike):
 
     vars: Tuple[SortVar, ...]
     pattern: Pattern
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
 
-    def __init__(self, vars: Iterable[SortVar], pattern: Pattern, attrs: Iterable[Attr] = ()):
+    def __init__(self, vars: Iterable[SortVar], pattern: Pattern, attrs: Iterable[App] = ()):
         object.__setattr__(self, 'vars', tuple(vars))
         object.__setattr__(self, 'pattern', pattern)
         object.__setattr__(self, 'attrs', tuple(attrs))
@@ -2145,14 +2096,14 @@ class Claim(AxiomLike):
         *,
         vars: Optional[Iterable[SortVar]] = None,
         pattern: Optional[Pattern] = None,
-        attrs: Optional[Iterable[Attr]] = None,
+        attrs: Optional[Iterable[App]] = None,
     ) -> 'Claim':
         vars = vars if vars is not None else self.vars
         pattern = pattern if pattern is not None else self.pattern
         attrs = attrs if attrs is not None else self.attrs
         return Claim(vars=vars, pattern=pattern, attrs=attrs)
 
-    def let_attrs(self: 'Claim', attrs: Iterable[Attr]) -> 'Claim':
+    def let_attrs(self: 'Claim', attrs: Iterable[App]) -> 'Claim':
         return self.let(attrs=attrs)
 
     @classmethod
@@ -2173,9 +2124,9 @@ class Claim(AxiomLike):
 class Module(Kore, WithAttrs, Iterable[Sentence]):
     name: str
     sentences: Tuple[Sentence, ...]
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
 
-    def __init__(self, name: str, sentences: Iterable[Sentence] = (), attrs: Iterable[Attr] = ()):
+    def __init__(self, name: str, sentences: Iterable[Sentence] = (), attrs: Iterable[App] = ()):
         check_id(name)
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'sentences', tuple(sentences))
@@ -2189,14 +2140,14 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
         *,
         name: Optional[str] = None,
         sentences: Optional[Iterable[Sentence]] = None,
-        attrs: Optional[Iterable[Attr]] = None,
+        attrs: Optional[Iterable[App]] = None,
     ) -> 'Module':
         name = name if name is not None else self.name
         sentences = sentences if sentences is not None else self.sentences
         attrs = attrs if attrs is not None else self.attrs
         return Module(name=name, sentences=sentences, attrs=attrs)
 
-    def let_attrs(self: 'Module', attrs: Iterable[Attr]) -> 'Module':
+    def let_attrs(self: 'Module', attrs: Iterable[App]) -> 'Module':
         return self.let(attrs=attrs)
 
     @classmethod
@@ -2232,23 +2183,21 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
 @dataclass(frozen=True)
 class Definition(Kore, WithAttrs, Iterable[Module]):
     modules: Tuple[Module, ...]
-    attrs: Tuple[Attr, ...]
+    attrs: Tuple[App, ...]
 
-    def __init__(self, modules: Iterable[Module] = (), attrs: Iterable[Attr] = ()):
+    def __init__(self, modules: Iterable[Module] = (), attrs: Iterable[App] = ()):
         object.__setattr__(self, 'modules', tuple(modules))
         object.__setattr__(self, 'attrs', tuple(attrs))
 
     def __iter__(self) -> Iterator[Module]:
         return iter(self.modules)
 
-    def let(
-        self, *, modules: Optional[Iterable[Module]] = None, attrs: Optional[Iterable[Attr]] = None
-    ) -> 'Definition':
+    def let(self, *, modules: Optional[Iterable[Module]] = None, attrs: Optional[Iterable[App]] = None) -> 'Definition':
         modules = modules if modules is not None else self.modules
         attrs = attrs if attrs is not None else self.attrs
         return Definition(modules=modules, attrs=attrs)
 
-    def let_attrs(self: 'Definition', attrs: Iterable[Attr]) -> 'Definition':
+    def let_attrs(self: 'Definition', attrs: Iterable[App]) -> 'Definition':
         return self.let(attrs=attrs)
 
     @classmethod
@@ -2271,6 +2220,85 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
             ]
             + [module.text for module in self.modules]
         )
+
+    @cached_property
+    def symbol_table(self) -> FrozenDict[str, SymbolDecl]:
+        return FrozenDict(
+            (symbol_decl.symbol.name, symbol_decl) for module in self for symbol_decl in module.symbol_decls
+        )
+
+    @cached_property
+    def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
+        S, T = (SortVar(name) for name in ('S', 'T'))  # noqa: N806
+        ml_symbol_table = {
+            r'\top': SymbolDecl(Symbol(r'\top', (S,)), (), S),
+            r'\bottom': SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
+            r'\not': SymbolDecl(Symbol(r'\not', (S,)), (S,), S),
+            r'\and': SymbolDecl(Symbol(r'\and', (S,)), (S, S), S),
+            r'\or': SymbolDecl(Symbol(r'\or', (S,)), (S, S), S),
+            r'\implies': SymbolDecl(Symbol(r'\implies', (S,)), (S, S), S),
+            r'\iff': SymbolDecl(Symbol(r'\iff', (S,)), (S, S), S),
+            r'\ceil': SymbolDecl(Symbol(r'\ceil', (S, T)), (S,), T),
+            r'\floor': SymbolDecl(Symbol(r'\floor', (S, T)), (S,), T),
+            r'\equals': SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
+            r'\in': SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
+        }
+        return FrozenDict({**ml_symbol_table, **self.symbol_table})
+
+    def resolve(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> Tuple[Sort, Tuple[Sort, ...]]:
+        symbol_decl = self.weak_symbol_table.get(symbol_id)
+        if not symbol_decl:
+            raise ValueError(f'Undeclared symbol: {symbol_id}')
+
+        symbol = symbol_decl.symbol
+        sorts = tuple(sorts)
+
+        nr_sort_vars = len(symbol.vars)
+        nr_sorts = len(sorts)
+        if nr_sort_vars != nr_sorts:
+            raise ValueError(f'Expected {nr_sort_vars} sort parameters, got {nr_sorts} for: {symbol_id}')
+
+        sort_table: Dict[Sort, Sort] = dict(zip(symbol.vars, sorts))
+
+        def resolve_sort(sort: Sort) -> Sort:
+            if type(sort) is SortVar:
+                return sort_table.get(sort, sort)
+            return sort
+
+        sort = resolve_sort(symbol_decl.sort)
+        param_sorts = tuple(resolve_sort(sort) for sort in symbol_decl.param_sorts)
+
+        return sort, param_sorts
+
+    def infer_sort(self, pattern: Pattern) -> Sort:
+        if isinstance(pattern, WithSort):
+            return pattern.sort
+
+        if type(pattern) is App:
+            sort, _ = self.resolve(pattern.symbol, pattern.sorts)
+            return sort
+
+        raise ValueError(f'Cannot infer sort: {pattern}')
+
+    def pattern_sorts(self, pattern: Pattern) -> Tuple[Sort, ...]:
+        sorts: Tuple[Sort, ...]
+        if isinstance(pattern, DV):
+            sorts = ()
+
+        elif isinstance(pattern, MLQuant):
+            sorts = (pattern.sort,)
+
+        elif isinstance(pattern, MLPattern):
+            _, sorts = self.resolve(pattern.symbol(), pattern.sorts)
+
+        elif isinstance(pattern, App):
+            _, sorts = self.resolve(pattern.symbol, pattern.sorts)
+
+        else:
+            sorts = ()
+
+        assert len(sorts) == len(pattern.patterns)
+        return sorts
 
 
 def kore_term(dct: Mapping[str, Any], cls: Type[T] = Kore) -> T:  # type: ignore
