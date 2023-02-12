@@ -1129,18 +1129,9 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 return KApply(cell_wrappers[_k.label.name], [_k.args[0], _k])
             return _k
 
-        def _dedupe_wrappers(_k: KInner) -> KInner:
-            if (
-                type(_k) is KApply
-                and _k.label.name in cell_wrappers.values()
-                and len(_k.args) == 2
-                and type(_k.args[1]) is KApply
-                and _k.args[1].label.name == _k.label.name
-            ):
-                return _k.args[1]
-            return _k
-
-        return top_down(_dedupe_wrappers, bottom_up(_wrap_elements, kast))
+        # To ensure we don't get duplicate wrappers.
+        _kast = self.remove_cell_map_items(kast)
+        return bottom_up(_wrap_elements, _kast)
 
     def remove_cell_map_items(self, kast: KInner) -> KInner:
 
