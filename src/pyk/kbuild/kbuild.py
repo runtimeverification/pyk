@@ -1,3 +1,4 @@
+import shutil
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -21,8 +22,18 @@ class KBuild:
     def k_version(self) -> str:
         return k_version().text
 
+    def sync(self, package: Package) -> List[Path]:
+        return sync_files(
+            source_dir=package.project.source_dir,
+            target_dir=self.kbuild_dir / package.include_dir / package.name,
+            file_names=package.project.include_file_names,
+        )
+
     def definition_dir(self, package: Package, target_name: str) -> Path:
         return self.kbuild_dir / package.target_dir / self.k_version / target_name
+
+    def clean(self, package: Package, target_name: str) -> None:
+        shutil.rmtree(self.definition_dir(package, target_name), ignore_errors=True)
 
     def kompile(self, package: Package, target_name: str) -> Path:
         for sub_package in package.sub_packages:
@@ -42,13 +53,6 @@ class KBuild:
         )
 
         return output_dir
-
-    def sync(self, package: Package) -> List[Path]:
-        return sync_files(
-            source_dir=package.project.source_dir,
-            target_dir=self.kbuild_dir / package.include_dir / package.name,
-            file_names=package.project.include_file_names,
-        )
 
     def up_to_date(self, package: Package, target_name: str) -> bool:
         definition_dir = self.definition_dir(package, target_name)
