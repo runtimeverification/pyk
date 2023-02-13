@@ -6,8 +6,7 @@ from typing import Any
 from ..cli_utils import dir_path
 from .config import KBUILD_DIR, PROJECT_FILE_NAME
 from .kbuild import KBuild
-from .package import RootPackage
-from .project import Project
+from .package import Package
 from .utils import find_file_upwards
 
 
@@ -46,8 +45,7 @@ def do_clean(**kwargs: Any) -> None:
 
 def do_kompile(start_dir: Path, target_name: str, **kwargs: Any) -> None:
     project_file = find_file_upwards(PROJECT_FILE_NAME, start_dir)
-    project = Project.load(project_file)
-    package = RootPackage(project)
+    package = Package.create(project_file)
     kbuild = KBuild(KBUILD_DIR)
     definition_dir = kbuild.kompile(package, target_name)
     print(definition_dir)

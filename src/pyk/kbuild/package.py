@@ -9,6 +9,11 @@ from .project import Dependency, GitSource, PathSource, Project, Source
 
 
 class Package(ABC):
+    @staticmethod
+    def create(project_file: Path) -> 'Package':
+        project = Project.load(project_file)
+        return _RootPackage(project)
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -46,7 +51,7 @@ class Package(ABC):
 
     @cached_property
     def deps_packages(self) -> Tuple['Package', ...]:
-        return tuple(DepsPackage(dependency) for dependency in self.project.dependencies)
+        return tuple(_DepsPackage(dependency) for dependency in self.project.dependencies)
 
     @cached_property
     def sub_packages(self) -> Tuple['Package', ...]:
@@ -58,7 +63,7 @@ class Package(ABC):
 
 @final
 @dataclass(frozen=True)
-class RootPackage(Package):
+class _RootPackage(Package):
     _project: Project
 
     @property
@@ -76,7 +81,7 @@ class RootPackage(Package):
 
 @final
 @dataclass(frozen=True)
-class DepsPackage(Package):
+class _DepsPackage(Package):
     dependency: Dependency
 
     @property
