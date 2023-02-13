@@ -29,7 +29,13 @@ def kompile(
     md_selector: Optional[str] = None,
     hook_namespaces: Iterable[str] = (),
     emit_json: bool = True,
+    debug: bool = False,
     post_process: Optional[str] = None,
+    # LLVM backend
+    opt_level: Optional[int] = None,
+    ccopts: Iterable[str] = (),
+    no_llvm_kompile: bool = False,
+    # Haskell backend
     concrete_rules: Iterable[str] = (),
     # ---
     cwd: Optional[Path] = None,
@@ -42,6 +48,17 @@ def kompile(
     _include_dirs = [Path(include_dir) for include_dir in include_dirs]
     for include_dir in _include_dirs:
         check_dir_path(abs_or_rel_to(include_dir, cwd or Path()))
+
+    if backend and backend != KompileBackend.LLVM:
+        _check_backend_param(opt_level is None, 'opt_level', backend)
+        _check_backend_param(not list(ccopts), 'ccopts', backend)
+        _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
+
+    if backend != KompileBackend.HASKELL:
+        _check_backend_param(not list(concrete_rules), 'concrete_rules', backend)
+
+    if opt_level and not (0 <= opt_level <= 3):
+        raise ValueError('Invalid optimization level: {opt_level}')
 
     output_dir = Path(output_dir) if output_dir is not None else None
 
@@ -56,7 +73,11 @@ def kompile(
         md_selector=md_selector,
         hook_namespaces=hook_namespaces,
         emit_json=emit_json,
+        debug=debug,
         post_process=post_process,
+        opt_level=opt_level,
+        ccopts=ccopts,
+        no_llvm_kompile=no_llvm_kompile,
         concrete_rules=concrete_rules,
     )
 
@@ -72,6 +93,11 @@ def kompile(
     return kompiled_dir
 
 
+def _check_backend_param(check: bool, param_name: str, backend: Optional[KompileBackend]) -> None:
+    if not check:
+        raise ValueError('Parameter {param_name} is not supported by backend: {backend.value}')
+
+
 def _build_arg_list(
     *,
     command: Iterable[str],
@@ -84,7 +110,11 @@ def _build_arg_list(
     md_selector: Optional[str],
     hook_namespaces: Iterable[str],
     emit_json: bool,
+    debug: bool = False,
     post_process: Optional[str],
+    opt_level: Optional[int],
+    ccopts: Iterable[str],
+    no_llvm_kompile: bool,
     concrete_rules: Iterable[str],
 ) -> List[str]:
     args = list(command) + [str(main_file)]
@@ -113,8 +143,20 @@ def _build_arg_list(
     if emit_json:
         args.append('--emit-json')
 
+    if debug:
+        args.append('--debug')
+
     if post_process:
         args.extend(['--post-process', shlex.quote(post_process)])
+
+    if opt_level is not None:
+        args.append(f'-O{opt_level}')
+
+    for ccopt in ccopts:
+        args += ['-ccopt', ccopt]
+
+    if no_llvm_kompile:
+        args.append('--no-llvm-kompile')
 
     if concrete_rules:
         args.extend(['--concrete-rules', ','.join(concrete_rules)])
