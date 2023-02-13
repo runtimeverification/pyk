@@ -148,7 +148,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 kore_ceil, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
         else:
-            _LOGGER.info(f'Trying booster execution')
+            _LOGGER.info('Trying booster execution')
             booster_er = self._booster_client.execute(
                 kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
@@ -157,7 +157,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 er = booster_er
             else:
                 # if no progress was made, use kprove for a single step
-                _LOGGER.info(f'No progress, re-trying with kprove')
+                _LOGGER.info('No progress, re-trying with kprove')
                 _, kore_client = self._kore_rpc
                 er = kore_client.execute(
                     kore_ceil, max_depth=1, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules

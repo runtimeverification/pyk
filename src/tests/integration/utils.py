@@ -30,7 +30,7 @@ class Kompiler:
         main_module: Optional[str] = None,
         syntax_module: Optional[str] = None,
         include_dirs: Iterable[Union[str, Path]] = (),
-        command: Iterable[str]=('kompile',),
+        command: Iterable[str] = ('kompile',),
         emit_json: bool = True,
     ) -> Path:
         return kompile(
@@ -77,7 +77,11 @@ class KompiledTest:
             main_module=self.KOMPILE_MAIN_MODULE,
             syntax_module=self.KOMPILE_SYNTAX_MODULE,
             include_dirs=self.KOMPILE_INCLUDE_DIRS,
-            command=('kompile', '--llvm-kompile-type', 'c',),
+            command=(
+                'kompile',
+                '--llvm-kompile-type',
+                'c',
+            ),
             emit_json=False,
         )
 
@@ -125,6 +129,7 @@ class KProveTest(KompiledTest):
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass
 
+
 class KCFGExploreTest(KProveTest):
     @pytest.fixture
     def kcfg_explore(self, kprove: KProve, llvm_dir: Path) -> Iterator[KCFGExplore]:
@@ -133,15 +138,16 @@ class KCFGExploreTest(KProveTest):
             free_port_on_host(),
             bug_report=kprove._bug_report,
             booster_rpc_command=[
-                "hs-backend-booster",
-                "-l",
-                "Rewrite",
-                "--llvm-backend-library",
-                f"{llvm_dir}/interpreter",
+                'hs-backend-booster',
+                '-l',
+                'Rewrite',
+                '--llvm-backend-library',
+                f'{llvm_dir}/interpreter',
             ],
             booster_port=free_port_on_host(),
         ) as kcfg_explore:
             yield kcfg_explore
+
 
 # Based on: https://stackoverflow.com/a/45690594
 # Note: has an obvious race condition, use only for testing
