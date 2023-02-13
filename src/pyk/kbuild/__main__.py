@@ -27,7 +27,7 @@ def main() -> None:
 def _argument_parser() -> ArgumentParser:
     parser = ArgumentParser(description='Dependency management for the K Framework')
     parser.add_argument(
-        '-d', '--dir', dest='start_dir', metavar='DIR', type=dir_path, default=Path('.'), help='run from DIR'
+        '-C', '--directory', dest='start_dir', metavar='DIR', type=dir_path, default=Path('.'), help='run from DIR'
     )
 
     command_parser = parser.add_subparsers(dest='command', metavar='COMMAND', required=True)
