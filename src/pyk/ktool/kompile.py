@@ -24,7 +24,7 @@ def kompile(
     *,
     command: Iterable[str] = ('kompile',),
     output_dir: Optional[Union[str, Path]] = None,
-    backend: Optional[KompileBackend] = None,
+    backend: Optional[Union[str, KompileBackend]] = None,
     main_module: Optional[str] = None,
     syntax_module: Optional[str] = None,
     include_dirs: Iterable[Union[str, Path]] = (),
@@ -50,6 +50,8 @@ def kompile(
     _include_dirs = [Path(include_dir) for include_dir in include_dirs]
     for include_dir in _include_dirs:
         check_dir_path(abs_or_rel_to(include_dir, cwd or Path()))
+
+    backend = KompileBackend(backend) if backend is not None else None
 
     if backend and backend != KompileBackend.LLVM:
         _check_backend_param(opt_level is None, 'opt_level', backend)

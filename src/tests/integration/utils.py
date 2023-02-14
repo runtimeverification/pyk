@@ -34,7 +34,7 @@ class Kompiler:
         return kompile(
             main_file=main_file,
             output_dir=self._tmp_path_factory.mktemp('kompiled'),
-            backend=KompileBackend(backend) if backend is not None else None,
+            backend=backend,
             main_module=main_module,
             syntax_module=syntax_module,
             include_dirs=include_dirs,
