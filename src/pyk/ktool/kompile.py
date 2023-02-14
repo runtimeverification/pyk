@@ -93,6 +93,89 @@ def kompile(
     return kompiled_dir
 
 
+def llvm_kompile(
+    main_file: Union[str, Path],
+    *,
+    command: Iterable[str] = ('kompile',),
+    output_dir: Optional[Union[str, Path]] = None,
+    main_module: Optional[str] = None,
+    syntax_module: Optional[str] = None,
+    include_dirs: Iterable[Union[str, Path]] = (),
+    md_selector: Optional[str] = None,
+    hook_namespaces: Iterable[str] = (),
+    emit_json: bool = True,
+    debug: bool = False,
+    post_process: Optional[str] = None,
+    opt_level: Optional[int] = None,
+    ccopts: Iterable[str] = (),
+    no_llvm_kompile: bool = False,
+    # ---
+    cwd: Optional[Path] = None,
+    check: bool = True,
+    profile: bool = False,
+) -> Path:
+    return kompile(
+        main_file=main_file,
+        backend=KompileBackend.LLVM,
+        command=command,
+        output_dir=output_dir,
+        main_module=main_module,
+        syntax_module=syntax_module,
+        include_dirs=include_dirs,
+        md_selector=md_selector,
+        hook_namespaces=hook_namespaces,
+        emit_json=emit_json,
+        debug=debug,
+        post_process=post_process,
+        opt_level=opt_level,
+        ccopts=ccopts,
+        no_llvm_kompile=no_llvm_kompile,
+        cwd=cwd,
+        check=check,
+        profile=profile,
+    )
+
+
+def haskell_kompile(
+    main_file: Union[str, Path],
+    *,
+    command: Iterable[str] = ('kompile',),
+    output_dir: Optional[Union[str, Path]] = None,
+    backend: Optional[KompileBackend] = None,
+    main_module: Optional[str] = None,
+    syntax_module: Optional[str] = None,
+    include_dirs: Iterable[Union[str, Path]] = (),
+    md_selector: Optional[str] = None,
+    hook_namespaces: Iterable[str] = (),
+    emit_json: bool = True,
+    debug: bool = False,
+    post_process: Optional[str] = None,
+    concrete_rules: Iterable[str] = (),
+    # ---
+    cwd: Optional[Path] = None,
+    check: bool = True,
+    profile: bool = False,
+) -> Path:
+    return kompile(
+        main_file=main_file,
+        backend=KompileBackend.HASKELL,
+        command=command,
+        output_dir=output_dir,
+        main_module=main_module,
+        syntax_module=syntax_module,
+        include_dirs=include_dirs,
+        md_selector=md_selector,
+        hook_namespaces=hook_namespaces,
+        emit_json=emit_json,
+        debug=debug,
+        post_process=post_process,
+        concrete_rules=concrete_rules,
+        cwd=cwd,
+        check=check,
+        profile=profile,
+    )
+
+
 def _check_backend_param(check: bool, param_name: str, backend: Optional[KompileBackend]) -> None:
     if not check:
         raise ValueError('Parameter {param_name} is not supported by backend: {backend.value}')
