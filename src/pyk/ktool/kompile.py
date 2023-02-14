@@ -88,7 +88,7 @@ def kompile(
             f'Command kompile exited with code {err.returncode} for: {main_file}', err.stdout, err.stderr
         ) from err
 
-    kompiled_dir = _kompiled_dir(main_file, output_dir)
+    kompiled_dir = output_dir if output_dir else Path(main_file.stem + '-kompiled')
     assert kompiled_dir.is_dir()
     return kompiled_dir
 
@@ -245,10 +245,3 @@ def _build_arg_list(
         args.extend(['--concrete-rules', ','.join(concrete_rules)])
 
     return args
-
-
-def _kompiled_dir(main_file: Path, output_dir: Optional[Path] = None) -> Path:
-    if output_dir:
-        return output_dir
-
-    return Path(main_file.stem + '-kompiled')
