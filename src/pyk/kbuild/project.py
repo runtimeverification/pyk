@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union, f
 import tomli
 
 from ..cli_utils import abs_or_rel_to, check_absolute_path, check_dir_path, check_file_path, check_relative_path
-from ..ktool import KompileBackend
+from ..ktool.kompile import KompileBackend
 from ..utils import single
 from .config import PROJECT_FILE_NAME
 
