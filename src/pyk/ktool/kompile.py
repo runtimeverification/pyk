@@ -89,7 +89,10 @@ def kompile(
         run_process(args, logger=_LOGGER, cwd=cwd, check=check, profile=profile)
     except CalledProcessError as err:
         raise RuntimeError(
-            f'Command kompile exited with code {err.returncode} for: {main_file}', err.stdout, err.stderr
+            f'Command kompile exited with code {err.returncode} for: {main_file}',
+            err.stdout,
+            err.stderr,
+            err.returncode,
         ) from err
 
     kompiled_dir = output_dir if output_dir else Path(main_file.stem + '-kompiled')
@@ -236,7 +239,7 @@ def _build_arg_list(
     if post_process:
         args.extend(['--post-process', shlex.quote(post_process)])
 
-    if opt_level is not None:
+    if opt_level:
         args.append(f'-O{opt_level}')
 
     for ccopt in ccopts:
