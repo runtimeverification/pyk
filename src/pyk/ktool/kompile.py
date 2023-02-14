@@ -1,3 +1,5 @@
+__all__ = ['KompileBackend', 'kompile', 'llvm_kompile', 'haskell_kompile']
+
 import logging
 import shlex
 from enum import Enum
