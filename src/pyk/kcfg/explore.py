@@ -189,6 +189,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             raise ValueError(
                 f'Only support stepping from nodes with 0 or 1 out edges {cfgid}: {(node.id, [e.target.id for e in out_edges])}'
             )
+        elif len(out_edges) == 1 and not is_top(out_edges[0].condition):
+            raise ValueError(
+                f'Only allow stepping on out edges with #Top condition {cfgid}: {(node.id, shorten_hashes(out_edges[0].target.id))}'
+            )
         _LOGGER.info(f'Taking {depth} steps from node {cfgid}: {shorten_hashes(node.id)}')
         actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth)
         if actual_depth != depth:
@@ -207,7 +211,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 )
             cfg.remove_edge(edge.source.id, edge.target.id)
             cfg.create_edge(edge.source.id, new_node.id, condition=mlTop(), depth=depth)
-            cfg.create_edge(new_node.id, edge.target.id, condition=edge.condition, depth=(edge.depth - depth))
+            cfg.create_edge(new_node.id, edge.target.id, condition=mlTop(), depth=(edge.depth - depth))
         return (cfg, new_node.id)
 
     def section_edge(
@@ -216,8 +220,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if sections <= 1:
             raise ValueError(f'Cannot section an edge less than twice {cfgid}: {sections}')
         edge = single(cfg.edges(source_id=source_id, target_id=target_id))
-        if not is_top(edge.condition):
-            raise ValueError(f'Cannot section edge with non-#Top condition {cfgid}: {edge.condition}')
         section_depth = int(edge.depth / sections)
         if section_depth == 0:
             raise ValueError(f'Too many sections, results in 0-length section {cfgid}: {sections}')
