@@ -221,33 +221,15 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         section_depth = int(edge.depth / sections)
         if section_depth == 0:
             raise ValueError(f'Too many sections, results in 0-length section {cfgid}: {sections}')
-        cfg.remove_edge(source_id=source_id, target_id=target_id)
-        remainder_depth = edge.depth - (section_depth * sections)
-        if remainder_depth > 0:
-            sections += 1
-        else:
-            remainder_depth = section_depth
-        curr_node = edge.source
+        orig_depth = edge.depth
+        new_depth = section_depth
         new_nodes = []
-        for _i in range(sections - 1):
-            _LOGGER.info(f'Taking {section_depth} steps from node {cfgid}: {shorten_hashes(curr_node.id)}')
-            new_depth, cterm, next_cterms = self.cterm_execute(curr_node.cterm, depth=section_depth)
-            if new_depth != section_depth:
-                raise ValueError(
-                    f'Found section with differing depth than section depth {cfgid}: {new_depth} vs {section_depth}'
-                )
-            if len(next_cterms) != 0:
-                raise ValueError(
-                    'Found branch when sectioning edge {cfgid}: {(shorten_hashes(curr_node.id), target_id)}'
-                )
-            new_node = cfg.get_or_create_node(cterm)
-            new_nodes.append(new_node.id)
-            _LOGGER.info(
-                f'Found new node at {section_depth} steps from node {cfgid}: {shorten_hashes((curr_node.id, new_node.id))}'
-            )
-            cfg.create_edge(curr_node.id, new_node.id, condition=mlTop(), depth=section_depth)
-            curr_node = new_node
-        cfg.create_edge(source_id=curr_node.id, target_id=edge.target.id, condition=mlTop(), depth=remainder_depth)
+        curr_node_id = source_id
+        while new_depth < orig_depth:
+            _LOGGER.info(f'Taking {section_depth} steps from node {cfgid}: {shorten_hashes(curr_node_id)}')
+            cfg, curr_node_id = self.step(cfgid, cfg, curr_node_id, depth=section_depth)
+            new_nodes.append(curr_node_id)
+            new_depth += section_depth
         return (cfg, tuple(new_nodes))
 
     def all_path_reachability_prove(
