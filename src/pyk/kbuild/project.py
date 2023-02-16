@@ -68,6 +68,12 @@ class Target:
     md_selector: Optional[str]
     hook_namespaces: Optional[Tuple[str, ...]]
     emit_json: Optional[bool]
+    # LLVM backend
+    opt_level: Optional[int]
+    ccopts: Optional[Tuple[str, ...]]
+    no_llvm_kompile: Optional[bool]
+    # Haskell backend
+    concrete_rules: Optional[Tuple[str, ...]]
 
     def __init__(
         self,
@@ -80,6 +86,10 @@ class Target:
         md_selector: Optional[str] = None,
         hook_namespaces: Optional[Iterable[str]] = None,
         emit_json: Optional[bool] = None,
+        opt_level: Optional[int] = None,
+        ccopts: Optional[Iterable[str]] = None,
+        no_llvm_kompile: Optional[bool] = None,
+        concrete_rules: Optional[Iterable[str]],
     ):
         main_file = Path(main_file)
         check_relative_path(main_file)
@@ -91,6 +101,10 @@ class Target:
         object.__setattr__(self, 'md_selector', md_selector)
         object.__setattr__(self, 'hook_namespaces', tuple(hook_namespaces) if hook_namespaces is not None else None)
         object.__setattr__(self, 'emit_json', emit_json)
+        object.__setattr__(self, 'opt_level', opt_level)
+        object.__setattr__(self, 'ccopts', tuple(ccopts) if ccopts is not None else None)
+        object.__setattr__(self, 'no_llvm_kompile', no_llvm_kompile)
+        object.__setattr__(self, 'concrete_rules', tuple(concrete_rules) if concrete_rules is not None else None)
 
     @staticmethod
     def from_dict(name: str, dct: Mapping[str, Any]) -> 'Target':
@@ -103,12 +117,16 @@ class Target:
             md_selector=dct.get('md-selector'),
             hook_namespaces=dct.get('hook-namespaces'),
             emit_json=dct.get('emit-json'),
+            opt_level=dct.get('opt-level'),
+            ccopts=dct.get('ccopts'),
+            no_llvm_kompile=dct.get('no-llvm-kompile'),
+            concrete_rules=dct.get('concrete-rules'),
         )
 
     def kompile_args(self) -> Dict[str, Any]:
         args = dataclasses.asdict(self)
         args.pop('name')
-        return args
+        return {key: value for key, value in args.items() if value is not None}
 
 
 @final
