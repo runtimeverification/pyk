@@ -208,14 +208,14 @@ class Project:
         return Project.load(project_dir / PROJECT_FILE_NAME)
 
     @property
-    def include_file_names(self) -> List[str]:
+    def source_file_names(self) -> List[str]:
         source_files = list(self.source_dir.rglob('*.k'))
         source_files.extend(self.source_dir.rglob('*.md'))
         return [str(source_file.relative_to(self.source_dir)) for source_file in source_files]
 
     @property
-    def include_files(self) -> List[Path]:
-        return [self.source_dir / file_name for file_name in self.include_file_names]
+    def source_files(self) -> List[Path]:
+        return [self.source_dir / file_name for file_name in self.source_file_names]
 
     @property
     def project_file(self) -> Path:

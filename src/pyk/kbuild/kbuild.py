@@ -22,18 +22,27 @@ class KBuild:
     def k_version(self) -> str:
         return k_version().text
 
-    def sync(self, package: Package) -> List[Path]:
-        return sync_files(
-            source_dir=package.project.source_dir,
-            target_dir=self.kbuild_dir / package.include_dir / package.name,
-            file_names=package.project.include_file_names,
-        )
-
     def definition_dir(self, package: Package, target_name: str) -> Path:
         return self.kbuild_dir / package.target_dir / self.k_version / target_name
 
+    def include_dir(self, package: Package) -> Path:
+        return self.kbuild_dir / package.include_dir
+
+    def source_dir(self, package: Package) -> Path:
+        return self.include_dir(package) / package.name
+
+    def source_files(self, package: Package) -> List[Path]:
+        return [self.source_dir(package) / file_name for file_name in package.project.source_file_names]
+
     def clean(self, package: Package, target_name: str) -> None:
         shutil.rmtree(self.definition_dir(package, target_name), ignore_errors=True)
+
+    def sync(self, package: Package) -> List[Path]:
+        return sync_files(
+            source_dir=package.project.source_dir,
+            target_dir=self.source_dir(package),
+            file_names=package.project.source_file_names,
+        )
 
     def kompile(self, package: Package, target_name: str) -> Path:
         for sub_package in package.sub_packages:
@@ -46,9 +55,9 @@ class KBuild:
 
         target = package.project.get_target(target_name)
         kompile(
-            main_file = self.kbuild_dir / package.include_dir / package.name / target.main_file,
+            main_file=self.source_dir(package) / target.main_file,
             output_dir=output_dir,
-            include_dirs=[self.kbuild_dir / include_dir for include_dir in package.include_dirs],
+            include_dirs=[self.include_dir(sub_package) for sub_package in package.sub_packages],
             cwd=self.kbuild_dir,
             **target.kompile_args(),
         )
@@ -65,7 +74,7 @@ class KBuild:
         input_files: List[Path] = []
         for sub_package in package.sub_packages:
             input_files.append(sub_package.project.project_file)
-            input_files.extend(self.kbuild_dir / include_file for include_file in sub_package.include_files)
+            input_files.extend(self.source_files(sub_package))
 
         input_timestamps = (input_file.stat().st_mtime for input_file in input_files)
         target_timestamp = timestamp.stat().st_mtime
