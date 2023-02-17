@@ -25,8 +25,14 @@ class KBuild:
     def definition_dir(self, package: Package, target_name: str) -> Path:
         return self.kbuild_dir / package.target_dir / self.k_version / target_name
 
-    def resource_dir(self, package: Package) -> Path:
-        return self.kbuild_dir / package.resource_dir
+    def resource_dir(self, package: Package, resource_path: Path) -> Path:
+        return self.kbuild_dir / package.resource_dir / resource_path
+
+    def resource_files(self, package: Package, resource_path: Path) -> List[Path]:
+        return [
+            self.resource_dir(package, resource_path) / file_name
+            for file_name in package.project.resource_file_names[resource_path]
+        ]
 
     def include_dir(self, package: Package) -> Path:
         return self.kbuild_dir / package.include_dir
@@ -51,11 +57,13 @@ class KBuild:
         )
 
         # Sync resources
-        for resource_dir in package.project.resources:
-            source_dir = package.project.resources[resource_dir]
-            target_dir = self.resource_dir(package) / resource_dir
-            file_names = package.project.resource_file_names[source_dir]
-            res += sync_files(source_dir, target_dir, file_names)
+        for resource_path in package.project.resources:
+            res += sync_files(
+                source_dir=package.project.resources[resource_path],
+                target_dir=self.resource_dir(package, resource_path),
+                file_names=package.project.resource_file_names[resource_path],
+            )
+
         return res
 
     def kompile(self, package: Package, target_name: str) -> Path:
@@ -89,6 +97,8 @@ class KBuild:
         for sub_package in package.sub_packages:
             input_files.append(sub_package.project.project_file)
             input_files.extend(self.source_files(sub_package))
+            for resource_path in sub_package.project.resources:
+                input_files.extend(self.resource_files(sub_package, resource_path))
 
         input_timestamps = (input_file.stat().st_mtime for input_file in input_files)
         target_timestamp = timestamp.stat().st_mtime

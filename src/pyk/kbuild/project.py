@@ -144,7 +144,7 @@ class Project:
     name: str
     version: str
     source_dir: Path
-    resources: Tuple[Tuple[Path, Path], ...]
+    resources: FrozenDict[Path, Path]
     dependencies: Tuple[Dependency, ...]
     targets: Tuple[Target, ...]
 
@@ -163,6 +163,7 @@ class Project:
         check_dir_path(path)
 
         source_dir = (path / relative_path(source_dir)).resolve()
+        check_dir_path(source_dir)
 
         resources = resources or {}
         resources = {
@@ -212,24 +213,34 @@ class Project:
         return self.path / PROJECT_FILE_NAME
 
     @property
-    def source_file_names(self) -> List[str]:
-        source_files = list(self.source_dir.rglob('*.k'))
-        source_files.extend(self.source_dir.rglob('*.md'))
-        return [str(source_file.relative_to(self.source_dir)) for source_file in source_files]
-
-    @property
     def source_files(self) -> List[Path]:
-        return [self.source_dir / file_name for file_name in self.source_file_names]
+        res: List[Path] = []
+        res.extend(self.source_dir.rglob('*.k'))
+        res.extend(self.source_dir.rglob('*.md'))
+        return res
 
     @property
-    def resource_file_names(self) -> Dict[Path , List[str]]:
-        res: Dict[Path, List[str]] = {}
-        for resource_dir in self.resources.values():
-            check_dir_path(resource_dir)
-            resource_files = (resource_file for resource_file in resource_dir.rglob('*') if resource_file.is_file())
-            rel_resource_files = (resource_file.relative_to(resource_dir) for resource_file in resource_files)
-            res[resource_dir] = [str(resource_file) for resource_file in rel_resource_files]
+    def source_file_names(self) -> List[str]:
+        return [str(source_file.relative_to(self.source_dir)) for source_file in self.source_files]
+
+    @property
+    def resource_files(self) -> Dict[Path, List[Path]]:
+        res: Dict[Path, List[Path]] = {}
+        for resource_dir, project_resource_dir in self.resources.items():
+            check_dir_path(project_resource_dir)
+            res[resource_dir] = [
+                resource_file for resource_file in project_resource_dir.rglob('*') if resource_file.is_file()
+            ]
         return res
+
+    @property
+    def resource_file_names(self) -> Dict[Path, List[str]]:
+        return {
+            resource_dir: [
+                str(resource_file.relative_to(self.resources[resource_dir])) for resource_file in resource_files
+            ]
+            for resource_dir, resource_files in self.resource_files.items()
+        }
 
     def get_target(self, target_name: str) -> Target:
         # TODO Should be enforced as a validation rule
