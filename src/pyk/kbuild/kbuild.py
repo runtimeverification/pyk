@@ -25,6 +25,9 @@ class KBuild:
     def definition_dir(self, package: Package, target_name: str) -> Path:
         return self.kbuild_dir / package.target_dir / self.k_version / target_name
 
+    def resource_dir(self, package: Package) -> Path:
+        return self.kbuild_dir / package.resource_dir
+
     def include_dir(self, package: Package) -> Path:
         return self.kbuild_dir / package.include_dir
 
@@ -38,11 +41,22 @@ class KBuild:
         shutil.rmtree(self.definition_dir(package, target_name), ignore_errors=True)
 
     def sync(self, package: Package) -> List[Path]:
-        return sync_files(
+        res: List[Path] = []
+
+        # Sync sources
+        res += sync_files(
             source_dir=package.project.source_dir,
             target_dir=self.source_dir(package),
             file_names=package.project.source_file_names,
         )
+
+        # Sync resources
+        for resource_dir in package.project.resources:
+            source_dir = package.project.resources[resource_dir]
+            target_dir = self.resource_dir(package) / resource_dir
+            file_names = package.project.resource_file_names[source_dir]
+            res += sync_files(source_dir, target_dir, file_names)
+        return res
 
     def kompile(self, package: Package, target_name: str) -> Path:
         for sub_package in package.sub_packages:

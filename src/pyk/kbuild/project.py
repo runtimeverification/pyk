@@ -208,6 +208,10 @@ class Project:
         return Project.load(project_dir / PROJECT_FILE_NAME)
 
     @property
+    def project_file(self) -> Path:
+        return self.path / PROJECT_FILE_NAME
+
+    @property
     def source_file_names(self) -> List[str]:
         source_files = list(self.source_dir.rglob('*.k'))
         source_files.extend(self.source_dir.rglob('*.md'))
@@ -218,8 +222,14 @@ class Project:
         return [self.source_dir / file_name for file_name in self.source_file_names]
 
     @property
-    def project_file(self) -> Path:
-        return self.path / PROJECT_FILE_NAME
+    def resource_file_names(self) -> Dict[Path , List[str]]:
+        res: Dict[Path, List[str]] = {}
+        for resource_dir in self.resources.values():
+            check_dir_path(resource_dir)
+            resource_files = (resource_file for resource_file in resource_dir.rglob('*') if resource_file.is_file())
+            rel_resource_files = (resource_file.relative_to(resource_dir) for resource_file in resource_files)
+            res[resource_dir] = [str(resource_file) for resource_file in rel_resource_files]
+        return res
 
     def get_target(self, target_name: str) -> Target:
         # TODO Should be enforced as a validation rule
