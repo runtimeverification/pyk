@@ -6,9 +6,16 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union, f
 
 import tomli
 
-from ..cli_utils import abs_or_rel_to, check_absolute_path, check_dir_path, check_file_path, check_relative_path
+from ..cli_utils import (
+    abs_or_rel_to,
+    check_absolute_path,
+    check_dir_path,
+    check_file_path,
+    check_relative_path,
+    relative_path,
+)
 from ..ktool.kompile import KompileBackend
-from ..utils import single
+from ..utils import FrozenDict, single
 from .config import PROJECT_FILE_NAME
 
 
@@ -136,6 +143,7 @@ class Project:
     name: str
     version: str
     source_dir: Path
+    resources: Tuple[Tuple[Path, Path], ...]
     dependencies: Tuple[Dependency, ...]
     targets: Tuple[Target, ...]
 
@@ -146,28 +154,26 @@ class Project:
         name: str,
         version: str,
         source_dir: Union[str, Path],
+        resources: Optional[Mapping[Union[str, Path], Union[str, Path]]] = None,
         dependencies: Iterable[Dependency] = (),
         targets: Iterable[Target] = (),
     ):
         path = Path(path).resolve()
         check_dir_path(path)
-        check_absolute_path(path)
 
-        source_dir = Path(source_dir)
-        # TODO extract
-        if source_dir.is_absolute():
-            source_dir = source_dir.resolve()
-            # TODO Lift this restriction: check source_dir.is_relative_to(path)
-            raise ValueError(f'Expected relative path for source_dir, got: {source_dir}')
-        else:
-            source_dir = (path / source_dir).resolve()
+        source_dir = (path / relative_path(source_dir)).resolve()
 
-        check_dir_path(source_dir)
+        resources = resources or {}
+        resources = {
+            relative_path(target_path): (path / relative_path(source_path)).resolve()
+            for target_path, source_path in resources.items()
+        }
 
         object.__setattr__(self, 'path', path)
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'version', version)
         object.__setattr__(self, 'source_dir', source_dir)
+        object.__setattr__(self, 'resources', FrozenDict(resources))
         object.__setattr__(self, 'dependencies', tuple(dependencies))
         object.__setattr__(self, 'targets', tuple(targets))
 
@@ -186,6 +192,7 @@ class Project:
             name=dct['project']['name'],
             version=dct['project']['version'],
             source_dir=dct['project']['source'],
+            resources=dct['project'].get('resources'),
             dependencies=tuple(
                 Dependency(name=name, source=Source.from_dict(project_dir, source))
                 for name, source in dct.get('dependencies', {}).items()
