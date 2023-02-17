@@ -133,6 +133,7 @@ class Target:
     def kompile_args(self) -> Dict[str, Any]:
         args = dataclasses.asdict(self)
         args.pop('name')
+        args.pop('main_file')
         return {key: value for key, value in args.items() if value is not None}
 
 

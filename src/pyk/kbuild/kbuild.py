@@ -46,9 +46,10 @@ class KBuild:
 
         target = package.project.get_target(target_name)
         kompile(
+            main_file = self.kbuild_dir / package.include_dir / package.name / target.main_file,
             output_dir=output_dir,
             include_dirs=[self.kbuild_dir / include_dir for include_dir in package.include_dirs],
-            cwd=self.kbuild_dir / package.include_dir / package.name,
+            cwd=self.kbuild_dir,
             **target.kompile_args(),
         )
 
