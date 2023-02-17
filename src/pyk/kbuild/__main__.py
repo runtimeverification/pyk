@@ -41,7 +41,7 @@ def _argument_parser() -> ArgumentParser:
     kompile_parser.add_argument('target_name', metavar='TARGET', help='target to build')
 
     which_parser = command_parser.add_parser('which', help='print definition directory for target')
-    which_parser.add_argument('target_name', metavar='TARGET', help='target to print definition for')
+    which_parser.add_argument('target_name', metavar='TARGET', help='target to print definition directory for')
 
     return parser
 
