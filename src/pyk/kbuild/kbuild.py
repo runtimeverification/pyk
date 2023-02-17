@@ -1,11 +1,15 @@
+import re
 import shutil
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import List, Union, final
+from re import Match
+from typing import Any, Dict, List, Union, final
 
 from ..ktool.kompile import kompile
+from ..utils import single
 from .package import Package
+from .project import Target
 from .utils import k_version, sync_files
 
 
@@ -76,12 +80,12 @@ class KBuild:
             return output_dir
 
         target = package.project.get_target(target_name)
+        args = self.kompile_args(package, target)
         kompile(
-            main_file=self.source_dir(package) / target.main_file,
             output_dir=output_dir,
             include_dirs=[self.include_dir(sub_package) for sub_package in package.sub_packages],
             cwd=self.kbuild_dir,
-            **target.kompile_args(),
+            **args,
         )
 
         return output_dir
@@ -103,3 +107,32 @@ class KBuild:
         input_timestamps = (input_file.stat().st_mtime for input_file in input_files)
         target_timestamp = timestamp.stat().st_mtime
         return all(input_timestamp < target_timestamp for input_timestamp in input_timestamps)
+
+    def kompile_args(self, package: Package, target: Target) -> Dict[str, Any]:
+        args = target.dict
+        args.pop('name')
+
+        args['main_file'] = self.source_dir(package) / args['main_file']
+
+        if 'ccopts' in args:
+            args['ccopts'] = [self.render_opt(package, opt) for opt in args['ccopts']]
+
+        return {key: value for key, value in args.items() if value is not None}
+
+    def render_opt(self, package: Package, opt: str) -> str:
+        def render(match: Match) -> str:
+            package_name = match.group('package')
+            path = Path(match.group('path'))
+
+            sub_package = single(
+                sub_package for sub_package in package.sub_packages if sub_package.name == package_name
+            )
+            resource_path = self.resource_dir(sub_package, path).resolve()
+
+            if not resource_path.exists():
+                raise ValueError('Failed to resolve opt {opt}: resource {resource_path} does not exist')
+
+            return str(resource_path)
+
+        pattern = re.compile(r'{{ *(?P<package>\S+):(?P<path>\S+) *}}')
+        return pattern.sub(render, opt)
