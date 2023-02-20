@@ -135,12 +135,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             cterm_ceil = cterm.add_constraint(
                 KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.kast])
             )
-            kore_ceil = self.kprint.kast_to_kore(cterm_ceil.kast, GENERATED_TOP_CELL) if assume_defined else kore
+            kore_ceil = self.kprint.kast_to_kore(cterm_ceil.kast, GENERATED_TOP_CELL)
         else:
             kore_ceil = kore
 
-        _LOGGER.debug(f'Executing: {cterm}')
-        # use booster first if configured
         if self._booster_client is None:
             # proceed normally if booster not configured
             _, kore_client = self._kore_rpc
@@ -148,6 +146,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 kore_ceil, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
         else:
+            # use booster first if configured
             _LOGGER.info('Trying booster execution')
             booster_er = self._booster_client.execute(
                 kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
@@ -350,12 +349,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if len(next_cterms) == 1:
                 raise ValueError(f'Found a single successor cterm {cfgid}: {(depth, cterm, next_cterms)}')
 
-            # only possible when reason == stuck (or depth-bound and max-depth 0)
+            # only possible when reason == stuck (or depth-bound with max-depth 0, pathological)
             if len(next_cterms) == 0 and depth == 0:
                 _LOGGER.info(f'Found stuck node {cfgid}: {shorten_hashes(curr_node.id)}')
                 continue
 
-            # possible reasons: depth-bound, branching, terminal-rule
+            # possible reasons: depth-bound, branching, terminal-rule, timeout
             if depth > 0:
                 next_node = cfg.get_or_create_node(cterm)
                 cfg.create_edge(curr_node.id, next_node.id, mlTop(), depth)

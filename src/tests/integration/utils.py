@@ -70,7 +70,6 @@ class KompiledTest:
 
     @pytest.fixture(scope='class')
     def llvm_dir(self, kompile: Kompiler) -> Path:
-        print('kompile ahoy!')
         return kompile(
             main_file=self.KOMPILE_MAIN_FILE,
             backend=KompileBackend.LLVM,
