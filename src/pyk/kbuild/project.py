@@ -132,7 +132,8 @@ class Target:
 
     @property
     def dict(self) -> Dict[str, Any]:
-        return dataclasses.asdict(self)
+        dct = dataclasses.asdict(self)
+        return {key: value for key, value in dct.items() if value is not None}
 
 
 @final
@@ -142,7 +143,7 @@ class Project:
     name: str
     version: str
     source_dir: Path
-    resources: FrozenDict[Path, Path]
+    resources: FrozenDict[str, Path]
     dependencies: Tuple[Dependency, ...]
     targets: Tuple[Target, ...]
 
@@ -153,7 +154,7 @@ class Project:
         name: str,
         version: str,
         source_dir: Union[str, Path],
-        resources: Optional[Mapping[Union[str, Path], Union[str, Path]]] = None,
+        resources: Optional[Mapping[str, Union[str, Path]]] = None,
         dependencies: Iterable[Dependency] = (),
         targets: Iterable[Target] = (),
     ):
@@ -165,8 +166,8 @@ class Project:
 
         resources = resources or {}
         resources = {
-            relative_path(target_path): (path / relative_path(source_path)).resolve()
-            for target_path, source_path in resources.items()
+            resource_name: (path / relative_path(resource_dir)).resolve()
+            for resource_name, resource_dir in resources.items()
         }
 
         object.__setattr__(self, 'path', path)
@@ -222,22 +223,20 @@ class Project:
         return [str(source_file.relative_to(self.source_dir)) for source_file in self.source_files]
 
     @property
-    def resource_files(self) -> Dict[Path, List[Path]]:
-        res: Dict[Path, List[Path]] = {}
-        for resource_dir, project_resource_dir in self.resources.items():
-            check_dir_path(project_resource_dir)
-            res[resource_dir] = [
-                resource_file for resource_file in project_resource_dir.rglob('*') if resource_file.is_file()
-            ]
+    def resource_files(self) -> Dict[str, List[Path]]:
+        res: Dict[str, List[Path]] = {}
+        for resource_name, resource_dir in self.resources.items():
+            check_dir_path(resource_dir)
+            res[resource_name] = [resource_file for resource_file in resource_dir.rglob('*') if resource_file.is_file()]
         return res
 
     @property
-    def resource_file_names(self) -> Dict[Path, List[str]]:
+    def resource_file_names(self) -> Dict[str, List[str]]:
         return {
-            resource_dir: [
-                str(resource_file.relative_to(self.resources[resource_dir])) for resource_file in resource_files
+            resource_name: [
+                str(resource_file.relative_to(self.resources[resource_name])) for resource_file in resource_files
             ]
-            for resource_dir, resource_files in self.resource_files.items()
+            for resource_name, resource_files in self.resource_files.items()
         }
 
     def get_target(self, target_name: str) -> Target:

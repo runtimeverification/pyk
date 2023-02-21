@@ -29,13 +29,13 @@ class KBuild:
     def definition_dir(self, package: Package, target_name: str) -> Path:
         return self.kbuild_dir / package.target_dir / self.k_version / target_name
 
-    def resource_dir(self, package: Package, resource_path: Path) -> Path:
-        return self.kbuild_dir / package.resource_dir / resource_path
+    def resource_dir(self, package: Package, resource_name: str) -> Path:
+        return self.kbuild_dir / package.resource_dir / resource_name
 
-    def resource_files(self, package: Package, resource_path: Path) -> List[Path]:
+    def resource_files(self, package: Package, resource_name: str) -> List[Path]:
         return [
-            self.resource_dir(package, resource_path) / file_name
-            for file_name in package.project.resource_file_names[resource_path]
+            self.resource_dir(package, resource_name) / file_name
+            for file_name in package.project.resource_file_names[resource_name]
         ]
 
     def include_dir(self, package: Package) -> Path:
@@ -61,11 +61,11 @@ class KBuild:
         )
 
         # Sync resources
-        for resource_path in package.project.resources:
+        for resource_name in package.project.resources:
             res += sync_files(
-                source_dir=package.project.resources[resource_path],
-                target_dir=self.resource_dir(package, resource_path),
-                file_names=package.project.resource_file_names[resource_path],
+                source_dir=package.project.resources[resource_name],
+                target_dir=self.resource_dir(package, resource_name),
+                file_names=package.project.resource_file_names[resource_name],
             )
 
         return res
@@ -101,8 +101,8 @@ class KBuild:
         for sub_package in package.sub_packages:
             input_files.append(sub_package.project.project_file)
             input_files.extend(self.source_files(sub_package))
-            for resource_path in sub_package.project.resources:
-                input_files.extend(self.resource_files(sub_package, resource_path))
+            for resource_name in sub_package.project.resources:
+                input_files.extend(self.resource_files(sub_package, resource_name))
 
         input_timestamps = (input_file.stat().st_mtime for input_file in input_files)
         target_timestamp = timestamp.stat().st_mtime
@@ -111,28 +111,27 @@ class KBuild:
     def kompile_args(self, package: Package, target: Target) -> Dict[str, Any]:
         args = target.dict
         args.pop('name')
-
         args['main_file'] = self.source_dir(package) / args['main_file']
 
         if 'ccopts' in args:
             args['ccopts'] = [self.render_opt(package, opt) for opt in args['ccopts']]
 
-        return {key: value for key, value in args.items() if value is not None}
+        return args
 
     def render_opt(self, package: Package, opt: str) -> str:
         def render(match: Match) -> str:
             package_name = match.group('package')
-            path = Path(match.group('path'))
+            resource_name = match.group('resource')
 
             sub_package = single(
                 sub_package for sub_package in package.sub_packages if sub_package.name == package_name
             )
-            resource_path = self.resource_dir(sub_package, path).resolve()
+            resource_path = self.resource_dir(sub_package, resource_name).resolve()
 
             if not resource_path.exists():
-                raise ValueError('Failed to resolve opt {opt}: resource {resource_path} does not exist')
+                raise ValueError('Failed to resolve opt {opt}: resource path {resource_path} does not exist')
 
             return str(resource_path)
 
-        pattern = re.compile(r'{{ *(?P<package>\S+):(?P<path>\S+) *}}')
+        pattern = re.compile(r'{{ *(?P<package>\S+):(?P<resource>\S+) *}}')
         return pattern.sub(render, opt)
