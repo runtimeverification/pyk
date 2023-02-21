@@ -249,6 +249,7 @@ class KVariable(KInner):
         for a in [
             KAtt.LOCATION,
             KAtt.SOURCE,
+            'org.kframework.definition.Production',
             'anonymous',
             'cellSort',
             'withConfig',
