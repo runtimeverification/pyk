@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from subprocess import Popen
+from subprocess import STDOUT, Popen
 from time import sleep
 from typing import (
     Any,
@@ -176,6 +176,8 @@ class StopReason(str, Enum):
     BRANCHING = 'branching'
     CUT_POINT_RULE = 'cut-point-rule'
     TERMINAL_RULE = 'terminal-rule'
+    ABORTED = 'aborted'
+    TIMEOUT = 'timeout'
 
 
 @final
@@ -210,6 +212,7 @@ class ExecuteResult(ABC):  # noqa: B024
         StopReason.BRANCHING: 'BranchingResult',
         StopReason.CUT_POINT_RULE: 'CutPointResult',
         StopReason.TERMINAL_RULE: 'TerminalResult',
+        StopReason.ABORTED: 'AbortedResult',
     }
 
     reason: ClassVar[StopReason]
@@ -333,6 +336,44 @@ class TerminalResult(ExecuteResult):
 
 @final
 @dataclass(frozen=True)
+class AbortedResult(ExecuteResult):
+    reason = StopReason.ABORTED
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+
+    @classmethod
+    def from_dict(cls: Type['AbortedResult'], dct: Mapping[str, Any]) -> 'AbortedResult':
+        cls._check_reason(dct)
+        return AbortedResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
+        )
+
+
+@final
+@dataclass(frozen=True)
+class TimeoutResult(ExecuteResult):
+    reason = StopReason.TIMEOUT
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+
+    @classmethod
+    def from_dict(cls: Type['TimeoutResult'], dct: Mapping[str, Any]) -> 'TimeoutResult':
+        cls._check_reason(dct)
+        return TimeoutResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
+        )
+
+
+@final
+@dataclass(frozen=True)
 class ImpliesResult:
     satisfiable: bool
     implication: Pattern
@@ -425,6 +466,7 @@ class KoreServer(ContextManager['KoreServer']):
     _proc: Popen
     _port: int
     _pid: int
+    _logs: Optional[TextIO]
 
     def __init__(
         self,
@@ -434,6 +476,7 @@ class KoreServer(ContextManager['KoreServer']):
         *,
         command: Union[str, Iterable[str]] = 'kore-rpc',
         bug_report: Optional[BugReport] = None,
+        logging: Optional[Path] = None,
     ):
         kompiled_dir = Path(kompiled_dir)
         check_dir_path(kompiled_dir)
@@ -446,11 +489,19 @@ class KoreServer(ContextManager['KoreServer']):
 
         args = tuple(command) + (str(definition_file), '--module', module_name, '--server-port', str(port))
 
+        # if log file given, log to the file (truncating it), otherwise use parent stdout
+        if logging is not None:
+            self._logs = open(logging, 'w')
+        else:
+            self._logs = None
+        # if log file given, merge stderr into it, otherwise use parent stderr
+        stderr = STDOUT if logging is not None else None
+
         self._port = port
-        _LOGGER.info(f'Starting KoreServer: port={self._port}')
         if bug_report is not None:
             bug_report.add_command(args)
-        self._proc = Popen(args)
+        _LOGGER.info(f'Starting KoreServer: port={self._port}, log file {logging}')
+        self._proc = Popen(args, stdout=self._logs, stderr=stderr)
         self._pid = self._proc.pid
         _LOGGER.info(f'KoreServer started: port={self._port}, pid={self._pid}')
 
@@ -463,4 +514,6 @@ class KoreServer(ContextManager['KoreServer']):
     def close(self) -> None:
         self._proc.terminate()
         self._proc.wait()
+        if self._logs is not None:
+            self._logs.close()
         _LOGGER.info(f'KoreServer stopped: port={self._port}, pid={self._pid}')

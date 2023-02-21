@@ -7,7 +7,7 @@ from pyk.cli_utils import BugReport
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KInner, KLabel, KVariable, Subst
 from pyk.kast.manip import flatten_label, free_vars
-from pyk.kore.rpc import KoreClient, KoreServer
+from pyk.kore.rpc import KoreClient, KoreServer, StopReason
 from pyk.ktool.kprint import KPrint
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
@@ -26,6 +26,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _kore_client: Optional[KoreClient]
     _rpc_closed: bool
     _bug_report: Optional[BugReport]
+    _booster_port: int = 0
+    _booster_server: Optional[KoreServer]
+    _booster_client: Optional[KoreClient]
 
     def __init__(
         self,
@@ -33,6 +36,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         port: int,
         bug_report: Optional[BugReport] = None,
         kore_rpc_command: Union[str, Iterable[str]] = 'kore-rpc',
+        *,
+        booster_rpc_command: Optional[Iterable[str]] = None,
+        booster_port: int = 0,
     ):
         self.kprint = kprint
         self._port = port
@@ -41,6 +47,25 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._kore_server = None
         self._kore_client = None
         self._rpc_closed = False
+        if booster_rpc_command is None:
+            self._booster_server = None
+            self._booster_client = None
+        else:
+            assert booster_port != 0
+            self._booster_port = booster_port
+            self._booster_server = KoreServer(
+                self.kprint.definition_dir,
+                self.kprint.main_module,
+                self._booster_port,
+                bug_report=self._bug_report,
+                command=booster_rpc_command,
+                logging=Path('hs-boost.log'),
+            )
+            self._booster_client = KoreClient(
+                'localhost',
+                self._booster_port,
+                bug_report=self._bug_report,
+            )
 
     def __enter__(self) -> 'KCFGExplore':
         return self
@@ -89,6 +114,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if self._kore_client is not None:
             self._kore_client.close()
             self._kore_client = None
+        if self._booster_server is not None:
+            self._booster_server.close()
+            self._booster_server = None
+        if self._booster_client is not None:
+            self._booster_client.close()
+            self._booster_client = None
 
     def cterm_execute(
         self,
@@ -98,14 +129,39 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         terminal_rules: Optional[Iterable[str]] = None,
         assume_defined: bool = True,
     ) -> Tuple[int, CTerm, List[CTerm]]:
-        if assume_defined:
-            cterm = cterm.add_constraint(
-                KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.kast])
-            )
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
-        er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+        if assume_defined:
+            cterm_ceil = cterm.add_constraint(
+                KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.kast])
+            )
+            kore_ceil = self.kprint.kast_to_kore(cterm_ceil.kast, GENERATED_TOP_CELL)
+        else:
+            kore_ceil = kore
+
+        if self._booster_client is None:
+            # proceed normally if booster not configured
+            _, kore_client = self._kore_rpc
+            er = kore_client.execute(
+                kore_ceil, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+            )
+        else:
+            # use booster first if configured
+            _LOGGER.info('Trying booster execution')
+            booster_er = self._booster_client.execute(
+                kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+            )
+            _LOGGER.info(f'{booster_er.reason} after {booster_er.depth} steps')
+            if booster_er.depth > 0 or booster_er.reason == StopReason.BRANCHING:
+                er = booster_er
+            else:
+                # if no progress was made, use kprove for a single step
+                _LOGGER.info('No progress, re-trying with kprove')
+                _, kore_client = self._kore_rpc
+                er = kore_client.execute(
+                    kore_ceil, max_depth=1, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+                )
+
         depth = er.depth
         next_state = CTerm(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None and len(er.next_states) > 1 else []
@@ -289,14 +345,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 curr_node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
             )
 
-            # Nonsense case.
+            # only possible when reason == cut-point-rule
             if len(next_cterms) == 1:
                 raise ValueError(f'Found a single successor cterm {cfgid}: {(depth, cterm, next_cterms)}')
 
+            # only possible when reason == stuck (or depth-bound with max-depth 0, pathological)
             if len(next_cterms) == 0 and depth == 0:
                 _LOGGER.info(f'Found stuck node {cfgid}: {shorten_hashes(curr_node.id)}')
                 continue
 
+            # possible reasons: depth-bound, branching, terminal-rule, timeout
             if depth > 0:
                 next_node = cfg.get_or_create_node(cterm)
                 cfg.create_edge(curr_node.id, next_node.id, mlTop(), depth)
@@ -315,6 +373,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     continue
 
             else:
+                # if we are here, we know that:
+                # - depth == 0 (in else-branch)
+                # - len(next_cterms) >= 2 (other cases above catch length 0 or 1)
+                # Therefore, necessarily reason == branching
                 _LOGGER.warning(f'Falling back to manual branch extraction {cfgid}: {shorten_hashes(curr_node.id)}')
                 branch_constraints = [
                     mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms

@@ -30,9 +30,13 @@ class Kompiler:
         main_module: Optional[str] = None,
         syntax_module: Optional[str] = None,
         include_dirs: Iterable[Union[str, Path]] = (),
+        command: Iterable[str] = ('kompile',),
+        emit_json: bool = True,
     ) -> Path:
         return kompile(
             main_file=main_file,
+            command=command,
+            emit_json=emit_json,
             output_dir=self._tmp_path_factory.mktemp('kompiled'),
             backend=backend,
             main_module=main_module,
@@ -62,6 +66,22 @@ class KompiledTest:
             main_module=self.KOMPILE_MAIN_MODULE,
             syntax_module=self.KOMPILE_SYNTAX_MODULE,
             include_dirs=self.KOMPILE_INCLUDE_DIRS,
+        )
+
+    @pytest.fixture(scope='class')
+    def llvm_dir(self, kompile: Kompiler) -> Path:
+        return kompile(
+            main_file=self.KOMPILE_MAIN_FILE,
+            backend=KompileBackend.LLVM,
+            main_module=self.KOMPILE_MAIN_MODULE,
+            syntax_module=self.KOMPILE_SYNTAX_MODULE,
+            include_dirs=self.KOMPILE_INCLUDE_DIRS,
+            command=(
+                'kompile',
+                '--llvm-kompile-type',
+                'c',
+            ),
+            emit_json=False,
         )
 
     @pytest.fixture(scope='class')
@@ -111,8 +131,20 @@ class KProveTest(KompiledTest):
 
 class KCFGExploreTest(KProveTest):
     @pytest.fixture
-    def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
-        with KCFGExplore(kprove, free_port_on_host(), bug_report=kprove._bug_report) as kcfg_explore:
+    def kcfg_explore(self, kprove: KProve, llvm_dir: Path) -> Iterator[KCFGExplore]:
+        with KCFGExplore(
+            kprove,
+            free_port_on_host(),
+            bug_report=kprove._bug_report,
+            booster_rpc_command=[
+                'hs-backend-booster',
+                '-l',
+                'Rewrite',
+                '--llvm-backend-library',
+                f'{llvm_dir}/interpreter',
+            ],
+            booster_port=free_port_on_host(),
+        ) as kcfg_explore:
             yield kcfg_explore
 
 
