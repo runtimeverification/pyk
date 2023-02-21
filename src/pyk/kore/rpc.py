@@ -213,6 +213,7 @@ class ExecuteResult(ABC):  # noqa: B024
         StopReason.CUT_POINT_RULE: 'CutPointResult',
         StopReason.TERMINAL_RULE: 'TerminalResult',
         StopReason.ABORTED: 'AbortedResult',
+        StopReason.TIMEOUT: 'TimeoutResult',
     }
 
     reason: ClassVar[StopReason]
