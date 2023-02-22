@@ -29,7 +29,7 @@ def check_dir_path(path: Path, create: bool = False) -> None:
     path = path.resolve()
     if not path.exists():
         if create:
-            path.mkdir()
+            path.mkdir(parents=True)
         else:
             raise ValueError(f'Directory does not exist: {path}')
     if not path.is_dir():
