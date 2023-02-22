@@ -25,17 +25,20 @@ def loglevel(level: str) -> int:
         raise ValueError('Invalid log level: {level}') from None
 
 
-def check_dir_path(path: Path) -> None:
+def check_dir_path(path: Path, create: bool = False) -> None:
     path = path.resolve()
     if not path.exists():
-        raise ValueError(f'Directory does not exist: {path}')
+        if create:
+            path.mkdir()
+        else:
+            raise ValueError(f'Directory does not exist: {path}')
     if not path.is_dir():
         raise ValueError(f'Path is not a directory: {path}')
 
 
-def dir_path(s: str) -> Path:
+def dir_path(s: str, create: bool = False) -> Path:
     path = Path(s)
-    check_dir_path(path)
+    check_dir_path(path, create=create)
     return path
 
 
