@@ -33,7 +33,7 @@
             };
         in {
           pyk = mkPyk prev.python39;
-          python310Packages.pyk = mkPyk prev.python310;
+          pyk-python310 = mkPyk prev.python310;
         };
     } // (flake-utils.lib.eachDefaultSystem (system:
       let
@@ -43,8 +43,7 @@
         };
       in {
         packages = {
-          inherit (pkgs) pyk;
-          pyk-python310 = pkgs.python310Packages.pyk;
+          inherit (pkgs) pyk pyk-python310;
           default = pkgs.pyk;
         };
       }));
