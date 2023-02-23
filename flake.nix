@@ -19,11 +19,6 @@
               checkGroups = [ ];
               overrides = prev.poetry2nix.overrides.withDefaults
                 (finalPython: prevPython: {
-                  graphql-server = prevPython.graphql-server.overridePythonAttrs
-                    (oldAttrs: {
-                      buildInputs = (oldAttrs.buildInputs or [ ])
-                        ++ [ prevPython.setuptools ];
-                    });
                   nanoid = prevPython.nanoid.overridePythonAttrs
                     (oldAttrs: {
                       buildInputs = (oldAttrs.buildInputs or [ ])
