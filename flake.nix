@@ -31,8 +31,9 @@
                     });
                 });
             };
-        in {
-          pyk = mkPyk prev.python39;
+        in rec {
+          pyk = pyk-python39;
+          pyk-python39 = mkPyk prev.python39;
           pyk-python310 = mkPyk prev.python310;
         };
     } // (flake-utils.lib.eachDefaultSystem (system:
@@ -43,7 +44,7 @@
         };
       in {
         packages = {
-          inherit (pkgs) pyk pyk-python310;
+          inherit (pkgs) pyk pyk-python39 pyk-python310;
           default = pkgs.pyk;
         };
       }));
