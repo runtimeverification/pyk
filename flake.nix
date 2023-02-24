@@ -32,7 +32,7 @@
                 });
             };
         in rec {
-          pyk = pyk-python39;
+          pyk = mkPyk prev.python39;
           python39Packages.pyk = mkPyk prev.python39;
           python310Packages.pyk = mkPyk prev.python310;
         };
