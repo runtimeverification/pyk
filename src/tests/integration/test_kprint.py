@@ -1,8 +1,8 @@
-from typing import Final
+from typing import Any, Dict, Final
 
 import pytest
 
-from pyk.kast.inner import KApply, KInner, KSequence, KToken, KVariable
+from pyk.kast.inner import KApply, KAtt, KInner, KSequence, KToken, KVariable
 from pyk.kast.manip import remove_attrs
 from pyk.ktool.kprint import KPrint
 from pyk.prelude.kint import INT, intToken
@@ -51,6 +51,15 @@ TEST_DATA: Final = (
     ),
 )
 
+TEST_ATT_DATA: Final = (
+    ('trivial', {'function': '', 'total': '', 'klabel': 'foo-bar'}, '[function(), total(), klabel(foo-bar)]'),
+    (
+        'location',
+        {'org.kframework.attributes.Location': [2135, 3, 2135, 20]},
+        '[org.kframework.attributes.Location(Location(2135,3,2135,20))]',
+    ),
+)
+
 
 class TestParseToken(KPrintTest):
     KOMPILE_MAIN_FILE = 'k-files/imp.k'
@@ -69,3 +78,15 @@ class TestParseToken(KPrintTest):
 
         # Then
         assert remove_attrs(actual) == expected
+
+    # Test that printing a definition is possible without error.
+    def test_print_definition(self, kprint: KPrint) -> None:
+        kprint.pretty_print(kprint.definition)
+
+    @pytest.mark.parametrize('test_id,att_dict,expected', TEST_ATT_DATA, ids=[test_id for test_id, *_ in TEST_ATT_DATA])
+    def test_print_attribute(self, kprint: KPrint, test_id: str, att_dict: Dict[str, Any], expected: str) -> None:
+        # When
+        actual = kprint.pretty_print(KAtt(att_dict))
+
+        # Then
+        assert actual == expected

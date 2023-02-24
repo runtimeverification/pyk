@@ -536,7 +536,7 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
     if type(kast) is KAtt:
         if not kast.atts:
             return ''
-        att_strs = [k + '(' + v + ')' for k, v in kast.atts.items()]
+        att_strs = [f'{k}({v})' for k, v in kast.atts.items()]
         return '[' + ', '.join(att_strs) + ']'
     if type(kast) is KImport:
         return ' '.join(['imports', ('public' if kast.public else 'private'), kast.name])
