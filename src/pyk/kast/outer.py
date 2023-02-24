@@ -989,27 +989,27 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     @cached_property
     def productions(self) -> Tuple[KProduction, ...]:
-        return tuple(prod for module in self for prod in module.productions)
+        return tuple(prod for module in self.modules for prod in module.productions)
 
     @cached_property
     def syntax_productions(self) -> Tuple[KProduction, ...]:
-        return tuple(prod for module in self for prod in module.syntax_productions)
+        return tuple(prod for module in self.modules for prod in module.syntax_productions)
 
     @cached_property
     def functions(self) -> Tuple[KProduction, ...]:
-        return tuple(func for module in self for func in module.functions)
+        return tuple(func for module in self.modules for func in module.functions)
 
     @cached_property
     def constructors(self) -> Tuple[KProduction, ...]:
-        return tuple(ctor for module in self for ctor in module.constructors)
+        return tuple(ctor for module in self.modules for ctor in module.constructors)
 
     @cached_property
     def cell_collection_productions(self) -> Tuple[KProduction, ...]:
-        return tuple(prod for module in self for prod in module.cell_collection_productions)
+        return tuple(prod for module in self.modules for prod in module.cell_collection_productions)
 
     @cached_property
     def rules(self) -> Tuple[KRule, ...]:
-        return tuple(rule for module in self for rule in module.rules)
+        return tuple(rule for module in self.modules for rule in module.rules)
 
     @cached_property
     def alias_rules(self) -> Tuple[KRule, ...]:
