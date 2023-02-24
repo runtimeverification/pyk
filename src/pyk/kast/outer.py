@@ -887,7 +887,7 @@ class KRequire(KOuter):
 @dataclass(frozen=True)
 class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
     main_module_name: str
-    modules: Tuple[KFlatModule, ...]
+    all_modules: Tuple[KFlatModule, ...]
     requires: Tuple[KRequire, ...]
     att: KAtt
 
@@ -901,12 +901,12 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
     def __init__(
         self,
         main_module_name: str,
-        modules: Iterable[KFlatModule],
+        all_modules: Iterable[KFlatModule],
         requires: Iterable[KRequire] = (),
         att: KAtt = EMPTY_ATT,
     ):
-        modules = tuple(modules)
-        main_modules = [module for module in modules if module.name == main_module_name]
+        all_modules = tuple(all_modules)
+        main_modules = [module for module in all_modules if module.name == main_module_name]
 
         if not main_modules:
             raise ValueError(f'Module not found: {main_module_name}')
@@ -916,7 +916,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         main_module = main_modules[0]
 
         object.__setattr__(self, 'main_module_name', main_module_name)
-        object.__setattr__(self, 'modules', tuple(modules))
+        object.__setattr__(self, 'all_modules', tuple(all_modules))
         object.__setattr__(self, 'requires', tuple(requires))
         object.__setattr__(self, 'att', att)
         object.__setattr__(self, 'main_module', main_module)
@@ -926,14 +926,14 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         object.__setattr__(self, '_empty_config', {})
 
     def __iter__(self) -> Iterator[KFlatModule]:
-        return iter(self.modules)
+        return iter(self.all_modules)
 
     @classmethod
     def from_dict(cls: Type['KDefinition'], d: Mapping[str, Any]) -> 'KDefinition':
         cls._check_node(d)
         return KDefinition(
             main_module_name=d['mainModule'],
-            modules=(KFlatModule.from_dict(module) for module in d['modules']),
+            all_modules=(KFlatModule.from_dict(module) for module in d['modules']),
             requires=(KRequire.from_dict(require) for require in d['requires']) if d.get('requires') else (),
             att=KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT,
         )
@@ -942,7 +942,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return {
             'node': 'KDefinition',
             'mainModule': self.main_module_name,
-            'modules': [module.to_dict() for module in self.modules],
+            'modules': [module.to_dict() for module in self.all_modules],
             'requires': [require.to_dict() for require in self.requires],
             'att': self.att.to_dict(),
         }
@@ -951,18 +951,32 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         self,
         *,
         main_module_name: Optional[str] = None,
-        modules: Optional[Iterable[KFlatModule]] = None,
+        all_modules: Optional[Iterable[KFlatModule]] = None,
         requires: Optional[Iterable[KRequire]] = None,
         att: Optional[KAtt] = None,
     ) -> 'KDefinition':
         main_module_name = main_module_name if main_module_name is not None else self.main_module_name
-        modules = modules if modules is not None else self.modules
+        all_modules = all_modules if all_modules is not None else self.all_modules
         requires = requires if requires is not None else self.requires
         att = att if att is not None else self.att
-        return KDefinition(main_module_name=main_module_name, modules=modules, requires=requires, att=att)
+        return KDefinition(main_module_name=main_module_name, all_modules=all_modules, requires=requires, att=att)
 
     def let_att(self, att: KAtt) -> 'KDefinition':
         return self.let(att=att)
+
+    @cached_property
+    def modules(self) -> Tuple[KFlatModule, ...]:
+        module_names = [self.main_module_name]
+        seen_modules = []
+        modules = []
+        module_dict = {m.name: m for m in self.all_modules}
+        while len(module_names) > 0:
+            mname = module_names.pop(0)
+            module = module_dict[mname]
+            modules.append(module)
+            seen_modules.append(mname)
+            module_names.extend([i.name for i in module.imports if i not in seen_modules])
+        return tuple(modules)
 
     @cached_property
     def module_names(self) -> Tuple[str, ...]:
