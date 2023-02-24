@@ -974,9 +974,9 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         seen_modules = []
         while len(module_names) > 0:
             mname = module_names.pop(0)
-            imported_names = [i.name for i in self.module_dict[mname].imports]
-            seen_modules.append(mname)
-            module_names.extend([iname for iname in imported_names if iname not in seen_modules])
+            if mname not in seen_modules:
+                seen_modules.append(mname)
+                module_names.extend([i.name for i in self.module_dict[mname].imports])
         return tuple(seen_modules)
 
     @cached_property
