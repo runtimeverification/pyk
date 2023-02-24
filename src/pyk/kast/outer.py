@@ -965,22 +965,27 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return self.let(att=att)
 
     @cached_property
-    def modules(self) -> Tuple[KFlatModule, ...]:
-        module_names = [self.main_module_name]
-        seen_modules = []
-        modules = []
-        module_dict = {m.name: m for m in self.all_modules}
-        while len(module_names) > 0:
-            mname = module_names.pop(0)
-            module = module_dict[mname]
-            modules.append(module)
-            seen_modules.append(mname)
-            module_names.extend([i.name for i in module.imports if i not in seen_modules])
-        return tuple(modules)
+    def all_module_names(self) -> Tuple[str, ...]:
+        return tuple(module.name for module in self.all_modules)
 
     @cached_property
     def module_names(self) -> Tuple[str, ...]:
-        return tuple(module.name for module in self)
+        module_names = [self.main_module_name]
+        seen_modules = []
+        while len(module_names) > 0:
+            mname = module_names.pop(0)
+            imported_names = [i.name for i in self.module_dict[mname].imports]
+            seen_modules.append(mname)
+            module_names.extend([iname for iname in imported_names if iname not in seen_modules])
+        return tuple(seen_modules)
+
+    @cached_property
+    def module_dict(self) -> Dict[str, KFlatModule]:
+        return {m.name: m for m in self.all_modules}
+
+    @cached_property
+    def modules(self) -> Tuple[KFlatModule, ...]:
+        return tuple(self.module_dict[mname] for mname in self.module_names)
 
     @cached_property
     def productions(self) -> Tuple[KProduction, ...]:
@@ -1058,7 +1063,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             raise ValueError(f'Expected a single cell production for sort {sort}') from err
 
     def module(self, name: str) -> KFlatModule:
-        return single(module for module in self if module.name == name)
+        return self.module_dict[name]
 
     def return_sort(self, label: KLabel) -> KSort:
         return self.production_for_klabel(label).sort
