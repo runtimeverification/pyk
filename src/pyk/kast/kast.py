@@ -141,6 +141,18 @@ class KAtt(KAst, Mapping[str, Any]):
     def remove(self, atts: Iterable[str]) -> 'KAtt':
         return KAtt({k: v for k, v in self.atts.items() if k not in atts})
 
+    def pretty(self) -> str:
+        if len(self) == 0:
+            return ''
+        att_strs = []
+        for k, v in self.items():
+            if k == self.LOCATION:
+                loc_ids = str(v).replace(' ', '')
+                att_strs.append(f'{self.LOCATION}{loc_ids}')
+            else:
+                att_strs.append(f'{k}({v})')
+        return f'[{", ".join(att_strs)}]'
+
 
 EMPTY_ATT: Final = KAtt()
 
