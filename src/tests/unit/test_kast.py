@@ -229,7 +229,8 @@ def test_defn_module_names() -> None:
     defn = KDefinition('FOO', [KFlatModule('BAR', [], []), KFlatModule('FOO', [], [])])
 
     # Then
-    assert set(defn.module_names) == {'FOO', 'BAR'}
+    assert set(defn.all_module_names) == {'FOO', 'BAR'}
+    assert set(defn.module_names) == {'FOO'}
 
 
 _0: Final = token('0')
