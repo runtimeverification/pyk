@@ -33,8 +33,8 @@
             };
         in rec {
           pyk = pyk-python39;
-          pyk-python39 = mkPyk prev.python39;
-          pyk-python310 = mkPyk prev.python310;
+          python39Packages.pyk = mkPyk prev.python39;
+          python310Packages.pyk = mkPyk prev.python310;
         };
     } // (flake-utils.lib.eachDefaultSystem (system:
       let
