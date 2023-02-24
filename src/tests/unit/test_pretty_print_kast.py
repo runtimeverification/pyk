@@ -32,10 +32,10 @@ PRETTY_PRINT_TEST_DATA = (
         KAtt(
             {
                 'org.kframework.attributes.Location': [2135, 3, 2135, 20],
-                'org.kframework.attributes.Source': '/some/path/domains.md',
+                'org.kframework.attributes.Source': r'/some/path\ with \ spaces/domains.md',
             }
         ),
-        '[org.kframework.attributes.Location(2135,3,2135,20), org.kframework.attributes.Source(/some/path/domains.md)]',
+        r'[org.kframework.attributes.Location(2135,3,2135,20), org.kframework.attributes.Source("/some/path\ with \ spaces/domains.md")]',
     ),
 )
 
