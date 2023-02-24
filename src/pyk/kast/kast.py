@@ -149,6 +149,8 @@ class KAtt(KAst, Mapping[str, Any]):
             if k == self.LOCATION:
                 loc_ids = str(v).replace(' ', '')
                 att_strs.append(f'{self.LOCATION}{loc_ids}')
+            elif k == self.SOURCE:
+                att_strs.append(self.SOURCE + '("' + v + '")')
             else:
                 att_strs.append(f'{k}({v})')
         return f'[{", ".join(att_strs)}]'
