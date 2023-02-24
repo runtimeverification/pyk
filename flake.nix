@@ -44,7 +44,9 @@
         };
       in {
         packages = {
-          inherit (pkgs) pyk pyk-python39 pyk-python310;
+          inherit (pkgs) pyk;
+          pyk-python39 = pkgs.python39Packages.pyk;
+          pyk-python310 = pkgs.python310Packages.pyk;
           default = pkgs.pyk;
         };
       }));
