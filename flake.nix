@@ -19,11 +19,6 @@
               checkGroups = [ ];
               overrides = prev.poetry2nix.overrides.withDefaults
                 (finalPython: prevPython: {
-                  graphql-server = prevPython.graphql-server.overridePythonAttrs
-                    (oldAttrs: {
-                      buildInputs = (oldAttrs.buildInputs or [ ])
-                        ++ [ prevPython.setuptools ];
-                    });
                   nanoid = prevPython.nanoid.overridePythonAttrs
                     (oldAttrs: {
                       buildInputs = (oldAttrs.buildInputs or [ ])
@@ -38,6 +33,7 @@
             };
         in {
           pyk = mkPyk prev.python39;
+          python39Packages.pyk = mkPyk prev.python39;
           python310Packages.pyk = mkPyk prev.python310;
         };
     } // (flake-utils.lib.eachDefaultSystem (system:
@@ -49,6 +45,7 @@
       in {
         packages = {
           inherit (pkgs) pyk;
+          pyk-python39 = pkgs.python39Packages.pyk;
           pyk-python310 = pkgs.python310Packages.pyk;
           default = pkgs.pyk;
         };
