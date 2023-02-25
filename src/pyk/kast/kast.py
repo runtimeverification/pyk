@@ -141,6 +141,7 @@ class KAtt(KAst, Mapping[str, Any]):
     def remove(self, atts: Iterable[str]) -> 'KAtt':
         return KAtt({k: v for k, v in self.atts.items() if k not in atts})
 
+    @property
     def pretty(self) -> str:
         if len(self) == 0:
             return ''

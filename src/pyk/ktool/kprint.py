@@ -534,7 +534,7 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
             requires_str = 'requires ' + indent(requires_str)
         return context_str + '\n  ' + requires_str + '\n  ' + atts_str
     if type(kast) is KAtt:
-        return kast.pretty()
+        return kast.pretty
     if type(kast) is KImport:
         return ' '.join(['imports', ('public' if kast.public else 'private'), kast.name])
     if type(kast) is KFlatModule:
