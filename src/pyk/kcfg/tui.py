@@ -73,6 +73,7 @@ class BehaviorView(Widget):
 
 
 class NodeView(Widget):
+    _curr_element: str
     _term_on: bool
     _constraint_on: bool
     _custom_on: bool
@@ -80,17 +81,25 @@ class NodeView(Widget):
     def __init__(
         self,
         id: str = '',
+        curr_element: str = 'NOTHING',
         term_on: bool = True,
         constraint_on: bool = True,
         custom_on: bool = False,
     ):
         super().__init__(id=id)
+        self._curr_element = curr_element
         self._term_on = term_on
         self._constraint_on = constraint_on
         self._custom_on = custom_on
 
+    def _info_text(self) -> str:
+        term_str = '✅' if self._term_on else '❌'
+        constraint_str = '✅' if self._constraint_on else '❌'
+        custom_str = '✅' if self._custom_on else '❌'
+        return f'{self._curr_element} selected. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
+
     def compose(self) -> ComposeResult:
-        yield Horizontal(Static('Info', id='info'), id='info-view')
+        yield Horizontal(Static(self._info_text(), id='info'), id='info-view')
         yield Horizontal(Static('Term', id='term'), id='term-view', classes=('' if self._term_on else 'hidden'))
         yield Horizontal(
             Static('Constraint', id='constraint'),
@@ -108,6 +117,7 @@ class NodeView(Widget):
             self.query_one(f'#{field}-view', Horizontal).remove_class('hidden')
         else:
             self.query_one(f'#{field}-view', Horizontal).add_class('hidden')
+        self.query_one('#info', Static).update(self._info_text())
 
 
 class KCFGViewer(App):
