@@ -72,6 +72,20 @@ class BehaviorView(Widget):
         return self._nodes
 
 
+class NodeView(Widget):
+    def __init__(
+        self,
+        id: str = '',
+    ):
+        super().__init__(id=id)
+
+    def compose(self) -> ComposeResult:
+        yield Horizontal(Static('Info', id='info'), id='info-view')
+        yield Horizontal(Static('Term', id='term'), id='term-view')
+        yield Horizontal(Static('Constraint', id='constraint'), id='constraint-view')
+        yield Horizontal(Static('Custom', id='custom'), id='custom-view')
+
+
 class KCFGViewer(App):
     CSS_PATH = 'style.css'
 
@@ -81,6 +95,7 @@ class KCFGViewer(App):
     _minimize: bool
     _hidden_chunks: List[str]
     _selected_chunk: Optional[str]
+    _custom_on: bool
 
     def __init__(
         self,
@@ -96,18 +111,14 @@ class KCFGViewer(App):
         self._minimize = True
         self._hidden_chunks = []
         self._selected_chunk = None
+        self._custom_on = False
 
     def compose(self) -> ComposeResult:
         yield Vertical(
             BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
             id='navigation',
         )
-        yield Vertical(
-            Horizontal(Static('Info', id='info'), id='info-view'),
-            Horizontal(Static('Term', id='term'), id='term-view'),
-            Horizontal(Static('Constraint', id='constraint'), id='constraint-view'),
-            id='display',
-        )
+        yield Vertical(NodeView(id='node-view'), id='display')
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
         def _mostly_bool_constraints(cs: List[KInner]) -> List[KInner]:
@@ -166,6 +177,7 @@ class KCFGViewer(App):
     BINDINGS = [
         ('h', 'keystroke("h")', 'Hide selected node from graph.'),
         ('H', 'keystroke("H")', 'Unhide all nodes from graph.'),
+        ('c', 'keystroke("c")', 'Toggle custom view.'),
     ]
 
     def action_keystroke(self, key: str) -> None:
@@ -175,9 +187,15 @@ class KCFGViewer(App):
                 self._hidden_chunks.append(self._selected_chunk)
                 self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
                 self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
-        if key == 'H':
+        elif key == 'H':
             for hc in self._hidden_chunks:
                 self.query_one(f'#{hc}', GraphChunk).remove_class('hidden')
             node_ids = [nid[5:] for nid in self._hidden_chunks]
             self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
             self._hidden_chunks = []
+        elif key == 'c':
+            self._custom_on = not self._custom_on
+            if self._custom_on:
+                self.query_one('#custom-view', Horizontal).remove_class('hidden')
+            else:
+                self.query_one('#custom-view', Horizontal).add_class('hidden')
