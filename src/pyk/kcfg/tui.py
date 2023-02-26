@@ -73,17 +73,41 @@ class BehaviorView(Widget):
 
 
 class NodeView(Widget):
+    _term_on: bool
+    _constraint_on: bool
+    _custom_on: bool
+
     def __init__(
         self,
         id: str = '',
+        term_on: bool = True,
+        constraint_on: bool = True,
+        custom_on: bool = False,
     ):
         super().__init__(id=id)
+        self._term_on = term_on
+        self._constraint_on = constraint_on
+        self._custom_on = custom_on
 
     def compose(self) -> ComposeResult:
         yield Horizontal(Static('Info', id='info'), id='info-view')
-        yield Horizontal(Static('Term', id='term'), id='term-view')
-        yield Horizontal(Static('Constraint', id='constraint'), id='constraint-view')
-        yield Horizontal(Static('Custom', id='custom'), id='custom-view')
+        yield Horizontal(Static('Term', id='term'), id='term-view', classes=('' if self._term_on else 'hidden'))
+        yield Horizontal(
+            Static('Constraint', id='constraint'),
+            id='constraint-view',
+            classes=('' if self._constraint_on else 'hidden'),
+        )
+        yield Horizontal(Static('Custom', id='custom'), id='custom-view', classes=('' if self._custom_on else 'hidden'))
+
+    def toggle_visibility(self, field: str) -> None:
+        assert field in ['term', 'constraint', 'custom']
+        field_attr = f'_{field}_on'
+        old_value = getattr(self, field_attr)
+        setattr(self, field_attr, not old_value)
+        if not old_value:
+            self.query_one(f'#{field}-view', Horizontal).remove_class('hidden')
+        else:
+            self.query_one(f'#{field}-view', Horizontal).add_class('hidden')
 
 
 class KCFGViewer(App):
@@ -91,11 +115,12 @@ class KCFGViewer(App):
 
     _kcfg: KCFG
     _kprint: KPrint
+
     _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
     _minimize: bool
+
     _hidden_chunks: List[str]
     _selected_chunk: Optional[str]
-    _custom_on: bool
 
     def __init__(
         self,
@@ -111,7 +136,6 @@ class KCFGViewer(App):
         self._minimize = True
         self._hidden_chunks = []
         self._selected_chunk = None
-        self._custom_on = False
 
     def compose(self) -> ComposeResult:
         yield Vertical(
@@ -177,7 +201,9 @@ class KCFGViewer(App):
     BINDINGS = [
         ('h', 'keystroke("h")', 'Hide selected node from graph.'),
         ('H', 'keystroke("H")', 'Unhide all nodes from graph.'),
-        ('c', 'keystroke("c")', 'Toggle custom view.'),
+        ('t', 'keystroke("term")', 'Toggle term view.'),
+        ('c', 'keystroke("constraint")', 'Toggle constraint view.'),
+        ('v', 'keystroke("custom")', 'Toggle custom view.'),
     ]
 
     def action_keystroke(self, key: str) -> None:
@@ -193,9 +219,5 @@ class KCFGViewer(App):
             node_ids = [nid[5:] for nid in self._hidden_chunks]
             self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
             self._hidden_chunks = []
-        elif key == 'c':
-            self._custom_on = not self._custom_on
-            if self._custom_on:
-                self.query_one('#custom-view', Horizontal).remove_class('hidden')
-            else:
-                self.query_one('#custom-view', Horizontal).add_class('hidden')
+        elif key in ['term', 'constraint', 'custom']:
+            self.query_one('#node-view', NodeView).toggle_visibility(key)
