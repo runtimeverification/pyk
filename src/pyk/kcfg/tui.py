@@ -8,13 +8,14 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KInner, KRewrite
+from pyk.kast.inner import KApply, KInner, KRewrite, Subst
 from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites
 from pyk.ktool.kprint import KPrint
 from pyk.prelude.kbool import TRUE
+from pyk.prelude.ml import mlAnd
 
 from ..kcfg import KCFG
-from ..utils import shorten_hashes
+from ..utils import shorten_hashes, single
 
 
 class GraphChunk(Static):
@@ -73,30 +74,41 @@ class BehaviorView(Widget):
 
 
 class NodeView(Widget):
+    _kprint: KPrint
+    _custom_view: Optional[Callable[[CTerm], Iterable[str]]]
     _curr_element: str
+
+    _minimize: bool
     _term_on: bool
     _constraint_on: bool
     _custom_on: bool
 
     def __init__(
         self,
+        kprint: KPrint,
         id: str = '',
         curr_element: str = 'NOTHING',
+        minimize: bool = True,
         term_on: bool = True,
         constraint_on: bool = True,
         custom_on: bool = False,
+        custom_view: Optional[Callable[[CTerm], Iterable[str]]] = None,
     ):
         super().__init__(id=id)
+        self._kprint = kprint
         self._curr_element = curr_element
+        self._minimize = minimize
         self._term_on = term_on
         self._constraint_on = constraint_on
         self._custom_on = custom_on
+        self._custom_view = custom_view
 
     def _info_text(self) -> str:
         term_str = '✅' if self._term_on else '❌'
         constraint_str = '✅' if self._constraint_on else '❌'
         custom_str = '✅' if self._custom_on else '❌'
-        return f'{self._curr_element} selected. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
+        minimize_str = '✅' if self._minimize else '❌'
+        return f'{self._curr_element} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
         yield Horizontal(Static(self._info_text(), id='info'), id='info-view')
@@ -108,16 +120,54 @@ class NodeView(Widget):
         )
         yield Horizontal(Static('Custom', id='custom'), id='custom-view', classes=('' if self._custom_on else 'hidden'))
 
-    def toggle_visibility(self, field: str) -> None:
-        assert field in ['term', 'constraint', 'custom']
-        field_attr = f'_{field}_on'
+    def toggle_option(self, field: str) -> bool:
+        assert field in ['minimize', 'term_on', 'constraint_on', 'custom_on']
+        field_attr = f'_{field}'
         old_value = getattr(self, field_attr)
-        setattr(self, field_attr, not old_value)
-        if not old_value:
+        new_value = not old_value
+        # Do not turn on custom view if it's not available
+        if field == 'custom_on' and self._custom_view is None:
+            new_value = False
+        setattr(self, field_attr, new_value)
+        self.query_one('#info', Static).update(self._info_text())
+        return new_value
+
+    def toggle_view(self, field: str) -> None:
+        assert field in ['term', 'constraint', 'custom']
+        if self.toggle_option(f'{field}_on'):
             self.query_one(f'#{field}-view', Horizontal).remove_class('hidden')
         else:
             self.query_one(f'#{field}-view', Horizontal).add_class('hidden')
-        self.query_one('#info', Static).update(self._info_text())
+
+    def display_cterm(self, elem_id: str, cterm: CTerm) -> None:
+        def _boolify(c: KInner) -> KInner:
+            if type(c) is KApply and c.label.name == '#Equals' and c.args[0] == TRUE:
+                return c.args[1]
+            else:
+                return c
+
+        self._curr_element = elem_id
+        config = cterm.config
+        constraints = map(_boolify, cterm.constraints)
+        if self._minimize:
+            config = minimize_term(config)
+        self.query_one('#term', Static).update(self._kprint.pretty_print(config))
+        self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
+        if self._custom_view is not None:
+            self.query_one('#custom', Static).update('\n'.join(self._custom_view(cterm)))
+
+    def display_cover(self, elem_id: str, subst: Subst, constraint: KInner) -> None:
+        def _boolify(c: KInner) -> KInner:
+            if type(c) is KApply and c.label.name == '#Equals' and c.args[0] == TRUE:
+                return c.args[1]
+            else:
+                return c
+
+        subst_equalities = map(_boolify, flatten_label('#And', subst.ml_pred))
+        constraints = map(_boolify, flatten_label('#And', constraint))
+        self.query_one('#term', Static).update('\n'.join(self._kprint.pretty_print(se) for se in subst_equalities))
+        self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
+        self.query_one('#custom', Static).update('')
 
 
 class KCFGViewer(App):
@@ -152,61 +202,36 @@ class KCFGViewer(App):
             BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
             id='navigation',
         )
-        yield Vertical(NodeView(id='node-view'), id='display')
+        yield Vertical(NodeView(self._kprint, id='node-view'), id='display')
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
-        def _mostly_bool_constraints(cs: List[KInner]) -> List[KInner]:
-            new_cs = []
-            for c in cs:
-                if type(c) is KApply and c.label.name == '#Equals' and c.args[0] == TRUE:
-                    new_cs.append(c.args[1])
-                else:
-                    new_cs.append(c)
-            return new_cs
 
         if message.chunk_id.startswith('node_'):
             self._selected_chunk = message.chunk_id
             node = message.chunk_id[5:]
-            config, *_constraints = self._kcfg.node(node).cterm
-            if self._minimize:
-                config = minimize_term(config)
-            constraints = _mostly_bool_constraints(_constraints)
-            self.query_one('#info', Static).update(f'node({shorten_hashes(node)})')
-            self.query_one('#term', Static).update(self._kprint.pretty_print(config))
-            self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
+            self.query_one('#node-view', NodeView).display_cterm(
+                f'node({shorten_hashes(node)})', self._kcfg.node(node).cterm
+            )
 
         elif message.chunk_id.startswith('edge_'):
             self._selected_chunk = None
             node_source, node_target = message.chunk_id[5:].split('_')
-            config_source, *_constraints_source = self._kcfg.node(node_source).cterm
-            config_target, *_constraints_target = self._kcfg.node(node_target).cterm
-            constraints_source = _mostly_bool_constraints(_constraints_source)
-            constraints_target = _mostly_bool_constraints(_constraints_target)
+            config_source, *constraints_source = self._kcfg.node(node_source).cterm
+            config_target, *constraints_target = self._kcfg.node(node_target).cterm
             constraints_new = [c for c in constraints_target if c not in constraints_source]
             config = push_down_rewrites(KRewrite(config_source, config_target))
-            if self._minimize:
-                config = minimize_term(config)
-            self.query_one('#info', Static).update(
-                f'edge({shorten_hashes(node_source)}, {shorten_hashes(node_target)})'
-            )
-            self.query_one('#term', Static).update(
-                '\n'.join(self._kprint.pretty_print(c) for c in [config] + constraints_source)
-            )
-            self.query_one('#constraint', Static).update(
-                '\n'.join(self._kprint.pretty_print(c) for c in constraints_new)
+            crewrite = CTerm(mlAnd([config] + constraints_new))
+            self.query_one('#node-view', NodeView).display_cterm(
+                f'edge({shorten_hashes(node_source)},{shorten_hashes(node_target)})', crewrite
             )
 
         elif message.chunk_id.startswith('cover_'):
             self._selected_chunk = None
             node_source, node_target = message.chunk_id[6:].split('_')
-            cover = self._kcfg.covers(source_id=node_source, target_id=node_target)[0]
-            self.query_one('#info', Static).update(
-                f'cover({shorten_hashes(node_source)}, {shorten_hashes(node_target)})'
+            cover = single(self._kcfg.covers(source_id=node_source, target_id=node_target))
+            self.query_one('#node-view', NodeView).display_cover(
+                f'cover({shorten_hashes(node_source)}, {shorten_hashes(node_target)})', cover.subst, cover.constraint
             )
-            subst_equalities = flatten_label('#And', cover.subst.ml_pred)
-            self.query_one('#term', Static).update('\n'.join(self._kprint.pretty_print(se) for se in subst_equalities))
-            constraints = flatten_label('#And', cover.constraint)
-            self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
 
     BINDINGS = [
         ('h', 'keystroke("h")', 'Hide selected node from graph.'),
@@ -214,6 +239,7 @@ class KCFGViewer(App):
         ('t', 'keystroke("term")', 'Toggle term view.'),
         ('c', 'keystroke("constraint")', 'Toggle constraint view.'),
         ('v', 'keystroke("custom")', 'Toggle custom view.'),
+        ('m', 'keystroke("minimize")', 'Toggle minimization.'),
     ]
 
     def action_keystroke(self, key: str) -> None:
@@ -230,4 +256,6 @@ class KCFGViewer(App):
             self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
             self._hidden_chunks = []
         elif key in ['term', 'constraint', 'custom']:
-            self.query_one('#node-view', NodeView).toggle_visibility(key)
+            self.query_one('#node-view', NodeView).toggle_view(key)
+        elif key in ['minimize']:
+            self.query_one('#node-view', NodeView).toggle_option(key)
