@@ -5,7 +5,7 @@ from textual.containers import Horizontal, Vertical
 from textual.events import Click
 from textual.message import Message, MessageTarget
 from textual.widget import Widget
-from textual.widgets import Static
+from textual.widgets import Footer, Static
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KInner, KRewrite
@@ -227,11 +227,14 @@ class KCFGViewer(App):
         self._selected_chunk = None
 
     def compose(self) -> ComposeResult:
-        yield Vertical(
-            BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
-            id='navigation',
+        yield Horizontal(
+            Vertical(
+                BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
+                id='navigation',
+            ),
+            Vertical(NodeView(self._kprint, id='node-view'), id='display'),
         )
-        yield Vertical(NodeView(self._kprint, id='node-view'), id='display')
+        yield Footer()
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
 
@@ -257,11 +260,11 @@ class KCFGViewer(App):
             raise AssertionError()
 
     BINDINGS = [
-        ('h', 'keystroke("h")', 'Hide selected node from graph.'),
-        ('H', 'keystroke("H")', 'Unhide all nodes from graph.'),
-        ('t', 'keystroke("term")', 'Toggle term view.'),
-        ('c', 'keystroke("constraint")', 'Toggle constraint view.'),
-        ('v', 'keystroke("custom")', 'Toggle custom view.'),
+        ('h', 'keystroke("h")', 'Hide selected node.'),
+        ('H', 'keystroke("H")', 'Unhide all nodes.'),
+        ('t', 'keystroke("term")', 'Toggle term.'),
+        ('c', 'keystroke("constraint")', 'Toggle constraint.'),
+        ('v', 'keystroke("custom")', 'Toggle custom.'),
         ('m', 'keystroke("minimize")', 'Toggle minimization.'),
     ]
 
