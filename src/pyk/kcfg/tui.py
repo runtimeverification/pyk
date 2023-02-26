@@ -206,6 +206,8 @@ class KCFGViewer(App):
     _kprint: KPrint
 
     _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
+    _custom_view: Optional[Callable[[KCFGElem], Iterable[str]]]
+
     _minimize: bool
 
     _hidden_chunks: List[str]
@@ -216,13 +218,15 @@ class KCFGViewer(App):
         kcfg: KCFG,
         kprint: KPrint,
         node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
+        custom_view: Optional[Callable[[KCFGElem], Iterable[str]]] = None,
         minimize: bool = True,
     ) -> None:
         super().__init__()
         self._kcfg = kcfg
         self._kprint = kprint
         self._node_printer = node_printer
-        self._minimize = True
+        self._custom_view = custom_view
+        self._minimize = minimize
         self._hidden_chunks = []
         self._selected_chunk = None
 
@@ -232,7 +236,7 @@ class KCFGViewer(App):
                 BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
                 id='navigation',
             ),
-            Vertical(NodeView(self._kprint, id='node-view'), id='display'),
+            Vertical(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
         )
         yield Footer()
 
