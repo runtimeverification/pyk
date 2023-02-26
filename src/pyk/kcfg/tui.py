@@ -102,7 +102,7 @@ class NodeView(Widget):
         self._minimize = minimize
         self._term_on = term_on
         self._constraint_on = constraint_on
-        self._custom_on = custom_on
+        self._custom_on = custom_on or custom_view is not None
         self._custom_view = custom_view
 
     def _info_text(self) -> str:
