@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -8,7 +8,7 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KInner, KRewrite, Subst
+from pyk.kast.inner import KApply, KInner, KRewrite
 from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites
 from pyk.ktool.kprint import KPrint
 from pyk.prelude.kbool import TRUE
@@ -16,6 +16,8 @@ from pyk.prelude.ml import mlAnd
 
 from ..kcfg import KCFG
 from ..utils import shorten_hashes, single
+
+KCFGElem = Union[KCFG.Node, KCFG.EdgeLike]
 
 
 class GraphChunk(Static):
@@ -75,8 +77,9 @@ class BehaviorView(Widget):
 
 class NodeView(Widget):
     _kprint: KPrint
-    _custom_view: Optional[Callable[[CTerm], Iterable[str]]]
-    _curr_element: str
+    _custom_view: Optional[Callable[[KCFGElem], Iterable[str]]]
+
+    _element: Optional[KCFGElem]
 
     _minimize: bool
     _term_on: bool
@@ -87,16 +90,15 @@ class NodeView(Widget):
         self,
         kprint: KPrint,
         id: str = '',
-        curr_element: str = 'NOTHING',
         minimize: bool = True,
         term_on: bool = True,
         constraint_on: bool = True,
         custom_on: bool = False,
-        custom_view: Optional[Callable[[CTerm], Iterable[str]]] = None,
+        custom_view: Optional[Callable[[KCFGElem], Iterable[str]]] = None,
     ):
         super().__init__(id=id)
         self._kprint = kprint
-        self._curr_element = curr_element
+        self._element = None
         self._minimize = minimize
         self._term_on = term_on
         self._constraint_on = constraint_on
@@ -108,7 +110,14 @@ class NodeView(Widget):
         constraint_str = '✅' if self._constraint_on else '❌'
         custom_str = '✅' if self._custom_on else '❌'
         minimize_str = '✅' if self._minimize else '❌'
-        return f'{self._curr_element} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
+        element_str = 'NOTHING'
+        if type(self._element) is KCFG.Node:
+            element_str = f'node({shorten_hashes(self._element.id)})'
+        elif type(self._element) is KCFG.Edge:
+            element_str = f'edge({shorten_hashes(self._element.source.id)},{shorten_hashes(self._element.target.id)})'
+        elif type(self._element) is KCFG.Cover:
+            element_str = f'cover({shorten_hashes(self._element.source.id)},{shorten_hashes(self._element.target.id)})'
+        return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
         yield Horizontal(Static(self._info_text(), id='info'), id='info-view')
@@ -130,6 +139,7 @@ class NodeView(Widget):
             new_value = False
         setattr(self, field_attr, new_value)
         self.query_one('#info', Static).update(self._info_text())
+        self._update()
         return new_value
 
     def toggle_view(self, field: str) -> None:
@@ -139,35 +149,54 @@ class NodeView(Widget):
         else:
             self.query_one(f'#{field}-view', Horizontal).add_class('hidden')
 
-    def display_cterm(self, elem_id: str, cterm: CTerm) -> None:
+    def update(self, element: KCFGElem) -> None:
+        self._element = element
+        self._update()
+
+    def _update(self) -> None:
         def _boolify(c: KInner) -> KInner:
             if type(c) is KApply and c.label.name == '#Equals' and c.args[0] == TRUE:
                 return c.args[1]
             else:
                 return c
 
-        self._curr_element = elem_id
-        config = cterm.config
-        constraints = map(_boolify, cterm.constraints)
-        if self._minimize:
-            config = minimize_term(config)
-        self.query_one('#term', Static).update(self._kprint.pretty_print(config))
-        self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
-        if self._custom_view is not None:
-            self.query_one('#custom', Static).update('\n'.join(self._custom_view(cterm)))
+        def _cterm_text(cterm: CTerm) -> Tuple[str, str]:
+            config = cterm.config
+            constraints = map(_boolify, cterm.constraints)
+            if self._minimize:
+                config = minimize_term(config)
+            return (self._kprint.pretty_print(config), '\n'.join(self._kprint.pretty_print(c) for c in constraints))
 
-    def display_cover(self, elem_id: str, subst: Subst, constraint: KInner) -> None:
-        def _boolify(c: KInner) -> KInner:
-            if type(c) is KApply and c.label.name == '#Equals' and c.args[0] == TRUE:
-                return c.args[1]
-            else:
-                return c
+        term_str = 'Term'
+        constraint_str = 'Constraint'
+        custom_str = 'Custom'
 
-        subst_equalities = map(_boolify, flatten_label('#And', subst.ml_pred))
-        constraints = map(_boolify, flatten_label('#And', constraint))
-        self.query_one('#term', Static).update('\n'.join(self._kprint.pretty_print(se) for se in subst_equalities))
-        self.query_one('#constraint', Static).update('\n'.join(self._kprint.pretty_print(c) for c in constraints))
-        self.query_one('#custom', Static).update('')
+        if self._element is not None:
+
+            if type(self._element) is KCFG.Node:
+                term_str, constraint_str = _cterm_text(self._element.cterm)
+
+            elif type(self._element) is KCFG.Edge:
+                config_source, *constraints_source = self._element.source.cterm
+                config_target, *constraints_target = self._element.target.cterm
+                constraints_new = [c for c in constraints_target if c not in constraints_source]
+                config = push_down_rewrites(KRewrite(config_source, config_target))
+                crewrite = CTerm(mlAnd([config] + constraints_new))
+                term_str, constraint_str = _cterm_text(crewrite)
+
+            elif type(self._element) is KCFG.Cover:
+                subst_equalities = map(_boolify, flatten_label('#And', self._element.subst.ml_pred))
+                constraints = map(_boolify, flatten_label('#And', self._element.constraint))
+                term_str = '\n'.join(self._kprint.pretty_print(se) for se in subst_equalities)
+                constraint_str = '\n'.join(self._kprint.pretty_print(c) for c in constraints)
+
+            if self._custom_view is not None:
+                custom_str = '\n'.join(self._custom_view(self._element))
+
+        self.query_one('#info', Static).update(self._info_text())
+        self.query_one('#term', Static).update(term_str)
+        self.query_one('#constraint', Static).update(constraint_str)
+        self.query_one('#custom', Static).update(custom_str)
 
 
 class KCFGViewer(App):
@@ -209,29 +238,23 @@ class KCFGViewer(App):
         if message.chunk_id.startswith('node_'):
             self._selected_chunk = message.chunk_id
             node = message.chunk_id[5:]
-            self.query_one('#node-view', NodeView).display_cterm(
-                f'node({shorten_hashes(node)})', self._kcfg.node(node).cterm
-            )
+            self.query_one('#node-view', NodeView).update(self._kcfg.node(node))
 
         elif message.chunk_id.startswith('edge_'):
             self._selected_chunk = None
             node_source, node_target = message.chunk_id[5:].split('_')
-            config_source, *constraints_source = self._kcfg.node(node_source).cterm
-            config_target, *constraints_target = self._kcfg.node(node_target).cterm
-            constraints_new = [c for c in constraints_target if c not in constraints_source]
-            config = push_down_rewrites(KRewrite(config_source, config_target))
-            crewrite = CTerm(mlAnd([config] + constraints_new))
-            self.query_one('#node-view', NodeView).display_cterm(
-                f'edge({shorten_hashes(node_source)},{shorten_hashes(node_target)})', crewrite
-            )
+            edge = single(self._kcfg.edges(source_id=node_source, target_id=node_target))
+            self.query_one('#node-view', NodeView).update(edge)
 
         elif message.chunk_id.startswith('cover_'):
             self._selected_chunk = None
             node_source, node_target = message.chunk_id[6:].split('_')
             cover = single(self._kcfg.covers(source_id=node_source, target_id=node_target))
-            self.query_one('#node-view', NodeView).display_cover(
-                f'cover({shorten_hashes(node_source)}, {shorten_hashes(node_target)})', cover.subst, cover.constraint
-            )
+            self.query_one('#node-view', NodeView).update(cover)
+
+        else:
+            # should be unreachable
+            raise AssertionError()
 
     BINDINGS = [
         ('h', 'keystroke("h")', 'Hide selected node from graph.'),
