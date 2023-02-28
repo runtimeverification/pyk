@@ -100,7 +100,6 @@ def run_process(
     cwd: Optional[Union[str, Path]] = None,
     env: Optional[Mapping[str, str]] = None,
     logger: Optional[Logger] = None,
-    profile: bool = False,
 ) -> CompletedProcess:
     if cwd is not None:
         cwd = Path(cwd)
