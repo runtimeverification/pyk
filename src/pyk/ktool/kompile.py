@@ -252,10 +252,10 @@ def _build_arg_list(
     if no_llvm_kompile:
         args.append('--no-llvm-kompile')
 
-    if concrete_rules:
-        args.extend(['--concrete-rules', ','.join(concrete_rules)])
-
     if llvm_mode is not None and llvm_mode == 'c':
         args.extend(['--llvm-kompile-type', 'c'])
+
+    if concrete_rules:
+        args.extend(['--concrete-rules', ','.join(concrete_rules)])
 
     return args
