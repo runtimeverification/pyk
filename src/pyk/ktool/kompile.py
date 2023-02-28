@@ -53,7 +53,7 @@ def kompile(
 
     backend = KompileBackend(backend) if backend is not None else None
 
-    if backend and backend != KompileBackend.LLVM:
+    if backend and backend not in [KompileBackend.LLVM, KompileBackend.LLVM_LIB]:
         _check_backend_param(opt_level is None, 'opt_level', backend)
         _check_backend_param(not list(ccopts), 'ccopts', backend)
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
