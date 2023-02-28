@@ -39,6 +39,7 @@ def test_all_args() -> None:
         opt_level=None,
         ccopts=(),
         no_llvm_kompile=False,
+        llvm_mode=None,
         concrete_rules=['foo', 'bar'],
     )
 

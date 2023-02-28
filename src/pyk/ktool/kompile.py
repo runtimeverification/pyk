@@ -37,6 +37,7 @@ def kompile(
     opt_level: Optional[int] = None,
     ccopts: Iterable[str] = (),
     no_llvm_kompile: bool = False,
+    llvm_mode: Optional[str] = None,
     # Haskell backend
     concrete_rules: Iterable[str] = (),
     # ---
@@ -57,6 +58,7 @@ def kompile(
         _check_backend_param(opt_level is None, 'opt_level', backend)
         _check_backend_param(not list(ccopts), 'ccopts', backend)
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
+        _check_backend_param(llvm_mode is None, 'llvm_mode', backend)
 
     if backend != KompileBackend.HASKELL:
         _check_backend_param(not list(concrete_rules), 'concrete_rules', backend)
@@ -82,6 +84,7 @@ def kompile(
         opt_level=opt_level,
         ccopts=ccopts,
         no_llvm_kompile=no_llvm_kompile,
+        llvm_mode=llvm_mode,
         concrete_rules=concrete_rules,
     )
 
@@ -205,6 +208,7 @@ def _build_arg_list(
     opt_level: Optional[int],
     ccopts: Iterable[str],
     no_llvm_kompile: bool,
+    llvm_mode: Optional[str],
     concrete_rules: Iterable[str],
 ) -> List[str]:
     args = list(command) + [str(main_file)]
@@ -250,5 +254,8 @@ def _build_arg_list(
 
     if concrete_rules:
         args.extend(['--concrete-rules', ','.join(concrete_rules)])
+
+    if llvm_mode is not None and llvm_mode == 'c':
+        args.extend(['--llvm-kompile-type', 'c'])
 
     return args
