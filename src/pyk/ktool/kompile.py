@@ -17,7 +17,6 @@ class KompileBackend(Enum):
     LLVM_LIB = 'llvm_lib'
     HASKELL = 'haskell'
     KORE = 'kore'
-    JAVA = 'java'
 
 
 def kompile(
