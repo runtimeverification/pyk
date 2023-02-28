@@ -14,6 +14,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class KompileBackend(Enum):
     LLVM = 'llvm'
+    LLVM_LIB = 'llvm_lib'
     HASKELL = 'haskell'
     KORE = 'kore'
     JAVA = 'java'
@@ -242,6 +243,9 @@ def _build_arg_list(
 
     if no_llvm_kompile:
         args.append('--no-llvm-kompile')
+
+    if backend == KompileBackend.LLVM_LIB:
+        args.extend(['--llvm-kompile-type', 'c'])
 
     if concrete_rules:
         args.extend(['--concrete-rules', ','.join(concrete_rules)])
