@@ -59,6 +59,9 @@ def kompile(
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
         _check_backend_param(llvm_mode is None, 'llvm_mode', backend)
 
+    if backend == KompileBackend.LLVM:
+        _check_backend_param(llvm_mode is None or llvm_mode == 'c', f'llvm_mode={llvm_mode}', backend)
+
     if backend != KompileBackend.HASKELL:
         _check_backend_param(not list(concrete_rules), 'concrete_rules', backend)
 
