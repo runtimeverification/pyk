@@ -18,6 +18,15 @@ class KompileBackend(Enum):
     KORE = 'kore'
 
 
+class LLVMKompileType(Enum):
+    MAIN = 'main'
+    SEARCH = 'search'
+    LIBRARY = 'library'
+    STATIC = 'static'
+    PYTHON = 'python'
+    C = 'c'
+
+
 def kompile(
     main_file: Union[str, Path],
     *,
@@ -36,7 +45,7 @@ def kompile(
     opt_level: Optional[int] = None,
     ccopts: Iterable[str] = (),
     no_llvm_kompile: bool = False,
-    linkable: bool = False,
+    llvm_kompile_type: Optional[LLVMKompileType] = None,
     # Haskell backend
     concrete_rules: Iterable[str] = (),
     # ---
@@ -56,7 +65,7 @@ def kompile(
         _check_backend_param(opt_level is None, 'opt_level', backend)
         _check_backend_param(not list(ccopts), 'ccopts', backend)
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
-        _check_backend_param(not linkable, 'linkable', backend)
+        _check_backend_param(llvm_kompile_type is not None, 'linkable', backend)
 
     if backend != KompileBackend.HASKELL:
         _check_backend_param(not list(concrete_rules), 'concrete_rules', backend)
@@ -82,7 +91,7 @@ def kompile(
         opt_level=opt_level,
         ccopts=ccopts,
         no_llvm_kompile=no_llvm_kompile,
-        linkable=linkable,
+        llvm_kompile_type=llvm_kompile_type,
         concrete_rules=concrete_rules,
     )
 
@@ -202,7 +211,7 @@ def _build_arg_list(
     opt_level: Optional[int],
     ccopts: Iterable[str],
     no_llvm_kompile: bool,
-    linkable: bool,
+    llvm_kompile_type: Optional[LLVMKompileType] = None,
     concrete_rules: Iterable[str],
 ) -> List[str]:
     args = list(command) + [str(main_file)]
@@ -246,8 +255,8 @@ def _build_arg_list(
     if no_llvm_kompile:
         args.append('--no-llvm-kompile')
 
-    if linkable:
-        args.extend(['--llvm-kompile-type', 'c'])
+    if llvm_kompile_type is not None:
+        args.extend(['--llvm-kompile-type', llvm_kompile_type.value])
 
     if concrete_rules:
         args.extend(['--concrete-rules', ','.join(concrete_rules)])
