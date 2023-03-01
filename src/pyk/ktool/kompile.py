@@ -65,7 +65,7 @@ def kompile(
         _check_backend_param(opt_level is None, 'opt_level', backend)
         _check_backend_param(not list(ccopts), 'ccopts', backend)
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
-        _check_backend_param(llvm_kompile_type is not None, 'llvm_kompile_type', backend)
+        _check_backend_param(llvm_kompile_type is None, 'llvm_kompile_type', backend)
 
     if backend != KompileBackend.HASKELL:
         _check_backend_param(not list(concrete_rules), 'concrete_rules', backend)
