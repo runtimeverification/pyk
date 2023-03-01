@@ -14,7 +14,6 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class KompileBackend(Enum):
     LLVM = 'llvm'
-    LLVM_LIB = 'llvm_lib'
     HASKELL = 'haskell'
     KORE = 'kore'
 
@@ -37,6 +36,7 @@ def kompile(
     opt_level: Optional[int] = None,
     ccopts: Iterable[str] = (),
     no_llvm_kompile: bool = False,
+    linkable: bool = False,
     # Haskell backend
     concrete_rules: Iterable[str] = (),
     # ---
@@ -52,10 +52,11 @@ def kompile(
 
     backend = KompileBackend(backend) if backend is not None else None
 
-    if backend and backend not in [KompileBackend.LLVM, KompileBackend.LLVM_LIB]:
+    if backend and backend != KompileBackend.LLVM:
         _check_backend_param(opt_level is None, 'opt_level', backend)
         _check_backend_param(not list(ccopts), 'ccopts', backend)
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
+        _check_backend_param(not linkable, 'linkable', backend)
 
     if backend != KompileBackend.HASKELL:
         _check_backend_param(not list(concrete_rules), 'concrete_rules', backend)
@@ -81,6 +82,7 @@ def kompile(
         opt_level=opt_level,
         ccopts=ccopts,
         no_llvm_kompile=no_llvm_kompile,
+        linkable=linkable,
         concrete_rules=concrete_rules,
     )
 
@@ -200,6 +202,7 @@ def _build_arg_list(
     opt_level: Optional[int],
     ccopts: Iterable[str],
     no_llvm_kompile: bool,
+    linkable: bool,
     concrete_rules: Iterable[str],
 ) -> List[str]:
     args = list(command) + [str(main_file)]
@@ -243,7 +246,7 @@ def _build_arg_list(
     if no_llvm_kompile:
         args.append('--no-llvm-kompile')
 
-    if backend == KompileBackend.LLVM_LIB:
+    if linkable:
         args.extend(['--llvm-kompile-type', 'c'])
 
     if concrete_rules:
