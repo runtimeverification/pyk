@@ -65,7 +65,7 @@ def kompile(
         _check_backend_param(opt_level is None, 'opt_level', backend)
         _check_backend_param(not list(ccopts), 'ccopts', backend)
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
-        _check_backend_param(llvm_kompile_type is not None, 'linkable', backend)
+        _check_backend_param(llvm_kompile_type is not None, 'llvm_kompile_type', backend)
 
     if backend != KompileBackend.HASKELL:
         _check_backend_param(not list(concrete_rules), 'concrete_rules', backend)
@@ -126,6 +126,7 @@ def llvm_kompile(
     opt_level: Optional[int] = None,
     ccopts: Iterable[str] = (),
     no_llvm_kompile: bool = False,
+    llvm_kompile_type: Optional[LLVMKompileType] = None,
     # ---
     cwd: Optional[Path] = None,
     check: bool = True,
@@ -146,6 +147,7 @@ def llvm_kompile(
         opt_level=opt_level,
         ccopts=ccopts,
         no_llvm_kompile=no_llvm_kompile,
+        llvm_kompile_type=llvm_kompile_type,
         cwd=cwd,
         check=check,
     )
