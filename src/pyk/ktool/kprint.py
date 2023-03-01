@@ -68,7 +68,7 @@ class KAstOutput(Enum):
 
 
 def _kast(
-    input_file: Optional[Path] = None,
+    file: Optional[Path] = None,
     *,
     command: str = 'kast',
     definition_dir: Optional[Path] = None,
@@ -81,17 +81,17 @@ def _kast(
     # ---
     check: bool = True,
 ) -> CompletedProcess:
-    if gen_glr_parser and not input_file:
+    if gen_glr_parser and not file:
         raise ValueError('No output file specified for --gen-glr-parser')
 
-    if input_file and not gen_glr_parser:
-        check_file_path(input_file)
+    if file and not gen_glr_parser:
+        check_file_path(file)
 
     if definition_dir:
         check_dir_path(definition_dir)
 
     args = _build_arg_list(
-        input_file=input_file,
+        file=file,
         command=command,
         definition_dir=definition_dir,
         input=input,
@@ -106,13 +106,13 @@ def _kast(
         return run_process(args, logger=_LOGGER, check=check)
     except CalledProcessError as err:
         raise RuntimeError(
-            f'Command kast exited with code {err.returncode} for: {input_file}', err.stdout, err.stderr
+            f'Command kast exited with code {err.returncode} for: {file}', err.stdout, err.stderr
         ) from err
 
 
 def _build_arg_list(
     *,
-    input_file: Optional[Path],
+    file: Optional[Path],
     command: str,
     definition_dir: Optional[Path],
     input: Optional[KAstInput],
@@ -123,8 +123,8 @@ def _build_arg_list(
     gen_glr_parser: bool,
 ) -> List[str]:
     args = [command]
-    if input_file:
-        args += [str(input_file)]
+    if file:
+        args += [str(file)]
     if definition_dir:
         args += ['--definition', str(definition_dir)]
     if input:
