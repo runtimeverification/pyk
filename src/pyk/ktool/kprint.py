@@ -110,6 +110,27 @@ def _kast(
         ) from err
 
 
+def gen_glr_parser(
+    parser_file: Path,
+    *,
+    command: str = 'kast',
+    definition_dir: Optional[Path] = None,
+    module: Optional[str] = None,
+    sort: Optional[str] = None,
+) -> Path:
+    _kast(
+        file=parser_file,
+        command=command,
+        definition_dir=definition_dir,
+        module=module,
+        sort=sort,
+        gen_glr_parser=True,
+        check=True,
+    )
+    assert parser_file.is_file()
+    return parser_file
+
+
 def _build_arg_list(
     *,
     file: Optional[Path],
