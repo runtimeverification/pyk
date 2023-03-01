@@ -68,31 +68,38 @@ class KAstOutput(Enum):
 
 
 def _kast(
-    command: str = 'kast',
-    *,
     input_file: Optional[Path] = None,
+    *,
+    command: str = 'kast',
     definition_dir: Optional[Path] = None,
     input: Optional[KAstInput] = None,
     output: Optional[KAstOutput] = None,
     expression: Optional[str] = None,
+    module: Optional[str] = None,
     sort: Optional[str] = None,
+    gen_glr_parser: bool = False,
     # ---
     check: bool = True,
 ) -> CompletedProcess:
-    if input_file:
+    if gen_glr_parser and not input_file:
+        raise ValueError('No output file specified for --gen-glr-parser')
+
+    if input_file and not gen_glr_parser:
         check_file_path(input_file)
 
     if definition_dir:
         check_dir_path(definition_dir)
 
     args = _build_arg_list(
-        command=command,
         input_file=input_file,
+        command=command,
         definition_dir=definition_dir,
         input=input,
         output=output,
         expression=expression,
+        module=module,
         sort=sort,
+        gen_glr_parser=gen_glr_parser,
     )
 
     try:
@@ -105,13 +112,15 @@ def _kast(
 
 def _build_arg_list(
     *,
-    command: str,
     input_file: Optional[Path],
+    command: str,
     definition_dir: Optional[Path],
     input: Optional[KAstInput],
     output: Optional[KAstOutput],
     expression: Optional[str],
+    module: Optional[str],
     sort: Optional[str],
+    gen_glr_parser: bool,
 ) -> List[str]:
     args = [command]
     if input_file:
@@ -124,8 +133,12 @@ def _build_arg_list(
         args += ['--output', output.value]
     if expression:
         args += ['--expression', expression]
+    if module:
+        args += ['--module', module]
     if sort:
         args += ['--sort', sort]
+    if gen_glr_parser:
+        args += ['--gen-glr-parser']
     return args
 
 
