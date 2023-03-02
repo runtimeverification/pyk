@@ -29,6 +29,7 @@ isort = "*"
 mypy = "*"
 pep8-naming = "*"
 pytest = "*"
+pytest-cov = "*"
 pytest-mock = "*"
 pytest-xdist = "*"
 
