@@ -56,10 +56,17 @@ jobs:
   integration-tests:
     needs: unit-tests
     name: 'Integration Tests'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, normal-ephemeral]
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.10']
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
+      - name: 'Install Python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: 'Install Poetry'
         uses: Gr1N/setup-poetry@v8
       - name: 'Install K'
@@ -70,7 +77,7 @@ jobs:
           sudo apt-get -y install graphviz ./kframework_amd64_ubuntu_jammy.deb
           kompile --version
       - name: 'Build and run integration tests'
-        run: make cov-integration COV_ARGS='--numprocesses=2'
+        run: make cov-integration
 
   build-on-nix:
     needs: unit-tests
