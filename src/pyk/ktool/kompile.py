@@ -39,6 +39,7 @@ def kompile(
     md_selector: Optional[str] = None,
     hook_namespaces: Iterable[str] = (),
     emit_json: bool = True,
+    gen_bison_parser: bool = False,
     debug: bool = False,
     post_process: Optional[str] = None,
     # LLVM backend
@@ -88,6 +89,7 @@ def kompile(
         md_selector=md_selector,
         hook_namespaces=hook_namespaces,
         emit_json=emit_json,
+        gen_bison_parser=gen_bison_parser,
         debug=debug,
         post_process=post_process,
         llvm_kompile_type=llvm_kompile_type,
@@ -124,6 +126,7 @@ def llvm_kompile(
     md_selector: Optional[str] = None,
     hook_namespaces: Iterable[str] = (),
     emit_json: bool = True,
+    gen_bison_parser: bool = False,
     debug: bool = False,
     post_process: Optional[str] = None,
     llvm_kompile_type: Optional[LLVMKompileType] = None,
@@ -146,6 +149,7 @@ def llvm_kompile(
         md_selector=md_selector,
         hook_namespaces=hook_namespaces,
         emit_json=emit_json,
+        gen_bison_parser=gen_bison_parser,
         debug=debug,
         post_process=post_process,
         opt_level=opt_level,
@@ -170,6 +174,7 @@ def haskell_kompile(
     md_selector: Optional[str] = None,
     hook_namespaces: Iterable[str] = (),
     emit_json: bool = True,
+    gen_bison_parser: bool = False,
     debug: bool = False,
     post_process: Optional[str] = None,
     concrete_rules: Iterable[str] = (),
@@ -188,6 +193,7 @@ def haskell_kompile(
         md_selector=md_selector,
         hook_namespaces=hook_namespaces,
         emit_json=emit_json,
+        gen_bison_parser=gen_bison_parser,
         debug=debug,
         post_process=post_process,
         concrete_rules=concrete_rules,
@@ -213,6 +219,7 @@ def _build_arg_list(
     md_selector: Optional[str],
     hook_namespaces: Iterable[str],
     emit_json: bool,
+    gen_bison_parser: bool,
     debug: bool = False,
     post_process: Optional[str],
     llvm_kompile_type: Optional[LLVMKompileType] = None,
@@ -247,6 +254,9 @@ def _build_arg_list(
 
     if emit_json:
         args.append('--emit-json')
+
+    if gen_bison_parser:
+        args.append('--gen-bison-parser')
 
     if debug:
         args.append('--debug')
