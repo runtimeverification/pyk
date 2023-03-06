@@ -22,7 +22,7 @@
                   filelock = prevPython.filelock.overridePythonAttrs
                     (oldAttrs: {
                       buildInputs = (oldAttrs.buildInputs or [ ])
-                        ++ [ prevPython.hatchling ];
+                        ++ [ prevPython.hatchling prevPython.hatch-vcs ];
                     });
                   nanoid = prevPython.nanoid.overridePythonAttrs
                     (oldAttrs: {
