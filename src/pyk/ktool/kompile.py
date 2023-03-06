@@ -42,10 +42,10 @@ def kompile(
     debug: bool = False,
     post_process: Optional[str] = None,
     # LLVM backend
+    llvm_kompile_type: Optional[LLVMKompileType] = None,
     opt_level: Optional[int] = None,
     ccopts: Iterable[str] = (),
     no_llvm_kompile: bool = False,
-    llvm_kompile_type: Optional[LLVMKompileType] = None,
     # Haskell backend
     concrete_rules: Iterable[str] = (),
     # ---
@@ -62,10 +62,10 @@ def kompile(
     backend = KompileBackend(backend) if backend is not None else None
 
     if backend and backend != KompileBackend.LLVM:
+        _check_backend_param(llvm_kompile_type is None, 'llvm_kompile_type', backend)
         _check_backend_param(opt_level is None, 'opt_level', backend)
         _check_backend_param(not list(ccopts), 'ccopts', backend)
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
-        _check_backend_param(llvm_kompile_type is None, 'llvm_kompile_type', backend)
 
     if backend != KompileBackend.HASKELL:
         _check_backend_param(not list(concrete_rules), 'concrete_rules', backend)
@@ -88,10 +88,10 @@ def kompile(
         emit_json=emit_json,
         debug=debug,
         post_process=post_process,
+        llvm_kompile_type=llvm_kompile_type,
         opt_level=opt_level,
         ccopts=ccopts,
         no_llvm_kompile=no_llvm_kompile,
-        llvm_kompile_type=llvm_kompile_type,
         concrete_rules=concrete_rules,
     )
 
@@ -123,10 +123,10 @@ def llvm_kompile(
     emit_json: bool = True,
     debug: bool = False,
     post_process: Optional[str] = None,
+    llvm_kompile_type: Optional[LLVMKompileType] = None,
     opt_level: Optional[int] = None,
     ccopts: Iterable[str] = (),
     no_llvm_kompile: bool = False,
-    llvm_kompile_type: Optional[LLVMKompileType] = None,
     # ---
     cwd: Optional[Path] = None,
     check: bool = True,
@@ -210,10 +210,10 @@ def _build_arg_list(
     emit_json: bool,
     debug: bool = False,
     post_process: Optional[str],
+    llvm_kompile_type: Optional[LLVMKompileType] = None,
     opt_level: Optional[int],
     ccopts: Iterable[str],
     no_llvm_kompile: bool,
-    llvm_kompile_type: Optional[LLVMKompileType] = None,
     concrete_rules: Iterable[str],
 ) -> List[str]:
     args = list(command) + [str(main_file)]
@@ -248,6 +248,9 @@ def _build_arg_list(
     if post_process:
         args.extend(['--post-process', shlex.quote(post_process)])
 
+    if llvm_kompile_type is not None:
+        args.extend(['--llvm-kompile-type', llvm_kompile_type.value])
+
     if opt_level:
         args.append(f'-O{opt_level}')
 
@@ -256,9 +259,6 @@ def _build_arg_list(
 
     if no_llvm_kompile:
         args.append('--no-llvm-kompile')
-
-    if llvm_kompile_type is not None:
-        args.extend(['--llvm-kompile-type', llvm_kompile_type.value])
 
     if concrete_rules:
         args.extend(['--concrete-rules', ','.join(concrete_rules)])
