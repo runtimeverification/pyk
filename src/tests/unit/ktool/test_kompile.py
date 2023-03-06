@@ -39,6 +39,7 @@ def test_all_args_1() -> None:
         opt_level=None,
         ccopts=(),
         no_llvm_kompile=False,
+        enable_search=False,
         llvm_kompile_type=None,
         concrete_rules=['foo', 'bar'],
     )
@@ -83,6 +84,7 @@ def test_all_args_2() -> None:
         opt_level=None,
         ccopts=(),
         no_llvm_kompile=False,
+        enable_search=False,
         llvm_kompile_type=LLVMKompileType.C,
         concrete_rules=(),
     )
