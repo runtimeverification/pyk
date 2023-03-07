@@ -17,7 +17,7 @@ from pyk.kore.rpc import (
     StuckResult,
     TerminalResult,
 )
-from pyk.kore.syntax import And, Equals, EVar, Implies, Pattern, Top
+from pyk.kore.syntax import And, Equals, EVar, Implies, Module, Pattern, Top
 
 from .utils import KoreClientTest
 
@@ -104,6 +104,8 @@ IMPLIES_ERROR_TEST_DATA: Final = (
 
 SIMPLIFY_TEST_DATA: Final = (('top-and-top', And(INT, int_top, int_top), int_top),)
 
+ADD_MODULE_TEST_DATA: Final = (('empty-module', Module('HELLO')),)
+
 
 class TestKoreClient(KoreClientTest):
     KOMPILE_MAIN_FILE = 'k-files/kore-rpc-test.k'
@@ -183,3 +185,16 @@ class TestKoreClient(KoreClientTest):
 
         # Then
         assert actual == expected
+
+    @pytest.mark.parametrize(
+        'test_id,module',
+        ADD_MODULE_TEST_DATA,
+        ids=[test_id for test_id, *_ in ADD_MODULE_TEST_DATA],
+    )
+    def test_add_module(
+        self,
+        kore_client: KoreClient,
+        test_id: str,
+        module: Module,
+    ) -> None:
+        kore_client.add_module(module)
