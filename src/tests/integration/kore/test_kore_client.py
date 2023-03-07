@@ -17,7 +17,7 @@ from pyk.kore.rpc import (
     StuckResult,
     TerminalResult,
 )
-from pyk.kore.syntax import Equals, EVar, Implies, Pattern, Top
+from pyk.kore.syntax import And, Equals, EVar, Implies, Pattern, Top
 
 from .utils import KoreClientTest
 
@@ -102,16 +102,25 @@ IMPLIES_ERROR_TEST_DATA: Final = (
     ('X -> Y', x, y),
 )
 
+SIMPLIFY_TEST_DATA: Final = (('top-and-top', And(INT, int_top, int_top), int_top),)
+
 
 class TestKoreClient(KoreClientTest):
     KOMPILE_MAIN_FILE = 'k-files/kore-rpc-test.k'
     KORE_MODULE_NAME = 'KORE-RPC-TEST'
 
     @pytest.mark.parametrize(
-        'test_id,n,params,expected', EXECUTE_TEST_DATA, ids=[test_id for test_id, *_ in EXECUTE_TEST_DATA]
+        'test_id,n,params,expected',
+        EXECUTE_TEST_DATA,
+        ids=[test_id for test_id, *_ in EXECUTE_TEST_DATA],
     )
     def test_execute(
-        self, kore_client: KoreClient, test_id: str, n: int, params: Mapping[str, Any], expected: ExecuteResult
+        self,
+        kore_client: KoreClient,
+        test_id: str,
+        n: int,
+        params: Mapping[str, Any],
+        expected: ExecuteResult,
     ) -> None:
         # When
         actual = kore_client.execute(term(n), **params)
@@ -125,7 +134,12 @@ class TestKoreClient(KoreClientTest):
         ids=[test_id for test_id, *_ in IMPLIES_TEST_DATA],
     )
     def test_implies(
-        self, kore_client: KoreClient, test_id: str, antecedent: Pattern, consequent: Pattern, expected: ImpliesResult
+        self,
+        kore_client: KoreClient,
+        test_id: str,
+        antecedent: Pattern,
+        consequent: Pattern,
+        expected: ImpliesResult,
     ) -> None:
         # When
         actual = kore_client.implies(antecedent, consequent)
@@ -139,7 +153,11 @@ class TestKoreClient(KoreClientTest):
         ids=[test_id for test_id, *_ in IMPLIES_ERROR_TEST_DATA],
     )
     def test_implies_error(
-        self, kore_client: KoreClient, test_id: str, antecedent: Pattern, consequent: Pattern
+        self,
+        kore_client: KoreClient,
+        test_id: str,
+        antecedent: Pattern,
+        consequent: Pattern,
     ) -> None:
         with pytest.raises(KoreClientError) as excinfo:
             # When
@@ -147,3 +165,21 @@ class TestKoreClient(KoreClientTest):
 
         # Then
         assert excinfo.value.code == -32003
+
+    @pytest.mark.parametrize(
+        'test_id,pattern,expected',
+        SIMPLIFY_TEST_DATA,
+        ids=[test_id for test_id, *_ in SIMPLIFY_TEST_DATA],
+    )
+    def test_simplify(
+        self,
+        kore_client: KoreClient,
+        test_id: str,
+        pattern: Pattern,
+        expected: Pattern,
+    ) -> None:
+        # When
+        actual = kore_client.simplify(pattern)
+
+        # Then
+        assert actual == expected
