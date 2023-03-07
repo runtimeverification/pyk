@@ -422,7 +422,8 @@ class KoreClient(ContextManager['KoreClient']):
         return kore_term(result['state'], Pattern)  # type: ignore # https://github.com/python/mypy/issues/4717
 
     def add_module(self, module: Module) -> None:
-        self._request('add-module', name=module.name, module=Definition((module,)).text)
+        result = self._request('add-module', name=module.name, module=Definition((module,)).text)
+        assert result == []
 
 
 class KoreServer(ContextManager['KoreServer']):
