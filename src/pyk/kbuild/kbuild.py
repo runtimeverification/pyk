@@ -73,6 +73,7 @@ class KBuild:
         return res
 
     def kompile(self, package: Package, target_name: str) -> Path:
+        self.kbuild_dir.mkdir(parents=True, exist_ok=True)
         with FileLock(self.kbuild_dir / '.lock'):
             for sub_package in package.sub_packages:
                 self.sync(sub_package)
