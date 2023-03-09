@@ -47,11 +47,14 @@ def _kprove(
     include_dirs: Iterable[Path] = (),
     emit_json_spec: Optional[Path] = None,
     output: Optional[KProveOutput] = None,
+    depth: Optional[int] = None,
+    haskell_backend_command: Optional[str] = None,
     dry_run: bool = False,
+    # --
     args: Iterable[str] = (),
+    # --
     env: Optional[Mapping[str, str]] = None,
     check: bool = True,
-    depth: Optional[int] = None,
 ) -> CompletedProcess:
     check_file_path(spec_file)
 
@@ -68,8 +71,9 @@ def _kprove(
         include_dirs=include_dirs,
         emit_json_spec=emit_json_spec,
         output=output,
-        dry_run=dry_run,
         depth=depth,
+        haskell_backend_command=haskell_backend_command,
+        dry_run=dry_run,
     )
 
     try:
@@ -89,8 +93,9 @@ def _build_arg_list(
     include_dirs: Iterable[Path],
     emit_json_spec: Optional[Path],
     output: Optional[KProveOutput],
-    dry_run: bool,
     depth: Optional[int],
+    haskell_backend_command: Optional[str] = None,
+    dry_run: bool,
 ) -> List[str]:
     args = []
 
@@ -112,11 +117,14 @@ def _build_arg_list(
     if output:
         args += ['--output', output.value]
 
-    if dry_run:
-        args.append('--dry-run')
+    if haskell_backend_command:
+        args += ['--haskell-backend-command', haskell_backend_command]
 
     if depth:
         args += ['--depth', str(depth)]
+
+    if dry_run:
+        args.append('--dry-run')
 
     return args
 
