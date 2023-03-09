@@ -48,6 +48,7 @@ def _kprove(
     emit_json_spec: Optional[Path] = None,
     output: Optional[KProveOutput] = None,
     depth: Optional[int] = None,
+    claims: Iterable[str] = (),
     haskell_backend_command: Optional[str] = None,
     dry_run: bool = False,
     # --
@@ -72,6 +73,7 @@ def _kprove(
         emit_json_spec=emit_json_spec,
         output=output,
         depth=depth,
+        claims=claims,
         haskell_backend_command=haskell_backend_command,
         dry_run=dry_run,
     )
@@ -94,7 +96,8 @@ def _build_arg_list(
     emit_json_spec: Optional[Path],
     output: Optional[KProveOutput],
     depth: Optional[int],
-    haskell_backend_command: Optional[str] = None,
+    claims: Iterable[str],
+    haskell_backend_command: Optional[str],
     dry_run: bool,
 ) -> List[str]:
     args = []
@@ -116,6 +119,10 @@ def _build_arg_list(
 
     if output:
         args += ['--output', output.value]
+
+    claims = list(claims)
+    if claims:
+        args += ['--claims', ','.join(claims)]
 
     if haskell_backend_command:
         args += ['--haskell-backend-command', haskell_backend_command]
