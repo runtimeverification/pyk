@@ -17,6 +17,8 @@ def test_all_args_1() -> None:
         '-cCOO=car', '-cFUZZ=bill',
         '--term',
         '--no-expand-macros',
+        '--search-final',
+        '--no-pattern',
     ]
     # fmt: on
 
@@ -32,6 +34,8 @@ def test_all_args_1() -> None:
         depth=12355,
         term=True,
         no_expand_macros=True,
+        search_final=True,
+        no_pattern=True,
     )
 
     # Then
