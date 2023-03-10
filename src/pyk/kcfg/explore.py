@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, Final, Iterable, List, Optional, Tuple, Union
 
-from pyk.cli_utils import BugReport
+from pyk.cli_utils import BugReport, ensure_dir_path
 from pyk.cterm import CTerm, build_claim, build_rule
 from pyk.kast.inner import KApply, KInner, KLabel, KRewrite, KVariable, Subst
 from pyk.kast.manip import flatten_label, free_vars, minimize_term, push_down_rewrites
@@ -409,3 +409,63 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             res_lines.append('')
 
         return res_lines
+
+    def dump_dot(self, cfgid: str, cfg: KCFG, dump_dir: Optional[Path] = None) -> List[str]:
+        dot_lines = cfg.to_dot(self.kprint).split('\n')
+
+        if dump_dir is not None:
+            ensure_dir_path(dump_dir)
+
+            dot_file = dump_dir / f'{cfgid}.dot'
+            dot_file.write_text('\n'.join(dot_lines))
+            _LOGGER.info(f'Wrote DOT file {cfgid}: {dot_file}')
+
+            for node in cfg.nodes:
+                node_file = dump_dir / f'node_config_{node.id}.txt'
+                node_minimized_file = dump_dir / f'node_config_minimized_{node.id}.txt'
+                node_constraint_file = dump_dir / f'node_constraint_{node.id}.txt'
+
+                config = node.cterm.config
+                if not node_file.exists():
+                    node_file.write_text(self.kprint.pretty_print(config))
+                    _LOGGER.info(f'Wrote node file {cfgid}: {node_file}')
+                config = minimize_term(config)
+                if not node_minimized_file.exists():
+                    node_minimized_file.write_text(self.kprint.pretty_print(config))
+                    _LOGGER.info(f'Wrote node file {cfgid}: {node_minimized_file}')
+                if not node_constraint_file.exists():
+                    constraint = mlAnd(node.cterm.constraints)
+                    node_constraint_file.write_text(self.kprint.pretty_print(constraint))
+                    _LOGGER.info(f'Wrote node file {cfgid}: {node_constraint_file}')
+
+            for edge in cfg.edges():
+                edge_file = dump_dir / f'edge_config_{edge.source.id}_{edge.target.id}.txt'
+                edge_minimized_file = dump_dir / f'edge_config_minimized_{edge.source.id}_{edge.target.id}.txt'
+                edge_constraint_file = dump_dir / f'edge_constraint_{edge.source.id}_{edge.target.id}.txt'
+
+                config = push_down_rewrites(KRewrite(edge.source.cterm.config, edge.target.cterm.config))
+                if not edge_file.exists():
+                    edge_file.write_text(self.kprint.pretty_print(config))
+                    _LOGGER.info(f'Wrote edge file {cfgid}: {edge_file}')
+                config = minimize_term(config)
+                if not edge_minimized_file.exists():
+                    edge_minimized_file.write_text(self.kprint.pretty_print(config))
+                    _LOGGER.info(f'Wrote edge file {cfgid}: {edge_minimized_file}')
+                if not edge_constraint_file.exists():
+                    edge_constraint_file.write_text(self.kprint.pretty_print(edge.condition))
+                    _LOGGER.info(f'Wrote edge file {cfgid}: {edge_constraint_file}')
+
+            for cover in cfg.covers():
+                cover_file = dump_dir / f'cover_config_{cover.source.id}_{cover.target.id}.txt'
+                cover_constraint_file = dump_dir / f'cover_constraint_{cover.source.id}_{cover.target.id}.txt'
+
+                subst_equalities = flatten_label('#And', cover.subst.ml_pred)
+
+                if not cover_file.exists():
+                    cover_file.write_text('\n'.join(self.kprint.pretty_print(se) for se in subst_equalities))
+                    _LOGGER.info(f'Wrote cover file {cfgid}: {cover_file}')
+                if not cover_constraint_file.exists():
+                    cover_constraint_file.write_text(self.kprint.pretty_print(cover.constraint))
+                    _LOGGER.info(f'Wrote cover file {cfgid}: {cover_constraint_file}')
+
+        return dot_lines
