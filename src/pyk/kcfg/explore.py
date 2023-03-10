@@ -4,9 +4,10 @@ from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, Final, Iterable, List, Optional, Tuple, Union
 
 from pyk.cli_utils import BugReport
-from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KInner, KLabel, KVariable, Subst
-from pyk.kast.manip import flatten_label, free_vars
+from pyk.cterm import CTerm, build_claim, build_rule
+from pyk.kast.inner import KApply, KInner, KLabel, KRewrite, KVariable, Subst
+from pyk.kast.manip import flatten_label, free_vars, minimize_term, push_down_rewrites
+from pyk.kast.outer import KFlatModule, KRuleLike
 from pyk.kore.rpc import KoreClient, KoreServer
 from pyk.ktool.kprint import KPrint
 from pyk.prelude.k import GENERATED_TOP_CELL
@@ -328,3 +329,76 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         _write_cfg(cfg)
         return cfg
+
+    def show_cfg(
+        self,
+        cfgid: str,
+        cfg: KCFG,
+        nodes: Iterable[str] = (),
+        node_deltas: Iterable[Tuple[str, str]] = (),
+        to_module: bool = False,
+        minimize: bool = True,
+        node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
+    ) -> List[str]:
+        res_lines: List[str] = []
+        res_lines += cfg.pretty(self.kprint, minimize=minimize, node_printer=node_printer)
+
+        for node_id in nodes:
+            kast = cfg.node(node_id).cterm.kast
+            if minimize:
+                kast = minimize_term(kast)
+            res_lines.append('')
+            res_lines.append('')
+            res_lines.append(f'Node {node_id}:')
+            res_lines.append('')
+            res_lines.append(self.kprint.pretty_print(kast))
+            res_lines.append('')
+
+        for node_id_1, node_id_2 in node_deltas:
+            config_1 = cfg.node(node_id_1).cterm.config
+            config_2 = cfg.node(node_id_2).cterm.config
+            config_delta = push_down_rewrites(KRewrite(config_1, config_2))
+            if minimize:
+                config_delta = minimize_term(config_delta)
+            res_lines.append('')
+            res_lines.append('')
+            res_lines.append(f'State Delta {node_id_1} => {node_id_2}:')
+            res_lines.append('')
+            res_lines.append(self.kprint.pretty_print(config_delta))
+            res_lines.append('')
+
+        if to_module:
+
+            def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
+                sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
+                init_cterm = CTerm(edge.source.cterm.config)
+                for c in edge.source.cterm.constraints:
+                    assert type(c) is KApply
+                    if c.label.name == '#Ceil':
+                        _LOGGER.warning(f'Ignoring Ceil condition: {c}')
+                    else:
+                        init_cterm.add_constraint(c)
+                target_cterm = CTerm(edge.target.cterm.config)
+                for c in edge.source.cterm.constraints:
+                    assert type(c) is KApply
+                    if c.label.name == '#Ceil':
+                        _LOGGER.warning(f'Ignoring Ceil condition: {c}')
+                    else:
+                        target_cterm.add_constraint(c)
+                rule: KRuleLike
+                if claim:
+                    rule, _ = build_claim(sentence_id, init_cterm.add_constraint(edge.condition), target_cterm)
+                else:
+                    rule, _ = build_rule(
+                        sentence_id, init_cterm.add_constraint(edge.condition), target_cterm, priority=35
+                    )
+                return rule
+
+            rules = [to_rule(e) for e in cfg.edges() if e.depth > 0]
+            claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), mlTop(), -1), claim=True) for nd in cfg.frontier]
+            cfg_module_name = cfgid.upper().replace('.', '-').replace('_', '-')
+            new_module = KFlatModule(f'SUMMARY-{cfg_module_name}', rules + claims)
+            res_lines.append(self.kprint.pretty_print(new_module))
+            res_lines.append('')
+
+        return res_lines
