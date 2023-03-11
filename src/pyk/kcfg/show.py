@@ -97,62 +97,66 @@ class KCFGShow:
 
         return res_lines
 
-    def dot(self, cfgid: str, cfg: KCFG, dump_dir: Optional[Path] = None) -> List[str]:
-        dot_lines = cfg.to_dot(self.kprint).split('\n')
+    def dump(self, cfgid: str, cfg: KCFG, dump_dir: Path, dot: bool = False) -> None:
+        ensure_dir_path(dump_dir)
 
-        if dump_dir is not None:
-            ensure_dir_path(dump_dir)
+        cfg_file = dump_dir / f'{cfgid}.json'
+        cfg_file.write_text(cfg.to_json())
+        _LOGGER.info(f'Wrote CFG file {cfgid}: {cfg_file}')
 
+        if dot:
+            cfg_dot_lines = cfg.to_dot(self.kprint)
             dot_file = dump_dir / f'{cfgid}.dot'
-            dot_file.write_text('\n'.join(dot_lines))
+            dot_file.write_text('\n'.join(cfg_dot_lines))
             _LOGGER.info(f'Wrote DOT file {cfgid}: {dot_file}')
 
-            for node in cfg.nodes:
-                node_file = dump_dir / f'node_config_{node.id}.txt'
-                node_minimized_file = dump_dir / f'node_config_minimized_{node.id}.txt'
-                node_constraint_file = dump_dir / f'node_constraint_{node.id}.txt'
+        nodes_dir = dump_dir / 'nodes'
+        for node in cfg.nodes:
+            node_file = nodes_dir / f'config_{node.id}.txt'
+            node_minimized_file = nodes_dir / f'config_minimized_{node.id}.txt'
+            node_constraint_file = nodes_dir / f'constraint_{node.id}.txt'
 
-                config = node.cterm.config
-                if not node_file.exists():
-                    node_file.write_text(self.kprint.pretty_print(config))
-                    _LOGGER.info(f'Wrote node file {cfgid}: {node_file}')
-                config = minimize_term(config)
-                if not node_minimized_file.exists():
-                    node_minimized_file.write_text(self.kprint.pretty_print(config))
-                    _LOGGER.info(f'Wrote node file {cfgid}: {node_minimized_file}')
-                if not node_constraint_file.exists():
-                    constraint = mlAnd(node.cterm.constraints)
-                    node_constraint_file.write_text(self.kprint.pretty_print(constraint))
-                    _LOGGER.info(f'Wrote node file {cfgid}: {node_constraint_file}')
+            config = node.cterm.config
+            if not node_file.exists():
+                node_file.write_text(self.kprint.pretty_print(config))
+                _LOGGER.info(f'Wrote node file {cfgid}: {node_file}')
+            config = minimize_term(config)
+            if not node_minimized_file.exists():
+                node_minimized_file.write_text(self.kprint.pretty_print(config))
+                _LOGGER.info(f'Wrote node file {cfgid}: {node_minimized_file}')
+            if not node_constraint_file.exists():
+                constraint = mlAnd(node.cterm.constraints)
+                node_constraint_file.write_text(self.kprint.pretty_print(constraint))
+                _LOGGER.info(f'Wrote node file {cfgid}: {node_constraint_file}')
 
-            for edge in cfg.edges():
-                edge_file = dump_dir / f'edge_config_{edge.source.id}_{edge.target.id}.txt'
-                edge_minimized_file = dump_dir / f'edge_config_minimized_{edge.source.id}_{edge.target.id}.txt'
-                edge_constraint_file = dump_dir / f'edge_constraint_{edge.source.id}_{edge.target.id}.txt'
+        edges_dir = dump_dir / 'edges'
+        for edge in cfg.edges():
+            edge_file = edges_dir / f'config_{edge.source.id}_{edge.target.id}.txt'
+            edge_minimized_file = edges_dir / f'config_minimized_{edge.source.id}_{edge.target.id}.txt'
+            edge_constraint_file = edges_dir / f'constraint_{edge.source.id}_{edge.target.id}.txt'
 
-                config = push_down_rewrites(KRewrite(edge.source.cterm.config, edge.target.cterm.config))
-                if not edge_file.exists():
-                    edge_file.write_text(self.kprint.pretty_print(config))
-                    _LOGGER.info(f'Wrote edge file {cfgid}: {edge_file}')
-                config = minimize_term(config)
-                if not edge_minimized_file.exists():
-                    edge_minimized_file.write_text(self.kprint.pretty_print(config))
-                    _LOGGER.info(f'Wrote edge file {cfgid}: {edge_minimized_file}')
-                if not edge_constraint_file.exists():
-                    edge_constraint_file.write_text(self.kprint.pretty_print(edge.condition))
-                    _LOGGER.info(f'Wrote edge file {cfgid}: {edge_constraint_file}')
+            config = push_down_rewrites(KRewrite(edge.source.cterm.config, edge.target.cterm.config))
+            if not edge_file.exists():
+                edge_file.write_text(self.kprint.pretty_print(config))
+                _LOGGER.info(f'Wrote edge file {cfgid}: {edge_file}')
+            config = minimize_term(config)
+            if not edge_minimized_file.exists():
+                edge_minimized_file.write_text(self.kprint.pretty_print(config))
+                _LOGGER.info(f'Wrote edge file {cfgid}: {edge_minimized_file}')
+            if not edge_constraint_file.exists():
+                edge_constraint_file.write_text(self.kprint.pretty_print(edge.condition))
+                _LOGGER.info(f'Wrote edge file {cfgid}: {edge_constraint_file}')
 
-            for cover in cfg.covers():
-                cover_file = dump_dir / f'cover_config_{cover.source.id}_{cover.target.id}.txt'
-                cover_constraint_file = dump_dir / f'cover_constraint_{cover.source.id}_{cover.target.id}.txt'
+        covers_dir = dump_dir / 'covers'
+        for cover in cfg.covers():
+            cover_file = covers_dir / f'config_{cover.source.id}_{cover.target.id}.txt'
+            cover_constraint_file = covers_dir / f'constraint_{cover.source.id}_{cover.target.id}.txt'
 
-                subst_equalities = flatten_label('#And', cover.subst.ml_pred)
+            subst_equalities = flatten_label('#And', cover.subst.ml_pred)
 
-                if not cover_file.exists():
-                    cover_file.write_text('\n'.join(self.kprint.pretty_print(se) for se in subst_equalities))
-                    _LOGGER.info(f'Wrote cover file {cfgid}: {cover_file}')
-                if not cover_constraint_file.exists():
-                    cover_constraint_file.write_text(self.kprint.pretty_print(cover.constraint))
-                    _LOGGER.info(f'Wrote cover file {cfgid}: {cover_constraint_file}')
-
-        return dot_lines
+            if not cover_file.exists():
+                cover_file.write_text('\n'.join(self.kprint.pretty_print(se) for se in subst_equalities))
+                _LOGGER.info(f'Wrote cover file {cfgid}: {cover_file}')
+            if not cover_constraint_file.exists():
+                cover_constraint_file.write_text(self.kprint.pretty_print(cover.constraint))
+                _LOGGER.info(f'Wrote cover file {cfgid}: {cover_constraint_file}')
