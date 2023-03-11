@@ -140,7 +140,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             fv_antecedent = free_vars(antecedent.kast)
             unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
             if len(unbound_consequent) > 0:
-                _LOGGER.info(f'Binding variables in consequent: {unbound_consequent}')
+                _LOGGER.debug(f'Binding variables in consequent: {unbound_consequent}')
                 for uc in unbound_consequent:
                     _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
