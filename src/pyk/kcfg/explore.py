@@ -148,6 +148,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _, kore_client = self._kore_rpc
         result = kore_client.implies(antecedent_kore, consequent_kore)
         if not result.satisfiable:
+            if result.substitution is not None:
+                raise ValueError('Received a non-empty substitution for unsatisfiable implication.')
+            if result.predicate is not None:
+                raise ValueError('Received a non-empty predicate for unsatisfiable implication.')
             return None
         if result.substitution is None:
             raise ValueError('Received empty substutition for satisfiable implication.')
