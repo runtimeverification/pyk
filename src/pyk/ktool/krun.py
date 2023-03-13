@@ -130,10 +130,10 @@ class KRun(KPrint):
                 term=True,
                 depth=depth,
                 no_expand_macros=not expand_macros,
-                bug_report=self._bug_report,
-                check=(expect_rc == 0),
                 search_final=search_final,
                 no_pattern=no_pattern,
+                bug_report=self._bug_report,
+                check=(expect_rc == 0),
             )
 
         self._check_return_code(proc_res.returncode, expect_rc)
