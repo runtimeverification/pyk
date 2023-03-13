@@ -112,10 +112,10 @@ class KRun(KPrint):
         *,
         depth: Optional[int] = None,
         expand_macros: bool = False,
-        bug_report: Optional[BugReport] = None,
-        expect_rc: Union[int, Iterable[int]] = 0,
         search_final: bool = False,
         no_pattern: bool = False,
+        bug_report: Optional[BugReport] = None,
+        expect_rc: Union[int, Iterable[int]] = 0,
     ) -> Pattern:
         with NamedTemporaryFile('w', dir=self.use_directory) as f:
             f.write(pattern.text)
