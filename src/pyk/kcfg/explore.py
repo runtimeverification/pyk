@@ -73,7 +73,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             self._kore_server = KoreServer(
                 self.kprint.definition_dir,
                 self.kprint.main_module,
-                self._port,
+                port=self._port,
                 bug_report=self._bug_report,
                 command=self._kore_rpc_command,
             )
