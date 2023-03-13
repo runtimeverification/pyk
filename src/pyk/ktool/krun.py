@@ -185,10 +185,10 @@ class KRun(KPrint):
             term,
             depth=depth,
             expand_macros=expand_macros,
-            bug_report=bug_report,
-            expect_rc=expect_rc,
             search_final=search_final,
             no_pattern=no_pattern,
+            bug_report=bug_report,
+            expect_rc=expect_rc,
         )
 
     @staticmethod
