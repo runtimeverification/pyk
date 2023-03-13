@@ -3,7 +3,7 @@ from pathlib import Path
 from pyk.ktool.krun import KRunOutput, _build_arg_list
 
 
-def test_all_args_1() -> None:
+def test_all_args() -> None:
     # Given
     # fmt: off
     expected = [
