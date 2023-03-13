@@ -20,8 +20,8 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class KCFGExplore(ContextManager['KCFGExplore']):
     kprint: KPrint
-    _port: int
     _kore_rpc_command: Union[str, Iterable[str]] = 'kore-rpc'
+    _port: Optional[int]
     _kore_server: Optional[KoreServer]
     _kore_client: Optional[KoreClient]
     _rpc_closed: bool
@@ -30,7 +30,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def __init__(
         self,
         kprint: KPrint,
-        port: int,
+        port: Optional[int] = None,
         bug_report: Optional[BugReport] = None,
         kore_rpc_command: Union[str, Iterable[str]] = 'kore-rpc',
     ):
@@ -73,12 +73,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             self._kore_server = KoreServer(
                 self.kprint.definition_dir,
                 self.kprint.main_module,
-                self._port,
+                port=self._port,
                 bug_report=self._bug_report,
                 command=self._kore_rpc_command,
             )
         if not self._kore_client:
-            self._kore_client = KoreClient('localhost', self._port, bug_report=self._bug_report)
+            self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
         return (self._kore_server, self._kore_client)
 
     def close(self) -> None:
@@ -140,15 +140,23 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             fv_antecedent = free_vars(antecedent.kast)
             unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
             if len(unbound_consequent) > 0:
-                _LOGGER.info(f'Binding variables in consequent: {unbound_consequent}')
+                _LOGGER.debug(f'Binding variables in consequent: {unbound_consequent}')
                 for uc in unbound_consequent:
                     _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
         consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
         result = kore_client.implies(antecedent_kore, consequent_kore)
-        if result.substitution is None:
+        if not result.satisfiable:
+            if result.substitution is not None:
+                _LOGGER.debug(f'Received a non-empty substitution for unsatisfiable implication: {result.substitution}')
+            if result.predicate is not None:
+                _LOGGER.debug(f'Received a non-empty predicate for unsatisfiable implication: {result.predicate}')
             return None
+        if result.substitution is None:
+            raise ValueError('Received empty substutition for satisfiable implication.')
+        if result.predicate is None:
+            raise ValueError('Received empty predicate for satisfiable implication.')
         ml_subst = self.kprint.kore_to_kast(result.substitution)
         ml_pred = self.kprint.kore_to_kast(result.predicate) if result.predicate is not None else mlTop()
         if is_top(ml_subst):
@@ -161,12 +169,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
-        # TODO: remove this extra consequent checking logic or this comment after resolution: https://github.com/runtimeverification/haskell-backend/issues/3469
-        new_consequent = self.cterm_simplify(CTerm(Subst(_subst)(consequent.add_constraint(ml_pred).kast)))
-        if is_bottom(new_consequent):
-            _LOGGER.warning(f'Simplifying instantiated consquent resulted in #Bottom: {antecedent} -> {consequent}')
-            return None
         return (Subst(_subst), ml_pred)
+
+    def remove_subgraph_from(self, cfgid: str, cfg: KCFG, node: str) -> KCFG:
+        for _node in cfg.reachable_nodes(node, traverse_covers=True):
+            if not cfg.is_target(_node.id):
+                _LOGGER.info(f'Removing node: {shorten_hashes(_node.id)}')
+                cfg.remove_node(_node.id)
+        return cfg
 
     def simplify(self, cfgid: str, cfg: KCFG) -> KCFG:
         for node in cfg.nodes:
