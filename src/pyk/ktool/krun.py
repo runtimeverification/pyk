@@ -149,10 +149,11 @@ class KRun(KPrint):
         *,
         depth: Optional[int] = None,
         expand_macros: bool = False,
-        bug_report: Optional[BugReport] = None,
-        expect_rc: int = 0,
         search_final: bool = False,
         no_pattern: bool = False,
+        # ---
+        bug_report: Optional[BugReport] = None,
+        expect_rc: int = 0,
     ) -> Pattern:
         def _config_var_token(s: str) -> DV:
             return DV(SortApp('SortKConfigVar'), String(f'${s}'))
