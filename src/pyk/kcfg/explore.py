@@ -20,8 +20,8 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class KCFGExplore(ContextManager['KCFGExplore']):
     kprint: KPrint
-    _port: int
     _kore_rpc_command: Union[str, Iterable[str]] = 'kore-rpc'
+    _port: Optional[int]
     _kore_server: Optional[KoreServer]
     _kore_client: Optional[KoreClient]
     _rpc_closed: bool
@@ -30,7 +30,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def __init__(
         self,
         kprint: KPrint,
-        port: int,
+        port: Optional[int] = None,
         bug_report: Optional[BugReport] = None,
         kore_rpc_command: Union[str, Iterable[str]] = 'kore-rpc',
     ):
@@ -78,7 +78,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 command=self._kore_rpc_command,
             )
         if not self._kore_client:
-            self._kore_client = KoreClient('localhost', self._port, bug_report=self._bug_report)
+            self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
         return (self._kore_server, self._kore_client)
 
     def close(self) -> None:
