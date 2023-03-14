@@ -406,18 +406,19 @@ class KPrint:
         return pretty_print_kast(kast, self.symbol_table)
 
     def _expression_kast(
-            self,
-            expression: str,
-            *,
-            command: Optional[str] = None,
-            definition_dir: Optional[Union[str, Path]] = None,
-            input: Optional[Union[str, KAstInput]] = None,
-            output: Optional[Union[str, KAstOutput]] = None,
-            module: Optional[str] = None,
-            sort: Optional[str] = None,
-            # ---
-            check: bool = True,) -> CompletedProcess:
-        if len(expression) < 128*1024:
+        self,
+        expression: str,
+        *,
+        command: Optional[str] = None,
+        definition_dir: Optional[Union[str, Path]] = None,
+        input: Optional[Union[str, KAstInput]] = None,
+        output: Optional[Union[str, KAstOutput]] = None,
+        module: Optional[str] = None,
+        sort: Optional[str] = None,
+        # ---
+        check: bool = True,
+    ) -> CompletedProcess:
+        if len(expression) < 128 * 1024:
             return _kast(
                 expression=expression,
                 command=command,
@@ -426,7 +427,7 @@ class KPrint:
                 output=output,
                 module=module,
                 sort=sort,
-                check=check
+                check=check,
             )
         file_path = self.use_directory / 'kast.input'
         file_path.write_text(expression)
@@ -438,7 +439,7 @@ class KPrint:
             output=output,
             module=module,
             sort=sort,
-            check=check
+            check=check,
         )
 
 
