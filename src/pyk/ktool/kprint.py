@@ -241,7 +241,6 @@ class KPrint:
         input = KAstInput('rule' if as_rule else 'program')
         proc_res = self._expression_kast(
             ktoken.token,
-            definition_dir=self.definition_dir,
             input=input,
             output=KAstOutput.JSON,
             sort=ktoken.sort.name,
@@ -251,7 +250,6 @@ class KPrint:
     def kore_to_pretty(self, pattern: Pattern) -> str:
         proc_res = self._expression_kast(
             pattern.text,
-            definition_dir=self.definition_dir,
             input=KAstInput.KORE,
             output=KAstOutput.PRETTY,
         )
@@ -264,7 +262,6 @@ class KPrint:
         _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
         proc_res = self._expression_kast(
             kore.text,
-            definition_dir=self.definition_dir,
             input=KAstInput.KORE,
             output=KAstOutput.JSON,
         )
@@ -386,7 +383,6 @@ class KPrint:
         kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
         proc_res = self._expression_kast(
             json.dumps(kast_json),
-            definition_dir=self.definition_dir,
             input=KAstInput.JSON,
             output=KAstOutput.KORE,
             sort=sort.name if sort is not None else None,
@@ -410,7 +406,6 @@ class KPrint:
         expression: str,
         *,
         command: Optional[str] = None,
-        definition_dir: Optional[Union[str, Path]] = None,
         input: Optional[Union[str, KAstInput]] = None,
         output: Optional[Union[str, KAstOutput]] = None,
         module: Optional[str] = None,
@@ -422,7 +417,7 @@ class KPrint:
             return _kast(
                 expression=expression,
                 command=command,
-                definition_dir=definition_dir,
+                definition_dir=self.definition_dir,
                 input=input,
                 output=output,
                 module=module,
@@ -434,7 +429,7 @@ class KPrint:
         return _kast(
             file_path,
             command=command,
-            definition_dir=definition_dir,
+            definition_dir=self.definition_dir,
             input=input,
             output=output,
             module=module,
