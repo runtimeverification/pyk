@@ -143,7 +143,7 @@ def _expression_kast(
             sort=sort,
             check=check
         )
-    file_path = use_directory / "kast.input"
+    file_path = use_directory / 'kast.input'
     file_path.write_text(expression)
     return _kast(
         file_path,
