@@ -60,6 +60,22 @@ def kast_to_kore(
     return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
 
 
+def kast_to_kore_2(
+    kast_defn: KDefinition,
+    kompiled_kore: KompiledKore,
+    kast: KInner,
+    sort: Optional[KSort] = None,
+) -> Pattern:
+    if sort is None:
+        sort = K
+    kast = kast_defn.add_cell_map_items(kast)
+    pattern = _kast_to_kore(kast)
+    kore_sort = _ksort_to_kore(sort)
+    pattern = kompiled_kore.strengthen_sorts(pattern, kore_sort)
+    pattern = kompiled_kore.add_injections(pattern, kore_sort)
+    return pattern
+
+
 def _kast_to_kore(kast: KInner) -> Pattern:
     _LOGGER.debug(f'_kast_to_kore: {kast}')
     if type(kast) is KToken:

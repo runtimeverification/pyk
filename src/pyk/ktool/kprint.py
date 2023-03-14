@@ -31,7 +31,7 @@ from ..kast.outer import (
     KTerminal,
     read_kast_definition,
 )
-from ..konvert import KompiledKore, kast_to_kore, unmunge
+from ..konvert import KompiledKore, kast_to_kore_2, unmunge
 from ..kore.parser import KoreParser
 from ..kore.prelude import BYTES as KORE_BYTES
 from ..kore.prelude import STRING as KORE_STRING
@@ -378,7 +378,7 @@ class KPrint:
 
     def kast_to_kore(self, kast: KInner, sort: Optional[KSort] = None) -> Pattern:
         try:
-            return kast_to_kore(self.definition, self.kompiled_kore, kast, sort)
+            return kast_to_kore_2(self.definition, self.kompiled_kore, kast, sort)
         except ValueError as ve:
             _LOGGER.warning(ve)
 

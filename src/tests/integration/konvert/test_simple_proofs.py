@@ -4,7 +4,7 @@ from typing import Final
 import pytest
 
 from pyk.kast.inner import KApply, KInner, KLabel, KSequence, KSort, KToken, KVariable
-from pyk.konvert import kast_to_kore
+from pyk.konvert import kast_to_kore_2
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
 from pyk.ktool.kprint import KPrint
@@ -250,6 +250,20 @@ KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
         KApply(KLabel('#Exists', [KSort('Foo')]), [KVariable('X'), KApply('foo', [KVariable('X')])]),
     ),
     (
+        'ml-exists-scope-conflict',
+        KSort('Foo'),
+        r"""
+        \and{SortFoo{}}(
+            VarX : SortFoo{},
+            \exists{SortFoo{}}(
+                VarX : SortBar{},
+                Lblfoo{}(VarX : SortBar{})
+            )
+        )
+        """,
+        KLabel('#And', 'Foo')(KVariable('X'), KLabel('#Exists', 'Foo')(KVariable('X'), KApply('foo', KVariable('X')))),
+    ),
+    (
         'ksequence-empty',
         KSort('K'),
         'dotk{}()',
@@ -328,7 +342,7 @@ class TestKonvertSimpleProofs(KPrintTest):
         kore = KoreParser(kore_text).pattern()
 
         # When
-        actual_kore = kast_to_kore(kprint.definition, kompiled_kore, kast, sort=sort)
+        actual_kore = kast_to_kore_2(kprint.definition, kompiled_kore, kast, sort=sort)
 
         # Then
         assert actual_kore == kore
