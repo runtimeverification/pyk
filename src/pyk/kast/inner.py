@@ -669,14 +669,13 @@ def bottom_up_with_binders(f: Callable[[KInner, Iterable[str]], KInner], kinner:
 def var_occurrences(term: KInner) -> dict[str, list[KVariable]]:
     _var_occurrences: dict[str, list[KVariable]] = {}
 
-    # TODO: should treat #Exists and #Forall specially.
-    def _var_occurence(_term: KInner) -> None:
-        if type(_term) is KVariable:
+    def _var_occurence(_term: KInner, _bound_vars: Iterable[str]) -> None:
+        if type(_term) is KVariable and _term.name not in _bound_vars:
             if _term.name not in _var_occurrences:
                 _var_occurrences[_term.name] = []
             _var_occurrences[_term.name].append(_term)
 
-    collect(_var_occurence, term)
+    collect_with_binders(_var_occurence, term)
     return _var_occurrences
 
 
@@ -687,6 +686,15 @@ def collect(callback: Callable[[KInner], None], kinner: KInner) -> None:
         return kinner
 
     bottom_up(f, kinner)
+
+
+# TODO replace by method that does not reconstruct the AST
+def collect_with_binders(callback: Callable[[KInner, Iterable[str]], None], kinner: KInner) -> None:
+    def f(kinner: KInner, bound_vars: Iterable[str]) -> KInner:
+        callback(kinner, bound_vars)
+        return kinner
+
+    bottom_up_with_binders(f, kinner)
 
 
 def build_assoc(unit: KInner, label: str | KLabel, terms: Iterable[KInner]) -> KInner:
