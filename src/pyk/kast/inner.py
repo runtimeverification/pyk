@@ -106,12 +106,12 @@ class Subst(Mapping[str, KInner]):
         return Subst(subst)
 
     def apply(self, term: KInner) -> KInner:
-        def replace(term: KInner) -> KInner:
-            if type(term) is KVariable and term.name in self:
+        def _replace(term: KInner, bound_vars: Iterable[str]) -> KInner:
+            if type(term) is KVariable and term.name in self and term.name not in bound_vars:
                 return self[term.name]
             return term
 
-        return bottom_up(replace, term)
+        return bottom_up_with_binders(_replace, term)
 
     def unapply(self, term: KInner) -> KInner:
         new_term = term
@@ -650,6 +650,19 @@ def bottom_up(f: Callable[[KInner], KInner], kinner: KInner) -> KInner:
 # TODO make method of KInner
 def top_down(f: Callable[[KInner], KInner], kinner: KInner) -> KInner:
     return f(kinner).map_inner(lambda _kinner: top_down(f, _kinner))
+
+
+# TODO make method of KInner
+def bottom_up_with_binders(f: Callable[[KInner, Iterable[str]], KInner], kinner: KInner) -> KInner:
+    def _bottom_up_with_binders(_vars: Iterable[str], _kinner: KInner) -> KInner:
+        _new_vars = list(_vars)
+        if type(_kinner) is KApply and _kinner.label.name in ['#Exists', '#Forall']:
+            var = _kinner.args[0]
+            assert type(var) is KVariable
+            _new_vars.append(var.name)
+        return f(_kinner.map_inner(lambda __kinner: _bottom_up_with_binders(tuple(_new_vars), __kinner)), _vars)
+
+    return _bottom_up_with_binders((), kinner)
 
 
 # TODO: make method of KInner
