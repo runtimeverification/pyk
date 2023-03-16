@@ -171,6 +171,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         return (Subst(_subst), ml_pred)
 
+    def cterm_assume_defined(self, cterm: CTerm) -> CTerm:
+        kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
+        kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
+        _, kore_client = self._kore_rpc
+        kore_simplified = kore_client.simplify(kore)
+        kast_simplified = self.kprint.kore_to_kast(kore_simplified)
+        return cterm.add_constraint(kast_simplified)
+
     def remove_subgraph_from(self, cfgid: str, cfg: KCFG, node: str) -> KCFG:
         for _node in cfg.reachable_nodes(node, traverse_covers=True):
             if not cfg.is_target(_node.id):
