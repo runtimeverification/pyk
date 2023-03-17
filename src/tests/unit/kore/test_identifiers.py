@@ -1,6 +1,6 @@
 import pytest
 
-from pyk.kore.syntax import Id, SymbolId, check_set_var_id
+from pyk.kore.syntax import Id, SetVarId, SymbolId
 from pyk.utils import raised
 
 BASE_TEST_DATA = (
@@ -50,7 +50,7 @@ SET_VARIABLE_ID_TEST_DATA = (
 @pytest.mark.parametrize('s,expected', SET_VARIABLE_ID_TEST_DATA, ids=[s for s, _ in SET_VARIABLE_ID_TEST_DATA])
 def test_is_set_variable_id(s: str, expected: bool) -> None:
     # When
-    actual = not raised(check_set_var_id, s)
+    actual = not raised(SetVarId, s)
 
     # Then
     assert actual == expected

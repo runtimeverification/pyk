@@ -62,13 +62,23 @@ class SymbolId:
             raise ValueError(f'Expected symbol identifier, found: {value}') from err
 
 
-def check_set_var_id(s: str) -> None:
-    lexer = KoreLexer(s)
-    try:
-        lexer.set_var_id()
-        lexer.eof()
-    except ValueError as err:
-        raise ValueError(f'Expected set variable identifier, found: {s}') from err
+@final
+@dataclass(frozen=True)
+class SetVarId:
+    value: str
+
+    def __init__(self, value: str):
+        self.check(value)
+        object.__setattr__(self, 'value', value)
+
+    @staticmethod
+    def check(value: str) -> None:
+        lexer = KoreLexer(value)
+        try:
+            lexer.set_var_id()
+            lexer.eof()
+        except ValueError as err:
+            raise ValueError(f'Expected set variable identifier, found: {value}') from err
 
 
 def encode_kore_str(s: str) -> str:
@@ -368,12 +378,14 @@ class SVar(VarPattern):
     name: str
     sort: Sort
 
-    def __init__(self, name: str, sort: Sort):
-        check_set_var_id(name)
-        object.__setattr__(self, 'name', name)
+    def __init__(self, name: Union[str, SetVarId], sort: Sort):
+        if isinstance(name, str):
+            name = SetVarId(name)
+
+        object.__setattr__(self, 'name', name.value)
         object.__setattr__(self, 'sort', sort)
 
-    def let(self, *, name: Optional[str] = None, sort: Optional[Sort] = None) -> 'SVar':
+    def let(self, *, name: Optional[Union[str, SetVarId]] = None, sort: Optional[Sort] = None) -> 'SVar':
         name = name if name is not None else self.name
         sort = sort if sort is not None else self.sort
         return SVar(name=name, sort=sort)
