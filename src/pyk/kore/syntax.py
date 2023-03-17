@@ -43,13 +43,23 @@ class Id:
             raise ValueError(f'Expected identifier, found: {value}') from err
 
 
-def check_symbol_id(s: str) -> None:
-    lexer = KoreLexer(s)
-    try:
-        lexer.symbol_id()
-        lexer.eof()
-    except ValueError as err:
-        raise ValueError(f'Expected symbol identifier, found: {s}') from err
+@final
+@dataclass(frozen=True)
+class SymbolId:
+    value: str
+
+    def __init__(self, value: str):
+        self.check(value)
+        object.__setattr__(self, 'value', value)
+
+    @staticmethod
+    def check(value: str) -> None:
+        lexer = KoreLexer(value)
+        try:
+            lexer.symbol_id()
+            lexer.eof()
+        except ValueError as err:
+            raise ValueError(f'Expected symbol identifier, found: {value}') from err
 
 
 def check_set_var_id(s: str) -> None:
@@ -427,16 +437,18 @@ class App(Pattern):
     sorts: Tuple[Sort, ...]
     args: Tuple[Pattern, ...]
 
-    def __init__(self, symbol: str, sorts: Iterable[Sort] = (), args: Iterable[Pattern] = ()):
-        check_symbol_id(symbol)
-        object.__setattr__(self, 'symbol', symbol)
+    def __init__(self, symbol: Union[str, SymbolId], sorts: Iterable[Sort] = (), args: Iterable[Pattern] = ()):
+        if isinstance(symbol, str):
+            symbol = SymbolId(symbol)
+
+        object.__setattr__(self, 'symbol', symbol.value)
         object.__setattr__(self, 'sorts', tuple(sorts))
         object.__setattr__(self, 'args', tuple(args))
 
     def let(
         self,
         *,
-        symbol: Optional[str] = None,
+        symbol: Optional[Union[str, SymbolId]] = None,
         sorts: Optional[Iterable] = None,
         args: Optional[Iterable] = None,
     ) -> 'App':
@@ -1868,12 +1880,14 @@ class Symbol(Kore):
     name: str
     vars: Tuple[SortVar, ...]
 
-    def __init__(self, name: str, vars: Iterable[SortVar] = ()):
-        check_symbol_id(name)
-        object.__setattr__(self, 'name', name)
+    def __init__(self, name: Union[str, SymbolId], vars: Iterable[SortVar] = ()):
+        if isinstance(name, str):
+            name = SymbolId(name)
+
+        object.__setattr__(self, 'name', name.value)
         object.__setattr__(self, 'vars', tuple(vars))
 
-    def let(self, *, name: Optional[str] = None, vars: Optional[Iterable[SortVar]] = None) -> 'Symbol':
+    def let(self, *, name: Optional[Union[str, SymbolId]] = None, vars: Optional[Iterable[SortVar]] = None) -> 'Symbol':
         name = name if name is not None else self.name
         vars = vars if vars is not None else self.vars
         return Symbol(name=name, vars=vars)

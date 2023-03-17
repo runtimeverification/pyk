@@ -1,6 +1,6 @@
 import pytest
 
-from pyk.kore.syntax import Id, check_set_var_id, check_symbol_id
+from pyk.kore.syntax import Id, SymbolId, check_set_var_id
 from pyk.utils import raised
 
 BASE_TEST_DATA = (
@@ -34,7 +34,7 @@ SYMBOL_ID_TEST_DATA = ID_TEST_DATA + tuple(('\\' + s, expected) for s, expected 
 @pytest.mark.parametrize('s,expected', SYMBOL_ID_TEST_DATA, ids=[s for s, _ in SYMBOL_ID_TEST_DATA])
 def test_is_symbol_id(s: str, expected: bool) -> None:
     # When
-    actual = not raised(check_symbol_id, s)
+    actual = not raised(SymbolId, s)
 
     # Then
     assert actual == expected
