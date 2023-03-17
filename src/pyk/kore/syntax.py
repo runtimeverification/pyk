@@ -16,6 +16,7 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
+    Union,
     final,
 )
 
@@ -23,13 +24,23 @@ from ..utils import FrozenDict, check_type
 from .lexer import KoreLexer, KoreStringLexer
 
 
-def check_id(s: str) -> None:
-    lexer = KoreLexer(s)
-    try:
-        lexer.id()
-        lexer.eof()
-    except ValueError as err:
-        raise ValueError(f'Expected identifier, found: {s}') from err
+@final
+@dataclass(frozen=True)
+class Id:
+    value: str
+
+    def __init__(self, value: str):
+        self.check(value)
+        object.__setattr__(self, 'value', value)
+
+    @staticmethod
+    def check(value: str) -> None:
+        lexer = KoreLexer(value)
+        try:
+            lexer.id()
+            lexer.eof()
+        except ValueError as err:
+            raise ValueError(f'Expected identifier, found: {value}') from err
 
 
 def check_symbol_id(s: str) -> None:
@@ -205,11 +216,13 @@ class WithSort(ABC):
 class SortVar(Sort):
     name: str
 
-    def __init__(self, name: str):
-        check_id(name)
-        object.__setattr__(self, 'name', name)
+    def __init__(self, name: Union[str, Id]):
+        if isinstance(name, str):
+            name = Id(name)
 
-    def let(self, *, name: Optional[str] = None) -> 'SortVar':
+        object.__setattr__(self, 'name', name.value)
+
+    def let(self, *, name: Optional[Union[str, Id]] = None) -> 'SortVar':
         name = name if name is not None else self.name
         return SortVar(name=name)
 
@@ -237,12 +250,14 @@ class SortApp(Sort):
     name: str
     sorts: Tuple[Sort, ...]
 
-    def __init__(self, name: str, sorts: Iterable[Sort] = ()):
-        check_id(name)
-        object.__setattr__(self, 'name', name)
+    def __init__(self, name: Union[str, Id], sorts: Iterable[Sort] = ()):
+        if isinstance(name, str):
+            name = Id(name)
+
+        object.__setattr__(self, 'name', name.value)
         object.__setattr__(self, 'sorts', tuple(sorts))
 
-    def let(self, *, name: Optional[str] = None, sorts: Optional[Iterable[Sort]] = None) -> 'SortApp':
+    def let(self, *, name: Optional[Union[str, Id]] = None, sorts: Optional[Iterable[Sort]] = None) -> 'SortApp':
         name = name if name is not None else self.name
         sorts = sorts if sorts is not None else self.sorts
         return SortApp(name=name, sorts=sorts)
@@ -308,12 +323,14 @@ class EVar(VarPattern):
     name: str
     sort: Sort
 
-    def __init__(self, name: str, sort: Sort):
-        check_id(name)
-        object.__setattr__(self, 'name', name)
+    def __init__(self, name: Union[str, Id], sort: Sort):
+        if isinstance(name, str):
+            name = Id(name)
+
+        object.__setattr__(self, 'name', name.value)
         object.__setattr__(self, 'sort', sort)
 
-    def let(self, *, name: Optional[str] = None, sort: Optional[Sort] = None) -> 'EVar':
+    def let(self, *, name: Optional[Union[str, Id]] = None, sort: Optional[Sort] = None) -> 'EVar':
         name = name if name is not None else self.name
         sort = sort if sort is not None else self.sort
         return EVar(name=name, sort=sort)
@@ -1742,12 +1759,14 @@ class Import(Sentence):
     module_name: str
     attrs: Tuple[App, ...]
 
-    def __init__(self, module_name: str, attrs: Iterable[App] = ()):
-        check_id(module_name)
-        object.__setattr__(self, 'module_name', module_name)
+    def __init__(self, module_name: Union[str, Id], attrs: Iterable[App] = ()):
+        if isinstance(module_name, str):
+            module_name = Id(module_name)
+
+        object.__setattr__(self, 'module_name', module_name.value)
         object.__setattr__(self, 'attrs', tuple(attrs))
 
-    def let(self, *, module_name: Optional[str] = None, attrs: Optional[Iterable[App]] = None) -> 'Import':
+    def let(self, *, module_name: Optional[Union[str, Id]] = None, attrs: Optional[Iterable[App]] = None) -> 'Import':
         module_name = module_name if module_name is not None else self.module_name
         attrs = attrs if attrs is not None else self.attrs
         return Import(module_name=module_name, attrs=attrs)
@@ -1786,9 +1805,18 @@ class SortDecl(Sentence):
     attrs: Tuple[App, ...]
     hooked: bool
 
-    def __init__(self, name: str, vars: Iterable[SortVar], attrs: Iterable[App] = (), *, hooked: bool = False):
-        check_id(name)
-        object.__setattr__(self, 'name', name)
+    def __init__(
+        self,
+        name: Union[str, Id],
+        vars: Iterable[SortVar],
+        attrs: Iterable[App] = (),
+        *,
+        hooked: bool = False,
+    ):
+        if isinstance(name, str):
+            name = Id(name)
+
+        object.__setattr__(self, 'name', name.value)
         object.__setattr__(self, 'vars', tuple(vars))
         object.__setattr__(self, 'attrs', tuple(attrs))
         object.__setattr__(self, 'hooked', hooked)
@@ -1796,7 +1824,7 @@ class SortDecl(Sentence):
     def let(
         self,
         *,
-        name: Optional[str] = None,
+        name: Optional[Union[str, Id]] = None,
         vars: Optional[Iterable[SortVar]] = None,
         attrs: Optional[Iterable[App]] = None,
         hooked: Optional[bool] = None,
@@ -2126,9 +2154,11 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
     sentences: Tuple[Sentence, ...]
     attrs: Tuple[App, ...]
 
-    def __init__(self, name: str, sentences: Iterable[Sentence] = (), attrs: Iterable[App] = ()):
-        check_id(name)
-        object.__setattr__(self, 'name', name)
+    def __init__(self, name: Union[str, Id], sentences: Iterable[Sentence] = (), attrs: Iterable[App] = ()):
+        if isinstance(name, str):
+            name = Id(name)
+
+        object.__setattr__(self, 'name', name.value)
         object.__setattr__(self, 'sentences', tuple(sentences))
         object.__setattr__(self, 'attrs', tuple(attrs))
 
@@ -2138,7 +2168,7 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
     def let(
         self,
         *,
-        name: Optional[str] = None,
+        name: Optional[Union[str, Id]] = None,
         sentences: Optional[Iterable[Sentence]] = None,
         attrs: Optional[Iterable[App]] = None,
     ) -> 'Module':

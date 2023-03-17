@@ -1,6 +1,6 @@
 import pytest
 
-from pyk.kore.syntax import check_id, check_set_var_id, check_symbol_id
+from pyk.kore.syntax import Id, check_set_var_id, check_symbol_id
 from pyk.utils import raised
 
 BASE_TEST_DATA = (
@@ -22,7 +22,7 @@ ID_TEST_DATA = BASE_TEST_DATA + (('sort', False),)
 @pytest.mark.parametrize('s,expected', ID_TEST_DATA, ids=[s for s, _ in ID_TEST_DATA])
 def test_is_id(s: str, expected: bool) -> None:
     # When
-    actual = not raised(check_id, s)
+    actual = not raised(Id, s)
 
     # Then
     assert actual == expected
