@@ -96,12 +96,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: Optional[int] = None,
         cut_point_rules: Optional[Iterable[str]] = None,
         terminal_rules: Optional[Iterable[str]] = None,
-        assume_defined: bool = True,
     ) -> Tuple[int, CTerm, List[CTerm]]:
-        if assume_defined:
-            cterm = cterm.add_constraint(
-                KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
-            )
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
