@@ -24,12 +24,6 @@ class KCFGShow:
     ):
         self.kprint = kprint
 
-    def to_module(
-        self,
-        cfgid: str,
-        cfg: KCFG,
-    ) -> KFlatModule:
-
     def show(
         self,
         cfgid: str,
