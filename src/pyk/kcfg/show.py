@@ -24,6 +24,12 @@ class KCFGShow:
     ):
         self.kprint = kprint
 
+    def to_module(
+        self,
+        cfgid: str,
+        cfg: KCFG,
+    ) -> KFlatModule:
+
     def show(
         self,
         cfgid: str,
@@ -33,9 +39,10 @@ class KCFGShow:
         to_module: bool = False,
         minimize: bool = True,
         node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
+        omit_node_hash: bool = False,
     ) -> List[str]:
         res_lines: List[str] = []
-        res_lines += cfg.pretty(self.kprint, minimize=minimize, node_printer=node_printer)
+        res_lines += cfg.pretty(self.kprint, minimize=minimize, node_printer=node_printer, omit_node_hash=omit_node_hash)
 
         for node_id in nodes:
             kast = cfg.node(node_id).cterm.kast
@@ -62,7 +69,6 @@ class KCFGShow:
             res_lines.append('')
 
         if to_module:
-
             def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
                 sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
                 init_cterm = CTerm(edge.source.cterm.config)
