@@ -4,12 +4,12 @@ from typing import Callable, Final, Iterable, List, Optional, Tuple
 
 from pyk.cli_utils import ensure_dir_path
 from pyk.cterm import CTerm, build_claim, build_rule
-from pyk.kast.inner import KApply, KRewrite, KInner, top_down, bottom_up, KLabel, KToken
-from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites, set_cell
+from pyk.kast.inner import KApply, KInner, KRewrite, top_down
+from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites
 from pyk.kast.outer import KFlatModule, KRuleLike
 from pyk.ktool.kprint import KPrint
-from pyk.prelude.ml import mlAnd, mlTop
 from pyk.prelude.k import DOTS
+from pyk.prelude.ml import mlAnd, mlTop
 
 from .kcfg import KCFG
 
@@ -42,8 +42,7 @@ class KCFGShow:
             self.kprint, minimize=minimize, node_printer=node_printer, omit_node_hash=omit_node_hash
         )
 
-        def hide_cells(term: KInner):
-
+        def hide_cells(term: KInner) -> KInner:
             def _hide_cells(_k: KInner) -> KInner:
                 if type(_k) == KApply and _k.label.name in omit_cells:
                     return DOTS
@@ -59,7 +58,7 @@ class KCFGShow:
             res_lines.append('')
             res_lines.append('')
             if omit_node_hash:
-                res_lines.append(f'Node OMITTED HASH:')
+                res_lines.append('Node OMITTED HASH:')
             else:
                 res_lines.append(f'Node {node_id}:')
             res_lines.append('')
