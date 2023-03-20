@@ -106,8 +106,8 @@ def decode_kore_str(s: str) -> str:
 
 
 def _bracketed(elems: Iterable[str], lbrac: str, rbrac: str) -> str:
-    elems = tuple(elems)
-    return lbrac + ' ' + ', '.join(elems) + (' ' if elems else '') + rbrac
+    elems_str = ', '.join(elems)
+    return f'{lbrac}{elems_str}{rbrac}'
 
 
 def _braced(elems: Iterable[str]) -> str:
