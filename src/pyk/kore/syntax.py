@@ -297,7 +297,8 @@ class SortApp(Sort):
 
     @property
     def text(self) -> str:
-        return self.name + ' ' + _braced(sort.text for sort in self.sorts)
+        sorts_str = _braced(sort.text for sort in self.sorts)
+        return f'{self.name}{sorts_str}'
 
 
 class Pattern(Kore):
@@ -439,7 +440,8 @@ class String(Pattern):
 
     @property
     def text(self) -> str:
-        return '"' + encode_kore_str(self.value) + '"'
+        encoded_str = encode_kore_str(self.value)
+        return f'"{encoded_str}"'
 
 
 @final
@@ -500,13 +502,9 @@ class App(Pattern):
 
     @property
     def text(self) -> str:
-        return (
-            self.symbol
-            + ' '
-            + _braced(sort.text for sort in self.sorts)
-            + ' '
-            + _parend(args.text for args in self.args)
-        )
+        sorts_str = _braced(sort.text for sort in self.sorts)
+        args_str = _parend(args.text for args in self.args)
+        return f'{self.symbol}{sorts_str}{args_str}'
 
 
 class MLPattern(Pattern):
@@ -547,13 +545,9 @@ class MLPattern(Pattern):
 
     @property
     def text(self) -> str:
-        return (
-            self.symbol()
-            + ' '
-            + _braced(sort.text for sort in self.sorts)
-            + ' '
-            + _parend(pattern.text for pattern in self.ctor_patterns)
-        )
+        sorts_str = _braced(sort.text for sort in self.sorts)
+        patterns_str = _parend(pattern.text for pattern in self.ctor_patterns)
+        return f'{self.symbol()}{sorts_str}{patterns_str}'
 
 
 class MLConn(MLPattern, WithSort):
@@ -1812,13 +1806,8 @@ class Import(Sentence):
 
     @property
     def text(self) -> str:
-        return ' '.join(
-            [
-                'import',
-                self.module_name,
-                _brackd(attr.text for attr in self.attrs),
-            ]
-        )
+        attrs_str = _brackd(attr.text for attr in self.attrs)
+        return f'import {self.module_name} {attrs_str}'
 
 
 @final
@@ -1876,14 +1865,10 @@ class SortDecl(Sentence):
 
     @property
     def text(self) -> str:
-        return ' '.join(
-            [
-                'hooked-sort' if self.hooked else 'sort',
-                self.name,
-                _braced(var.text for var in self.vars),
-                _brackd(attr.text for attr in self.attrs),
-            ]
-        )
+        keyword = 'hooked-sort' if self.hooked else 'sort'
+        vars_str = _braced(var.text for var in self.vars)
+        attrs_str = _brackd(attr.text for attr in self.attrs)
+        return f'{keyword} {self.name}{vars_str} {attrs_str}'
 
 
 @final
@@ -1918,7 +1903,8 @@ class Symbol(Kore):
 
     @property
     def text(self) -> str:
-        return self.name + ' ' + _braced(var.text for var in self.vars)
+        vars_str = _braced(var.text for var in self.vars)
+        return f'{self.name}{vars_str}'
 
 
 @final
@@ -1978,16 +1964,10 @@ class SymbolDecl(Sentence):
 
     @property
     def text(self) -> str:
-        return ' '.join(
-            [
-                'hooked-symbol' if self.hooked else 'symbol',
-                self.symbol.text,
-                _parend(sort.text for sort in self.param_sorts),
-                ':',
-                self.sort.text,
-                _brackd(attr.text for attr in self.attrs),
-            ]
-        )
+        keyword = 'hooked-symbol' if self.hooked else 'symbol'
+        sorts_str = _parend(sort.text for sort in self.param_sorts)
+        attrs_str = _brackd(attr.text for attr in self.attrs)
+        return f'{keyword} {self.symbol.text}{sorts_str} : {self.sort.text} {attrs_str}'
 
 
 @final
@@ -2051,20 +2031,9 @@ class AliasDecl(Sentence):
 
     @property
     def text(self) -> str:
-        return ' '.join(
-            [
-                'alias',
-                self.alias.text,
-                _parend(sort.text for sort in self.param_sorts),
-                ':',
-                self.sort.text,
-                'where',
-                self.left.text,
-                ':=',
-                self.right.text,
-                _brackd(attr.text for attr in self.attrs),
-            ]
-        )
+        sorts_str = _parend(sort.text for sort in self.param_sorts)
+        attrs_str = _brackd(attr.text for attr in self.attrs)
+        return f'alias {self.alias.text}{sorts_str} : {self.sort.text} where {self.left.text} := {self.right.text} {attrs_str}'
 
 
 class AxiomLike(Sentence):
@@ -2079,14 +2048,9 @@ class AxiomLike(Sentence):
 
     @property
     def text(self) -> str:
-        return ' '.join(
-            [
-                self._label,
-                _braced(var.text for var in self.vars),
-                self.pattern.text,
-                _brackd(attr.text for attr in self.attrs),
-            ]
-        )
+        sorts_str = _braced(var.text for var in self.vars)
+        attrs_str = _brackd(attr.text for attr in self.attrs)
+        return f'{self._label}{sorts_str} {self.pattern.text} {attrs_str}'
 
 
 @final
@@ -2220,11 +2184,9 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
 
     @property
     def text(self) -> str:
-        return '\n'.join(
-            [f'module {self.name}']
-            + [f'    {sentence.text}' for sentence in self.sentences]
-            + ['endmodule ' + _brackd(attr.text for attr in self.attrs)]
-        )
+        sentences_str = ''.join(f'    {sentence.text}\n' for sentence in self.sentences)
+        attrs_str = _brackd(attr.text for attr in self.attrs)
+        return f'module {self.name}\n{sentences_str}endmodule {attrs_str}'
 
     @cached_property
     def symbol_decls(self) -> Tuple[SymbolDecl, ...]:
@@ -2270,12 +2232,10 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
     @property
     def text(self) -> str:
-        return '\n\n'.join(
-            [
-                _brackd(attr.text for attr in self.attrs),
-            ]
-            + [module.text for module in self.modules]
-        )
+        strs = []
+        strs.append(_brackd(attr.text for attr in self.attrs))
+        strs.extend(module.text for module in self.modules)
+        return '\n\n'.join(strs)
 
     @cached_property
     def symbol_table(self) -> FrozenDict[str, SymbolDecl]:
