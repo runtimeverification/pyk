@@ -17,4 +17,14 @@ module IMP-SIMPLE-SPEC
 
     claim [sum-1000]: <k> int $s, $n, .Ids ; $n = 1000 ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
                       <state> .Map => $s |-> 500500 $n |-> -1 </state>
+
+    claim [sum-loop]: <k> while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } => . ... </k>
+                      <state> $s |-> (S => S +Int ((N *Int (N +Int 1)) /Int 2)) $n |-> (N => -1) </state>
+                    requires 0 <=Int N
+      [circularity]
+
+    claim [sum-N]: <k> int $s, $n, .Ids ; $n = N:Int ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } => . ... </k>
+                      <state> .Map => $s |-> ((N *Int (N +Int 1)) /Int 2) $n |-> -1 </state>
+                    requires 0 <=Int N
+
 endmodule
