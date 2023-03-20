@@ -83,18 +83,6 @@ class SetVarId:
             raise ValueError(f'Expected set variable identifier, found: {value}') from err
 
 
-def encode_kore_str(s: str) -> str:
-    res: List[str] = []
-    for c in s:
-        if ord(c) == 12:
-            res += '\\f'
-        elif ord(c) == 34:
-            res += '\\"'
-        else:
-            res += c.encode('unicode-escape').decode('ascii')
-    return ''.join(res)
-
-
 def decode_kore_str(s: str) -> str:
     res: List[str] = []
     for token, _ in KoreStringLexer(s):
@@ -415,6 +403,17 @@ class SVar(VarPattern):
 class String(Pattern):
     value: str
 
+    _ENCODE_TABLE: Final[Mapping[int, str]] = FrozenDict(
+        {
+            9: r'\t',
+            10: r'\n',
+            12: r'\f',
+            13: r'\r',
+            34: r'\"',
+            92: r'\\',
+        }
+    )
+
     def let(self, *, value: Optional[str] = None) -> 'String':
         value = value if value is not None else self.value
         return String(value=value)
@@ -441,8 +440,22 @@ class String(Pattern):
         return {'tag': self._tag(), 'value': self.value}
 
     def write(self, output: TextIO) -> None:
-        encoded_str = encode_kore_str(self.value)
-        output.write(f'"{encoded_str}"')
+        output.write('"')
+        for char in self.value:
+            code = ord(char)
+            if 32 <= code < 127:
+                output.write(char)
+            elif code in self._ENCODE_TABLE:
+                output.write(self._ENCODE_TABLE[code])
+            elif code <= 0xFF:
+                output.write(fr'\x{code:02x}')
+            elif code <= 0xFFFF:
+                output.write(fr'\u{code:04x}')
+            elif code <= 0xFFFFFFFF:
+                output.write(fr'\U{code:08x}')
+            else:
+                raise ValueError(f"Unsupported character '{char}' in KORE string: {self.value}")
+        output.write('"')
 
 
 @final
