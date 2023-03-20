@@ -2,6 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
+from io import StringIO
 from typing import (
     Any,
     Callable,
@@ -106,23 +107,6 @@ def decode_kore_str(s: str) -> str:
     return ''.join(res)
 
 
-def _braced(elems: Iterable[str]) -> str:
-    lbrace = '{'
-    rbrace = '}'
-    elems_str = ', '.join(elems)
-    return f'{lbrace}{elems_str}{rbrace}'
-
-
-def _brackd(elems: Iterable[str]) -> str:
-    elems_str = ', '.join(elems)
-    return f'[{elems_str}]'
-
-
-def _parend(elems: Iterable[str]) -> str:
-    elems_str = ', '.join(elems)
-    return f'({elems_str})'
-
-
 # TODO Constructor @overloads
 
 
@@ -212,9 +196,10 @@ class Kore(ABC):
         ...
 
     @property
-    @abstractmethod
     def text(self) -> str:
-        ...
+        str_io = StringIO()
+        self.write(str_io)
+        return str_io.getvalue()
 
     @abstractmethod
     def write(self, output: TextIO) -> None:
@@ -275,10 +260,6 @@ class SortVar(Sort):
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'name': self.name}
 
-    @property
-    def text(self) -> str:
-        return self.name
-
     def write(self, output: TextIO) -> None:
         output.write(self.name)
 
@@ -313,11 +294,6 @@ class SortApp(Sort):
     @property
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'name': self.name, 'args': [sort.dict for sort in self.sorts]}
-
-    @property
-    def text(self) -> str:
-        sorts_str = _braced(sort.text for sort in self.sorts)
-        return f'{self.name}{sorts_str}'
 
     def write(self, output: TextIO) -> None:
         output.write(self.name)
@@ -357,10 +333,6 @@ class VarPattern(Pattern, WithSort):
     @property
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'name': self.name, 'sort': self.sort.dict}
-
-    @property
-    def text(self) -> str:
-        return f'{self.name} : {self.sort.text}'
 
     def write(self, output: TextIO) -> None:
         output.write(self.name)
@@ -468,11 +440,6 @@ class String(Pattern):
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'value': self.value}
 
-    @property
-    def text(self) -> str:
-        encoded_str = encode_kore_str(self.value)
-        return f'"{encoded_str}"'
-
     def write(self, output: TextIO) -> None:
         encoded_str = encode_kore_str(self.value)
         output.write(f'"{encoded_str}"')
@@ -534,12 +501,6 @@ class App(Pattern):
             'args': [pattern.dict for pattern in self.args],
         }
 
-    @property
-    def text(self) -> str:
-        sorts_str = _braced(sort.text for sort in self.sorts)
-        args_str = _parend(args.text for args in self.args)
-        return f'{self.symbol}{sorts_str}{args_str}'
-
     def write(self, output: TextIO) -> None:
         output.write(self.symbol)
         output.write('{')
@@ -584,12 +545,6 @@ class MLPattern(Pattern):
         Except for `Assoc`, `DV`, `MLFixpoint` and `MLQuant` it coincides with `patterns`.
         """
         return self.patterns
-
-    @property
-    def text(self) -> str:
-        sorts_str = _braced(sort.text for sort in self.sorts)
-        patterns_str = _parend(pattern.text for pattern in self.ctor_patterns)
-        return f'{self.symbol()}{sorts_str}{patterns_str}'
 
     def write(self, output: TextIO) -> None:
         output.write(self.symbol())
@@ -1854,11 +1809,6 @@ class Import(Sentence):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    @property
-    def text(self) -> str:
-        attrs_str = _brackd(attr.text for attr in self.attrs)
-        return f'import {self.module_name} {attrs_str}'
-
     def write(self, output: TextIO) -> None:
         output.write('import ')
         output.write(self.module_name)
@@ -1920,13 +1870,6 @@ class SortDecl(Sentence):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    @property
-    def text(self) -> str:
-        keyword = 'hooked-sort' if self.hooked else 'sort'
-        vars_str = _braced(var.text for var in self.vars)
-        attrs_str = _brackd(attr.text for attr in self.attrs)
-        return f'{keyword} {self.name}{vars_str} {attrs_str}'
-
     def write(self, output: TextIO) -> None:
         keyword = 'hooked-sort ' if self.hooked else 'sort '
         output.write(keyword)
@@ -1967,11 +1910,6 @@ class Symbol(Kore):
     @property
     def dict(self) -> Dict[str, Any]:
         return unsupported()
-
-    @property
-    def text(self) -> str:
-        vars_str = _braced(var.text for var in self.vars)
-        return f'{self.name}{vars_str}'
 
     def write(self, output: TextIO) -> None:
         output.write(self.name)
@@ -2034,13 +1972,6 @@ class SymbolDecl(Sentence):
     @property
     def dict(self) -> Dict[str, Any]:
         return unsupported()
-
-    @property
-    def text(self) -> str:
-        keyword = 'hooked-symbol' if self.hooked else 'symbol'
-        sorts_str = _parend(sort.text for sort in self.param_sorts)
-        attrs_str = _brackd(attr.text for attr in self.attrs)
-        return f'{keyword} {self.symbol.text}{sorts_str} : {self.sort.text} {attrs_str}'
 
     def write(self, output: TextIO) -> None:
         keyword = 'hooked-symbol ' if self.hooked else 'symbol '
@@ -2114,12 +2045,6 @@ class AliasDecl(Sentence):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    @property
-    def text(self) -> str:
-        sorts_str = _parend(sort.text for sort in self.param_sorts)
-        attrs_str = _brackd(attr.text for attr in self.attrs)
-        return f'alias {self.alias.text}{sorts_str} : {self.sort.text} where {self.left.text} := {self.right.text} {attrs_str}'
-
     def write(self, output: TextIO) -> None:
         output.write('alias ')
         self.alias.write(output)
@@ -2145,12 +2070,6 @@ class AxiomLike(Sentence):
     @classmethod
     def from_dict(cls: Type['AxiomLike'], dct: Mapping[str, Any]) -> 'AxiomLike':
         return unsupported()
-
-    @property
-    def text(self) -> str:
-        sorts_str = _braced(var.text for var in self.vars)
-        attrs_str = _brackd(attr.text for attr in self.attrs)
-        return f'{self._label}{sorts_str} {self.pattern.text} {attrs_str}'
 
     def write(self, output: TextIO) -> None:
         output.write(self._label)
@@ -2292,12 +2211,6 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    @property
-    def text(self) -> str:
-        sentences_str = ''.join(f'    {sentence.text}\n' for sentence in self.sentences)
-        attrs_str = _brackd(attr.text for attr in self.attrs)
-        return f'module {self.name}\n{sentences_str}endmodule {attrs_str}'
-
     def write(self, output: TextIO) -> None:
         output.write('module ')
         output.write(self.name)
@@ -2349,13 +2262,6 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
     @property
     def dict(self) -> Dict[str, Any]:
         return unsupported()
-
-    @property
-    def text(self) -> str:
-        strs = []
-        strs.append(_brackd(attr.text for attr in self.attrs))
-        strs.extend(module.text for module in self.modules)
-        return '\n\n'.join(strs)
 
     def write(self, output: TextIO) -> None:
         output.write('[')
