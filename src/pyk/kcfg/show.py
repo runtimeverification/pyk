@@ -4,11 +4,12 @@ from typing import Callable, Final, Iterable, List, Optional, Tuple
 
 from pyk.cli_utils import ensure_dir_path
 from pyk.cterm import CTerm, build_claim, build_rule
-from pyk.kast.inner import KApply, KRewrite
-from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites
+from pyk.kast.inner import KApply, KRewrite, KInner, top_down, bottom_up, KLabel, KToken
+from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites, set_cell
 from pyk.kast.outer import KFlatModule, KRuleLike
 from pyk.ktool.kprint import KPrint
 from pyk.prelude.ml import mlAnd, mlTop
+from pyk.prelude.k import DOTS
 
 from .kcfg import KCFG
 
@@ -34,17 +35,33 @@ class KCFGShow:
         minimize: bool = True,
         node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
         omit_node_hash: bool = False,
+        omit_cells: Iterable[str] = (),
     ) -> List[str]:
         res_lines: List[str] = []
-        res_lines += cfg.pretty(self.kprint, minimize=minimize, node_printer=node_printer, omit_node_hash=omit_node_hash)
+        res_lines += cfg.pretty(
+            self.kprint, minimize=minimize, node_printer=node_printer, omit_node_hash=omit_node_hash
+        )
+
+        def hide_cells(term: KInner):
+
+            def _hide_cells(_k: KInner) -> KInner:
+                if type(_k) == KApply and _k.label.name in omit_cells:
+                    return DOTS
+                return _k
+
+            return top_down(_hide_cells, term)
 
         for node_id in nodes:
             kast = cfg.node(node_id).cterm.kast
+            kast = hide_cells(kast)
             if minimize:
                 kast = minimize_term(kast)
             res_lines.append('')
             res_lines.append('')
-            res_lines.append(f'Node {node_id}:')
+            if omit_node_hash:
+                res_lines.append(f'Node OMITTED HASH:')
+            else:
+                res_lines.append(f'Node {node_id}:')
             res_lines.append('')
             res_lines.append(self.kprint.pretty_print(kast))
             res_lines.append('')
@@ -52,6 +69,8 @@ class KCFGShow:
         for node_id_1, node_id_2 in node_deltas:
             config_1 = cfg.node(node_id_1).cterm.config
             config_2 = cfg.node(node_id_2).cterm.config
+            config_1 = hide_cells(config_1)
+            config_2 = hide_cells(config_2)
             config_delta = push_down_rewrites(KRewrite(config_1, config_2))
             if minimize:
                 config_delta = minimize_term(config_delta)
@@ -63,16 +82,17 @@ class KCFGShow:
             res_lines.append('')
 
         if to_module:
+
             def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
                 sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
-                init_cterm = CTerm(edge.source.cterm.config)
+                init_cterm = CTerm(hide_cells(edge.source.cterm.config))
                 for c in edge.source.cterm.constraints:
                     assert type(c) is KApply
                     if c.label.name == '#Ceil':
                         _LOGGER.warning(f'Ignoring Ceil condition: {c}')
                     else:
                         init_cterm.add_constraint(c)
-                target_cterm = CTerm(edge.target.cterm.config)
+                target_cterm = CTerm(hide_cells(edge.target.cterm.config))
                 for c in edge.source.cterm.constraints:
                     assert type(c) is KApply
                     if c.label.name == '#Ceil':
