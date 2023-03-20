@@ -13,6 +13,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    TextIO,
     Tuple,
     Type,
     TypeVar,
@@ -215,6 +216,21 @@ class Kore(ABC):
     def text(self) -> str:
         ...
 
+    @abstractmethod
+    def write(self, output: TextIO) -> None:
+        ...
+
+
+def _write_sep_by_comma(kores: Iterable[Kore], output: TextIO) -> None:
+    first = True
+    for kore in kores:
+        if first:
+            first = False
+            kore.write(output)
+        else:
+            output.write(', ')
+            kore.write(output)
+
 
 class Sort(Kore):
     name: str
@@ -263,6 +279,9 @@ class SortVar(Sort):
     def text(self) -> str:
         return self.name
 
+    def write(self, output: TextIO) -> None:
+        output.write(self.name)
+
 
 @final
 @dataclass(frozen=True)
@@ -300,6 +319,12 @@ class SortApp(Sort):
         sorts_str = _braced(sort.text for sort in self.sorts)
         return f'{self.name}{sorts_str}'
 
+    def write(self, output: TextIO) -> None:
+        output.write(self.name)
+        output.write('{')
+        _write_sep_by_comma(self.sorts, output)
+        output.write('}')
+
 
 class Pattern(Kore):
     @property
@@ -336,6 +361,11 @@ class VarPattern(Pattern, WithSort):
     @property
     def text(self) -> str:
         return f'{self.name} : {self.sort.text}'
+
+    def write(self, output: TextIO) -> None:
+        output.write(self.name)
+        output.write(' : ')
+        self.sort.write(output)
 
 
 @final
@@ -443,6 +473,10 @@ class String(Pattern):
         encoded_str = encode_kore_str(self.value)
         return f'"{encoded_str}"'
 
+    def write(self, output: TextIO) -> None:
+        encoded_str = encode_kore_str(self.value)
+        output.write(f'"{encoded_str}"')
+
 
 @final
 @dataclass(frozen=True)
@@ -506,6 +540,14 @@ class App(Pattern):
         args_str = _parend(args.text for args in self.args)
         return f'{self.symbol}{sorts_str}{args_str}'
 
+    def write(self, output: TextIO) -> None:
+        output.write(self.symbol)
+        output.write('{')
+        _write_sep_by_comma(self.sorts, output)
+        output.write('}(')
+        _write_sep_by_comma(self.args, output)
+        output.write(')')
+
 
 class MLPattern(Pattern):
     @classmethod
@@ -548,6 +590,14 @@ class MLPattern(Pattern):
         sorts_str = _braced(sort.text for sort in self.sorts)
         patterns_str = _parend(pattern.text for pattern in self.ctor_patterns)
         return f'{self.symbol()}{sorts_str}{patterns_str}'
+
+    def write(self, output: TextIO) -> None:
+        output.write(self.symbol())
+        output.write('{')
+        _write_sep_by_comma(self.sorts, output)
+        output.write('}(')
+        _write_sep_by_comma(self.ctor_patterns, output)
+        output.write(')')
 
 
 class MLConn(MLPattern, WithSort):
@@ -1809,6 +1859,13 @@ class Import(Sentence):
         attrs_str = _brackd(attr.text for attr in self.attrs)
         return f'import {self.module_name} {attrs_str}'
 
+    def write(self, output: TextIO) -> None:
+        output.write('import ')
+        output.write(self.module_name)
+        output.write(' [')
+        _write_sep_by_comma(self.attrs, output)
+        output.write(']')
+
 
 @final
 @dataclass(frozen=True)
@@ -1870,6 +1927,16 @@ class SortDecl(Sentence):
         attrs_str = _brackd(attr.text for attr in self.attrs)
         return f'{keyword} {self.name}{vars_str} {attrs_str}'
 
+    def write(self, output: TextIO) -> None:
+        keyword = 'hooked-sort ' if self.hooked else 'sort '
+        output.write(keyword)
+        output.write(self.name)
+        output.write('{')
+        _write_sep_by_comma(self.vars, output)
+        output.write('} [')
+        _write_sep_by_comma(self.attrs, output)
+        output.write(']')
+
 
 @final
 @dataclass(frozen=True)
@@ -1905,6 +1972,12 @@ class Symbol(Kore):
     def text(self) -> str:
         vars_str = _braced(var.text for var in self.vars)
         return f'{self.name}{vars_str}'
+
+    def write(self, output: TextIO) -> None:
+        output.write(self.name)
+        output.write('{')
+        _write_sep_by_comma(self.vars, output)
+        output.write('}')
 
 
 @final
@@ -1968,6 +2041,18 @@ class SymbolDecl(Sentence):
         sorts_str = _parend(sort.text for sort in self.param_sorts)
         attrs_str = _brackd(attr.text for attr in self.attrs)
         return f'{keyword} {self.symbol.text}{sorts_str} : {self.sort.text} {attrs_str}'
+
+    def write(self, output: TextIO) -> None:
+        keyword = 'hooked-symbol ' if self.hooked else 'symbol '
+        output.write(keyword)
+        self.symbol.write(output)
+        output.write('(')
+        _write_sep_by_comma(self.param_sorts, output)
+        output.write(') : ')
+        self.sort.write(output)
+        output.write(' [')
+        _write_sep_by_comma(self.attrs, output)
+        output.write(']')
 
 
 @final
@@ -2035,6 +2120,21 @@ class AliasDecl(Sentence):
         attrs_str = _brackd(attr.text for attr in self.attrs)
         return f'alias {self.alias.text}{sorts_str} : {self.sort.text} where {self.left.text} := {self.right.text} {attrs_str}'
 
+    def write(self, output: TextIO) -> None:
+        output.write('alias ')
+        self.alias.write(output)
+        output.write('(')
+        _write_sep_by_comma(self.param_sorts, output)
+        output.write(') : ')
+        self.sort.write(output)
+        output.write(' where ')
+        self.left.write(output)
+        output.write(' := ')
+        self.right.write(output)
+        output.write(' [')
+        _write_sep_by_comma(self.attrs, output)
+        output.write(']')
+
 
 class AxiomLike(Sentence):
     _label: ClassVar[str]
@@ -2051,6 +2151,16 @@ class AxiomLike(Sentence):
         sorts_str = _braced(var.text for var in self.vars)
         attrs_str = _brackd(attr.text for attr in self.attrs)
         return f'{self._label}{sorts_str} {self.pattern.text} {attrs_str}'
+
+    def write(self, output: TextIO) -> None:
+        output.write(self._label)
+        output.write('{')
+        _write_sep_by_comma(self.vars, output)
+        output.write('} ')
+        self.pattern.write(output)
+        output.write(' [')
+        _write_sep_by_comma(self.attrs, output)
+        output.write(']')
 
 
 @final
@@ -2188,6 +2298,16 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
         attrs_str = _brackd(attr.text for attr in self.attrs)
         return f'module {self.name}\n{sentences_str}endmodule {attrs_str}'
 
+    def write(self, output: TextIO) -> None:
+        output.write('module ')
+        output.write(self.name)
+        for sentence in self.sentences:
+            output.write('\n    ')
+            sentence.write(output)
+        output.write('\nendmodule [')
+        _write_sep_by_comma(self.attrs, output)
+        output.write(']')
+
     @cached_property
     def symbol_decls(self) -> Tuple[SymbolDecl, ...]:
         return tuple(sentence for sentence in self if type(sentence) is SymbolDecl)
@@ -2236,6 +2356,14 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
         strs.append(_brackd(attr.text for attr in self.attrs))
         strs.extend(module.text for module in self.modules)
         return '\n\n'.join(strs)
+
+    def write(self, output: TextIO) -> None:
+        output.write('[')
+        _write_sep_by_comma(self.attrs, output)
+        output.write(']')
+        for module in self.modules:
+            output.write('\n\n')
+            module.write(output)
 
     @cached_property
     def symbol_table(self) -> FrozenDict[str, SymbolDecl]:
