@@ -48,7 +48,9 @@ class KCFGShow:
                     return DOTS
                 return _k
 
-            return top_down(_hide_cells, term)
+            if omit_cells:
+                return top_down(_hide_cells, term)
+            return term
 
         for node_id in nodes:
             kast = cfg.node(node_id).cterm.kast
