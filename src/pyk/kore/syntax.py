@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from io import StringIO
 from typing import (
+    IO,
     Any,
     Callable,
     ClassVar,
@@ -14,7 +15,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    TextIO,
     Tuple,
     Type,
     TypeVar,
@@ -190,11 +190,11 @@ class Kore(ABC):
         return str_io.getvalue()
 
     @abstractmethod
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         ...
 
 
-def _write_sep_by_comma(kores: Iterable[Kore], output: TextIO) -> None:
+def _write_sep_by_comma(kores: Iterable[Kore], output: IO[str]) -> None:
     first = True
     for kore in kores:
         if first:
@@ -248,7 +248,7 @@ class SortVar(Sort):
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'name': self.name}
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write(self.name)
 
 
@@ -283,7 +283,7 @@ class SortApp(Sort):
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'name': self.name, 'args': [sort.dict for sort in self.sorts]}
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write(self.name)
         output.write('{')
         _write_sep_by_comma(self.sorts, output)
@@ -322,7 +322,7 @@ class VarPattern(Pattern, WithSort):
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'name': self.name, 'sort': self.sort.dict}
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write(self.name)
         output.write(' : ')
         self.sort.write(output)
@@ -439,7 +439,7 @@ class String(Pattern):
     def dict(self) -> Dict[str, Any]:
         return {'tag': self._tag(), 'value': self.value}
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write('"')
         for char in self.value:
             code = ord(char)
@@ -514,7 +514,7 @@ class App(Pattern):
             'args': [pattern.dict for pattern in self.args],
         }
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write(self.symbol)
         output.write('{')
         _write_sep_by_comma(self.sorts, output)
@@ -559,7 +559,7 @@ class MLPattern(Pattern):
         """
         return self.patterns
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write(self.symbol())
         output.write('{')
         _write_sep_by_comma(self.sorts, output)
@@ -1822,7 +1822,7 @@ class Import(Sentence):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write('import ')
         output.write(self.module_name)
         output.write(' [')
@@ -1883,7 +1883,7 @@ class SortDecl(Sentence):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         keyword = 'hooked-sort ' if self.hooked else 'sort '
         output.write(keyword)
         output.write(self.name)
@@ -1924,7 +1924,7 @@ class Symbol(Kore):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write(self.name)
         output.write('{')
         _write_sep_by_comma(self.vars, output)
@@ -1986,7 +1986,7 @@ class SymbolDecl(Sentence):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         keyword = 'hooked-symbol ' if self.hooked else 'symbol '
         output.write(keyword)
         self.symbol.write(output)
@@ -2058,7 +2058,7 @@ class AliasDecl(Sentence):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write('alias ')
         self.alias.write(output)
         output.write('(')
@@ -2084,7 +2084,7 @@ class AxiomLike(Sentence):
     def from_dict(cls: Type['AxiomLike'], dct: Mapping[str, Any]) -> 'AxiomLike':
         return unsupported()
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write(self._label)
         output.write('{')
         _write_sep_by_comma(self.vars, output)
@@ -2224,7 +2224,7 @@ class Module(Kore, WithAttrs, Iterable[Sentence]):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write('module ')
         output.write(self.name)
         for sentence in self.sentences:
@@ -2276,7 +2276,7 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
     def dict(self) -> Dict[str, Any]:
         return unsupported()
 
-    def write(self, output: TextIO) -> None:
+    def write(self, output: IO[str]) -> None:
         output.write('[')
         _write_sep_by_comma(self.attrs, output)
         output.write(']')
