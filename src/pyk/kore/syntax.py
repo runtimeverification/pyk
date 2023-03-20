@@ -105,21 +105,21 @@ def decode_kore_str(s: str) -> str:
     return ''.join(res)
 
 
-def _bracketed(elems: Iterable[str], lbrac: str, rbrac: str) -> str:
-    elems_str = ', '.join(elems)
-    return f'{lbrac}{elems_str}{rbrac}'
-
-
 def _braced(elems: Iterable[str]) -> str:
-    return _bracketed(elems, '{', '}')
+    lbrace = '{'
+    rbrace = '}'
+    elems_str = ', '.join(elems)
+    return f'{lbrace}{elems_str}{rbrace}'
 
 
 def _brackd(elems: Iterable[str]) -> str:
-    return _bracketed(elems, '[', ']')
+    elems_str = ', '.join(elems)
+    return f'[{elems_str}]'
 
 
 def _parend(elems: Iterable[str]) -> str:
-    return _bracketed(elems, '(', ')')
+    elems_str = ', '.join(elems)
+    return f'({elems_str})'
 
 
 # TODO Constructor @overloads
