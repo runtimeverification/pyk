@@ -102,7 +102,6 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
     def request(self, method: str, **params: Any) -> Dict[str, Any]:
         old_id = self._req_id
         self._req_id += 1
-        _LOGGER.info(f'Sending request to {server_addr}: {old_id} - {method}')
 
         payload = {
             'jsonrpc': self._JSON_RPC_VERSION,
@@ -112,6 +111,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         }
 
         server_addr = f'{self._host}:{self._port}'
+        _LOGGER.info(f'Sending request to {server_addr}: {old_id} - {method}')
         req = json.dumps(payload)
         if self._bug_report:
             bug_report_request = f'rpc/{old_id:03}_request.json'
