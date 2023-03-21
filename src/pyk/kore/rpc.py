@@ -102,6 +102,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
     def request(self, method: str, **params: Any) -> Dict[str, Any]:
         old_id = self._req_id
         self._req_id += 1
+        _LOGGER.info(f'Sending request to {server_addr}: {old_id} - {method}')
 
         payload = {
             'jsonrpc': self._JSON_RPC_VERSION,
@@ -146,6 +147,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         self._check(data)
         assert data['id'] == old_id
 
+        _LOGGER.info(f'Received response from {server_addr}: {old_id} - {method}')
         return data['result']
 
     @staticmethod
