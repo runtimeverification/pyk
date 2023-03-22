@@ -14,7 +14,7 @@ from ..cli_utils import (
     check_relative_path,
     relative_path,
 )
-from ..ktool.kompile import KompileBackend
+from ..ktool.kompile import KompileBackend, LLVMKompileType
 from ..utils import FrozenDict, single
 from .config import PROJECT_FILE_NAME
 
@@ -81,6 +81,7 @@ class Target:
     ccopts: Optional[Tuple[str, ...]]
     no_llvm_kompile: Optional[bool]
     enable_search: Optional[bool]
+    llvm_kompile_type: Optional[LLVMKompileType]
     # Haskell backend
     concrete_rules: Optional[Tuple[str, ...]]
 
@@ -100,6 +101,7 @@ class Target:
         ccopts: Optional[Iterable[str]] = None,
         no_llvm_kompile: Optional[bool] = None,
         enable_search: Optional[bool] = None,
+        llvm_kompile_type: Optional[LLVMKompileType] = None,
         concrete_rules: Optional[Iterable[str]],
     ):
         main_file = Path(main_file)
@@ -117,6 +119,7 @@ class Target:
         object.__setattr__(self, 'ccopts', tuple(ccopts) if ccopts is not None else None)
         object.__setattr__(self, 'no_llvm_kompile', no_llvm_kompile)
         object.__setattr__(self, 'enable_search', enable_search)
+        object.__setattr__(self, 'llvm_kompile_type', llvm_kompile_type)
         object.__setattr__(self, 'concrete_rules', tuple(concrete_rules) if concrete_rules is not None else None)
 
     @staticmethod
@@ -135,6 +138,7 @@ class Target:
             ccopts=dct.get('ccopts'),
             no_llvm_kompile=dct.get('no-llvm-kompile'),
             enable_search=dct.get('enable-search'),
+            llvm_kompile_type=dct.get('llvm-kompile-type'),
             concrete_rules=dct.get('concrete-rules'),
         )
 
