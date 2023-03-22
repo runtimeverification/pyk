@@ -40,10 +40,12 @@ def kompile(
     hook_namespaces: Iterable[str] = (),
     emit_json: bool = True,
     gen_bison_parser: bool = False,
+    bison_parser_library: bool = False,
     debug: bool = False,
     post_process: Optional[str] = None,
     # LLVM backend
     llvm_kompile_type: Optional[LLVMKompileType] = None,
+    llvm_kompile_output: Optional[str] = None,
     opt_level: Optional[int] = None,
     ccopts: Iterable[str] = (),
     no_llvm_kompile: bool = False,
@@ -65,6 +67,7 @@ def kompile(
 
     if backend and backend != KompileBackend.LLVM:
         _check_backend_param(llvm_kompile_type is None, 'llvm_kompile_type', backend)
+        _check_backend_param(llvm_kompile_output is None, 'llvm_kompile_output', backend)
         _check_backend_param(opt_level is None, 'opt_level', backend)
         _check_backend_param(not list(ccopts), 'ccopts', backend)
         _check_backend_param(not no_llvm_kompile, 'no_llvm_kompile', backend)
@@ -90,9 +93,11 @@ def kompile(
         hook_namespaces=hook_namespaces,
         emit_json=emit_json,
         gen_bison_parser=gen_bison_parser,
+        bison_parser_library=bison_parser_library,
         debug=debug,
         post_process=post_process,
         llvm_kompile_type=llvm_kompile_type,
+        llvm_kompile_output=llvm_kompile_output,
         enable_search=enable_search,
         opt_level=opt_level,
         ccopts=ccopts,
@@ -127,6 +132,7 @@ def llvm_kompile(
     hook_namespaces: Iterable[str] = (),
     emit_json: bool = True,
     gen_bison_parser: bool = False,
+    bison_parser_library: bool = False,
     debug: bool = False,
     post_process: Optional[str] = None,
     llvm_kompile_type: Optional[LLVMKompileType] = None,
@@ -150,6 +156,7 @@ def llvm_kompile(
         hook_namespaces=hook_namespaces,
         emit_json=emit_json,
         gen_bison_parser=gen_bison_parser,
+        bison_parser_library=bison_parser_library,
         debug=debug,
         post_process=post_process,
         opt_level=opt_level,
@@ -175,6 +182,7 @@ def haskell_kompile(
     hook_namespaces: Iterable[str] = (),
     emit_json: bool = True,
     gen_bison_parser: bool = False,
+    bison_parser_library: bool = False,
     debug: bool = False,
     post_process: Optional[str] = None,
     concrete_rules: Iterable[str] = (),
@@ -194,6 +202,7 @@ def haskell_kompile(
         hook_namespaces=hook_namespaces,
         emit_json=emit_json,
         gen_bison_parser=gen_bison_parser,
+        bison_parser_library=bison_parser_library,
         debug=debug,
         post_process=post_process,
         concrete_rules=concrete_rules,
@@ -220,9 +229,11 @@ def _build_arg_list(
     hook_namespaces: Iterable[str],
     emit_json: bool,
     gen_bison_parser: bool,
+    bison_parser_library: bool,
     debug: bool = False,
     post_process: Optional[str],
     llvm_kompile_type: Optional[LLVMKompileType] = None,
+    llvm_kompile_output: Optional[str] = None,
     opt_level: Optional[int],
     ccopts: Iterable[str],
     no_llvm_kompile: bool,
@@ -258,6 +269,9 @@ def _build_arg_list(
     if gen_bison_parser:
         args.append('--gen-bison-parser')
 
+    if bison_parser_library:
+        args.append('--bison-parser-library')
+
     if debug:
         args.append('--debug')
 
@@ -266,6 +280,9 @@ def _build_arg_list(
 
     if llvm_kompile_type is not None:
         args.extend(['--llvm-kompile-type', llvm_kompile_type.value])
+
+    if llvm_kompile_output is not None:
+        args.extend(['--llvm-kompile-output', llvm_kompile_output])
 
     if opt_level:
         args.append(f'-O{opt_level}')

@@ -76,12 +76,14 @@ class Target:
     hook_namespaces: Optional[Tuple[str, ...]]
     emit_json: Optional[bool]
     gen_bison_parser: Optional[bool]
+    bison_parser_library: Optional[bool]
     # LLVM backend
     opt_level: Optional[int]
     ccopts: Optional[Tuple[str, ...]]
     no_llvm_kompile: Optional[bool]
     enable_search: Optional[bool]
     llvm_kompile_type: Optional[LLVMKompileType]
+    llvm_kompile_output: Optional[str]
     # Haskell backend
     concrete_rules: Optional[Tuple[str, ...]]
 
@@ -97,11 +99,13 @@ class Target:
         hook_namespaces: Optional[Iterable[str]] = None,
         emit_json: Optional[bool] = None,
         gen_bison_parser: Optional[bool] = None,
+        bison_parser_library: Optional[bool] = None,
         opt_level: Optional[int] = None,
         ccopts: Optional[Iterable[str]] = None,
         no_llvm_kompile: Optional[bool] = None,
         enable_search: Optional[bool] = None,
         llvm_kompile_type: Optional[LLVMKompileType] = None,
+        llvm_kompile_output: Optional[str] = None,
         concrete_rules: Optional[Iterable[str]],
     ):
         main_file = Path(main_file)
@@ -115,11 +119,13 @@ class Target:
         object.__setattr__(self, 'hook_namespaces', tuple(hook_namespaces) if hook_namespaces is not None else None)
         object.__setattr__(self, 'emit_json', emit_json)
         object.__setattr__(self, 'gen_bison_parser', gen_bison_parser)
+        object.__setattr__(self, 'bison_parser_library', bison_parser_library)
         object.__setattr__(self, 'opt_level', opt_level)
         object.__setattr__(self, 'ccopts', tuple(ccopts) if ccopts is not None else None)
         object.__setattr__(self, 'no_llvm_kompile', no_llvm_kompile)
         object.__setattr__(self, 'enable_search', enable_search)
         object.__setattr__(self, 'llvm_kompile_type', llvm_kompile_type)
+        object.__setattr__(self, 'llvm_kompile_output', llvm_kompile_output)
         object.__setattr__(self, 'concrete_rules', tuple(concrete_rules) if concrete_rules is not None else None)
 
     @staticmethod
@@ -134,11 +140,13 @@ class Target:
             hook_namespaces=dct.get('hook-namespaces'),
             emit_json=dct.get('emit-json'),
             gen_bison_parser=dct.get('gen-bison-parser'),
+            bison_parser_library=dct.get('bison-parser-library'),
             opt_level=dct.get('opt-level'),
             ccopts=dct.get('ccopts'),
             no_llvm_kompile=dct.get('no-llvm-kompile'),
             enable_search=dct.get('enable-search'),
-            llvm_kompile_type=dct.get('llvm-kompile-type'),
+            llvm_kompile_type=LLVMKompileType(dct.get('llvm-kompile-type')) if dct.get('llvm-kompile-type') else None,
+            llvm_kompile_output=dct.get('llvm-kompile-output'),
             concrete_rules=dct.get('concrete-rules'),
         )
 
