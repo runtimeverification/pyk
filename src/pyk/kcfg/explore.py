@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, ContextManager, Dict, Final, Iterable, List, Optional, Tuple, Union
 
 from pyk.cli_utils import BugReport
-from pyk.cterm import CTerm
+from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KInner, KLabel, KVariable, Subst
 from pyk.kast.manip import flatten_label, free_vars
 from pyk.kore.rpc import KoreClient, KoreServer
@@ -296,7 +296,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 impl = self.cterm_implies(curr_node.cterm, target_node.cterm)
                 if impl is not None:
                     subst, pred = impl
-                    cfg.create_cover(curr_node.id, target_node.id, subst=subst, constraint=pred)
+                    csubst = CSubst(subst=subst, constraint=pred)
+                    cfg.create_cover(curr_node.id, target_node.id, csubst=csubst)
                     _LOGGER.info(f'Subsumed into target node {cfgid}: {shorten_hashes((curr_node.id, target_node.id))}')
                     continue
 
