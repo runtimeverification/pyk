@@ -45,7 +45,12 @@ def edge_dicts(*edges: Iterable) -> List[Dict[str, Any]]:
 
 
 def cover_dicts(*edges: Tuple[int, int]) -> List[Dict[str, Any]]:
-    return [{'source': nid(i), 'target': nid(j), 'condition': TRUE.to_dict(), 'depth': 1} for i, j in edges]
+    covers = []
+    for i, j in edges:
+        csubst = term(j).match_with_constraint(term(i))
+        assert csubst is not None
+        covers.append({'source': nid(i), 'target': nid(j), 'csubst': csubst.to_dict()})
+    return covers
 
 
 def test_from_dict_single_node() -> None:
