@@ -1,3 +1,4 @@
+from collections import defaultdict
 import logging
 import re
 from enum import Enum
@@ -28,8 +29,8 @@ def parse_rule_applications(haskell_backend_oneline_log_file: Path) -> Dict[Hask
           It seems likely that those are generated projection rules.
           We report their applications in bulk with UNKNOWN location.
     """
-    rewrites: Dict[str, int] = {}
-    simplifications: Dict[str, int] = {}
+    rewrites: Dict[str, int] = defaultdict(int)
+    simplifications: Dict[str, int] = defaultdict(int)
 
     log_entries = haskell_backend_oneline_log_file.read_text().splitlines()
     for log_entry in log_entries:
@@ -42,11 +43,9 @@ def parse_rule_applications(haskell_backend_oneline_log_file: Path) -> Dict[Hask
         if location_str == '':
             location_str = 'UNKNOWN'
         if entry_type == HaskellLogEntry.DEBUG_APPLIED_REWRITE_RULES:
-            rewrites.setdefault(location_str, 0)
             rewrites[location_str] += 1
         else:
             assert entry_type == HaskellLogEntry.DEBUG_APPLY_EQUATION
-            simplifications.setdefault(location_str, 0)
             simplifications[location_str] += 1
     return {
         HaskellLogEntry.DEBUG_APPLIED_REWRITE_RULES: rewrites,
