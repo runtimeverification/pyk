@@ -1,26 +1,10 @@
 import json
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import chain
 from threading import RLock
 from types import TracebackType
-from typing import (
-    Any,
-    Callable,
-    Container,
-    Dict,
-    Final,
-    Iterable,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from typing import Any, Callable, Container, Dict, Iterable, List, Mapping, Optional, Set, Tuple, Type, Union, cast
 
 from graphviz import Digraph
 
@@ -38,8 +22,6 @@ from pyk.kast.manip import (
 from pyk.kast.outer import KClaim, KDefinition, KRule
 from pyk.ktool.kprint import KPrint
 from pyk.utils import add_indent, compare_short_hashes, shorten_hash
-
-_LOGGER: Final = logging.getLogger(__name__)
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
