@@ -310,38 +310,26 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if len(next_cterms) == 1:
                 raise ValueError(f'Found a single successor cterm {cfgid}: {(depth, cterm, next_cterms)}')
 
-            if len(next_cterms) == 0 and depth == 0:
-                _LOGGER.info(f'Found stuck node {cfgid}: {shorten_hashes(curr_node.id)}')
-                continue
-
             if depth > 0:
                 next_node = cfg.get_or_create_node(cterm)
                 cfg.create_edge(curr_node.id, next_node.id, depth)
                 _LOGGER.info(
                     f'Found basic block at depth {depth} for {cfgid}: {shorten_hashes((curr_node.id, next_node.id))}.'
                 )
+                curr_node = next_node
 
-                branches = extract_branches(cterm) if extract_branches is not None else []
-                if len(list(branches)) > 0:
-                    cfg.add_expanded(next_node.id)
-                    _LOGGER.info(
-                        f'Found {len(list(branches))} branches {cfgid}: {[self.kprint.pretty_print(b) for b in branches]}'
-                    )
-                    splits = cfg.split_on_constraints(next_node.id, branches)
-                    _LOGGER.info(f'Made split for {cfgid}: {shorten_hashes((next_node.id, splits))}')
-                    continue
+            if len(next_cterms) == 0:
+                _LOGGER.info(f'Found stuck node {cfgid}: {shorten_hashes(curr_node.id)}')
 
             else:
-                _LOGGER.warning(f'Falling back to manual branch extraction {cfgid}: {shorten_hashes(curr_node.id)}')
-                branch_constraints = [
-                    mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms
-                ]
+                branches = list(extract_branches(cterm)) if extract_branches is not None else []
+                if len(branches) != len(next_cterms):
+                    _LOGGER.warning(f'Falling back to manual branch extraction {cfgid}: {shorten_hashes(curr_node.id)}')
+                    branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
                 _LOGGER.info(
-                    f'Found {len(list(next_cterms))} branches manually at depth 1 for {cfgid}: {[self.kprint.pretty_print(bc) for bc in branch_constraints]}'
+                    f'Found {len(branches)} branches for node {cfgid}: {shorten_hashes(curr_node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
                 )
-                for bs, bc in zip(next_cterms, branch_constraints):
-                    branch_node = cfg.get_or_create_node(bs)
-                    cfg.create_edge(curr_node.id, branch_node.id, 1)
+                cfg.split_on_constraints(curr_node.id, branches)
 
         _write_cfg(cfg)
         return cfg
