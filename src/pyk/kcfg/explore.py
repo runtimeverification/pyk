@@ -210,15 +210,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
-        out_edges = cfg.edges(source_id=node.id)
-        if len(out_edges) > 1:
-            raise ValueError(
-                f'Only support stepping from nodes with 0 or 1 out edges {cfgid}: {(node.id, [e.target.id for e in out_edges])}'
-            )
-        elif len(out_edges) == 1 and not is_top(out_edges[0].condition):
-            raise ValueError(
-                f'Only allow stepping on out edges with #Top condition {cfgid}: {(node.id, shorten_hashes(out_edges[0].target.id))}'
-            )
         _LOGGER.info(f'Taking {depth} steps from node {cfgid}: {shorten_hashes(node.id)}')
         actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth)
         if actual_depth != depth:
@@ -227,8 +218,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             raise ValueError(f'Found branch within {depth} steps {cfgid}: {node.id}')
         new_node = cfg.get_or_create_node(cterm)
         _LOGGER.info(f'Found new node at depth {depth} {cfgid}: {shorten_hashes((node.id, new_node.id))}')
+        out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) == 0:
-            cfg.create_edge(node.id, new_node.id, condition=mlTop(), depth=depth)
+            cfg.create_edge(node.id, new_node.id, depth=depth)
         else:
             edge = out_edges[0]
             if depth > edge.depth:
@@ -236,8 +228,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     f'Step depth {depth} greater than original edge depth {edge.depth} {cfgid}: {shorten_hashes((edge.source.id, edge.target.id))}'
                 )
             cfg.remove_edge(edge.source.id, edge.target.id)
-            cfg.create_edge(edge.source.id, new_node.id, condition=mlTop(), depth=depth)
-            cfg.create_edge(new_node.id, edge.target.id, condition=mlTop(), depth=(edge.depth - depth))
+            cfg.create_edge(edge.source.id, new_node.id, depth=depth)
+            cfg.create_edge(new_node.id, edge.target.id, depth=(edge.depth - depth))
         return (cfg, new_node.id)
 
     def section_edge(
@@ -324,7 +316,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
             if depth > 0:
                 next_node = cfg.get_or_create_node(cterm)
-                cfg.create_edge(curr_node.id, next_node.id, mlTop(), depth)
+                cfg.create_edge(curr_node.id, next_node.id, depth)
                 _LOGGER.info(
                     f'Found basic block at depth {depth} for {cfgid}: {shorten_hashes((curr_node.id, next_node.id))}.'
                 )
@@ -349,7 +341,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 )
                 for bs, bc in zip(next_cterms, branch_constraints):
                     branch_node = cfg.get_or_create_node(bs)
-                    cfg.create_edge(curr_node.id, branch_node.id, bc, 1)
+                    cfg.create_edge(curr_node.id, branch_node.id, 1)
 
         _write_cfg(cfg)
         return cfg

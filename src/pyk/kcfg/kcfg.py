@@ -18,11 +18,9 @@ from pyk.kast.manip import (
     ml_pred_to_bool,
     remove_source_attributes,
     rename_generated_vars,
-    simplify_bool,
 )
 from pyk.kast.outer import KClaim, KDefinition
 from pyk.ktool.kprint import KPrint
-from pyk.prelude.ml import is_top
 from pyk.utils import add_indent, compare_short_hashes, shorten_hash
 
 
@@ -55,23 +53,17 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     class Edge(EdgeLike):
         source: 'KCFG.Node'
         target: 'KCFG.Node'
-        condition: KInner
         depth: int
 
         def to_dict(self) -> Dict[str, Any]:
             return {
                 'source': self.source.id,
                 'target': self.target.id,
-                'condition': self.condition.to_dict(),
                 'depth': self.depth,
             }
 
         def pretty(self, kprint: KPrint) -> Iterable[str]:
-            if self.depth == 0:
-                if is_top(self.condition):
-                    return ['']
-                return ['\nandBool'.join(kprint.pretty_print(ml_pred_to_bool(self.condition)).split(' andBool'))]
-            elif self.depth == 1:
+            if self.depth == 1:
                 return ['(' + str(self.depth) + ' step)']
             else:
                 return ['(' + str(self.depth) + ' steps)']
@@ -275,9 +267,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for edge_dict in dct.get('edges') or []:
             source_id = resolve(edge_dict['source'])
             target_id = resolve(edge_dict['target'])
-            condition = KInner.from_dict(edge_dict['condition'])
             depth = edge_dict['depth']
-            cfg.create_edge(source_id, target_id, condition, depth)
+            cfg.create_edge(source_id, target_id, depth)
 
         for cover_dict in dct.get('covers') or []:
             source_id = resolve(cover_dict['source'])
@@ -526,11 +517,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             graph.node(name=node.id, label=label, **attrs)
 
         for edge in self.edges():
-            display_condition = simplify_bool(ml_pred_to_bool(edge.condition))
             depth = edge.depth
-            label = '\nandBool'.join(kprint.pretty_print(display_condition).split(' andBool'))
-            label = f'{label}\n{depth} steps'
-            label = _short_label(label)
+            label = f'{depth} steps'
             graph.edge(tail_name=edge.source.id, head_name=edge.target.id, label=f'  {label}        ')
 
         for cover in self.covers():
@@ -666,9 +654,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         # Add the new, update data
         new_node = self.get_or_create_node(new_cterm)
         for in_edge in in_edges:
-            self.create_edge(in_edge.source.id, new_node.id, in_edge.condition, in_edge.depth)
+            self.create_edge(in_edge.source.id, new_node.id, in_edge.depth)
         for out_edge in out_edges:
-            self.create_edge(new_node.id, out_edge.target.id, out_edge.condition, out_edge.depth)
+            self.create_edge(new_node.id, out_edge.target.id, out_edge.depth)
         for in_cover in in_covers:
             self.create_cover(in_cover.source.id, new_node.id, csubst=in_cover.csubst)
         for out_cover in out_covers:
@@ -722,13 +710,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     def create_edge(self, source_id: str, target_id: str, condition: KInner, depth: int) -> Edge:
         self._check_no_successors(source_id)
 
+        if depth <= 0:
+            raise ValueError(f'Cannot build KCFG Edge with non-pasitive depth: {depth}')
+
         source = self.node(source_id)
         target = self.node(target_id)
 
-        if source.id not in self._edges:
-            self._edges[source.id] = {}
-
-        edge = KCFG.Edge(source, target, condition, depth)
+        edge = KCFG.Edge(source, target, depth)
         self._edges[source.id][target.id] = edge
         return edge
 
