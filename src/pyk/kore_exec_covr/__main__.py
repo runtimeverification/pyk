@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Final, Tuple
 
-import coloredlogs  # type: ignore
+import coloredlogs
 
 from pyk.kast.kast import KAtt
 from pyk.kast.outer import KDefinition, KRule, read_kast_definition
@@ -16,12 +16,12 @@ from ..cli_utils import dir_path, file_path
 _LOG_FORMAT: Final = '%(levelname)s %(name)s - %(message)s'
 _LOGGER: Final = logging.getLogger(__name__)
 
-haskell_log_entry_regexp = r'kore-exec: \[\d*\] Debug \(([a-zA-Z]*)\): (.*)'
+_HASKELL_LOG_ENTRY_REGEXP: Final = re.compile(r'kore-exec: \[\d*\] Debug \(([a-zA-Z]*)\): (.*)')
 
 
 class HaskellLogEntry(Enum):
-    DebugApplyEquation = 'DebugApplyEquation'
-    DebugAppliedRewriteRules = 'DebugAppliedRewriteRules'
+    DEBUG_APPLY_EQUATION = 'DebugApplyEquation'
+    DEBUG_APPLIED_REWRITE_RULES = 'DebugAppliedRewriteRules'
 
 
 def do_analyze(definition_dir: Path, input_file: Path, **kwargs: Any) -> None:
@@ -50,9 +50,9 @@ def do_analyze(definition_dir: Path, input_file: Path, **kwargs: Any) -> None:
         # TODO: the haskell backend log files often contain items with no location. it is not clear to me what happens.
         if location_str:
             try:
-                if entry_type == HaskellLogEntry.DebugAppliedRewriteRules:
+                if entry_type == HaskellLogEntry.DEBUG_APPLIED_REWRITE_RULES:
                     rewrites[location_str] += 1
-                elif entry_type == HaskellLogEntry.DebugApplyEquation:
+                elif entry_type == HaskellLogEntry.DEBUG_APPLY_EQUATION:
                     simplifications[location_str] += 1
             except KeyError:
                 _LOGGER.warning(f'unknown rule location: {location_str}')
@@ -82,14 +82,9 @@ def do_analyze(definition_dir: Path, input_file: Path, **kwargs: Any) -> None:
     print(f'Total simplifications: {total_simplifications}')
 
 
-def location_tuple_to_str(location: Tuple[int, int, int, int]) -> str:
-    start_line, start_col, end_line, end_col = location
-    return f'{start_line}:{start_col}-{end_line}:{end_col}'
-
-
 def parse_haskell_one_line_log(log_entry: str) -> Tuple[HaskellLogEntry, str]:
     """Attempt to parse a one-line log string emmitted by K's Haskell backend"""
-    matches = re.match(haskell_log_entry_regexp, log_entry)
+    matches = _HASKELL_LOG_ENTRY_REGEXP.match(log_entry)
     try:
         assert matches
         entry = matches.groups()[0]
@@ -101,7 +96,7 @@ def parse_haskell_one_line_log(log_entry: str) -> Tuple[HaskellLogEntry, str]:
 
 
 def build_rule_dict(
-    definition: KDefinition, skip_projections: bool = True, skip_initializers: bool = True
+    definition: KDefinition, *, skip_projections: bool = True, skip_initializers: bool = True
 ) -> Dict[str, KRule]:
     """
     Traverse the kompiled definition and build a dictionary mapping str(file:location) to KRule
@@ -128,21 +123,24 @@ def build_rule_dict(
             rule_location = None
             continue
         if rule_source and rule_location:
-            rule_dict[f'{rule_source}:{location_tuple_to_str(rule_location)}'] = rule
+            rule_dict[f'{rule_source}:{_location_tuple_to_str(rule_location)}'] = rule
         else:
             raise ValueError(pretty_print_kast(rule.body, symbol_table))
 
     return rule_dict
 
 
+def _location_tuple_to_str(location: Tuple[int, int, int, int]) -> str:
+    start_line, start_col, end_line, end_col = location
+    return f'{start_line}:{start_col}-{end_line}:{end_col}'
+
+
 def main() -> None:
     coloredlogs.install(fmt=_LOG_FORMAT)
     args = vars(_argument_parser().parse_args())
 
-    if args['quiet']:
-        logging.basicConfig(level=logging.ERROR, format=_LOG_FORMAT)
-    else:
-        logging.basicConfig(level=logging.INFO, format=_LOG_FORMAT)
+    level = logging.ERROR if args['quiet'] else logging.INFO
+    logging.basicConfig(level=level, format=_LOG_FORMAT)
 
     return do_analyze(**args)
 
@@ -151,11 +149,10 @@ def _argument_parser() -> ArgumentParser:
     parser = ArgumentParser(description='Symbolic execution logs analysis tool')
     parser.add_argument(
         '--definition-dir',
-        dest='definition_dir',
         type=dir_path,
         help='Path to Haskell-kompiled definition to use.',
     )
-    parser.add_argument('--quiet', action='store_true', help='Be quiet and do not output warnings')
+    parser.add_argument('--quiet', action='store_true', help='be quiet and do not output warnings')
     parser.add_argument('input_file', type=file_path, help='path to kore-exec log file to analyze')
 
     return parser

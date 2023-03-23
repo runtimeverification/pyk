@@ -65,3 +65,7 @@ disallow_untyped_defs = true
 [[tool.mypy.overrides]]
 module = "graphviz"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "coloredlogs"
+ignore_missing_imports = true
