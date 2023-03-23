@@ -14,6 +14,7 @@ from pyk.kast.manip import (
     bool_to_ml_pred,
     extract_lhs,
     extract_rhs,
+    flatten_label,
     ml_pred_to_bool,
     remove_source_attributes,
     rename_generated_vars,
@@ -110,12 +111,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     @dataclass(frozen=True)
     class Split:
         source: 'KCFG.Node'
-        targets: Iterable[Tuple['KCFG.Node', KInner]]
+        targets: Iterable[Tuple['KCFG.Node', CSubst]]
 
         def __init__(
             self,
             source: 'KCFG.Node',
-            targets: Iterable[Tuple['KCFG.Node', KInner]],
+            targets: Iterable[Tuple['KCFG.Node', CSubst]],
         ):
             object.__setattr__(self, 'source', source)
             object.__setattr__(self, 'targets', targets)
@@ -123,7 +124,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         def to_dict(self) -> Dict[str, Any]:
             return {
                 'source': self.source.id,
-                'targets': dict(sorted((nd.id, c) for nd, c in self.targets)),
+                'targets': {target.id: csubst.to_dict() for target, csubst in self.targets},
             }
 
         @property
@@ -296,8 +297,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for alias, id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=resolve(id))
 
-        for split_id, split in dct.get('splits', {}).items():
-            cfg.add_split(split_id, split.targets)
+        for split_dict in dct.get('splits') or []:
+            source_id = resolve(split_dict['source'])
+            targets = [
+                (resolve(target_id), CSubst.from_dict(csubst)) for target_id, csubst in split_dict['targets'].items()
+            ]
+            cfg.add_split(source_id, targets)
 
         return cfg
 
@@ -730,7 +735,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     def split_node(self, source_id: str, constraints: Iterable[KInner]) -> List[str]:
         source = self.node(source_id)
         branch_node_ids = [self.get_or_create_node(source.cterm.add_constraint(c)).id for c in constraints]
-        self.add_split(source.id, zip(branch_node_ids, constraints))
+        csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
+        self.add_split(source.id, zip(branch_node_ids, csubsts))
         return branch_node_ids
 
     def remove_edge(self, source_id: str, target_id: str) -> None:
@@ -814,9 +820,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         node_id = self._resolve(node_id)
         self._expanded.add(node_id)
 
-    def add_split(self, node_id: str, splits: Iterable[Tuple[str, KInner]]) -> None:
+    def add_split(self, node_id: str, splits: Iterable[Tuple[str, CSubst]]) -> None:
         node_id = self._resolve(node_id)
-        split = KCFG.Split(self.node(node_id), ((self.node(nid), constraint) for nid, constraint in splits))
+        split = KCFG.Split(self.node(node_id), ((self.node(nid), csubst) for nid, csubst in splits))
         self._splits[node_id] = split
 
     def add_alias(self, alias: str, node_id: str) -> None:
