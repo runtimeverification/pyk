@@ -129,8 +129,8 @@ class CSubst:
 
     @staticmethod
     def from_dict(dct: Dict[str, Any]) -> 'CSubst':
-        subst = Subst.from_dict(dct['subst']) if 'subst' in dct else None
-        constraint = mlAnd(KInner.from_dict(c) for c in dct['constraints']) if 'constraints' in dct else None
+        subst = Subst.from_dict(dct['subst'])
+        constraint = mlAnd(KInner.from_dict(c) for c in dct['constraints'])
         return CSubst(subst=subst, constraint=constraint)
 
     @property
