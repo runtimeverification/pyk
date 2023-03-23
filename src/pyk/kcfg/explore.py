@@ -335,7 +335,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     _LOGGER.info(
                         f'Found {len(list(branches))} branches {cfgid}: {[self.kprint.pretty_print(b) for b in branches]}'
                     )
-                    splits = cfg.split_node(next_node.id, branches)
+                    splits = cfg.split_on_constraints(next_node.id, branches)
                     _LOGGER.info(f'Made split for {cfgid}: {shorten_hashes((next_node.id, splits))}')
                     continue
 

@@ -302,7 +302,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             targets = [
                 (resolve(target_id), CSubst.from_dict(csubst)) for target_id, csubst in split_dict['targets'].items()
             ]
-            cfg.add_split(source_id, targets)
+            cfg.create_split(source_id, targets)
 
         return cfg
 
@@ -732,13 +732,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         self._edges[source.id][target.id] = edge
         return edge
 
-    def split_node(self, source_id: str, constraints: Iterable[KInner]) -> List[str]:
-        source = self.node(source_id)
-        branch_node_ids = [self.get_or_create_node(source.cterm.add_constraint(c)).id for c in constraints]
-        csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
-        self.add_split(source.id, zip(branch_node_ids, csubsts))
-        return branch_node_ids
-
     def remove_edge(self, source_id: str, target_id: str) -> None:
         source_id = self._resolve(source_id)
         target_id = self._resolve(target_id)
@@ -820,10 +813,24 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         node_id = self._resolve(node_id)
         self._expanded.add(node_id)
 
-    def add_split(self, node_id: str, splits: Iterable[Tuple[str, CSubst]]) -> None:
+    def splits(self, *, source_id: Optional[str] = None, target_id: Optional[str] = None) -> List[Split]:
+        return [
+            s
+            for s in self._splits.values()
+            if (source_id is None or source_id == s.source.id) and (target_id is None or target_id in s.target_ids)
+        ]
+
+    def create_split(self, node_id: str, splits: Iterable[Tuple[str, CSubst]]) -> None:
         node_id = self._resolve(node_id)
         split = KCFG.Split(self.node(node_id), ((self.node(nid), csubst) for nid, csubst in splits))
         self._splits[node_id] = split
+
+    def split_on_constraints(self, source_id: str, constraints: Iterable[KInner]) -> List[str]:
+        source = self.node(source_id)
+        branch_node_ids = [self.get_or_create_node(source.cterm.add_constraint(c)).id for c in constraints]
+        csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
+        self.create_split(source.id, zip(branch_node_ids, csubsts))
+        return branch_node_ids
 
     def add_alias(self, alias: str, node_id: str) -> None:
         if '@' in alias:
@@ -892,19 +899,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         node_id = self._resolve(node_id)
         return node_id in self._covers
 
-    def is_covered_by_non_split(self, node_id: str) -> bool:
-        node_id = self._resolve(node_id)
-        return node_id in self._covers and not any(
-            self.is_split(cover.target.id) for cover in self.covers(source_id=node_id)
-        )
-
     def is_frontier(self, node_id: str) -> bool:
         node_id = self._resolve(node_id)
         return not any(
             [
                 self.is_target(node_id),
                 self.is_expanded(node_id),
-                self.is_covered_by_non_split(node_id),
                 self.is_split(node_id),
             ]
         )
@@ -1009,6 +1009,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if not reverse:
                 edges = chain(self.edges(source_id=node.id), self.covers(source_id=node.id) if traverse_covers else [])
                 worklist.extend(edge.target for edge in edges)
+                for split in self.splits(source_id=node.id):
+                    worklist.extend(node for node, _ in split.targets)
             else:
                 edges = chain(self.edges(target_id=node.id), self.covers(target_id=node.id) if traverse_covers else [])
                 worklist.extend(edge.source for edge in edges)
