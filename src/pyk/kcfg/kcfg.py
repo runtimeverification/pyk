@@ -25,7 +25,7 @@ from typing import (
 from graphviz import Digraph
 
 from pyk.cterm import CSubst, CTerm, build_claim, build_rule
-from pyk.kast.inner import KInner, Subst
+from pyk.kast.inner import KInner
 from pyk.kast.manip import (
     bool_to_ml_pred,
     extract_lhs,
@@ -55,7 +55,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return self.cterm.hash
 
         def to_dict(self) -> Dict[str, Any]:
-            return {'id': self.id, 'term': self.cterm.kast.to_dict()}
+            return {'id': self.id, 'cterm': self.cterm.to_dict()}
 
     class EdgeLike(ABC):
         source: 'KCFG.Node'
@@ -137,8 +137,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return {
                 'source': self.source.id,
                 'target': self.target.id,
-                'subst': self.csubst.subst.to_dict(),
-                'constraint': self.csubst.constraint.to_dict(),
+                'csubst': self.csubst.to_dict(),
             }
 
         def pretty(self, kprint: KPrint, minimize: bool = True) -> Iterable[str]:
@@ -297,7 +296,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return nodes[node_id]
 
         for node_dict in dct.get('nodes') or []:
-            cterm = CTerm(KInner.from_dict(node_dict['term']))
+            cterm = CTerm.from_dict(node_dict['cterm'])
             node = cfg.create_node(cterm)
 
             node_key = node_dict['id']
@@ -315,15 +314,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for cover_dict in dct.get('covers') or []:
             source_id = resolve(cover_dict['source'])
             target_id = resolve(cover_dict['target'])
-            subst = None
-            constraint = None
-            if 'subst' in cover_dict:
-                subst = Subst.from_dict(cover_dict['subst'])
-            if 'constraint' in cover_dict:
-                constraint = KInner.from_dict(cover_dict['constraint'])
-            _LOGGER.warning(f'creating cover: {source_id}, {target_id}, {subst}, {constraint}')
-            csubst = CSubst(subst=subst, constraint=constraint)
-            _LOGGER.warning(f'creating cover: {source_id}, {target_id}, {csubst.subst}, {csubst.constraint}')
+            csubst = CSubst.from_dict(cover_dict['csubst'])
             cfg.create_cover(source_id, target_id, csubst=csubst)
 
         for init_id in dct.get('init') or []:
