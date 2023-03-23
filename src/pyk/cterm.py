@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from functools import cached_property
 from itertools import chain
-from typing import Dict, Iterable, Iterator, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, Optional, Tuple, Union
 
 from .kast.inner import KApply, KAtt, KInner, KRewrite, KVariable, Subst
 from .kast.manip import (
@@ -51,6 +51,18 @@ class CTerm:
 
     def __iter__(self) -> Iterator[KInner]:
         return chain([self.config], self.constraints)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'config': self.config.to_dict(),
+            'constraints': [c.to_dict() for c in self.constraints],
+        }
+
+    @staticmethod
+    def from_dict(dct: Dict[str, Any]) -> 'CTerm':
+        config = KInner.from_dict(dct['config'])
+        constraints = [KInner.from_dict(c) for c in dct['constraints']]
+        return CTerm(mlAnd([config] + constraints))
 
     @cached_property
     def kast(self) -> KInner:
@@ -108,6 +120,18 @@ class CSubst:
 
     def __iter__(self) -> Iterator[Union[Subst, KInner]]:
         return chain([self.subst], self.constraints)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'subst': self.subst.to_dict(),
+            'constraints': [c.to_dict() for c in self.constraints],
+        }
+
+    @staticmethod
+    def from_dict(dct: Dict[str, Any]) -> 'CSubst':
+        subst = Subst.from_dict(dct['subst']) if 'subst' in dct else None
+        constraint = mlAnd(KInner.from_dict(c) for c in dct['constraints']) if 'constraints' in dct else None
+        return CSubst(subst=subst, constraint=constraint)
 
     @property
     def constraint(self) -> KInner:
