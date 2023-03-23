@@ -905,6 +905,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             [
                 self.is_target(node_id),
                 self.is_expanded(node_id),
+                self.is_covered(node_id),
                 self.is_split(node_id),
             ]
         )
