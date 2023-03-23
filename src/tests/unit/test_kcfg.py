@@ -157,7 +157,7 @@ def test_cover_then_remove() -> None:
     assert not cfg.is_covered(node2.id)
     assert not cfg.is_expanded(node1.id)
     assert not cfg.is_expanded(node2.id)
-    assert dict(cover.subst) == {'X': token(1)}
+    assert dict(cover.csubst.subst) == {'X': token(1)}
     assert cfg.covers() == [cover]
 
     # When
