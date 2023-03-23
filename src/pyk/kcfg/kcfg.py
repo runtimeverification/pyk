@@ -113,6 +113,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             object.__setattr__(self, 'source', source)
             object.__setattr__(self, 'targets', targets)
 
+        def __lt__(self, other: Any) -> bool:
+            if not isinstance(other, KCFG.Split):
+                return NotImplemented
+            return (self.source, self.target_ids) < (other.source, other.target_ids)
+
         def to_dict(self) -> Dict[str, Any]:
             return {
                 'source': self.source.id,
@@ -121,7 +126,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         @property
         def target_ids(self) -> List[str]:
-            return [t.id for t, _ in self.targets]
+            return sorted([t.id for t, _ in self.targets])
 
     _nodes: Dict[str, Node]
     _edges: Dict[str, Dict[str, Edge]]
@@ -288,7 +293,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for alias, id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=resolve(id))
 
-        for split_dict in dct.get('splits') or []:
+        for split_dict in dct.get('splits', {}).values():
             source_id = resolve(split_dict['source'])
             targets = [
                 (resolve(target_id), CSubst.from_dict(csubst)) for target_id, csubst in split_dict['targets'].items()
