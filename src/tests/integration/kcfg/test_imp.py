@@ -3,7 +3,7 @@ from typing import Final, Iterable, List, Optional, Tuple, Union
 
 import pytest
 
-from pyk.cterm import CTerm
+from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import get_cell
 from pyk.kcfg import KCFG, KCFGExplore
@@ -59,19 +59,19 @@ IMPLIES_TEST_DATA: Final = (
         'constant-subst',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        (Subst({'X': intToken(3)}), mlTop()),
+        CSubst(Subst({'X': intToken(3)}), mlTop()),
     ),
     (
         'variable-subst',
         ('int $n , $s ; $n = Y ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        (Subst({'X': KVariable('Y', sort=KSort('AExp'))}), mlTop()),
+        CSubst(Subst({'X': KVariable('Y', sort=KSort('AExp'))}), mlTop()),
     ),
     (
         'trivial',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = 3 ;', '.Map'),
-        (Subst({}), mlTop()),
+        CSubst(Subst({}), mlTop()),
     ),
     (
         'consequent-constraint',
@@ -92,7 +92,7 @@ IMPLIES_TEST_DATA: Final = (
             ),
         ),
         ('int $n , $s ; $n = Y ;', '.Map'),
-        (Subst({}), mlBottom()),
+        CSubst(Subst({}), mlBottom()),
     ),
 )
 
@@ -211,7 +211,7 @@ class TestImpProof(KCFGExploreTest):
         test_id: str,
         antecedent: Union[Tuple[str, str], Tuple[str, str, KInner]],
         consequent: Union[Tuple[str, str], Tuple[str, str, KInner]],
-        expected: Tuple[Subst, KInner],
+        expected: Optional[CSubst],
     ) -> None:
         # Given
         antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
@@ -221,7 +221,11 @@ class TestImpProof(KCFGExploreTest):
         actual = kcfg_explore.cterm_implies(antecedent_term, consequent_term)
 
         # Then
-        assert actual == expected
+        if actual is None or expected is None:
+            assert actual == expected
+        else:
+            assert actual.subst == expected.subst
+            assert actual.constraint == expected.constraint
 
     def test_assume_defined(
         self,
