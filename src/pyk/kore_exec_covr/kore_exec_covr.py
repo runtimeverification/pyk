@@ -1,6 +1,6 @@
-from collections import defaultdict
 import logging
 import re
+from collections import defaultdict
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Final, Optional, Tuple
