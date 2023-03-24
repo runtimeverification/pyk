@@ -10,7 +10,7 @@ from pyk.kcfg import KCFG, KCFGExplore
 from pyk.ktool.kprint import KPrint, SymbolTable
 from pyk.ktool.kprove import KProve
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
+from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
 
 from ..utils import KCFGExploreTest
 
@@ -59,19 +59,19 @@ IMPLIES_TEST_DATA: Final = (
         'constant-subst',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        CSubst(Subst({'X': intToken(3)}), mlTop()),
+        CSubst(Subst({'X': intToken(3)})),
     ),
     (
         'variable-subst',
         ('int $n , $s ; $n = Y ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        CSubst(Subst({'X': KVariable('Y', sort=KSort('AExp'))}), mlTop()),
+        CSubst(Subst({'X': KVariable('Y', sort=KSort('AExp'))})),
     ),
     (
         'trivial',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = 3 ;', '.Map'),
-        CSubst(Subst({}), mlTop()),
+        CSubst(Subst({})),
     ),
     (
         'consequent-constraint',
@@ -92,7 +92,7 @@ IMPLIES_TEST_DATA: Final = (
             ),
         ),
         ('int $n , $s ; $n = Y ;', '.Map'),
-        CSubst(Subst({}), mlBottom()),
+        CSubst(Subst({}), [mlBottom()]),
     ),
 )
 
