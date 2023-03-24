@@ -1,11 +1,11 @@
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KInner, KVariable
 from pyk.kcfg import KCFG
-from pyk.prelude.ml import mlEquals, mlTop
+from pyk.prelude.ml import mlEquals
 from pyk.prelude.utils import token
 from pyk.utils import shorten_hash
 
@@ -33,7 +33,22 @@ def node(i: int) -> KCFG.Node:
 
 
 def edge(i: int, j: int) -> KCFG.Edge:
-    return KCFG.Edge(node(i), node(j), mlTop(), 0)
+    return KCFG.Edge(node(i), node(j), 1)
+
+
+def cover(i: int, j: int) -> KCFG.Cover:
+    csubst = term(j).match_with_constraint(term(i))
+    assert csubst is not None
+    return KCFG.Cover(node(i), node(j), csubst)
+
+
+def split(i: int, js: Iterable[int]) -> KCFG.Split:
+    split_substs = []
+    for j in js:
+        csubst = term(i).match_with_constraint(term(j))
+        assert csubst is not None
+        split_substs.append(csubst)
+    return KCFG.Split(node(i), zip(map(node, js), split_substs))
 
 
 def node_dicts(n: int) -> List[Dict[str, Any]]:
@@ -41,10 +56,8 @@ def node_dicts(n: int) -> List[Dict[str, Any]]:
 
 
 def edge_dicts(*edges: Iterable) -> List[Dict[str, Any]]:
-    def _make_edge_dict(i: int, j: int, depth: int = 0, condition: Optional[KInner] = None) -> Dict[str, Any]:
-        if condition is None:
-            condition = mlTop()
-        return {'source': nid(i), 'target': nid(j), 'condition': condition.to_dict(), 'depth': depth}
+    def _make_edge_dict(i: int, j: int, depth: int = 1) -> Dict[str, Any]:
+        return {'source': nid(i), 'target': nid(j), 'depth': depth}
 
     return [_make_edge_dict(*edge) for edge in edges]
 
@@ -56,6 +69,18 @@ def cover_dicts(*edges: Tuple[int, int]) -> List[Dict[str, Any]]:
         assert csubst is not None
         covers.append({'source': nid(i), 'target': nid(j), 'csubst': csubst.to_dict()})
     return covers
+
+
+def split_dicts(*edges: Tuple[int, Iterable[int]]) -> Dict[str, Any]:
+    splits = {}
+    for s, ts in edges:
+        targets = {}
+        for t in ts:
+            csubst = term(s).match_with_constraint(term(t))
+            assert csubst is not None
+            targets[nid(t)] = csubst.to_dict()
+        splits[nid(t)] = {'source': nid(s), 'targets': targets}
+    return splits
 
 
 def test_from_dict_single_node() -> None:
@@ -187,7 +212,7 @@ def test_insert_loop_edge() -> None:
     cfg = KCFG.from_dict(d)
 
     # When
-    new_edge = cfg.create_edge(nid(0), nid(0), mlTop(), 0)
+    new_edge = cfg.create_edge(nid(0), nid(0), 1)
 
     # Then
     assert new_edge == edge(0, 0)
@@ -202,7 +227,7 @@ def test_insert_simple_edge() -> None:
     cfg = KCFG.from_dict(d)
 
     # When
-    new_edge = cfg.create_edge(nid(0), nid(1), mlTop(), 0)
+    new_edge = cfg.create_edge(nid(0), nid(1), 1)
 
     # Then
     assert new_edge == edge(0, 1)
@@ -211,14 +236,23 @@ def test_insert_simple_edge() -> None:
 
 
 def test_get_successors() -> None:
-    d = {'nodes': node_dicts(3), 'edges': edge_dicts((0, 1), (0, 2))}
+    d = {
+        'nodes': node_dicts(15),
+        'edges': edge_dicts((11, 12)),
+        'splits': split_dicts((12, [13, 14])),
+        'covers': cover_dicts((14, 11)),
+    }
     cfg = KCFG.from_dict(d)
 
     # When
-    succs = set(cfg.edges(source_id=nid(0)))
+    edges = set(cfg.edges(source_id=nid(11)))
+    covers = set(cfg.covers(source_id=nid(14)))
+    # splits = set(cfg.splits(source_id=nid(12)))
 
     # Then
-    assert succs == {edge(0, 1), edge(0, 2)}
+    assert edges == {edge(11, 12)}
+    assert covers == {cover(14, 11)}
+    # assert succs == {edge(0, 1), edge(0, 2)}
 
 
 def test_get_predecessors() -> None:
