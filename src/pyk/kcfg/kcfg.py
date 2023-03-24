@@ -36,18 +36,21 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         def to_dict(self) -> Dict[str, Any]:
             return {'id': self.id, 'cterm': self.cterm.to_dict()}
 
-    class EdgeLike(ABC):
+    class Successor(ABC):
         source: 'KCFG.Node'
-        target: 'KCFG.Node'
+
+        def __lt__(self, other: Any) -> bool:
+            if not isinstance(other, KCFG.Successor):
+                return NotImplemented
+            return self.source < other.source
 
         @abstractmethod
         def pretty(self, kprint: KPrint) -> Iterable[str]:
             ...
 
-        def __lt__(self, other: Any) -> bool:
-            if not isinstance(other, KCFG.EdgeLike):
-                return NotImplemented
-            return (self.source, self.target) < (other.source, other.target)
+    class EdgeLike(Successor):
+        source: 'KCFG.Node'
+        target: 'KCFG.Node'
 
     @dataclass(frozen=True)
     class Edge(EdgeLike):
@@ -101,7 +104,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             ]
 
     @dataclass(frozen=True)
-    class Split:
+    class Split(Successor):
         source: 'KCFG.Node'
         targets: Iterable[Tuple['KCFG.Node', CSubst]]
 
@@ -127,6 +130,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         @property
         def target_ids(self) -> List[str]:
             return sorted([t.id for t, _ in self.targets])
+
+        def pretty(self, kprint: KPrint) -> List[str]:
+            return ['Split node: {len(self.targets)}']
 
     _nodes: Dict[str, Node]
     _edges: Dict[str, Dict[str, Edge]]
@@ -678,17 +684,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         return new_node.id
 
+    def successors(self, source_id: str) -> Iterable[Successor]:
+        out_edges = cast(Iterable[KCFG.Successor], self.edges(source_id=source_id))
+        out_covers = cast(Iterable[KCFG.Successor], self.covers(source_id=source_id))
+        out_splits = cast(Iterable[KCFG.Successor], self.splits(source_id=source_id))
+        return chain(out_edges, out_covers, out_splits)
+
     def _check_no_successors(self, source_id: str) -> None:
-        for edge in self.edges(source_id=source_id):
-            if edge.depth > 0:
-                raise ValueError(
-                    f'Node already has a successor: {shorten_hash(source_id)} -> {shorten_hash(edge.target.id)}'
-                )
-        covers = self.covers(source_id=source_id)
-        if len(covers) > 0:
-            raise ValueError(
-                f'Node already has successors: {shorten_hash(source_id)} -> {shorten_hash(covers[0].target.id)}'
-            )
+        if len(list(self.successors(source_id))) > 0:
+            raise ValueError(f'Node already has successors: {source_id} -> {self.successors(source_id)}')
 
     def edge(self, source_id: str, target_id: str) -> Optional[Edge]:
         source_id = self._resolve(source_id)
@@ -712,7 +716,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return edge == other
         return False
 
-    def create_edge(self, source_id: str, target_id: str, condition: KInner, depth: int) -> Edge:
+    def create_edge(self, source_id: str, target_id: str, depth: int) -> Edge:
         self._check_no_successors(source_id)
 
         if depth <= 0:
@@ -720,6 +724,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         source = self.node(source_id)
         target = self.node(target_id)
+
+        if source.id not in self._edges:
+            self._edges[source.id] = {}
 
         edge = KCFG.Edge(source, target, depth)
         self._edges[source.id][target.id] = edge
@@ -813,10 +820,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if (source_id is None or source_id == s.source.id) and (target_id is None or target_id in s.target_ids)
         ]
 
-    def create_split(self, node_id: str, splits: Iterable[Tuple[str, CSubst]]) -> None:
-        node_id = self._resolve(node_id)
-        split = KCFG.Split(self.node(node_id), ((self.node(nid), csubst) for nid, csubst in splits))
-        self._splits[node_id] = split
+    def create_split(self, source_id: str, splits: Iterable[Tuple[str, CSubst]]) -> None:
+        self._check_no_successors(source_id)
+
+        source_id = self._resolve(source_id)
+        split = KCFG.Split(self.node(source_id), ((self.node(nid), csubst) for nid, csubst in splits))
+        self._splits[source_id] = split
 
     def split_on_constraints(self, source_id: str, constraints: Iterable[KInner]) -> List[str]:
         source = self.node(source_id)
