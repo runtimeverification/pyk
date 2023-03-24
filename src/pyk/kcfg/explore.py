@@ -164,8 +164,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             raise ValueError('Received empty predicate for satisfiable implication.')
         ml_subst = self.kprint.kore_to_kast(result.substitution)
         ml_pred = self.kprint.kore_to_kast(result.predicate) if result.predicate is not None else mlTop()
+        ml_preds = flatten_label('#And', ml_pred)
         if is_top(ml_subst):
-            return CSubst(subst=Subst({}), constraint=ml_pred)
+            return CSubst(subst=Subst({}), constraints=ml_preds)
         subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
         _subst: Dict[str, KInner] = {}
         for subst_pred in flatten_label('#And', ml_subst):
@@ -174,7 +175,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
-        return CSubst(subst=Subst(_subst), constraint=ml_pred)
+        return CSubst(subst=Subst(_subst), constraints=ml_preds)
 
     def cterm_assume_defined(self, cterm: CTerm) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
