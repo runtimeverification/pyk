@@ -668,7 +668,7 @@ def rename_generated_vars(term: KInner) -> KInner:
     def _is_gen_var_name(name: str) -> bool:
         name.startswith(('_Gen', '?_Gen', '_DotVar', '?_DotVar'))
 
-    vars: List[str] = free_vars(term)
+    vars = set(free_vars(term))
     cell_stack: List[str] = []
 
     def _rename_vars(k: KInner) -> KInner:
