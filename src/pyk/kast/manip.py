@@ -1,7 +1,7 @@
 import logging
 import typing
 from collections import Counter
-from typing import Any, Callable, Collection, Dict, Final, Iterable, List, Optional, Sequence, Tuple, Type, TypeVar
+from typing import Any, Callable, Collection, Dict, Final, Iterable, List, Optional, Sequence, Set, Tuple, Type, TypeVar
 
 from ..prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
@@ -544,9 +544,18 @@ def remove_constraints_for(var_names: Collection[str], constrained_term: KInner)
     return mlAnd([state, constraint])
 
 
-def abstract_term_safely(kast: KInner, base_name: str = 'V') -> KVariable:
-    vname = hash_str(kast)[0:8]
-    return KVariable(base_name + '_' + vname)
+def abstract_term_safely(
+    kast: KInner, base_name: str = 'V', existing_var_names: Optional[Set[str]] = None
+) -> KVariable:
+    def _abstract(k: KInner) -> KVariable:
+        vname = hash_str(k)[0:8]
+        return KVariable(base_name + '_' + vname)
+
+    new_var = _abstract(kast)
+    if existing_var_names is not None:
+        while new_var.name in existing_var_names:
+            new_var = _abstract(new_var)
+    return new_var
 
 
 def anti_unify(state1: KInner, state2: KInner) -> Tuple[KInner, Subst, Subst]:
@@ -665,10 +674,7 @@ def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
 
 
 def rename_generated_vars(term: KInner) -> KInner:
-    def _is_gen_var_name(name: str) -> bool:
-        name.startswith(('_Gen', '?_Gen', '_DotVar', '?_DotVar'))
-
-    vars = set(free_vars(term))
+    vars: Set[str] = set(free_vars(term))
     cell_stack: List[str] = []
 
     def _rename_vars(k: KInner) -> KInner:
@@ -678,14 +684,12 @@ def rename_generated_vars(term: KInner) -> KInner:
             cell_stack.pop()
             return res
 
-        if type(k) is KVariable and _is_gen_var_name(k.name):
+        if type(k) is KVariable and k.name.startswith(('_Gen', '?_Gen', '_DotVar', '?_DotVar')):
             if not cell_stack:
                 return k
             cell_name = cell_stack[-1]
-            new_var = abstract_term_safely(k, base_name=cell_name)
-            while new_var.name in vars:
-                new_var = abstract_term_safely(KVariable(new_var.name), base_name=cell_name)
-            vars.append(new_var.name)
+            new_var = abstract_term_safely(k, base_name=cell_name, existing_var_names=vars)
+            vars.add(new_var.name)
             return new_var
 
         return k.map_inner(_rename_vars)
