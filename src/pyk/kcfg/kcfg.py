@@ -654,6 +654,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         return new_node.id
 
+    def _assert_no_successors(self, source_id: str) -> None:
+        for edge in self.edges(source_id=source_id):
+            if edge.depth > 0:
+                raise ValueError(
+                    f'Node already has a successor: {shorten_hash(source_id)} -> {shorten_hash(edge.target.id)}'
+                )
+        covers = self.covers(source_id=source_id)
+        if len(covers) > 0:
+            raise ValueError(
+                f'Node already has successors: {shorten_hash(source_id)} -> {shorten_hash(covers[0].target.id)}'
+            )
+
     def edge(self, source_id: str, target_id: str) -> Optional[Edge]:
         source_id = self._resolve(source_id)
         target_id = self._resolve(target_id)
@@ -677,11 +689,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return False
 
     def create_edge(self, source_id: str, target_id: str, condition: KInner, depth: int) -> Edge:
+        self._assert_no_successors(source_id)
+
         source = self.node(source_id)
         target = self.node(target_id)
-
-        if target.id in self._edges.get(source.id, {}):
-            raise ValueError(f'Edge already exists: {source.id} -> {target.id}')
 
         if source.id not in self._edges:
             self._edges[source.id] = {}
@@ -739,11 +750,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return False
 
     def create_cover(self, source_id: str, target_id: str, csubst: Optional[CSubst] = None) -> Cover:
+        self._assert_no_successors(source_id)
+
         source = self.node(source_id)
         target = self.node(target_id)
-
-        if target.id in self._covers.get(source.id, {}):
-            raise ValueError(f'Cover already exists: {source.id} -> {target.id}')
 
         if source.id not in self._covers:
             self._covers[source.id] = {}
