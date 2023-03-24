@@ -666,12 +666,7 @@ def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
 
 def rename_generated_vars(term: KInner) -> KInner:
     def _is_gen_var_name(name: str) -> bool:
-        return (
-            name.startswith('_Gen')
-            or name.startswith('?_Gen')
-            or name.startswith('_DotVar')
-            or name.startswith('?_DotVar')
-        )
+        name.startswith(('_Gen', '?_Gen', '_DotVar', '?_DotVar'))
 
     vars: List[str] = free_vars(term)
     cell_stack: List[str] = []
