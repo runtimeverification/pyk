@@ -221,11 +221,7 @@ class TestImpProof(KCFGExploreTest):
         actual = kcfg_explore.cterm_implies(antecedent_term, consequent_term)
 
         # Then
-        if actual is None or expected is None:
-            assert actual == expected
-        else:
-            assert actual.subst == expected.subst
-            assert actual.constraint == expected.constraint
+        assert actual == expected
 
     def test_assume_defined(
         self,
