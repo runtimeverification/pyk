@@ -107,6 +107,7 @@ class CTerm:
         return CTerm(mlAnd([self.config, new_constraint] + list(self.constraints), GENERATED_TOP_CELL))
 
 
+@dataclass(frozen=True, order=True)
 class CSubst:
     subst: Subst
     constraints: Tuple[KInner, ...]
