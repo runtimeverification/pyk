@@ -269,19 +269,22 @@ def test_get_predecessors() -> None:
 def test_reachable_nodes() -> None:
     # Given
     d = {
-        'nodes': node_dicts(12),
-        'edges': edge_dicts((0, 1), (0, 5), (0, 11), (1, 2), (1, 3), (2, 4), (3, 4), (4, 1)),
-        'covers': cover_dicts((4, 11)),
+        'nodes': node_dicts(18),
+        'edges': edge_dicts((12, 14), (13, 14), (14, 11)),
+        'covers': cover_dicts((11, 12)),
+        'splits': split_dicts((15, [11, 12, 16]), (16, [11, 17])),
     }
     cfg = KCFG.from_dict(d)
 
     # When
-    nodes_1 = cfg.reachable_nodes(nid(1))
-    nodes_2 = cfg.reachable_nodes(nid(1), traverse_covers=True)
+    nodes_1 = cfg.reachable_nodes(nid(11))
+    nodes_2 = cfg.reachable_nodes(nid(11), traverse_covers=True)
+    nodes_3 = cfg.reachable_nodes(nid(15), traverse_covers=True)
 
     # Then
-    assert nodes_1 == {node(1), node(2), node(3), node(4)}
-    assert nodes_2 == {node(1), node(2), node(3), node(4), node(11)}
+    assert nodes_1 == {node(11)}
+    assert nodes_2 == {node(11), node(12), node(14)}
+    assert nodes_3 == {node(15), node(11), node(12), node(16), node(17), node(14)}
 
 
 def test_paths_between() -> None:
