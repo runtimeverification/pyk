@@ -344,7 +344,6 @@ def test_pretty_print() -> None:
         # fmt: on
         'covers': cover_dicts((8, 11)),  # Loops back
         'expanded': [nid(i) for i in [0, 1, 2, 3, 4, 5, 7, 11]],
-        'verified': edge_dicts((1, 2)),
     }
     cfg = KCFG.from_dict(d)
 
@@ -358,7 +357,6 @@ def test_pretty_print() -> None:
         f'│  (1 step)\n'
         f'├─ {_short_hash(1)} (expanded)\n'
         f'│\n'
-        f'│  \033[1m\33[32m(verified)\033[0m\033[0m\n'
         f'│  (5 steps)\n'
         f'├─ {_short_hash(2)} (expanded)\n'
         f'│\n'
