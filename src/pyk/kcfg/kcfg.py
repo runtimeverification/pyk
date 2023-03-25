@@ -946,58 +946,66 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
     def paths_between(
         self, source_id: str, target_id: str, *, traverse_covers: bool = False
-    ) -> List[Tuple[EdgeLike, ...]]:
+    ) -> List[Tuple[Successor, ...]]:
         source_id = self._resolve(source_id)
         target_id = self._resolve(target_id)
 
-        INIT = 1  # noqa: N806
-        POP_PATH = 2  # noqa: N806
+        source_successors = list(self.successors(source_id))
+        assert len(source_successors) <= 1
+        if len(source_successors) == 0:
+            return []
 
-        visited: Set[str] = set()
-        path: List[KCFG.EdgeLike] = []
-        paths: List[Tuple[KCFG.EdgeLike, ...]] = []
+        paths: List[Tuple[KCFG.Successor, ...]] = []
+        worklist: List[List[KCFG.Successor]] = [[source_successors[0]]]
 
-        worklist: List[Any] = [INIT]
+        def _in_path(_nid: str, _path: List[KCFG.Successor]) -> bool:
+            for succ in _path:
+                if _nid == succ.source.id:
+                    return True
+            if len(_path) > 0:
+                if isinstance(_path[-1], KCFG.EdgeLike) and _path[-1].target.id == _nid:
+                    return True
+                elif type(_path[-1]) is KCFG.Split and _nid in _path[-1].target_ids:
+                    return True
+            return False
 
         while worklist:
-            item = worklist.pop()
+            curr_path = worklist.pop()
+            curr_successor = curr_path[-1]
+            successors: List[KCFG.Successor] = []
 
-            if type(item) == str:
-                visited.remove(item)
-                continue
-
-            if item == POP_PATH:
-                path.pop()
-                continue
-
-            node_id: str
-
-            if item == INIT:
-                node_id = source_id
-
-            else:
-                assert isinstance(item, KCFG.EdgeLike)
-
-                node_id = item.target.id
-                if node_id in visited:
+            if isinstance(curr_successor, KCFG.EdgeLike):
+                if curr_successor.target.id == target_id:
+                    paths.append(tuple(curr_path))
                     continue
+                else:
+                    successors = list(self.successors(curr_successor.target.id))
 
-                path.append(item)
+            elif type(curr_successor) is KCFG.Split:
+                if len(list(curr_successor.targets)) == 1:
+                    target, _ = list(curr_successor.targets)[0]
+                    if target.id == target_id:
+                        paths.append(tuple(curr_path))
+                        continue
+                    else:
+                        successors = list(self.successors(target.id))
+                if len(list(curr_successor.targets)) > 1:
+                    curr_path = curr_path[0:-1]
+                    successors = [
+                        KCFG.Split(curr_successor.source, [(target, csubst)])
+                        for target, csubst in curr_successor.targets
+                    ]
 
-            if node_id == target_id:
-                paths.append(tuple(path))
-                continue
-
-            visited.add(node_id)
-            worklist.append(node_id)
-
-            edges: List[KCFG.EdgeLike] = list(self.edges(source_id=node_id))
-            if traverse_covers:
-                edges += self.covers(source_id=node_id)
-
-            for edge in edges:
-                worklist.append(POP_PATH)
-                worklist.append(edge)
+            for successor in successors:
+                if isinstance(successor, KCFG.EdgeLike) and not _in_path(successor.target.id, curr_path):
+                    worklist.append(curr_path + [successor])
+                elif type(successor) is KCFG.Split:
+                    if len(list(successor.targets)) == 1:
+                        target, _ = list(successor.targets)[0]
+                        if not _in_path(target.id, curr_path):
+                            worklist.append(curr_path + [successor])
+                    elif len(list(successor.targets)) > 1:
+                        worklist.append(curr_path + [successor])
 
         return paths
 
