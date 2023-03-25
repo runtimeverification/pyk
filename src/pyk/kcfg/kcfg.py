@@ -392,35 +392,33 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return ret_split_lines
 
         def _print_subgraph(indent: str, node_indent: str, curr_node: KCFG.Node, prior_on_trace: List[str]) -> None:
-            successors = list(self.successors(curr_node.id))
             processed = curr_node in processed_nodes
             processed_nodes.append(curr_node)
 
             curr_node_strs = _print_node(curr_node)
 
-            if processed and not self.is_target(curr_node.id):
-                ret_edge_lines = []
-                ret_edge_lines.append(indent + '└─' + ' ' + curr_node_strs[0])
-                if curr_node.id in prior_on_trace:
-                    ret_edge_lines.append(indent + '   (looped back)')
-                else:
-                    ret_edge_lines.append(indent + '   (continues as previously)')
-                ret_edge_lines.append(indent)
-                ret_lines.append(('unknown', ret_edge_lines))
-                return
-
             ret_node_lines = []
+            suffix = []
             elbow = '├─'
             if self.is_init(curr_node.id):
                 elbow = '┌─'
-            if self.is_target(curr_node.id):
+            elif processed or self.is_target(curr_node.id):
                 elbow = '└─'
+                if curr_node.id in prior_on_trace:
+                    suffix = ['(looped back)', '']
+                elif not self.is_target(curr_node.id):
+                    suffix = ['(continues as previously)', '']
+                else:
+                    suffix = ['']
             ret_node_lines.append(indent + elbow + ' ' + curr_node_strs[0])
             ret_node_lines.extend(add_indent(indent + node_indent, curr_node_strs[1:]))
-            if self.is_target(curr_node.id):
-                ret_node_lines.append(indent)
+            ret_node_lines.extend(add_indent(indent + '   ', suffix))
             ret_lines.append((f'node_{curr_node.id}', ret_node_lines))
 
+            if processed or self.is_target(curr_node.id):
+                return
+
+            successors = list(self.successors(curr_node.id))
             if not successors:
                 return
             successor = successors[0]
