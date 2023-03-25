@@ -371,8 +371,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 short_info[0] = _bold(short_info[0])
             return short_info
 
-        def _print_split_edge(indent: str, csubst: CSubst) -> List[str]:
-            ret_split_lines = ['']
+        def _print_split_edge(csubst: CSubst) -> List[str]:
+            ret_split_lines: List[str] = []
             if len(csubst.subst) > 0:
                 if len(csubst.subst) == 1:
                     ret_split_lines.extend(
@@ -385,74 +385,117 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     )
             if len(csubst.constraints) > 0:
                 if len(csubst.constraints) == 1:
-                    ret_split_lines.extend(f'constraints: {kprint.pretty_print(c)}' for c in csubst.constraints)
+                    ret_split_lines.extend(f'constraint: {kprint.pretty_print(c)}' for c in csubst.constraints)
                 else:
                     ret_split_lines.append('constraints:')
                     ret_split_lines.extend(f'    {kprint.pretty_print(c)}' for c in csubst.constraints)
             return ret_split_lines
 
-        def _print_subgraph(
-            indent: str, elbow: str, node_indent: str, curr_node: KCFG.Node, prior_on_trace: List[str]
-        ) -> None:
+        def _print_subgraph(indent: str, node_indent: str, curr_node: KCFG.Node, prior_on_trace: List[str]) -> None:
             successors = list(self.successors(curr_node.id))
             processed = curr_node in processed_nodes
             processed_nodes.append(curr_node)
 
-            if processed:
-                ret_edge_lines = [(indent + '┊')]
+            curr_node_strs = _print_node(curr_node)
+
+            if processed and not self.is_target(curr_node.id):
+                ret_edge_lines = []
+                ret_edge_lines.append(indent + '└─' + ' ' + curr_node_strs[0])
                 if curr_node.id in prior_on_trace:
-                    ret_edge_lines.append(indent + '└╌ (looped back)')
+                    ret_edge_lines.append(indent + '   (looped back)')
                 else:
-                    ret_edge_lines.append(indent + '└╌ (continues as previously)')
+                    ret_edge_lines.append(indent + '   (continues as previously)')
+                ret_edge_lines.append(indent)
                 ret_lines.append(('unknown', ret_edge_lines))
                 return
 
-            curr_node_strs = _print_node(curr_node)
-            ret_node_lines = [(indent + elbow + ' ' + curr_node_strs[0])]
+            ret_node_lines = []
+            elbow = '├─'
+            if self.is_init(curr_node.id):
+                elbow = '┌─'
+            if self.is_target(curr_node.id):
+                elbow = '└─'
+            ret_node_lines.append(indent + elbow + ' ' + curr_node_strs[0])
             ret_node_lines.extend(add_indent(indent + node_indent, curr_node_strs[1:]))
+            if self.is_target(curr_node.id):
+                ret_node_lines.append(indent)
             ret_lines.append((f'node_{curr_node.id}', ret_node_lines))
 
             if not successors:
                 return
             successor = successors[0]
 
-            ret_lines.append(('unknown', [f'{indent}|']))
-
             if type(successor) is KCFG.Split:
+                ret_lines.append(('unknown', [f'{indent}┃']))
+
                 targets = list(successor.targets)
                 for target, csubst in targets[:-1]:
-                    ret_edge_lines = _print_split_edge(indent, csubst)
-                    ret_lines.append(
-                        ('edge_{curr_node.id}_{target.id}', [indent + '| ' + line for line in ret_edge_lines])
+                    ret_edge_lines = _print_split_edge(csubst)
+                    ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
+                        indent + '┃  ┃ ', ret_edge_lines[1:]
                     )
-                    _print_subgraph(indent + '┃  ', '┣━', '┃  │', target, prior_on_trace + [curr_node.id])
+                    ret_edge_lines.append(indent + '┃  │')
+                    ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
+                    _print_subgraph(indent + '┃  ', '┃  │', target, prior_on_trace + [curr_node.id])
                 target, csubst = targets[-1]
-                ret_edge_lines = _print_split_edge(indent, csubst)
-                ret_lines.append(('edge_{curr_node.id}_{target.id}', [indent + '| ' + line for line in ret_edge_lines]))
-                _print_subgraph(indent + '   ', '┗━', '   │', target, prior_on_trace + [curr_node.id])
+                ret_edge_lines = _print_split_edge(csubst)
+                ret_edge_lines = [indent + '┗━━┓ ' + ret_edge_lines[0]] + add_indent(
+                    indent + '   ┃ ', ret_edge_lines[1:]
+                )
+                ret_edge_lines.append(indent + '   │')
+                ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
+                _print_subgraph(indent + '   ', '   │', target, prior_on_trace + [curr_node.id])
 
-            elif type(successor) is KCFG.EdgeLike:
+            elif isinstance(successor, KCFG.EdgeLike):
+                ret_lines.append(('unknown', [f'{indent}│']))
+
                 if type(successor) is KCFG.Edge:
-                    ret_edge_lines = [(indent + '│')]
+                    ret_edge_lines = []
                     if self.is_verified(successor.source.id, successor.target.id):
                         ret_edge_lines.append(indent + '│  ' + _bold(_green('(verified)')))
                     ret_edge_lines.extend(add_indent(indent + '│  ', successor.pretty(kprint)))
                     ret_lines.append((f'edge_{successor.source.id}_{successor.target.id}', ret_edge_lines))
 
                 elif type(successor) is KCFG.Cover:
-                    ret_edge_lines = [(indent + '┊')]
+                    ret_edge_lines = []
                     ret_edge_lines.extend(add_indent(indent + '┊  ', successor.pretty(kprint, minimize=minimize)))
                     ret_lines.append((f'cover_{successor.source.id}_{successor.target.id}', ret_edge_lines))
 
-        init = sorted(self.init)
+                _print_subgraph(indent, node_indent, successor.target, prior_on_trace + [curr_node.id])
+
+        def _sorted_init_nodes() -> Tuple[List[KCFG.Node], List[KCFG.Node]]:
+            sorted_init_nodes = sorted(node for node in self.nodes if node not in processed_nodes)
+            init_expanded_nodes = []
+            init_unexpanded_nodes = []
+            target_nodes = []
+            remaining_nodes = []
+            for node in sorted_init_nodes:
+                if self.is_init(node.id):
+                    if self.is_expanded(node.id):
+                        init_expanded_nodes.append(node)
+                    else:
+                        init_unexpanded_nodes.append(node)
+                elif self.is_target(node.id):
+                    target_nodes.append(node)
+                else:
+                    remaining_nodes.append(node)
+            return (init_expanded_nodes + init_unexpanded_nodes + target_nodes, remaining_nodes)
+
+        init, _ = _sorted_init_nodes()
         while init:
-            init_strs = _print_node(init[0])
+            # init_strs = _print_node(init[0])
             ret_lines.append(('unknown', ['']))
-            ret_init = [('┌  ' + init_strs[0])]
-            ret_init.extend(add_indent('│  ', init_strs[1:]))
-            ret_lines.append((f'node_{init[0].id}', ret_init))
-            _print_subgraph('', '', '', init[0], [init[0].id])
-            init = sorted(node for node in self.nodes if node not in processed_nodes)
+            # ret_init = [('┌  ' + init_strs[0])]
+            # ret_init.extend(add_indent('│  ', init_strs[1:]))
+            # ret_lines.append((f'node_{init[0].id}', ret_init))
+            _print_subgraph('', '│   ', init[0], [init[0].id])
+            init, _ = _sorted_init_nodes()
+        _, remaining = _sorted_init_nodes()
+        if remaining:
+            ret_lines.append(('unknown', ['', 'Remaining Nodes:']))
+            for node in remaining:
+                ret_node_lines = [''] + _print_node(node)
+                ret_lines.append((f'node_{node.id}', ret_node_lines))
 
         _ret_lines = []
         used_ids = []
