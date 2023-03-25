@@ -900,7 +900,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
     def is_leaf(self, node_id: str) -> bool:
         node_id = self._resolve(node_id)
-        return node_id not in self._edges
+        return node_id not in self._edges and node_id not in self._splits
 
     def is_covered(self, node_id: str) -> bool:
         node_id = self._resolve(node_id)
