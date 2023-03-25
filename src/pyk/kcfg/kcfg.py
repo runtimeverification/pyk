@@ -106,7 +106,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     @dataclass(frozen=True)
     class Split(Successor):
         source: 'KCFG.Node'
-        targets: Iterable[Tuple['KCFG.Node', CSubst]]
+        targets: Tuple[Tuple['KCFG.Node', CSubst], ...]
 
         def __init__(
             self,
@@ -114,7 +114,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             targets: Iterable[Tuple['KCFG.Node', CSubst]],
         ):
             object.__setattr__(self, 'source', source)
-            object.__setattr__(self, 'targets', targets)
+            object.__setattr__(self, 'targets', tuple(targets))
 
         def __lt__(self, other: Any) -> bool:
             if not isinstance(other, KCFG.Split):
@@ -822,6 +822,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
     def create_split(self, source_id: str, splits: Iterable[Tuple[str, CSubst]]) -> None:
         self._check_no_successors(source_id)
+
+        splits = list(splits)
+
+        if len(splits) <= 1:
+            raise ValueError('Cannot create split node with less than 2 targets')
 
         source_id = self._resolve(source_id)
         split = KCFG.Split(self.node(source_id), ((self.node(nid), csubst) for nid, csubst in splits))
