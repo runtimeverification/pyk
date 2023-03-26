@@ -343,7 +343,8 @@ def test_pretty_print() -> None:
                             (3, 5, 0, mlEquals(KVariable('x'), token(5))),                   # Go to previous non-terminal node not as loop
                             (3, 6, 0, mlEquals(KVariable('x'), token(6))),                   # Terminates
                             (3, 7, 0, mlEquals(KVariable('x'), token(7))), (7, 6),           # Go to previous terminal node not as loop
-                            (3, 11, 0, mlEquals(KVariable('x'), token(11))), (11, 8)         # Covered
+                            (3, 9, 0, mlEquals(KVariable('x'), token(9))),                   # Frontier
+                            (3, 11, 0, mlEquals(KVariable('x'), token(11))), (11, 8),        # Covered
                             ),
         # fmt: on
         'covers': cover_dicts((8, 11)),  # Loops back
@@ -394,6 +395,10 @@ def test_pretty_print() -> None:
         f'┃  │  (1 step)\n'
         f'┃  └─ {_short_hash(6)} (target, leaf)\n'
         f'┃\n'
+        f'┣━━┓ constraint: #Equals ( x , 9 )\n'
+        f'┃  │\n'
+        f'┃  └─ \033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
+        f'┃\n'
         f'┗━━┓ constraint: #Equals ( x , 11 )\n'
         f'   │\n'
         f'   ├─ {_short_hash(11)} (expanded)\n'
@@ -410,8 +415,6 @@ def test_pretty_print() -> None:
         f'Remaining Nodes:\n'
         f'\n'
         f'\033[1m{_short_hash(10)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
     )
 
     expected_short_info = (
@@ -487,6 +490,13 @@ def test_pretty_print() -> None:
         f'┃         6\n'
         f'┃       </top>\n'
         f'┃\n'
+        f'┣━━┓ constraint: #Equals ( x , 9 )\n'
+        f'┃  │\n'
+        f'┃  └─ \033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
+        f'┃       <top>\n'
+        f'┃         9\n'
+        f'┃       </top>\n'
+        f'┃\n'
         f'┗━━┓ constraint: #Equals ( x , 11 )\n'
         f'   │\n'
         f'   ├─ {_short_hash(11)} (expanded)\n'
@@ -514,11 +524,6 @@ def test_pretty_print() -> None:
         f'\033[1m{_short_hash(10)} (frontier, leaf)\033[0m\n'
         f' <top>\n'
         f'   10\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   9\n'
         f' </top>\n'
     )
 
