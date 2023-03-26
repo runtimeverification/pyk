@@ -101,20 +101,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         target: 'KCFG.Node'
         csubst: CSubst
 
-        def __init__(
-            self,
-            source: 'KCFG.Node',
-            target: 'KCFG.Node',
-            csubst: Optional[CSubst] = None,
-        ):
-            object.__setattr__(self, 'source', source)
-            object.__setattr__(self, 'target', target)
-            if csubst is None:
-                csubst = target.cterm.match_with_constraint(source.cterm)
-                if csubst is None:
-                    raise ValueError(f'No matching between: {source.id} and {target.id}')
-            object.__setattr__(self, 'csubst', csubst)
-
         def to_dict(self) -> Dict[str, Any]:
             return {
                 'source': self.source.id,
@@ -757,6 +743,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         source = self.node(source_id)
         target = self.node(target_id)
+
+        if csubst is None:
+            csubst = target.cterm.match_with_constraint(source.cterm)
+            if csubst is None:
+                raise ValueError(f'No matching between: {source.id} and {target.id}')
 
         if source.id not in self._covers:
             self._covers[source.id] = {}
