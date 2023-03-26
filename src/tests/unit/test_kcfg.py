@@ -51,8 +51,8 @@ def split(i: int, js: Iterable[int]) -> KCFG.Split:
     return KCFG.Split(node(i), zip(map(node, js), split_substs))
 
 
-def node_dicts(n: int) -> List[Dict[str, Any]]:
-    return [node(i).to_dict() for i in range(n)]
+def node_dicts(n: int, start: int = 0) -> List[Dict[str, Any]]:
+    return [node(i).to_dict() for i in range(start, n)]
 
 
 def edge_dicts(*edges: Iterable) -> List[Dict[str, Any]]:
@@ -381,7 +381,7 @@ def test_pretty_print() -> None:
     d = {
         'init': [nid(20)],
         'target': [nid(16)],
-        'nodes': node_dicts(24),
+        'nodes': node_dicts(24, start=9),
         'aliases': {'foo': nid(13), 'bar': nid(13)},
         'edges': edge_dicts((20, 11), (11, 12, 5), (12, 13), (14, 15), (15, 12), (17, 16), (21, 18)),
         'covers': cover_dicts((18, 21)),
@@ -481,25 +481,7 @@ def test_pretty_print() -> None:
         f'\n'
         f'Remaining Nodes:\n'
         f'\n'
-        f'\033[1m{_short_hash(0)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(1)} (frontier, leaf)\033[0m\n'
-        f'\n'
         f'\033[1m{_short_hash(10)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(2)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(3)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(4)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(5)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(6)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(7)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(8)} (frontier, leaf)\033[0m\n'
         f'\n'
         f'\033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
         f'\n'
@@ -632,54 +614,9 @@ def test_pretty_print() -> None:
         f'\n'
         f'Remaining Nodes:\n'
         f'\n'
-        f'\033[1m{_short_hash(0)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   0\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(1)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   1\n'
-        f' </top>\n'
-        f'\n'
         f'\033[1m{_short_hash(10)} (frontier, leaf)\033[0m\n'
         f' <top>\n'
         f'   10\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(2)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   2\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(3)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   3\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(4)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   4\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(5)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   5\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(6)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   6\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(7)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   7\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(8)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   8\n'
         f' </top>\n'
         f'\n'
         f'\033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
