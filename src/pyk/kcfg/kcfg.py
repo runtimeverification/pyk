@@ -372,7 +372,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     ret_split_lines.extend(f'    {kprint.pretty_print(c)}' for c in constraints)
             return ret_split_lines
 
-        def _print_subgraph(indent: str, node_indent: str, curr_node: KCFG.Node, prior_on_trace: List[str]) -> None:
+        def _print_subgraph(indent: str, curr_node: KCFG.Node, prior_on_trace: List[str]) -> None:
             processed = curr_node in processed_nodes
             processed_nodes.append(curr_node)
             successors = list(self.edge_likes(source_id=curr_node.id))
@@ -382,18 +382,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             ret_node_lines = []
             suffix = []
             elbow = '├─'
+            node_indent = '│   '
             if self.is_init(curr_node.id):
                 elbow = '┌─'
             elif processed or self.is_target(curr_node.id):
                 elbow = '└─'
+                node_indent = '    '
                 if curr_node.id in prior_on_trace:
                     suffix = ['(looped back)', '']
                 elif not self.is_target(curr_node.id):
                     suffix = ['(continues as previously)', '']
                 else:
                     suffix = ['']
-            if processed or self.is_target(curr_node.id) or not successors:
-                node_indent = '    '
             ret_node_lines.append(indent + elbow + ' ' + curr_node_strs[0])
             ret_node_lines.extend(add_indent(indent + node_indent, curr_node_strs[1:]))
             ret_node_lines.extend(add_indent(indent + '   ', suffix))
@@ -416,7 +416,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     )
                     ret_edge_lines.append(indent + '┃  │')
                     ret_lines.append(('edge_{curr_node.id}_{edge.target.id}', ret_edge_lines))
-                    _print_subgraph(indent + '┃  ', '│   ', edge.target, prior_on_trace + [curr_node.id])
+                    _print_subgraph(indent + '┃  ', edge.target, prior_on_trace + [curr_node.id])
                 edge = successors[-1]
                 assert type(edge) is KCFG.Edge
                 ret_edge_lines = _print_split_edge(edge.condition)
@@ -425,7 +425,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 )
                 ret_edge_lines.append(indent + '   │')
                 ret_lines.append(('edge_{curr_node.id}_{edge.target.id}', ret_edge_lines))
-                _print_subgraph(indent + '   ', '│   ', edge.target, prior_on_trace + [curr_node.id])
+                _print_subgraph(indent + '   ', edge.target, prior_on_trace + [curr_node.id])
 
             else:
                 successor = successors[0]
@@ -441,7 +441,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     ret_edge_lines.extend(add_indent(indent + '┊  ', successor.pretty(kprint, minimize=minimize)))
                     ret_lines.append((f'cover_{successor.source.id}_{successor.target.id}', ret_edge_lines))
 
-                _print_subgraph(indent, node_indent, successor.target, prior_on_trace + [curr_node.id])
+                _print_subgraph(indent, successor.target, prior_on_trace + [curr_node.id])
 
         def _sorted_init_nodes() -> Tuple[List[KCFG.Node], List[KCFG.Node]]:
             sorted_init_nodes = sorted(node for node in self.nodes if node not in processed_nodes)
@@ -468,7 +468,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             # ret_init = [('┌  ' + init_strs[0])]
             # ret_init.extend(add_indent('│  ', init_strs[1:]))
             # ret_lines.append((f'node_{init[0].id}', ret_init))
-            _print_subgraph('', '│   ', init[0], [init[0].id])
+            _print_subgraph('', init[0], [init[0].id])
             init, _ = _sorted_init_nodes()
         _, remaining = _sorted_init_nodes()
         if remaining:
