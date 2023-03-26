@@ -375,6 +375,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         def _print_subgraph(indent: str, node_indent: str, curr_node: KCFG.Node, prior_on_trace: List[str]) -> None:
             processed = curr_node in processed_nodes
             processed_nodes.append(curr_node)
+            successors = list(self.edge_likes(source_id=curr_node.id))
 
             curr_node_strs = _print_node(curr_node)
 
@@ -391,6 +392,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     suffix = ['(continues as previously)', '']
                 else:
                     suffix = ['']
+            if processed or self.is_target(curr_node.id) or not successors:
+                node_indent = '    '
             ret_node_lines.append(indent + elbow + ' ' + curr_node_strs[0])
             ret_node_lines.extend(add_indent(indent + node_indent, curr_node_strs[1:]))
             ret_node_lines.extend(add_indent(indent + '   ', suffix))
@@ -399,7 +402,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if processed or self.is_target(curr_node.id):
                 return
 
-            successors = list(self.edge_likes(source_id=curr_node.id))
             if not successors:
                 return
 
@@ -414,7 +416,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     )
                     ret_edge_lines.append(indent + '┃  │')
                     ret_lines.append(('edge_{curr_node.id}_{edge.target.id}', ret_edge_lines))
-                    _print_subgraph(indent + '┃  ', '┃  │', edge.target, prior_on_trace + [curr_node.id])
+                    _print_subgraph(indent + '┃  ', '│   ', edge.target, prior_on_trace + [curr_node.id])
                 edge = successors[-1]
                 assert type(edge) is KCFG.Edge
                 ret_edge_lines = _print_split_edge(edge.condition)
@@ -423,7 +425,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 )
                 ret_edge_lines.append(indent + '   │')
                 ret_lines.append(('edge_{curr_node.id}_{edge.target.id}', ret_edge_lines))
-                _print_subgraph(indent + '   ', '   │', edge.target, prior_on_trace + [curr_node.id])
+                _print_subgraph(indent + '   ', '│   ', edge.target, prior_on_trace + [curr_node.id])
 
             else:
                 successor = successors[0]
