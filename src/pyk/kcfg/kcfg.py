@@ -392,6 +392,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     suffix = ['(looped back)', '']
                 elif processed and not self.is_target(curr_node.id):
                     suffix = ['(continues as previously)', '']
+                elif self.is_stuck(curr_node.id):
+                    suffix = ['(stuck)', '']
                 else:
                     suffix = ['']
             ret_node_lines.append(indent + elbow + ' ' + curr_node_strs[0])
