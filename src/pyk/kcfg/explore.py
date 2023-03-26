@@ -210,6 +210,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
+        successors = list(cfg.successors(node.id))
+        if len(successors) != 0 and type(successors[0]) is KCFG.Split:
+            raise ValueError(f'Cannot take step from split node {cfgid}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {cfgid}: {shorten_hashes(node.id)}')
         actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth)
         if actual_depth != depth:
