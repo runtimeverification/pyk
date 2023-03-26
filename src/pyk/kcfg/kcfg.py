@@ -724,7 +724,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         self._check_no_successors(source_id)
 
         if depth <= 0:
-            raise ValueError(f'Cannot build KCFG Edge with non-pasitive depth: {depth}')
+            raise ValueError(f'Cannot build KCFG Edge with non-positive depth: {depth}')
 
         source = self.node(source_id)
         target = self.node(target_id)
