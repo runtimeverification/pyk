@@ -8,7 +8,7 @@ from typing import Any, Callable, Container, Dict, Iterable, List, Mapping, Opti
 
 from graphviz import Digraph
 
-from pyk.cterm import CSubst, CTerm, build_claim, build_rule
+from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KInner
 from pyk.kast.manip import (
     bool_to_ml_pred,
@@ -19,7 +19,7 @@ from pyk.kast.manip import (
     rename_generated_vars,
     simplify_bool,
 )
-from pyk.kast.outer import KClaim, KDefinition, KRule
+from pyk.kast.outer import KClaim, KDefinition
 from pyk.ktool.kprint import KPrint
 from pyk.utils import add_indent, compare_short_hashes, shorten_hash
 
@@ -64,18 +64,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 'depth': self.depth,
             }
 
-        def to_rule(self, priority: int = 50) -> KRule:
-            sentence_id = f'BASIC-BLOCK-{self.source.id}-TO-{self.target.id}'
-            rule, _ = build_rule(
-                sentence_id, self.source.cterm.add_constraint(self.condition), self.target.cterm, priority=priority
-            )
-            return rule
-
-        def to_claim(self) -> KClaim:
-            sentence_id = f'BASIC-BLOCK-{self.source.id}-TO-{self.target.id}'
-            claim, _ = build_claim(sentence_id, self.source.cterm.add_constraint(self.condition), self.target.cterm)
-            return claim
-
         def pretty(self, kprint: KPrint) -> Iterable[str]:
             if self.depth == 0:
                 return ['\nandBool'.join(kprint.pretty_print(ml_pred_to_bool(self.condition)).split(' andBool'))]
@@ -83,14 +71,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 return ['(' + str(self.depth) + ' step)']
             else:
                 return ['(' + str(self.depth) + ' steps)']
-
-        # TODO: These should only be available for split case nodes and return a Node rather than a CTerm,
-        # when we extract a class for them.
-        def pre(self) -> CTerm:
-            return self.source.cterm.add_constraint(self.condition)
-
-        def post(self) -> CTerm:
-            return self.target.cterm
 
     @dataclass(frozen=True)
     class Cover(EdgeLike):
