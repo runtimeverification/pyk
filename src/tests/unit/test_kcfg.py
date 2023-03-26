@@ -334,7 +334,7 @@ def test_pretty_print() -> None:
     d = {
         'init': [nid(0)],
         'target': [nid(6)],
-        'nodes': node_dicts(12),
+        'nodes': node_dicts(13),
         'aliases': {'foo': nid(3), 'bar': nid(3)},
         # Each of the branching edges have given depth=0
         # fmt: off
@@ -344,11 +344,12 @@ def test_pretty_print() -> None:
                             (3, 6, 0, mlEquals(KVariable('x'), token(6))),                   # Terminates
                             (3, 7, 0, mlEquals(KVariable('x'), token(7))), (7, 6),           # Go to previous terminal node not as loop
                             (3, 9, 0, mlEquals(KVariable('x'), token(9))),                   # Frontier
+                            (3, 10, 0, mlEquals(KVariable('x'), token(10))),                 # Stuck
                             (3, 11, 0, mlEquals(KVariable('x'), token(11))), (11, 8),        # Covered
                             ),
         # fmt: on
         'covers': cover_dicts((8, 11)),  # Loops back
-        'expanded': [nid(i) for i in [0, 1, 2, 3, 4, 5, 7, 11]],
+        'expanded': [nid(i) for i in [0, 1, 2, 3, 4, 5, 7, 10, 11]],
     }
     cfg = KCFG.from_dict(d)
 
@@ -399,6 +400,11 @@ def test_pretty_print() -> None:
         f'┃  │\n'
         f'┃  └─ \033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
         f'┃\n'
+        f'┣━━┓ constraint: #Equals ( x , 10 )\n'
+        f'┃  │\n'
+        f'┃  └─ {_short_hash(10)} (expanded, stuck, leaf)\n'
+        f'┃     (stuck)\n'
+        f'┃\n'
         f'┗━━┓ constraint: #Equals ( x , 11 )\n'
         f'   │\n'
         f'   ├─ {_short_hash(11)} (expanded)\n'
@@ -414,7 +420,7 @@ def test_pretty_print() -> None:
         f'\n'
         f'Remaining Nodes:\n'
         f'\n'
-        f'\033[1m{_short_hash(10)} (frontier, leaf)\033[0m\n'
+        f'\033[1m{_short_hash(12)} (frontier, leaf)\033[0m\n'
     )
 
     expected_short_info = (
@@ -497,6 +503,14 @@ def test_pretty_print() -> None:
         f'┃         9\n'
         f'┃       </top>\n'
         f'┃\n'
+        f'┣━━┓ constraint: #Equals ( x , 10 )\n'
+        f'┃  │\n'
+        f'┃  └─ {_short_hash(10)} (expanded, stuck, leaf)\n'
+        f'┃       <top>\n'
+        f'┃         10\n'
+        f'┃       </top>\n'
+        f'┃     (stuck)\n'
+        f'┃\n'
         f'┗━━┓ constraint: #Equals ( x , 11 )\n'
         f'   │\n'
         f'   ├─ {_short_hash(11)} (expanded)\n'
@@ -521,9 +535,9 @@ def test_pretty_print() -> None:
         f'\n'
         f'Remaining Nodes:\n'
         f'\n'
-        f'\033[1m{_short_hash(10)} (frontier, leaf)\033[0m\n'
+        f'\033[1m{_short_hash(12)} (frontier, leaf)\033[0m\n'
         f' <top>\n'
-        f'   10\n'
+        f'   V12\n'
         f' </top>\n'
     )
 
