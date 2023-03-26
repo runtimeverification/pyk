@@ -468,6 +468,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             ret_lines.append(('unknown', ['']))
             _print_subgraph('', init[0], [init[0]])
             init, _ = _sorted_init_nodes()
+        if self.frontier or self.stuck:
+            ret_lines.append(('unknown', ['', 'Target Nodes:']))
+            for target in self.target:
+                ret_node_lines = [''] + _print_node(target)
+                ret_lines.append((f'node_{target.id}', ret_node_lines))
         _, remaining = _sorted_init_nodes()
         if remaining:
             ret_lines.append(('unknown', ['', 'Remaining Nodes:']))
