@@ -21,6 +21,7 @@ from pyk.kast.manip import (
 )
 from pyk.kast.outer import KClaim, KDefinition
 from pyk.ktool.kprint import KPrint
+from pyk.prelude.ml import is_top
 from pyk.utils import add_indent, compare_short_hashes, shorten_hash
 
 
@@ -66,6 +67,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         def pretty(self, kprint: KPrint) -> Iterable[str]:
             if self.depth == 0:
+                if is_top(self.condition):
+                    return ['']
                 return ['\nandBool'.join(kprint.pretty_print(ml_pred_to_bool(self.condition)).split(' andBool'))]
             elif self.depth == 1:
                 return ['(' + str(self.depth) + ' step)']
