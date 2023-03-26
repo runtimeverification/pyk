@@ -29,9 +29,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     class Node:
         cterm: CTerm
 
-        def __init__(self, cterm: CTerm):
-            object.__setattr__(self, 'cterm', cterm)
-
         @property
         def id(self) -> str:
             return self.cterm.hash
