@@ -385,12 +385,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             node_indent = '│   '
             if self.is_init(curr_node.id):
                 elbow = '┌─'
-            elif processed or self.is_target(curr_node.id):
+            elif processed or self.is_target(curr_node.id) or not successors:
                 elbow = '└─'
                 node_indent = '    '
                 if curr_node.id in prior_on_trace:
                     suffix = ['(looped back)', '']
-                elif not self.is_target(curr_node.id):
+                elif processed and not self.is_target(curr_node.id):
                     suffix = ['(continues as previously)', '']
                 else:
                     suffix = ['']
