@@ -283,11 +283,13 @@ def test_reachable_nodes() -> None:
     nodes_1 = cfg.reachable_nodes(nid(11))
     nodes_2 = cfg.reachable_nodes(nid(11), traverse_covers=True)
     nodes_3 = cfg.reachable_nodes(nid(15), traverse_covers=True)
+    nodes_4 = cfg.reachable_nodes(nid(12), traverse_covers=True, reverse=True)
 
     # Then
     assert nodes_1 == {node(11)}
     assert nodes_2 == {node(11), node(12), node(14)}
     assert nodes_3 == {node(15), node(11), node(12), node(16), node(17), node(14)}
+    assert nodes_4 == {node(12), node(15), node(11), node(14), node(16), node(13)}
 
 
 def test_paths_between() -> None:
