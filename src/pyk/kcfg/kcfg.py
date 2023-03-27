@@ -366,7 +366,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             constraints = flatten_label('#And', constraint)
             if len(constraints) == 1:
                 ret_split_lines.append(f'constraint: {kprint.pretty_print(constraints[0])}')
-                    
+
             elif len(constraints) > 1:
                 ret_split_lines.append('constraints:')
                 ret_split_lines.extend(f'    {kprint.pretty_print(c)}' for c in constraints)
