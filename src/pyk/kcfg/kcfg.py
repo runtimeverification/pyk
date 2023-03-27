@@ -364,12 +364,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         def _print_split_edge(constraint: KInner) -> List[str]:
             ret_split_lines: List[str] = []
             constraints = flatten_label('#And', constraint)
-            if len(constraints) > 0:
-                if len(constraints) == 1:
-                    ret_split_lines.extend(f'constraint: {kprint.pretty_print(c)}' for c in constraints)
-                else:
-                    ret_split_lines.append('constraints:')
-                    ret_split_lines.extend(f'    {kprint.pretty_print(c)}' for c in constraints)
+            if len(constraints) == 1:
+                ret_split_lines.append(f'constraint: {kprint.pretty_print(constraints[0])}')
+                    
+            elif len(constraints) > 1:
+                ret_split_lines.append('constraints:')
+                ret_split_lines.extend(f'    {kprint.pretty_print(c)}' for c in constraints)
             return ret_split_lines
 
         def _print_subgraph(indent: str, curr_node: KCFG.Node, prior_on_trace: List[KCFG.Node]) -> None:
