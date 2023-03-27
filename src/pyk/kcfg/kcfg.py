@@ -1034,5 +1034,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             else:
                 edges = chain(self.edges(target_id=node.id), self.covers(target_id=node.id) if traverse_covers else [])
                 worklist.extend(edge.source for edge in edges)
+                for split in self.splits(target_id=node.id):
+                    worklist.append(split.source)
 
         return visited
