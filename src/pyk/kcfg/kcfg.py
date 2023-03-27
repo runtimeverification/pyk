@@ -620,7 +620,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         return new_node.id
 
-    def _assert_no_successors(self, source_id: str) -> None:
+    def _check_no_successors(self, source_id: str) -> None:
         for edge in self.edges(source_id=source_id):
             if edge.depth > 0:
                 raise ValueError(
@@ -655,7 +655,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return False
 
     def create_edge(self, source_id: str, target_id: str, condition: KInner, depth: int) -> Edge:
-        self._assert_no_successors(source_id)
+        self._check_no_successors(source_id)
 
         source = self.node(source_id)
         target = self.node(target_id)
@@ -716,7 +716,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return False
 
     def create_cover(self, source_id: str, target_id: str, csubst: Optional[CSubst] = None) -> Cover:
-        self._assert_no_successors(source_id)
+        self._check_no_successors(source_id)
 
         source = self.node(source_id)
         target = self.node(target_id)
