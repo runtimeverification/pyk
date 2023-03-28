@@ -830,7 +830,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         splits = list(splits)
 
         if len(splits) <= 1:
-            raise ValueError('Cannot create split node with less than 2 targets')
+            raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
 
         source_id = self._resolve(source_id)
         split = KCFG.Split(self.node(source_id), ((self.node(nid), csubst) for nid, csubst in splits))
