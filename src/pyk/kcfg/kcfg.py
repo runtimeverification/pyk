@@ -129,7 +129,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         @property
         def target_ids(self) -> List[str]:
-            return sorted([t.id for t, _ in self.targets])
+            return sorted(t.id for t, _ in self.targets)
 
         def pretty(self, kprint: KPrint) -> List[str]:
             return ['Split node: {len(self.targets)}']
