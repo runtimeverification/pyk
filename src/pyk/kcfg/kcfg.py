@@ -236,22 +236,22 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         nodes = [node.to_dict() for node in self.nodes]
         edges = [edge.to_dict() for edge in self.edges()]
         covers = [cover.to_dict() for cover in self.covers()]
+        splits = dict(sorted((k, s.to_dict()) for k, s in self._splits.items()))
 
         init = sorted(self._init)
         target = sorted(self._target)
         expanded = sorted(self._expanded)
         aliases = dict(sorted(self._aliases.items()))
-        splits = dict(sorted((k, s.to_dict()) for k, s in self._splits.items()))
 
         res = {
             'nodes': nodes,
             'edges': edges,
             'covers': covers,
+            'splits': splits,
             'init': init,
             'target': target,
             'expanded': expanded,
             'aliases': aliases,
-            'splits': splits,
         }
         return {k: v for k, v in res.items() if v}
 
