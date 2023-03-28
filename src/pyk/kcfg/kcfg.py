@@ -1,16 +1,16 @@
+from __future__ import annotations
+
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import chain
 from threading import RLock
-from types import TracebackType
-from typing import Any, Callable, Container, Dict, Iterable, List, Mapping, Optional, Set, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Container, List, Union, cast
 
 from graphviz import Digraph
 
-from pyk.cterm import CSubst, CTerm
-from pyk.kast.inner import KInner
-from pyk.kast.manip import (
+from ..cterm import CSubst, CTerm
+from ..kast.manip import (
     bool_to_ml_pred,
     extract_lhs,
     extract_rhs,
@@ -19,9 +19,15 @@ from pyk.kast.manip import (
     remove_source_attributes,
     rename_generated_vars,
 )
-from pyk.kast.outer import KClaim, KDefinition
-from pyk.ktool.kprint import KPrint
-from pyk.utils import add_indent, compare_short_hashes, shorten_hash
+from ..utils import add_indent, compare_short_hashes, shorten_hash
+
+if TYPE_CHECKING:
+    from types import TracebackType
+    from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Set, Tuple, Type
+
+    from ..kast.inner import KInner
+    from ..kast.outer import KClaim, KDefinition
+    from ..ktool.kprint import KPrint
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
@@ -37,7 +43,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return {'id': self.id, 'cterm': self.cterm.to_dict()}
 
     class Successor(ABC):
-        source: 'KCFG.Node'
+        source: KCFG.Node
 
         def __lt__(self, other: Any) -> bool:
             if not isinstance(other, KCFG.Successor):
@@ -49,13 +55,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             ...
 
     class EdgeLike(Successor):
-        source: 'KCFG.Node'
-        target: 'KCFG.Node'
+        source: KCFG.Node
+        target: KCFG.Node
 
     @dataclass(frozen=True)
     class Edge(EdgeLike):
-        source: 'KCFG.Node'
-        target: 'KCFG.Node'
+        source: KCFG.Node
+        target: KCFG.Node
         depth: int
 
         def to_dict(self) -> Dict[str, Any]:
@@ -73,8 +79,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
     @dataclass(frozen=True)
     class Cover(EdgeLike):
-        source: 'KCFG.Node'
-        target: 'KCFG.Node'
+        source: KCFG.Node
+        target: KCFG.Node
         csubst: CSubst
 
         def to_dict(self) -> Dict[str, Any]:
@@ -105,13 +111,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
     @dataclass(frozen=True)
     class Split(Successor):
-        source: 'KCFG.Node'
-        targets: Tuple[Tuple['KCFG.Node', CSubst], ...]
+        source: KCFG.Node
+        targets: Tuple[Tuple[KCFG.Node, CSubst], ...]
 
         def __init__(
             self,
-            source: 'KCFG.Node',
-            targets: Iterable[Tuple['KCFG.Node', CSubst]],
+            source: KCFG.Node,
+            targets: Iterable[Tuple[KCFG.Node, CSubst]],
         ):
             object.__setattr__(self, 'source', source)
             object.__setattr__(self, 'targets', tuple(targets))
@@ -164,7 +170,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return self.contains_cover(item)
         return False
 
-    def __enter__(self) -> 'KCFG':
+    def __enter__(self) -> KCFG:
         self._lock.acquire()
         return self
 
@@ -216,7 +222,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return [node for node in self.nodes if self.is_stuck(node.id)]
 
     @staticmethod
-    def from_claim(defn: KDefinition, claim: KClaim) -> 'KCFG':
+    def from_claim(defn: KDefinition, claim: KClaim) -> KCFG:
         cfg = KCFG()
         claim_body = claim.body
         claim_body = defn.instantiate_cell_vars(claim_body)
@@ -256,7 +262,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return {k: v for k, v in res.items() if v}
 
     @staticmethod
-    def from_dict(dct: Mapping[str, Any]) -> 'KCFG':
+    def from_dict(dct: Mapping[str, Any]) -> KCFG:
         cfg = KCFG()
 
         nodes: Dict[str, str] = {}
@@ -316,7 +322,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return json.dumps(self.to_dict(), sort_keys=True)
 
     @staticmethod
-    def from_json(s: str) -> 'KCFG':
+    def from_json(s: str) -> KCFG:
         return KCFG.from_dict(json.loads(s))
 
     def node_short_info(
@@ -801,8 +807,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             self._covers.pop(source_id)
 
     def edge_likes(self, *, source_id: Optional[str] = None, target_id: Optional[str] = None) -> List[EdgeLike]:
-        return cast(List[KCFG.EdgeLike], self.edges(source_id=source_id, target_id=target_id)) + cast(
-            List[KCFG.EdgeLike], self.covers(source_id=source_id, target_id=target_id)
+        return cast('List[KCFG.EdgeLike]', self.edges(source_id=source_id, target_id=target_id)) + cast(
+            'List[KCFG.EdgeLike]', self.covers(source_id=source_id, target_id=target_id)
         )
 
     def add_init(self, node_id: str) -> None:
