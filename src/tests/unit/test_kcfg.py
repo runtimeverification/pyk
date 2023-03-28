@@ -248,12 +248,12 @@ def test_get_successors() -> None:
     # When
     edges = set(cfg.edges(source_id=nid(11)))
     covers = set(cfg.covers(source_id=nid(14)))
-    # splits = set(cfg.splits(source_id=nid(12)))
+    splits = set(cfg.splits(source_id=nid(12)))
 
     # Then
     assert edges == {edge(11, 12)}
     assert covers == {cover(14, 11)}
-    # assert succs == {edge(0, 1), edge(0, 2)}
+    assert splits == {split(12, [13, 14])}
 
 
 def test_get_predecessors() -> None:
