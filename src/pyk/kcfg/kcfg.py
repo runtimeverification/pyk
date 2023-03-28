@@ -688,11 +688,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         return new_node.id
 
-    def successors(self, source_id: str) -> Iterable[Successor]:
-        out_edges = cast(Iterable[KCFG.Successor], self.edges(source_id=source_id))
-        out_covers = cast(Iterable[KCFG.Successor], self.covers(source_id=source_id))
-        out_splits = cast(Iterable[KCFG.Successor], self.splits(source_id=source_id))
-        return chain(out_edges, out_covers, out_splits)
+    def successors(self, source_id: str) -> List[Successor]:
+        out_edges: Iterable[KCFG.Successor] = self.edges(source_id=source_id)
+        out_covers: Iterable[KCFG.Successor] = self.covers(source_id=source_id)
+        out_splits: Iterable[KCFG.Successor] = self.splits(source_id=source_id)
+        return list(out_edges) + list(out_covers) + list(out_splits)
 
     def _check_no_successors(self, source_id: str) -> None:
         if len(list(self.successors(source_id))) > 0:
