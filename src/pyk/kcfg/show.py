@@ -82,7 +82,7 @@ class KCFGShow:
             res_lines.append(self.kprint.pretty_print(config_delta))
             res_lines.append('')
 
-        if len(nodes) == 0 and len(node_deltas) == 0:
+        if any(nodes) == 0 and any(node_deltas) == 0:
             res_lines.append('')
         res_lines.append('')
         res_lines.append('')
