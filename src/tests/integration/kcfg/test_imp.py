@@ -137,6 +137,16 @@ APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[
         None,
         ['IMP-VERIFICATION.halt'],
     ),
+    ## Does not terminate because of missing Circularities support
+    # (
+    #     'imp-simple-sum-N',
+    #     'k-files/imp-simple-spec.k',
+    #     'IMP-SIMPLE-SPEC',
+    #     'sum-N',
+    #     None,
+    #     None,
+    #     ['IMP-VERIFICATION.halt'],
+    # ),
 )
 
 
