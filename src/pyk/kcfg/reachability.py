@@ -1,27 +1,31 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Any, Callable, ContextManager, Dict, Final, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Final, Iterable, Optional
 
-from pyk.cterm import CTerm
-from pyk.kast.inner import KInner
-from pyk.prelude.ml import mlAnd, mlTop
 from pyk.utils import shorten_hashes
 
-from .kcfg import KCFG
+from ..prelude.ml import mlAnd
 from .explore import KCFGExplore
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from pyk.cterm import CTerm
+    from pyk.kast.inner import KInner
+
+    from .kcfg import KCFG
 
 _LOGGER: Final = logging.getLogger(__name__)
 
+
 class AllPathReachabilityProver:
-    cfg : KCFG
+    cfg: KCFG
     explore: KCFGExplore
 
-    def __init__(self, cfg : KCFG, explore: KCFGExplore):
+    def __init__(self, cfg: KCFG, explore: KCFGExplore):
         self.cfg = cfg
         self.explore = explore
-
 
     def advance_proof(
         self,
@@ -103,4 +107,3 @@ class AllPathReachabilityProver:
 
         _write_cfg(self.cfg)
         return self.cfg
-

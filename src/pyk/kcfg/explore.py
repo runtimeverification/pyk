@@ -9,13 +9,13 @@ from ..kast.inner import KApply, KLabel, KVariable, Subst
 from ..kast.manip import flatten_label, free_vars
 from ..kore.rpc import KoreClient, KoreServer
 from ..prelude.k import GENERATED_TOP_CELL
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
+from ..prelude.ml import is_bottom, is_top, mlEquals, mlTop
 from ..utils import hash_str, shorten_hashes, single
 from .kcfg import KCFG
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any, Callable, Dict, Final, Iterable, List, Optional, Tuple, Union
+    from typing import Any, Dict, Final, Iterable, List, Optional, Tuple, Union
 
     from ..cli_utils import BugReport
     from ..kast import KInner
@@ -261,4 +261,3 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_nodes.append(curr_node_id)
             new_depth += section_depth
         return (cfg, tuple(new_nodes))
-

@@ -8,9 +8,7 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import get_cell
-from pyk.kcfg import KCFG, KCFGExplore, AllPathReachabilityProver
-from pyk.ktool.kprint import KPrint, SymbolTable
-from pyk.ktool.kprove import KProve
+from pyk.kcfg import KCFG, AllPathReachabilityProver
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
 
