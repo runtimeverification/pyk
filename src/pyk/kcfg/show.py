@@ -1,17 +1,24 @@
+from __future__ import annotations
+
 import logging
-from pathlib import Path
-from typing import Callable, Final, Iterable, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
-from pyk.cli_utils import ensure_dir_path
-from pyk.cterm import CTerm, build_claim, build_rule
-from pyk.kast.inner import KApply, KInner, KRewrite, top_down
-from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites
-from pyk.kast.outer import KFlatModule, KRuleLike
-from pyk.ktool.kprint import KPrint
-from pyk.prelude.k import DOTS
-from pyk.prelude.ml import mlAnd, mlTop
-
+from ..cli_utils import ensure_dir_path
+from ..cterm import CTerm, build_claim, build_rule
+from ..kast.inner import KApply, KRewrite, top_down
+from ..kast.manip import flatten_label, minimize_term, push_down_rewrites
+from ..kast.outer import KFlatModule
+from ..prelude.k import DOTS
+from ..prelude.ml import mlAnd
 from .kcfg import KCFG
+
+if TYPE_CHECKING:
+    from pathlib import Path
+    from typing import Callable, Final, Iterable, List, Optional, Tuple
+
+    from ..kast import KInner
+    from ..kast.outer import KRuleLike
+    from ..ktool.kprint import KPrint
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -111,15 +118,13 @@ class KCFGShow:
                         target_cterm.add_constraint(c)
                 rule: KRuleLike
                 if claim:
-                    rule, _ = build_claim(sentence_id, init_cterm.add_constraint(edge.condition), target_cterm)
+                    rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
                 else:
-                    rule, _ = build_rule(
-                        sentence_id, init_cterm.add_constraint(edge.condition), target_cterm, priority=35
-                    )
+                    rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=35)
                 return rule
 
             rules = [to_rule(e) for e in cfg.edges() if e.depth > 0]
-            claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), mlTop(), -1), claim=True) for nd in cfg.frontier]
+            claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), -1), claim=True) for nd in cfg.frontier]
             cfg_module_name = cfgid.upper().replace('.', '-').replace('_', '-')
             new_module = KFlatModule(f'SUMMARY-{cfg_module_name}', rules + claims)
             res_lines.append(self.kprint.pretty_print(new_module))
@@ -163,7 +168,6 @@ class KCFGShow:
         for edge in cfg.edges():
             edge_file = edges_dir / f'config_{edge.source.id}_{edge.target.id}.txt'
             edge_minimized_file = edges_dir / f'config_minimized_{edge.source.id}_{edge.target.id}.txt'
-            edge_constraint_file = edges_dir / f'constraint_{edge.source.id}_{edge.target.id}.txt'
 
             config = push_down_rewrites(KRewrite(edge.source.cterm.config, edge.target.cterm.config))
             if not edge_file.exists():
@@ -173,9 +177,6 @@ class KCFGShow:
             if not edge_minimized_file.exists():
                 edge_minimized_file.write_text(self.kprint.pretty_print(config))
                 _LOGGER.info(f'Wrote edge file {cfgid}: {edge_minimized_file}')
-            if not edge_constraint_file.exists():
-                edge_constraint_file.write_text(self.kprint.pretty_print(edge.condition))
-                _LOGGER.info(f'Wrote edge file {cfgid}: {edge_constraint_file}')
 
         covers_dir = dump_dir / 'covers'
         for cover in cfg.covers():
