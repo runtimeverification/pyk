@@ -8,6 +8,7 @@ from ..cli_utils import check_dir_path, check_file_path
 from .compiler import KLLVM_MODULE_FILE_NAME, KLLVM_MODULE_NAME, RUNTIME_MODULE_FILE_NAME, RUNTIME_MODULE_NAME
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import ModuleType
 
     from .ast import Pattern
@@ -45,8 +46,25 @@ def import_runtime(kompiled_dir: str | Path) -> ModuleType:
     check_dir_path(kompiled_dir)
     module_file = kompiled_dir / RUNTIME_MODULE_FILE_NAME
     runtime = import_from_file(RUNTIME_MODULE_NAME, module_file)
-    runtime.Term = _make_term_class(runtime)  # type: ignore
+    _patch_runtime(runtime)
     return runtime
+
+
+def _patch_runtime(runtime: ModuleType) -> None:
+    term_cls = _make_term_class(runtime)
+    runtime.Term = term_cls  # type: ignore
+    runtime.interpret = _make_interpreter(term_cls)  # type: ignore
+
+
+def _make_interpreter(term_cls: type) -> Callable[..., Pattern]:
+    from .parser import parse_text  # TODO eliminate
+
+    def interpret(pattern: Pattern, *, depth: int | None = None) -> Pattern:
+        term = term_cls(pattern)
+        term.step(depth if depth is not None else -1)
+        return parse_text(str(term))
+
+    return interpret
 
 
 def _make_term_class(mod: ModuleType) -> type:
