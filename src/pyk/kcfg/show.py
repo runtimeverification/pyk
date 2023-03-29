@@ -93,7 +93,7 @@ class KCFGShow:
             res_lines.append(self.kprint.pretty_print(config_delta))
             res_lines.append('')
 
-        if not(nodes_printed):
+        if not (nodes_printed):
             res_lines.append('')
         res_lines.append('')
         res_lines.append('')
