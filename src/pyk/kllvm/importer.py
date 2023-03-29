@@ -1,47 +1,43 @@
 from __future__ import annotations
 
-import logging
-import sys
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..cli_utils import check_dir_path, check_file_path, run_process
-from .utils import PYTHON_EXTENSION_SUFFIX, import_from_file
+from ..cli_utils import check_dir_path, check_file_path
+from .compiler import KLLVM_MODULE_FILE_NAME, KLLVM_MODULE_NAME, RUNTIME_MODULE_FILE_NAME, RUNTIME_MODULE_NAME
 
 if TYPE_CHECKING:
     from types import ModuleType
-    from typing import Final
 
     from .ast import Pattern
 
 
-_LOGGER: Final = logging.getLogger(__name__)
+def import_from_file(module_name: str, module_file: str | Path) -> ModuleType:
+    module_file = Path(module_file).resolve()
+    check_file_path(module_file)
 
-RUNTIME_MODULE_NAME: Final = '_kllvm_runtime'
-RUNTIME_MODULE_FILE_NAME: Final = f'{RUNTIME_MODULE_NAME}{PYTHON_EXTENSION_SUFFIX}'
+    spec = spec_from_file_location(module_name, module_file)
+    if not spec:
+        raise ValueError('Could not create ModuleSpec')
+
+    module = module_from_spec(spec)
+    if not module:
+        raise ValueError('Could not create ModuleType')
+
+    if not spec.loader:
+        raise ValueError('Spec has no loader')
+
+    spec.loader.exec_module(module)
+
+    return module
 
 
-def compile_runtime(kompiled_dir: str | Path, *, verbose: bool = False) -> Path:
-    kompiled_dir = Path(kompiled_dir).resolve()
-    check_dir_path(kompiled_dir)
-
-    defn_file = kompiled_dir / 'definition.kore'
-    check_file_path(defn_file)
-
-    dt_dir = kompiled_dir / 'dt'
-    check_dir_path(dt_dir)
-
-    module_file = kompiled_dir / RUNTIME_MODULE_FILE_NAME
-
-    args = ['llvm-kompile', str(defn_file), str(dt_dir), 'python', '--python', sys.executable]
-    if verbose:
-        args.append('--verbose')
-
-    _LOGGER.info(f'Compiling python extension: {module_file.name}')
-    run_process(args, logger=_LOGGER)
-
-    assert module_file.exists()
-    return module_file
+def import_kllvm(target_dir: str | Path) -> ModuleType:
+    target_dir = Path(target_dir)
+    check_dir_path(target_dir)
+    module_file = target_dir / KLLVM_MODULE_FILE_NAME
+    return import_from_file(KLLVM_MODULE_NAME, module_file)
 
 
 def import_runtime(kompiled_dir: str | Path) -> ModuleType:

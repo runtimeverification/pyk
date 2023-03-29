@@ -3,10 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..cli_utils import check_file_path
-from .native import _kllvm  # noqa: F401
+from _kllvm.parser import Parser  # type: ignore
 
-from _kllvm.parser import Parser  # type: ignore  # isort: skip
+from ..cli_utils import check_file_path
 
 if TYPE_CHECKING:
     pass
