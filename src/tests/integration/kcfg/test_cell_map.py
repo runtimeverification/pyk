@@ -8,7 +8,8 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
 from pyk.kast.manip import get_cell
-from pyk.kcfg import KCFG, AllPathReachabilityProof
+from pyk.kcfg import KCFG
+from pyk.proof import AllPathReachabilityProof
 
 from ..utils import KCFGExploreTest
 
