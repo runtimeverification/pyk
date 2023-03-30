@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KSequence, KToken, KVariable
+from pyk.kast.inner import KApply, KToken
 from pyk.kast.manip import get_cell
 
-from .utils import KProveTest
+from ..utils import KProveTest
 
 if TYPE_CHECKING:
     from typing import Final, Iterable, Tuple
 
-    from pyk.ktool.kprint import KPrint, SymbolTable
+    from pyk.ktool.kprint import SymbolTable
     from pyk.ktool.kprove import KProve
 
 
