@@ -4,6 +4,8 @@ import hashlib
 import string
 from typing import TYPE_CHECKING, Generic, Mapping, TypeVar, cast, overload
 
+from .dequote import dequoted
+
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, Final, Hashable, Iterable, Iterator, List, Optional, Tuple, Type
 
@@ -378,31 +380,5 @@ def enquote_str(orig_s: str) -> str:
     return ''.join(enquote_char(c) for c in orig_s)
 
 
-def dequote_str(orig_str: str) -> str:
-    def dequote_str(s: str) -> Tuple[str, str]:
-        if len(s) >= 2:
-            if s[:2] == r'\"':
-                return ('"', s[2:])
-            if s[:2] == r'\\':
-                return ('\\', s[2:])
-            if s[:2] == r'\n':
-                return ('\n', s[2:])
-            if s[:2] == r'\t':
-                return ('\t', s[2:])
-            if s[:2] == r'\r':
-                return ('\r', s[2:])
-            if s[:2] == r'\f':
-                return ('\f', s[2:])
-            if len(s) >= 4 and s[:2] == r'\x':
-                return (chr(int(s[2:4], 16)), s[4:])
-            if len(s) >= 6 and s[:2] == r'\u':
-                return (chr(int(s[2:6], 16)), s[6:])
-            if len(s) >= 10 and s[:2] == r'\U':
-                return (chr(int(s[2:10], 16)), s[10:])
-        return (s[0], s[1:])
-
-    new_strs = []
-    while len(orig_str) > 0:
-        next_c, orig_str = dequote_str(orig_str)
-        new_strs.append(next_c)
-    return ''.join(new_strs)
+def dequote_str(s: str) -> str:
+    return ''.join(dequoted(s))
