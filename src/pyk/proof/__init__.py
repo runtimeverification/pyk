@@ -1,2 +1,2 @@
 from .proof import ProofStatus
-from .reachability import AllPathReachabilityProof
+from .reachability import AGProof, AGProver
