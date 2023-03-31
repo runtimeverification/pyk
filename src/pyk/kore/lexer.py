@@ -291,9 +291,8 @@ class KoreLexer(Iterator[KoreToken]):
         return consumed
 
     def _match(self, c: str) -> str:
-        actual = '<EOF>' if self._la is None else self._la
-
         if self._la != c:
+            actual = '<EOF>' if self._la is None else self._la
             raise ValueError(f'Expected {c}, found: {actual}')
 
         return self._consume()
