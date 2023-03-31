@@ -56,3 +56,30 @@ def dequoted(it: Iterable[str]) -> Iterator[str]:
     if state != NORMAL:
         assert state == CPOINT
         raise ValueError('Invalid Unicode code point')
+
+
+ENQUOTE_TABLE: Final = {
+    ord('\t'): r'\t',  # 9
+    ord('\n'): r'\n',  # 10
+    ord('\f'): r'\f',  # 12
+    ord('\r'): r'\r',  # 13
+    ord('"'): r'\"',  # 34
+    ord('\\'): r'\\',  # 92
+}
+
+
+def enquoted(it: Iterable[str]) -> Iterator[str]:
+    for c in it:
+        code = ord(c)
+        if code in ENQUOTE_TABLE:
+            yield ENQUOTE_TABLE[code]
+        elif 32 <= code < 127:
+            yield c
+        elif code <= 0xFF:
+            yield fr'\x{code:02x}'
+        elif code <= 0xFFFF:
+            yield fr'\u{code:04x}'
+        elif code <= 0xFFFFFFFF:
+            yield fr'\U{code:08x}'
+        else:
+            raise ValueError(f"Unsupported character: '{c}' ({code})")
