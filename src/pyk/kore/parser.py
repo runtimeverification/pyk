@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypeVar
 
+from ..utils import dequote_str
 from .lexer import KoreLexer, KoreToken
 from .syntax import (
     DV,
@@ -39,7 +40,6 @@ from .syntax import (
     Symbol,
     SymbolDecl,
     Top,
-    decode_kore_str,
 )
 
 if TYPE_CHECKING:
@@ -213,7 +213,7 @@ class KoreParser:
 
     def string(self) -> String:
         value = self._match(KoreToken.Type.STRING)
-        return String(decode_kore_str(value[1:-1]))
+        return String(dequote_str(value[1:-1]))
 
     def app(self) -> App:
         symbol = self.symbol_id()
