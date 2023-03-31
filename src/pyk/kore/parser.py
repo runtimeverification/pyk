@@ -156,9 +156,6 @@ class KoreParser:
         return self._la().type == KoreToken.Type.EOF
 
     def _consume(self) -> str:
-        if self._la().type == KoreToken.Type.EOF:
-            raise ValueError('Unexpected EOF')
-
         return self._la.consume().text
 
     def _match(self, token_type: KoreToken.Type) -> str:
