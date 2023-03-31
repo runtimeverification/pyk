@@ -223,10 +223,21 @@ class KoreParser:
         if self._la().type in self._ml_symbols:
             return self.ml_pattern()
 
-        if self._la(2).type == KoreToken.Type.COLON:
-            return self.var_pattern()
+        if self._la().type == KoreToken.Type.SET_VAR_ID:
+            return self.set_var()
 
-        return self.app()
+        if self._la().type == KoreToken.Type.SYMBOL_ID:
+            return self.app()
+
+        name = self._match(KoreToken.Type.ID)
+        if self._la().type == KoreToken.Type.COLON:
+            self._consume()
+            sort = self.sort()
+            return EVar(name, sort)
+
+        sorts = self._sort_list()
+        patterns = self._pattern_list()
+        return App(name, sorts, patterns)
 
     def _pattern_list(self) -> List[Pattern]:
         return self._delimited_list_of(self.pattern, KoreToken.Type.LPAREN, KoreToken.Type.RPAREN)
