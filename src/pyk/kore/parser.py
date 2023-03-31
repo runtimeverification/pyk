@@ -192,19 +192,6 @@ class KoreParser:
 
         return self._match(KoreToken.Type.ID)
 
-    def _custom_symbol_id(self) -> str:
-        symbol = self.symbol_id()
-
-        if symbol in self._ml_symbols:
-            raise ValueError(f'Expected custom symbol, found matching logic symbol: {symbol}')
-
-        return symbol
-
-    def _match_symbol_id(self, symbol: str) -> None:
-        actual = self.symbol_id()
-        if actual != symbol:
-            raise ValueError(f'Expected symbol {symbol}, found: {actual}')
-
     def set_var_id(self) -> str:
         return self._match(KoreToken.Type.SET_VAR_ID)
 
@@ -246,7 +233,7 @@ class KoreParser:
         return String(decode_kore_str(value[1:-1]))
 
     def app(self) -> App:
-        symbol = self._custom_symbol_id()
+        symbol = self.symbol_id()
         sorts = self._sort_list()
         patterns = self._pattern_list()
         return App(symbol, sorts, patterns)
