@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from itertools import islice
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
-from ..utils import repeat_last
 from .lexer import KoreLexer, KoreToken
 from .syntax import (
     DV,
@@ -75,47 +73,16 @@ if TYPE_CHECKING:
 T = TypeVar('T')
 
 
-class _LookaheadBuffer(Generic[T]):
-    """Circular buffer over an infinite stream"""
-
-    _la: int
-    _it: Iterator[T]
-    _buf: List[T]
-    _pos: int
-
-    def __init__(self, la: int, it: Iterator[T]):
-        if la < 1:
-            raise ValueError(f'Expected buffer size of at least 1, found: {la}')
-
-        self._la = la
-        self._it = it
-        self._buf = list(islice(it, la))
-        self._pos = 0
-
-    def __call__(self, k: int = 1) -> T:
-        return self.lookahead(k)
-
-    def lookahead(self, k: int = 1) -> T:
-        if not (1 <= k <= self._la):
-            raise ValueError(f'Illegal lookahed value: {k}')
-
-        return self._buf[(self._pos + k - 1) % self._la]
-
-    def consume(self) -> T:
-        res = self._buf[self._pos]
-        self._buf[self._pos] = next(self._it)
-        self._pos = (self._pos + 1) % self._la
-        return res
-
-
 class KoreParser:
-    _la: _LookaheadBuffer[KoreToken]
+    _iter: Iterator[KoreToken]
+    _la: KoreToken
 
     _ml_symbols: Mapping[KoreToken.Type, Callable[[], MLPattern]]
     _sentence_keywords: Mapping[KoreToken.Type, Callable[[], Sentence]]
 
     def __init__(self, text: str):
-        self._la = _LookaheadBuffer(2, repeat_last(KoreLexer(text)))
+        self._iter = KoreLexer(text)
+        self._la = next(self._iter)
 
         self._ml_symbols = {
             KoreToken.Type.ML_TOP: self.top,
@@ -153,14 +120,16 @@ class KoreParser:
 
     @property
     def eof(self) -> bool:
-        return self._la().type == KoreToken.Type.EOF
+        return self._la.type == KoreToken.Type.EOF
 
     def _consume(self) -> str:
-        return self._la.consume().text
+        text = self._la.text
+        self._la = next(self._iter)
+        return text
 
     def _match(self, token_type: KoreToken.Type) -> str:
-        if self._la().type != token_type:
-            raise ValueError(f'Expected {token_type.name}, found: {self._la().type.name}')
+        if self._la.type != token_type:
+            raise ValueError(f'Expected {token_type.name}, found: {self._la.type.name}')
 
         return self._consume()
 
@@ -174,9 +143,9 @@ class KoreParser:
         res: List[T] = []
 
         self._match(ldelim)
-        while self._la().type != rdelim:
+        while self._la.type != rdelim:
             res.append(parse())
-            if self._la().type != sep:
+            if self._la.type != sep:
                 break
             self._consume()
         self._consume()
@@ -187,7 +156,7 @@ class KoreParser:
         return self._match(KoreToken.Type.ID)
 
     def symbol_id(self) -> str:
-        if self._la().type == KoreToken.Type.SYMBOL_ID:
+        if self._la.type == KoreToken.Type.SYMBOL_ID:
             return self._consume()
 
         return self._match(KoreToken.Type.ID)
@@ -198,7 +167,7 @@ class KoreParser:
     def sort(self) -> Sort:
         name = self.id()
 
-        if self._la().type == KoreToken.Type.LBRACE:
+        if self._la.type == KoreToken.Type.LBRACE:
             sorts = self._sort_list()
             return SortApp(name, sorts)
 
@@ -217,20 +186,20 @@ class KoreParser:
         return SortApp(name, sorts)
 
     def pattern(self) -> Pattern:
-        if self._la().type == KoreToken.Type.STRING:
+        if self._la.type == KoreToken.Type.STRING:
             return self.string()
 
-        if self._la().type in self._ml_symbols:
+        if self._la.type in self._ml_symbols:
             return self.ml_pattern()
 
-        if self._la().type == KoreToken.Type.SET_VAR_ID:
-            return self.set_var()
-
-        if self._la().type == KoreToken.Type.SYMBOL_ID:
+        if self._la.type == KoreToken.Type.SYMBOL_ID:
             return self.app()
 
+        if self._la.type == KoreToken.Type.SET_VAR_ID:
+            return self.set_var()
+
         name = self._match(KoreToken.Type.ID)
-        if self._la().type == KoreToken.Type.COLON:
+        if self._la.type == KoreToken.Type.COLON:
             self._consume()
             sort = self.sort()
             return EVar(name, sort)
@@ -253,7 +222,7 @@ class KoreParser:
         return App(symbol, sorts, patterns)
 
     def var_pattern(self) -> VarPattern:
-        if self._la().type == KoreToken.Type.SET_VAR_ID:
+        if self._la.type == KoreToken.Type.SET_VAR_ID:
             return self.set_var()
 
         return self.elem_var()
@@ -271,9 +240,9 @@ class KoreParser:
         return EVar(name, sort)
 
     def ml_pattern(self) -> MLPattern:
-        token_type = self._la().type
+        token_type = self._la.type
         if token_type not in self._ml_symbols:
-            raise ValueError(f'Exected matching logic symbol, found: {self._la().text}')
+            raise ValueError(f'Exected matching logic symbol, found: {self._la.text}')
         parse = self._ml_symbols[token_type]
         return parse()
 
@@ -439,7 +408,7 @@ class KoreParser:
         return self._delimited_list_of(self.app, KoreToken.Type.LBRACK, KoreToken.Type.RBRACK)
 
     def sentence(self) -> Sentence:
-        token_type = self._la().type
+        token_type = self._la.type
 
         if token_type not in self._sentence_kws:
             raise ValueError(f'Expected {[kw.name for kw in self._sentence_kws]}, found: {token_type.name}')
@@ -542,7 +511,7 @@ class KoreParser:
         name = self.id()
 
         sentences: List[Sentence] = []
-        while self._la().type != KoreToken.Type.KW_ENDMODULE:
+        while self._la.type != KoreToken.Type.KW_ENDMODULE:
             sentences.append(self.sentence())
         self._consume()
 
@@ -554,7 +523,7 @@ class KoreParser:
         attrs = self._attr_list()
 
         modules: List[Module] = []
-        while self._la().type != KoreToken.Type.EOF:
+        while self._la.type != KoreToken.Type.EOF:
             modules.append(self.module())
 
         return Definition(modules, attrs)
