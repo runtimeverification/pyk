@@ -196,10 +196,13 @@ class KoreParser:
         return self._match(KoreToken.Type.SET_VAR_ID)
 
     def sort(self) -> Sort:
-        if self._la(2).type == KoreToken.Type.LBRACE:
-            return self.sort_app()
+        name = self.id()
 
-        return self.sort_var()
+        if self._la().type == KoreToken.Type.LBRACE:
+            sorts = self._sort_list()
+            return SortApp(name, sorts)
+
+        return SortVar(name)
 
     def _sort_list(self) -> List[Sort]:
         return self._delimited_list_of(self.sort, KoreToken.Type.LBRACE, KoreToken.Type.RBRACE)
