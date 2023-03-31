@@ -52,6 +52,13 @@ class AGProver:
     def __init__(self, proof: AGProof):
         self.proof = proof
 
+    def write_proof(self, proofid: str, kproofs_dir: Path) -> None:
+        proof_dict = self.proof.dict
+        proof_dict['proofid'] = proofid
+        proof_path = kproofs_dir / f'{hash_str(proofid)}.json'
+        proof_path.write_text(json.dumps(proof_dict))
+        _LOGGER.info(f'Updated AGProof file {proofid}: {proof_path}')
+
     def advance_proof(
         self,
         proofid: str,
@@ -68,11 +75,7 @@ class AGProver:
     ) -> KCFG:
         def _write_proof() -> None:
             if kproofs_dir:
-                proof_dict = self.proof.dict
-                proof_dict['proofid'] = proofid
-                proof_path = kproofs_dir / f'{hash_str(proofid)}.json'
-                proof_path.write_text(json.dumps(proof_dict))
-                _LOGGER.info(f'Updated AGProof file {proofid}: {proof_path}')
+                self.write_proof(proofid, kproofs_dir)
 
         target_node = self.proof.kcfg.get_unique_target()
         iterations = 0
