@@ -1,7 +1,11 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
 from enum import Enum, auto
 from itertools import chain
-from typing import Final, Iterable, Iterator, List, Optional, final
+from typing import TYPE_CHECKING, Iterator, NamedTuple
+
+if TYPE_CHECKING:
+    from typing import Final, Iterable, List, Optional
 
 
 class TokenType(Enum):
@@ -52,9 +56,7 @@ class TokenType(Enum):
     KW_WHERE = auto()
 
 
-@final
-@dataclass(frozen=True)
-class KoreToken:
+class KoreToken(NamedTuple):
     text: str
     type: TokenType
 
