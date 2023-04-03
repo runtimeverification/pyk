@@ -57,12 +57,10 @@ def _patch_runtime(runtime: ModuleType) -> None:
 
 
 def _make_interpreter(term_cls: type) -> Callable[..., Pattern]:
-    from .parser import parse_text  # TODO eliminate
-
     def interpret(pattern: Pattern, *, depth: int | None = None) -> Pattern:
         term = term_cls(pattern)
         term.step(depth if depth is not None else -1)
-        return parse_text(str(term))
+        return term.pattern
 
     return interpret
 
@@ -71,6 +69,10 @@ def _make_term_class(mod: ModuleType) -> type:
     class Term:
         def __init__(self, pattern: Pattern):
             self._block = mod.InternalTerm(pattern)
+
+        @property
+        def pattern(self) -> Pattern:
+            return self._block.to_pattern()
 
         def __str__(self) -> str:
             return str(self._block)
