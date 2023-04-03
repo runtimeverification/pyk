@@ -25,6 +25,8 @@ CPOINT_TABLE: Final = {
     'U': 8,
 }
 
+HEX_TABLE = {c: int(c, 16) for c in '0123456789abcdefABCDEF'}
+
 
 def dequoted(it: Iterable[str]) -> Iterator[str]:
     acc = 0
@@ -32,8 +34,11 @@ def dequoted(it: Iterable[str]) -> Iterator[str]:
     state = NORMAL
     for c in it:
         if state == CPOINT:
+            if c not in HEX_TABLE:
+                raise ValueError(f'Expected hex digit, got: {c}')
+
             acc *= 16
-            acc += int(c, 16)
+            acc += HEX_TABLE[c]
             cnt -= 1
             if cnt == 0:
                 yield chr(acc)
