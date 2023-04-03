@@ -4,108 +4,109 @@ from itertools import chain
 from typing import Final, Iterable, Iterator, List, Optional, final
 
 
+class TokenType(Enum):
+    EOF = 0
+    COMMA = auto()
+    COLON = auto()
+    WALRUS = auto()
+    LPAREN = auto()
+    RPAREN = auto()
+    LBRACE = auto()
+    RBRACE = auto()
+    LBRACK = auto()
+    RBRACK = auto()
+    STRING = auto()
+    ID = auto()
+    SYMBOL_ID = auto()
+    SET_VAR_ID = auto()
+    ML_TOP = auto()
+    ML_BOTTOM = auto()
+    ML_NOT = auto()
+    ML_AND = auto()
+    ML_OR = auto()
+    ML_IMPLIES = auto()
+    ML_IFF = auto()
+    ML_EXISTS = auto()
+    ML_FORALL = auto()
+    ML_MU = auto()
+    ML_NU = auto()
+    ML_CEIL = auto()
+    ML_FLOOR = auto()
+    ML_EQUALS = auto()
+    ML_IN = auto()
+    ML_NEXT = auto()
+    ML_REWRITES = auto()
+    ML_DV = auto()
+    ML_LEFT_ASSOC = auto()
+    ML_RIGHT_ASSOC = auto()
+    KW_MODULE = auto()
+    KW_ENDMODULE = auto()
+    KW_IMPORT = auto()
+    KW_SORT = auto()
+    KW_HOOKED_SORT = auto()
+    KW_SYMBOL = auto()
+    KW_HOOKED_SYMBOL = auto()
+    KW_AXIOM = auto()
+    KW_CLAIM = auto()
+    KW_ALIAS = auto()
+    KW_WHERE = auto()
+
+
 @final
 @dataclass(frozen=True)
 class KoreToken:
-    class Type(Enum):
-        EOF = 0
-        COMMA = auto()
-        COLON = auto()
-        WALRUS = auto()
-        LPAREN = auto()
-        RPAREN = auto()
-        LBRACE = auto()
-        RBRACE = auto()
-        LBRACK = auto()
-        RBRACK = auto()
-        STRING = auto()
-        ID = auto()
-        SYMBOL_ID = auto()
-        SET_VAR_ID = auto()
-        ML_TOP = auto()
-        ML_BOTTOM = auto()
-        ML_NOT = auto()
-        ML_AND = auto()
-        ML_OR = auto()
-        ML_IMPLIES = auto()
-        ML_IFF = auto()
-        ML_EXISTS = auto()
-        ML_FORALL = auto()
-        ML_MU = auto()
-        ML_NU = auto()
-        ML_CEIL = auto()
-        ML_FLOOR = auto()
-        ML_EQUALS = auto()
-        ML_IN = auto()
-        ML_NEXT = auto()
-        ML_REWRITES = auto()
-        ML_DV = auto()
-        ML_LEFT_ASSOC = auto()
-        ML_RIGHT_ASSOC = auto()
-        KW_MODULE = auto()
-        KW_ENDMODULE = auto()
-        KW_IMPORT = auto()
-        KW_SORT = auto()
-        KW_HOOKED_SORT = auto()
-        KW_SYMBOL = auto()
-        KW_HOOKED_SYMBOL = auto()
-        KW_AXIOM = auto()
-        KW_CLAIM = auto()
-        KW_ALIAS = auto()
-        KW_WHERE = auto()
-
     text: str
-    type: Type
+    type: TokenType
 
 
 class KoreLexer(Iterator[KoreToken]):
-    _EOF_TOKEN: Final = KoreToken('', KoreToken.Type.EOF)
+    _EOF_TOKEN: Final = KoreToken('', TokenType.EOF)
 
     _ML_SYMBOLS: Final = {
-        r'\top': KoreToken(r'\top', KoreToken.Type.ML_TOP),
-        r'\bottom': KoreToken(r'\bottom', KoreToken.Type.ML_BOTTOM),
-        r'\not': KoreToken(r'\not', KoreToken.Type.ML_NOT),
-        r'\and': KoreToken(r'\and', KoreToken.Type.ML_AND),
-        r'\or': KoreToken(r'\or', KoreToken.Type.ML_OR),
-        r'\implies': KoreToken(r'\implies', KoreToken.Type.ML_IMPLIES),
-        r'\iff': KoreToken(r'\iff', KoreToken.Type.ML_IFF),
-        r'\exists': KoreToken(r'\exists', KoreToken.Type.ML_EXISTS),
-        r'\forall': KoreToken(r'\forall', KoreToken.Type.ML_FORALL),
-        r'\mu': KoreToken(r'\mu', KoreToken.Type.ML_MU),
-        r'\nu': KoreToken(r'\nu', KoreToken.Type.ML_NU),
-        r'\ceil': KoreToken(r'\ceil', KoreToken.Type.ML_CEIL),
-        r'\floor': KoreToken(r'\floor', KoreToken.Type.ML_FLOOR),
-        r'\equals': KoreToken(r'\equals', KoreToken.Type.ML_EQUALS),
-        r'\in': KoreToken(r'\in', KoreToken.Type.ML_IN),
-        r'\next': KoreToken(r'\next', KoreToken.Type.ML_NEXT),
-        r'\rewrites': KoreToken(r'\rewrites', KoreToken.Type.ML_REWRITES),
-        r'\dv': KoreToken(r'\dv', KoreToken.Type.ML_DV),
-        r'\left-assoc': KoreToken(r'\left-assoc', KoreToken.Type.ML_LEFT_ASSOC),
-        r'\right-assoc': KoreToken(r'\right-assoc', KoreToken.Type.ML_RIGHT_ASSOC),
+        r'\top': KoreToken(r'\top', TokenType.ML_TOP),
+        r'\bottom': KoreToken(r'\bottom', TokenType.ML_BOTTOM),
+        r'\not': KoreToken(r'\not', TokenType.ML_NOT),
+        r'\and': KoreToken(r'\and', TokenType.ML_AND),
+        r'\or': KoreToken(r'\or', TokenType.ML_OR),
+        r'\implies': KoreToken(r'\implies', TokenType.ML_IMPLIES),
+        r'\iff': KoreToken(r'\iff', TokenType.ML_IFF),
+        r'\exists': KoreToken(r'\exists', TokenType.ML_EXISTS),
+        r'\forall': KoreToken(r'\forall', TokenType.ML_FORALL),
+        r'\mu': KoreToken(r'\mu', TokenType.ML_MU),
+        r'\nu': KoreToken(r'\nu', TokenType.ML_NU),
+        r'\ceil': KoreToken(r'\ceil', TokenType.ML_CEIL),
+        r'\floor': KoreToken(r'\floor', TokenType.ML_FLOOR),
+        r'\equals': KoreToken(r'\equals', TokenType.ML_EQUALS),
+        r'\in': KoreToken(r'\in', TokenType.ML_IN),
+        r'\next': KoreToken(r'\next', TokenType.ML_NEXT),
+        r'\rewrites': KoreToken(r'\rewrites', TokenType.ML_REWRITES),
+        r'\dv': KoreToken(r'\dv', TokenType.ML_DV),
+        r'\left-assoc': KoreToken(r'\left-assoc', TokenType.ML_LEFT_ASSOC),
+        r'\right-assoc': KoreToken(r'\right-assoc', TokenType.ML_RIGHT_ASSOC),
     }
 
     _KEYWORDS: Final = {
-        'module': KoreToken('module', KoreToken.Type.KW_MODULE),
-        'endmodule': KoreToken('endmodule', KoreToken.Type.KW_ENDMODULE),
-        'import': KoreToken('import', KoreToken.Type.KW_IMPORT),
-        'sort': KoreToken('sort', KoreToken.Type.KW_SORT),
-        'hooked-sort': KoreToken('hooked-sort', KoreToken.Type.KW_HOOKED_SORT),
-        'symbol': KoreToken('symbol', KoreToken.Type.KW_SYMBOL),
-        'hooked-symbol': KoreToken('hooked-symbol', KoreToken.Type.KW_HOOKED_SYMBOL),
-        'axiom': KoreToken('axiom', KoreToken.Type.KW_AXIOM),
-        'claim': KoreToken('claim', KoreToken.Type.KW_CLAIM),
-        'alias': KoreToken('alias', KoreToken.Type.KW_ALIAS),
-        'where': KoreToken('where', KoreToken.Type.KW_WHERE),
+        'module': KoreToken('module', TokenType.KW_MODULE),
+        'endmodule': KoreToken('endmodule', TokenType.KW_ENDMODULE),
+        'import': KoreToken('import', TokenType.KW_IMPORT),
+        'sort': KoreToken('sort', TokenType.KW_SORT),
+        'hooked-sort': KoreToken('hooked-sort', TokenType.KW_HOOKED_SORT),
+        'symbol': KoreToken('symbol', TokenType.KW_SYMBOL),
+        'hooked-symbol': KoreToken('hooked-symbol', TokenType.KW_HOOKED_SYMBOL),
+        'axiom': KoreToken('axiom', TokenType.KW_AXIOM),
+        'claim': KoreToken('claim', TokenType.KW_CLAIM),
+        'alias': KoreToken('alias', TokenType.KW_ALIAS),
+        'where': KoreToken('where', TokenType.KW_WHERE),
     }
 
     _SIMPLE_CHARS: Final = {
-        ',': KoreToken(',', KoreToken.Type.COMMA),
-        '(': KoreToken('(', KoreToken.Type.LPAREN),
-        ')': KoreToken(')', KoreToken.Type.RPAREN),
-        '{': KoreToken('{', KoreToken.Type.LBRACE),
-        '}': KoreToken('}', KoreToken.Type.RBRACE),
-        '[': KoreToken('[', KoreToken.Type.LBRACK),
-        ']': KoreToken(']', KoreToken.Type.RBRACK),
+        ',': KoreToken(',', TokenType.COMMA),
+        '(': KoreToken('(', TokenType.LPAREN),
+        ')': KoreToken(')', TokenType.RPAREN),
+        '{': KoreToken('{', TokenType.LBRACE),
+        '}': KoreToken('}', TokenType.RBRACE),
+        '[': KoreToken('[', TokenType.LBRACK),
+        ']': KoreToken(']', TokenType.RBRACK),
     }
 
     _ID_FIRST_CHARS: Final = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
@@ -240,9 +241,9 @@ class KoreLexer(Iterator[KoreToken]):
 
         if self._la == '=':
             self._consume()
-            return KoreToken(':=', KoreToken.Type.WALRUS)
+            return KoreToken(':=', TokenType.WALRUS)
 
-        return KoreToken(':', KoreToken.Type.COLON)
+        return KoreToken(':', TokenType.COLON)
 
     def _string_token(self) -> KoreToken:
         buf: List[str] = []
@@ -253,7 +254,7 @@ class KoreLexer(Iterator[KoreToken]):
             buf += self._consume()
         buf += self._consume()
 
-        return KoreToken(''.join(buf), KoreToken.Type.STRING)
+        return KoreToken(''.join(buf), TokenType.STRING)
 
     def _symbol_id_or_ml_symbol_token(self) -> KoreToken:
         self._match('\\')
@@ -263,12 +264,12 @@ class KoreLexer(Iterator[KoreToken]):
         if symbol_id in self._ML_SYMBOLS:
             return self._ML_SYMBOLS[symbol_id]
 
-        return KoreToken(symbol_id, KoreToken.Type.SYMBOL_ID)
+        return KoreToken(symbol_id, TokenType.SYMBOL_ID)
 
     def _set_var_id_token(self) -> KoreToken:
         self._match('@')
         name = self._id_text()
-        return KoreToken(f'@{name}', KoreToken.Type.SET_VAR_ID)
+        return KoreToken(f'@{name}', TokenType.SET_VAR_ID)
 
     def _id_or_keyword_token(self) -> KoreToken:
         name = self._id_text()
@@ -276,7 +277,7 @@ class KoreLexer(Iterator[KoreToken]):
         if name in self._KEYWORDS:
             return self._KEYWORDS[name]
 
-        return KoreToken(name, KoreToken.Type.ID)
+        return KoreToken(name, TokenType.ID)
 
     def _id_text(self) -> str:
         buf: List[str] = []
