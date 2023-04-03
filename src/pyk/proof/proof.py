@@ -25,9 +25,28 @@ class ProofStatus(Enum):
 
 class Proof(ABC):
     id: str
+    proof_dir: Optional[Path]
 
-    def __init__(self, id: str) -> None:
+    def __init__(self, id: str, proof_dir: Optional[Path] = None) -> None:
         self.id = id
+        self.proof_dir = proof_dir
+
+    def write_proof(self) -> None:
+        if not self.proof_dir:
+            return
+        proof_path = self.proof_dir / f'{hash_str(self.id)}.json'
+        proof_path.write_text(json.dumps(self.dict))
+        _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
+
+    @classmethod
+    @staticmethod
+    def read_proof(cls: Type[Proof], id: str, proof_dir: Path) -> Optional[Proof]:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if proof_path.exists():
+            proof_dict = json.loads(proof_path.read_text())
+            _LOGGER.info(f'Reading {type(cls)} from file {id}: {proof_path}')
+            return cls.from_dict(proof_dict)
+        return None
 
     @property
     @abstractmethod
@@ -43,19 +62,3 @@ class Proof(ABC):
     @abstractmethod
     def from_dict(cls: Type[Proof], dct: Dict[str, Any]) -> Proof:
         ...
-
-
-class Prover:
-    proof: Proof
-    proof_dir: Optional[Path]
-
-    def __init__(self, proof: Proof, proof_dir: Optional[Path] = None) -> None:
-        self.proof = proof
-        self.proof_dir = proof_dir
-
-    def write_proof(self) -> None:
-        if not self.proof_dir:
-            return
-        proof_path = self.proof_dir / f'{hash_str(self.proof.id)}.json'
-        proof_path.write_text(json.dumps(self.proof.dict))
-        _LOGGER.info(f'Updated proof file {self.proof.id}: {proof_path}')
