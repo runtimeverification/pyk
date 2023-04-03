@@ -58,6 +58,10 @@ def split(i: int, js: Iterable[int]) -> KCFG.Split:
     return KCFG.Split(node(i), zip(map(node, js), split_substs))
 
 
+def ndbranch(i: int, js: Iterable[Tuple[int, Iterable[KInner]]]) -> KCFG.NDBranch:
+    return KCFG.NDBranch(node(i), [(node(j), constraints) for j, constraints in js])
+
+
 def node_dicts(n: int, start: int = 0) -> List[Dict[str, Any]]:
     return [node(i).to_dict() for i in range(start, n)]
 
@@ -87,8 +91,19 @@ def split_dicts(*edges: Tuple[int, Iterable[Tuple[int, KInner]]]) -> Dict[str, A
             assert csubst is not None
             csubst = csubst.add_constraint(constraint)
             targets[nid(t)] = csubst.to_dict()
-        splits[nid(t)] = {'source': nid(s), 'targets': targets}
+        splits[nid(s)] = {'source': nid(s), 'targets': targets}
     return splits
+
+
+def ndbranch_dicts(*edges: Tuple[int, Iterable[Tuple[int, Iterable[KInner]]]]) -> Dict[str, Any]:
+    ndbranches = {}
+    targets = {}
+    for s, ts in edges:
+        for t, cs in ts:
+            cslist = [c.to_dict() for c in cs]
+            targets[nid(t)] = cslist
+        ndbranches[nid(s)] = {'source': nid(s), 'targets': targets}
+    return ndbranches
 
 
 def test_from_dict_single_node() -> None:
@@ -245,10 +260,11 @@ def test_insert_simple_edge() -> None:
 
 def test_get_successors() -> None:
     d = {
-        'nodes': node_dicts(15),
+        'nodes': node_dicts(18),
         'edges': edge_dicts((11, 12)),
         'splits': split_dicts((12, [(13, mlTop()), (14, mlTop())])),
         'covers': cover_dicts((14, 11)),
+        'ndbranches': ndbranch_dicts((13, [(16, [mlTop()]), (17, [mlTop()])])),
     }
     cfg = KCFG.from_dict(d)
 
@@ -256,11 +272,13 @@ def test_get_successors() -> None:
     edges = set(cfg.edges(source_id=nid(11)))
     covers = set(cfg.covers(source_id=nid(14)))
     splits = set(cfg.splits(source_id=nid(12)))
+    ndbranches = set(cfg.ndbranches(source_id=nid(13)))
 
     # Then
     assert edges == {edge(11, 12)}
     assert covers == {cover(14, 11)}
     assert splits == {split(12, [13, 14])}
+    assert ndbranches == {ndbranch(13, [(16, [mlTop()]), (17, [mlTop()])])}
 
 
 def test_get_predecessors() -> None:
@@ -277,12 +295,13 @@ def test_get_predecessors() -> None:
 def test_reachable_nodes() -> None:
     # Given
     d = {
-        'nodes': node_dicts(18),
+        'nodes': node_dicts(20),
         'edges': edge_dicts((12, 14), (13, 14), (14, 11)),
         'covers': cover_dicts((11, 12)),
         'splits': split_dicts(
             (15, [(11, mlTop()), (12, mlTop()), (16, mlTop())]), (16, [(11, mlTop()), (17, mlTop())])
         ),
+        'ndbranches': ndbranch_dicts((17, [(18, [mlTop()]), (19, [mlTop()])])),
     }
     cfg = KCFG.from_dict(d)
 
@@ -291,23 +310,26 @@ def test_reachable_nodes() -> None:
     nodes_2 = cfg.reachable_nodes(nid(11), traverse_covers=True)
     nodes_3 = cfg.reachable_nodes(nid(15), traverse_covers=True)
     nodes_4 = cfg.reachable_nodes(nid(12), traverse_covers=True, reverse=True)
+    nodes_5 = cfg.reachable_nodes(nid(18), reverse=True)
 
     # Then
     assert nodes_1 == {node(11)}
     assert nodes_2 == {node(11), node(12), node(14)}
-    assert nodes_3 == {node(15), node(11), node(12), node(16), node(17), node(14)}
+    assert nodes_3 == {node(15), node(11), node(12), node(16), node(17), node(14), node(18), node(19)}
     assert nodes_4 == {node(12), node(15), node(11), node(14), node(16), node(13)}
+    assert nodes_5 == {node(18), node(17), node(16), node(15)}
 
 
 def test_paths_between() -> None:
     # Given
     d = {
-        'nodes': node_dicts(18),
+        'nodes': node_dicts(20),
         'edges': edge_dicts((12, 14), (13, 14), (14, 11)),
         'covers': cover_dicts((11, 12)),
         'splits': split_dicts(
             (15, [(11, mlTop()), (12, mlTop()), (16, mlTop())]), (16, [(11, mlTop()), (17, mlTop())])
         ),
+        'ndbranches': ndbranch_dicts((17, [(18, [mlTop()]), (19, [mlTop()])])),
     }
     cfg = KCFG.from_dict(d)
 
@@ -319,6 +341,14 @@ def test_paths_between() -> None:
         (split(15, [11]), cover(11, 12), edge(12, 14)),
         (split(15, [12]), edge(12, 14)),
         (split(15, [16]), split(16, [11]), cover(11, 12), edge(12, 14)),
+    }
+
+    # When
+    paths = set(cfg.paths_between(nid(16), nid(19)))
+
+    # Then
+    assert paths == {
+        (split(16, [17]), ndbranch(17, [(19, [mlTop()])])),
     }
 
 
@@ -390,7 +420,7 @@ def test_pretty_print() -> None:
     d = {
         'init': [nid(20)],
         'target': [nid(16)],
-        'nodes': node_dicts(24, start=9),
+        'nodes': node_dicts(25, start=9),
         'aliases': {'foo': nid(13), 'bar': nid(13)},
         'edges': edge_dicts((20, 11), (11, 12, 5), (12, 13), (14, 15), (15, 12), (17, 16), (21, 18)),
         'covers': cover_dicts((18, 21)),
@@ -408,7 +438,16 @@ def test_pretty_print() -> None:
                 ],
             )
         ),
-        'expanded': [nid(i) for i in [20, 11, 12, 13, 14, 15, 17, 21, 22]],
+        'ndbranches': ndbranch_dicts(
+            (
+                19,
+                [
+                    (23, [_x_equals(23)]),
+                    (24, [_x_equals(24)]),
+                ],
+            )
+        ),
+        'expanded': [nid(i) for i in [20, 11, 12, 13, 14, 15, 17, 19, 21, 22]],
     }
     cfg = KCFG.from_dict(d)
 
@@ -462,7 +501,15 @@ def test_pretty_print() -> None:
         f'┣━━┓ constraint: #Equals ( x , 19 )\n'
         f'┃  ┃ subst: V13 <- V19\n'
         f'┃  │\n'
-        f'┃  └─ \033[1m{_short_hash(19)} (frontier, leaf)\033[0m\n'
+        f'┃  ├─ {_short_hash(19)} (expanded)\n'
+        f'┃  ┃\n'
+        f'┃  ┣━━┓ constraint: #Equals ( x , 23 )\n'
+        f'┃  ┃  │\n'
+        f'┃  ┃  └─ \033[1m{_short_hash(23)} (frontier, leaf)\033[0m\n'
+        f'┃  ┃\n'
+        f'┃  ┗━━┓ constraint: #Equals ( x , 24 )\n'
+        f'┃     │\n'
+        f'┃     └─ \033[1m{_short_hash(24)} (frontier, leaf)\033[0m\n'
         f'┃\n'
         f'┣━━┓ constraint: #Equals ( x , 22 )\n'
         f'┃  ┃ subst: V13 <- V22\n'
@@ -493,8 +540,6 @@ def test_pretty_print() -> None:
         f'\033[1m{_short_hash(10)} (frontier, leaf)\033[0m\n'
         f'\n'
         f'\033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
-        f'\n'
-        f'\033[1m{_short_hash(23)} (frontier, leaf)\033[0m\n'
     )
 
     expected_short_info = (
@@ -577,10 +622,24 @@ def test_pretty_print() -> None:
         f'┣━━┓ constraint: #Equals ( x , 19 )\n'
         f'┃  ┃ subst: V13 <- V19\n'
         f'┃  │\n'
-        f'┃  └─ \033[1m{_short_hash(19)} (frontier, leaf)\033[0m\n'
-        f'┃       <top>\n'
-        f'┃         V19\n'
-        f'┃       </top>\n'
+        f'┃  ├─ {_short_hash(19)} (expanded)\n'
+        f'┃  │    <top>\n'
+        f'┃  │      V19\n'
+        f'┃  │    </top>\n'
+        f'┃  ┃\n'
+        f'┃  ┣━━┓ constraint: #Equals ( x , 23 )\n'
+        f'┃  ┃  │\n'
+        f'┃  ┃  └─ \033[1m{_short_hash(23)} (frontier, leaf)\033[0m\n'
+        f'┃  ┃       <top>\n'
+        f'┃  ┃         V23\n'
+        f'┃  ┃       </top>\n'
+        f'┃  ┃\n'
+        f'┃  ┗━━┓ constraint: #Equals ( x , 24 )\n'
+        f'┃     │\n'
+        f'┃     └─ \033[1m{_short_hash(24)} (frontier, leaf)\033[0m\n'
+        f'┃          <top>\n'
+        f'┃            V24\n'
+        f'┃          </top>\n'
         f'┃\n'
         f'┣━━┓ constraint: #Equals ( x , 22 )\n'
         f'┃  ┃ subst: V13 <- V22\n'
@@ -631,11 +690,6 @@ def test_pretty_print() -> None:
         f'\033[1m{_short_hash(9)} (frontier, leaf)\033[0m\n'
         f' <top>\n'
         f'   9\n'
-        f' </top>\n'
-        f'\n'
-        f'\033[1m{_short_hash(23)} (frontier, leaf)\033[0m\n'
-        f' <top>\n'
-        f'   V23\n'
         f' </top>\n'
     )
 
