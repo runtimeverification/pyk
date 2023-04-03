@@ -43,7 +43,7 @@ from .syntax import (
 )
 
 if TYPE_CHECKING:
-    from typing import Callable, Iterator, List, Mapping, Type, Union
+    from typing import Callable, Final, Iterator, List, Type, Union
 
     from .lexer import KoreToken
     from .syntax import (
@@ -75,49 +75,46 @@ T = TypeVar('T')
 
 
 class KoreParser:
+    _ML_SYMBOLS: Final = {
+        TokenType.ML_TOP: 'top',
+        TokenType.ML_BOTTOM: 'bottom',
+        TokenType.ML_NOT: 'nott',
+        TokenType.ML_AND: 'andd',
+        TokenType.ML_OR: 'orr',
+        TokenType.ML_IMPLIES: 'implies',
+        TokenType.ML_IFF: 'iff',
+        TokenType.ML_EXISTS: 'exists',
+        TokenType.ML_FORALL: 'forall',
+        TokenType.ML_MU: 'mu',
+        TokenType.ML_NU: 'nu',
+        TokenType.ML_CEIL: 'ceil',
+        TokenType.ML_FLOOR: 'floor',
+        TokenType.ML_EQUALS: 'equals',
+        TokenType.ML_IN: 'inn',
+        TokenType.ML_NEXT: 'next',
+        TokenType.ML_REWRITES: 'rewrites',
+        TokenType.ML_DV: 'dv',
+        TokenType.ML_LEFT_ASSOC: 'left_assoc',
+        TokenType.ML_RIGHT_ASSOC: 'right_assoc',
+    }
+
+    _SENTENCE_KWS: Final = {
+        TokenType.KW_IMPORT: 'importt',
+        TokenType.KW_SORT: 'sort_decl',
+        TokenType.KW_HOOKED_SORT: 'hooked_sort_decl',
+        TokenType.KW_SYMBOL: 'symbol_decl',
+        TokenType.KW_HOOKED_SYMBOL: 'hooked_symbol_decl',
+        TokenType.KW_ALIAS: 'alias_decl',
+        TokenType.KW_AXIOM: 'axiom',
+        TokenType.KW_CLAIM: 'claim',
+    }
+
     _iter: Iterator[KoreToken]
     _la: KoreToken
-
-    _ml_symbols: Mapping[TokenType, Callable[[], MLPattern]]
-    _sentence_keywords: Mapping[TokenType, Callable[[], Sentence]]
 
     def __init__(self, text: str):
         self._iter = KoreLexer(text)
         self._la = next(self._iter)
-
-        self._ml_symbols = {
-            TokenType.ML_TOP: self.top,
-            TokenType.ML_BOTTOM: self.bottom,
-            TokenType.ML_NOT: self.nott,
-            TokenType.ML_AND: self.andd,
-            TokenType.ML_OR: self.orr,
-            TokenType.ML_IMPLIES: self.implies,
-            TokenType.ML_IFF: self.iff,
-            TokenType.ML_EXISTS: self.exists,
-            TokenType.ML_FORALL: self.forall,
-            TokenType.ML_MU: self.mu,
-            TokenType.ML_NU: self.nu,
-            TokenType.ML_CEIL: self.ceil,
-            TokenType.ML_FLOOR: self.floor,
-            TokenType.ML_EQUALS: self.equals,
-            TokenType.ML_IN: self.inn,
-            TokenType.ML_NEXT: self.next,
-            TokenType.ML_REWRITES: self.rewrites,
-            TokenType.ML_DV: self.dv,
-            TokenType.ML_LEFT_ASSOC: self.left_assoc,
-            TokenType.ML_RIGHT_ASSOC: self.right_assoc,
-        }
-
-        self._sentence_kws = {
-            TokenType.KW_IMPORT: self.importt,
-            TokenType.KW_SORT: self.sort_decl,
-            TokenType.KW_HOOKED_SORT: self.hooked_sort_decl,
-            TokenType.KW_SYMBOL: self.symbol_decl,
-            TokenType.KW_HOOKED_SYMBOL: self.hooked_symbol_decl,
-            TokenType.KW_ALIAS: self.alias_decl,
-            TokenType.KW_AXIOM: self.axiom,
-            TokenType.KW_CLAIM: self.claim,
-        }
 
     @property
     def eof(self) -> bool:
@@ -190,7 +187,7 @@ class KoreParser:
         if self._la.type == TokenType.STRING:
             return self.string()
 
-        if self._la.type in self._ml_symbols:
+        if self._la.type in self._ML_SYMBOLS:
             return self.ml_pattern()
 
         if self._la.type == TokenType.SYMBOL_ID:
@@ -242,9 +239,9 @@ class KoreParser:
 
     def ml_pattern(self) -> MLPattern:
         token_type = self._la.type
-        if token_type not in self._ml_symbols:
+        if token_type not in self._ML_SYMBOLS:
             raise ValueError(f'Exected matching logic symbol, found: {self._la.text}')
-        parse = self._ml_symbols[token_type]
+        parse = getattr(self, self._ML_SYMBOLS[token_type])
         return parse()
 
     def _nullary(self, token_type: TokenType, cls: Type[NC]) -> NC:
@@ -411,10 +408,10 @@ class KoreParser:
     def sentence(self) -> Sentence:
         token_type = self._la.type
 
-        if token_type not in self._sentence_kws:
-            raise ValueError(f'Expected {[kw.name for kw in self._sentence_kws]}, found: {token_type.name}')
+        if token_type not in self._SENTENCE_KWS:
+            raise ValueError(f'Expected {[kw.name for kw in self._SENTENCE_KWS]}, found: {token_type.name}')
 
-        parse = self._sentence_kws[token_type]
+        parse = getattr(self, self._SENTENCE_KWS[token_type])
         return parse()
 
     def importt(self) -> Import:
