@@ -44,6 +44,7 @@ def dequoted(it: Iterable[str]) -> Iterator[str]:
                 yield chr(acc)
                 acc = 0
                 state = NORMAL
+
         elif state == ESCAPE:
             if c in CPOINT_TABLE:
                 cnt = CPOINT_TABLE[c]
@@ -53,8 +54,10 @@ def dequoted(it: Iterable[str]) -> Iterator[str]:
                 state = NORMAL
             else:
                 raise ValueError(fr'Unexpected escape sequence: \{c}')
+
         elif c == '\\':
             state = ESCAPE
+
         else:
             yield c
 
