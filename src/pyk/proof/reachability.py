@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, Optional, Type, TypeVar
 
 from ..kcfg import KCFG
 from ..prelude.ml import mlAnd
-from ..utils import shorten_hashes
+from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus, Prover
 
 if TYPE_CHECKING:
@@ -52,6 +53,15 @@ class AGProver(Prover):
 
     def __init__(self, proof: AGProof, proof_dir: Optional[Path] = None) -> None:
         super().__init__(proof, proof_dir)
+
+    @staticmethod
+    def read_proof(id: str, proof_dir: Path) -> Optional[AGProof]:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if proof_path.exists():
+            proof_dict = json.loads(proof_path.read_text())
+            _LOGGER.info(f'Reading AGProof from file {id}: {proof_path}')
+            return AGProof.from_dict(proof_dict)
+        return None
 
     def advance_proof(
         self,
