@@ -53,9 +53,10 @@ def dequoted(it: Iterable[str]) -> Iterator[str]:
         else:
             yield c
 
-    if state != NORMAL:
-        assert state == CPOINT
-        raise ValueError('Invalid Unicode code point')
+    if state == CPOINT:
+        raise ValueError('Incomplete Unicode code point')
+    elif state == ESCAPE:
+        raise ValueError('Incomplete escape sequence')
 
 
 ENQUOTE_TABLE: Final = {
