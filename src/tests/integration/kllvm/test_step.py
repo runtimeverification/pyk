@@ -45,8 +45,8 @@ class TestStep(RuntimeTest):
         assert str(pattern) == bar_output()
 
     def test_interpret(self, runtime: ModuleType) -> None:
-        term = runtime.interpret(start_pattern())
-        assert str(term) == bar_output()
+        pattern = runtime.interpret(start_pattern())
+        assert str(pattern) == bar_output()
 
 
 def start_pattern() -> Pattern:

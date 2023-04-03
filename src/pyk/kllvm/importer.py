@@ -51,16 +51,15 @@ def import_runtime(kompiled_dir: str | Path) -> ModuleType:
 
 
 def _patch_runtime(runtime: ModuleType) -> None:
-    term_cls = _make_term_class(runtime)
-    runtime.Term = term_cls  # type: ignore
-    runtime.interpret = _make_interpreter(term_cls)  # type: ignore
+    runtime.Term = _make_term_class(runtime)  # type: ignore
+    runtime.interpret = _make_interpreter(runtime)  # type: ignore
 
 
-def _make_interpreter(term_cls: type) -> Callable[..., Pattern]:
+def _make_interpreter(runtime: ModuleType) -> Callable[..., Pattern]:
     def interpret(pattern: Pattern, *, depth: int | None = None) -> Pattern:
-        term = term_cls(pattern)
-        term.step(depth if depth is not None else -1)
-        return term.pattern
+        init_term = runtime.InternalTerm(pattern)
+        final_term = init_term.step(depth if depth is not None else -1)
+        return final_term.to_pattern()
 
     return interpret
 
