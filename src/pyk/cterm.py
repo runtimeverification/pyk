@@ -45,6 +45,12 @@ class CTerm:
         return CTerm(config, constraints)
 
     @staticmethod
+    def from_dict(dct: Dict[str, Any]) -> CTerm:
+        config = KInner.from_dict(dct['config'])
+        constraints = [KInner.from_dict(c) for c in dct['constraints']]
+        return CTerm(config, constraints)
+
+    @staticmethod
     def _check_config(config: KInner) -> None:
         if not isinstance(config, KApply) or not config.is_cell:
             raise ValueError('Expected cell label, found: {config.label.name}')
@@ -78,12 +84,6 @@ class CTerm:
             'config': self.config.to_dict(),
             'constraints': [c.to_dict() for c in self.constraints],
         }
-
-    @staticmethod
-    def from_dict(dct: Dict[str, Any]) -> CTerm:
-        config = KInner.from_dict(dct['config'])
-        constraints = [KInner.from_dict(c) for c in dct['constraints']]
-        return CTerm(config, constraints)
 
     @cached_property
     def kast(self) -> KInner:
