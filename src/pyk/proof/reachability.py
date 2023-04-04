@@ -9,7 +9,7 @@ from ..utils import shorten_hashes
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
-    pass
+    from pathlib import Path
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
@@ -23,8 +23,8 @@ _LOGGER: Final = logging.getLogger(__name__)
 class AGProof(Proof):
     kcfg: KCFG
 
-    def __init__(self, id: str, kcfg: KCFG):
-        super().__init__(id)
+    def __init__(self, id: str, kcfg: KCFG, proof_dir: Optional[Path] = None):
+        super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
 
     @property
