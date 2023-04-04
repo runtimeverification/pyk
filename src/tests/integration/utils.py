@@ -110,6 +110,14 @@ class KProveTest(KompiledTest):
         self._update_symbol_table(kprove.symbol_table)
         return kprove
 
+    @pytest.fixture
+    def haskell_log_entries(self) -> Iterable[str]:
+        return ['DebugAppliedRewriteRules', 'DebugApplyEquation']
+
+    @pytest.fixture
+    def log_axioms_file(self, kprove: KProve) -> Path:
+        return kprove.use_directory / 'kore-exec.debug-log'
+
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass
@@ -117,6 +125,13 @@ class KProveTest(KompiledTest):
 
 class KCFGExploreTest(KProveTest):
     @pytest.fixture
-    def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
-        with KCFGExplore(kprove, bug_report=kprove._bug_report) as kcfg_explore:
+    def kcfg_explore(
+        self, kprove: KProve, log_axioms_file: Path, haskell_log_entries: Iterable[str]
+    ) -> Iterator[KCFGExplore]:
+        with KCFGExplore(
+            kprove,
+            bug_report=kprove._bug_report,
+            log_axioms_file=log_axioms_file,
+            haskell_log_entries=haskell_log_entries,
+        ) as kcfg_explore:
             yield kcfg_explore
