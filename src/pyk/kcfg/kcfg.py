@@ -128,9 +128,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             object.__setattr__(self, 'targets', tuple(targets))
 
         def __lt__(self, other: Any) -> bool:
-            if not isinstance(other, KCFG.Split):
+            if not type(other) is type(self):
                 return NotImplemented
             return (self.source, self.target_ids) < (other.source, other.target_ids)
+
+        @abstractmethod
+        def with_single_target(self, target: KCFG.Node) -> KCFG.MultiEdge:
+            ...
 
     @dataclass(frozen=True)
     class Split(MultiEdge):
@@ -154,6 +158,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         def pretty(self, kprint: KPrint) -> List[str]:
             return [f'Split node: {len(self.targets)}']
 
+        def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
+            return KCFG.Split(self.source, [(target, self.splits[target.id])])
+
     @dataclass(frozen=True)
     class NDBranch(MultiEdge):
         def __init__(
@@ -171,6 +178,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         def pretty(self, kprint: KPrint) -> List[str]:
             return [f'NDBranch node: {len(self.targets)}']
+
+        def with_single_target(self, target: KCFG.Node) -> KCFG.NDBranch:
+            return KCFG.NDBranch(self.source, [target])
 
     _nodes: Dict[str, Node]
     _edges: Dict[str, Dict[str, Edge]]
@@ -475,36 +485,20 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 return
             successor = successors[0]
 
-            if type(successor) is KCFG.Split:
+            if isinstance(successor, KCFG.MultiEdge):
                 ret_lines.append(('unknown', [f'{indent}┃']))
 
                 for target in successor.targets[:-1]:
-                    csubst = successor.splits[target.id]
-                    ret_edge_lines = _print_split_edge(csubst)
-                    ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
-                        indent + '┃  ┃ ', ret_edge_lines[1:]
-                    )
-                    ret_edge_lines.append(indent + '┃  │')
-                    ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
-                    _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
-                target = successor.targets[-1]
-                csubst = successor.splits[target.id]
-                ret_edge_lines = _print_split_edge(csubst)
-                ret_edge_lines = [indent + '┗━━┓ ' + ret_edge_lines[0]] + add_indent(
-                    indent + '   ┃ ', ret_edge_lines[1:]
-                )
-                ret_edge_lines.append(indent + '   │')
-                ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
-                _print_subgraph(indent + '   ', target, prior_on_trace + [curr_node])
-
-            if type(successor) is KCFG.NDBranch:
-                ret_lines.append(('unknown', [f'{indent}┃']))
-
-                for target in successor.targets[:-1]:
-                    ret_edge_lines = _print_nd_edge(
-                        current_constraints=curr_node.cterm.constraints,
-                        successor_constraints=target.cterm.constraints,
-                    )
+                    if type(successor) is KCFG.Split:
+                        csubst = successor.splits[target.id]
+                        ret_edge_lines = _print_split_edge(csubst)
+                    elif type(successor) is KCFG.NDBranch:
+                        ret_edge_lines = _print_nd_edge(
+                            current_constraints=curr_node.cterm.constraints,
+                            successor_constraints=target.cterm.constraints,
+                        )
+                    else:
+                        assert False
                     if ret_edge_lines:
                         ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
                             indent + '┃  ┃ ', ret_edge_lines[1:]
@@ -515,9 +509,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
                 target = successor.targets[-1]
-                ret_edge_lines = _print_nd_edge(
-                    current_constraints=curr_node.cterm.constraints, successor_constraints=target.cterm.constraints
-                )
+                if type(successor) is KCFG.Split:
+                    csubst = successor.splits[target.id]
+                    ret_edge_lines = _print_split_edge(csubst)
+                elif type(successor) is KCFG.NDBranch:
+                    target = successor.targets[-1]
+                    ret_edge_lines = _print_nd_edge(
+                        current_constraints=curr_node.cterm.constraints, successor_constraints=target.cterm.constraints
+                    )
+                else:
+                    assert False
                 if ret_edge_lines:
                     ret_edge_lines = [indent + '┗━━┓ ' + ret_edge_lines[0]] + add_indent(
                         indent + '   ┃ ', ret_edge_lines[1:]
@@ -1088,9 +1089,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if len(_path) > 0:
                 if isinstance(_path[-1], KCFG.EdgeLike) and _path[-1].target.id == _nid:
                     return True
-                elif type(_path[-1]) is KCFG.Split and _nid in _path[-1].target_ids:
-                    return True
-                elif type(_path[-1]) is KCFG.NDBranch and _nid in _path[-1].target_ids:
+                elif isinstance(_path[-1], KCFG.MultiEdge) and _nid in _path[-1].target_ids:
                     return True
             return False
 
@@ -1106,7 +1105,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 else:
                     successors = list(self.successors(curr_successor.target.id))
 
-            elif type(curr_successor) is KCFG.Split:
+            elif isinstance(curr_successor, KCFG.MultiEdge):
                 if len(list(curr_successor.targets)) == 1:
                     target = list(curr_successor.targets)[0]
                     if target.id == target_id:
@@ -1116,34 +1115,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                         successors = list(self.successors(target.id))
                 if len(list(curr_successor.targets)) > 1:
                     curr_path = curr_path[0:-1]
-                    successors = [
-                        KCFG.Split(curr_successor.source, [(target, curr_successor.splits[target.id])])
-                        for target in curr_successor.targets
-                    ]
-
-            elif type(curr_successor) is KCFG.NDBranch:
-                if len(list(curr_successor.targets)) == 1:
-                    target = list(curr_successor.targets)[0]
-                    if target.id == target_id:
-                        paths.append(tuple(curr_path))
-                        continue
-                    else:
-                        successors = list(self.successors(target.id))
-                if len(list(curr_successor.targets)) > 1:
-                    curr_path = curr_path[0:-1]
-                    successors = [KCFG.NDBranch(curr_successor.source, [target]) for target in curr_successor.targets]
+                    successors = [curr_successor.with_single_target(target) for target in curr_successor.targets]
 
             for successor in successors:
                 if isinstance(successor, KCFG.EdgeLike) and not _in_path(successor.target.id, curr_path):
                     worklist.append(curr_path + [successor])
-                elif type(successor) is KCFG.Split:
-                    if len(list(successor.targets)) == 1:
-                        target = list(successor.targets)[0]
-                        if not _in_path(target.id, curr_path):
-                            worklist.append(curr_path + [successor])
-                    elif len(list(successor.targets)) > 1:
-                        worklist.append(curr_path + [successor])
-                elif type(successor) is KCFG.NDBranch:
+                elif isinstance(successor, KCFG.MultiEdge):
                     if len(list(successor.targets)) == 1:
                         target = list(successor.targets)[0]
                         if not _in_path(target.id, curr_path):
