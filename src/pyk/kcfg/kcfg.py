@@ -486,7 +486,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     elif type(successor) is KCFG.NDBranch:
                         ret_edge_lines = [indent + '┣━━┓ ']
                     else:
-                        assert False
+                        raise AssertionError()
                     ret_edge_lines.append(indent + '┃  │')
                     ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
@@ -501,7 +501,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     target = successor.targets[-1]
                     ret_edge_lines = [indent + '┗━━┓ ']
                 else:
-                    assert False
+                    raise AssertionError()
                 ret_edge_lines.append(indent + '   │')
                 ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
                 _print_subgraph(indent + '   ', target, prior_on_trace + [curr_node])
