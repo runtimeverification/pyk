@@ -58,12 +58,16 @@ class AGProof(Proof):
 class AGProver:
     proof: AGProof
     kcfg_explore: KCFGExplore
+    circularities_module_name: str
 
     def __init__(self, proof: AGProof, main_module: str, defn: KDefinition, kcfg_explore: KCFGExplore):
         self.proof = proof
         self.kcfg_explore = kcfg_explore
+        self.circularities_module_name = 'SOME-CIRCULARITIES'
         # TODO the module name should be either a parameter, or we should generate it so that it is unique
-        self.kcfg_explore.add_circularities_module(defn, main_module, 'SOME-CIRCULARITIES', proof.circularities)
+        self.kcfg_explore.add_circularities_module(
+            defn, main_module, self.circularities_module_name, proof.circularities
+        )
 
     def write_proof(self, proofid: str, kproofs_dir: Path) -> None:
         proof_dict = self.proof.dict
@@ -71,6 +75,14 @@ class AGProver:
         proof_path = kproofs_dir / f'{hash_str(proofid)}.json'
         proof_path.write_text(json.dumps(proof_dict))
         _LOGGER.info(f'Updated AGProof file {proofid}: {proof_path}')
+
+    def nonzero_depth(self, node: KCFG.Node) -> bool:
+        init = self.proof.kcfg.init[0]
+        ps = self.proof.kcfg.paths_between(init.id, node.id)
+        for p in ps:
+            if len(p) >= 2:
+                return True
+        return False
 
     def advance_proof(
         self,
@@ -122,9 +134,15 @@ class AGProver:
 
             self.proof.kcfg.add_expanded(curr_node.id)
 
-            _LOGGER.info(f'Advancing proof from node {proofid}: {shorten_hashes(curr_node.id)}')
+            nz = self.nonzero_depth(curr_node)
+            mn = self.circularities_module_name if nz else None
+            _LOGGER.info(f'Advancing proof from node {proofid} with circularities={nz}: {shorten_hashes(curr_node.id)}')
             depth, cterm, next_cterms = self.kcfg_explore.cterm_execute(
-                curr_node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+                curr_node.cterm,
+                depth=execute_depth,
+                cut_point_rules=cut_point_rules,
+                terminal_rules=terminal_rules,
+                module_name=mn,
             )
 
             # Nonsense case.

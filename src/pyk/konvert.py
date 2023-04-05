@@ -67,6 +67,9 @@ def kast_to_kore(
     kore = _kast_to_kore(kast)
     return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
 
+# TODO
+def _krule_to_kore(krule: KRule) -> Axiom:
+    pass
 
 def _kast_to_kore(kast: KInner) -> Pattern:
     _LOGGER.debug(f'_kast_to_kore: {kast}')

@@ -362,3 +362,5 @@ class TestKonvertSimpleProofs(KPrintTest):
 
         # Then
         assert actual_kast == kast
+
+    # TODO test_outer_kore_to_kats
