@@ -390,6 +390,7 @@ class KoreClient(ContextManager['KoreClient']):
         max_depth: Optional[int] = None,
         cut_point_rules: Optional[Iterable[str]] = None,
         terminal_rules: Optional[Iterable[str]] = None,
+        module_name: Optional[str] = None,
     ) -> ExecuteResult:
         params = filter_none(
             {
@@ -397,6 +398,7 @@ class KoreClient(ContextManager['KoreClient']):
                 'cut-point-rules': list(cut_point_rules) if cut_point_rules is not None else None,
                 'terminal-rules': list(terminal_rules) if terminal_rules is not None else None,
                 'state': self._state(pattern),
+                'module': module_name,
             }
         )
 
