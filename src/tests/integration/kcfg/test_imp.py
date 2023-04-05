@@ -287,10 +287,15 @@ class TestImpProof(KCFGExploreTest):
         circularities = kprove.get_circularities(Path(spec_file), spec_module_name=spec_module)
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        prover = AGProver(AGProof(kcfg, circularities=circularities))
+        # prover = AGProver(AGProof(kcfg, circularities=circularities), main_module='IMP-VERIFICATION', defn=kprove.definition, kcfg_explore=kcfg_explore)
+        prover = AGProver(
+            AGProof(kcfg, circularities=circularities),
+            main_module=kprove.definition.main_module_name,
+            defn=kprove.definition,
+            kcfg_explore=kcfg_explore,
+        )
         kcfg = prover.advance_proof(
             f'{spec_module}.{claim_id}',
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,

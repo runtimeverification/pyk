@@ -8,6 +8,7 @@ from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KVariable, Subst
 from ..kast.manip import flatten_label, free_vars
 from ..kore.rpc import KoreClient, KoreServer
+from ..kore.syntax import Axiom, Implies, Import, Module, Next, SortApp
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_bottom, is_top, mlEquals, mlTop
@@ -20,6 +21,8 @@ if TYPE_CHECKING:
 
     from ..cli_utils import BugReport
     from ..kast import KInner
+    from ..kast.outer import KClaim, KDefinition
+    from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
 
 
@@ -271,3 +274,29 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_nodes.append(curr_node_id)
             new_depth += section_depth
         return (cfg, tuple(new_nodes))
+
+    def claim_to_rule(self, defn: KDefinition, claim: KClaim) -> Axiom:
+        claim_lhs, claim_rhs = KCFG.claim_to_cterm_pair(defn, claim)
+        kore_lhs = self.kprint.kast_to_kore(claim_lhs.kast, GENERATED_TOP_CELL)
+        kore_rhs = self.kprint.kast_to_kore(claim_rhs.kast, GENERATED_TOP_CELL)
+        a = Axiom(
+            vars=(),
+            pattern=Implies(
+                sort=SortApp(name='SortGeneratedTopCell', sorts=()),
+                left=kore_lhs,
+                right=Next(sort=SortApp(name='SortGeneratedTopCell', sorts=()), pattern=kore_rhs),
+            ),
+            attrs=(),
+        )
+        return a
+
+    def add_circularities_module(
+        self, defn: KDefinition, old_module_name: str, new_module_name: str, circularities: Iterable[KClaim]
+    ) -> None:
+        new_rules: List[Sentence] = [self.claim_to_rule(defn, c) for c in circularities]
+        _, kore_client = self._kore_rpc
+        sentences: List[Sentence] = [Import(module_name=old_module_name, attrs=())]
+        sentences = sentences + new_rules
+        m = Module(name=new_module_name, sentences=sentences)
+        kore_client.add_module(m)
+        return None
