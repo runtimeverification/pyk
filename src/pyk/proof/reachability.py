@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, List, Optional, Type, TypeVar
 
+from ..kast.outer import KClaim
 from ..kcfg import KCFG
 from ..prelude.ml import mlAnd
 from ..utils import hash_str, shorten_hashes
@@ -23,9 +24,11 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class AGProof(Proof):
     kcfg: KCFG
+    circularities: List[KClaim]
 
-    def __init__(self, kcfg: KCFG):
+    def __init__(self, kcfg: KCFG, circularities: Iterable[KClaim] = ()):
         self.kcfg = kcfg
+        self.circularities = list(circularities)
 
     @property
     def status(self) -> ProofStatus:
@@ -39,11 +42,16 @@ class AGProof(Proof):
     @classmethod
     def from_dict(cls: Type[AGProof], dct: Dict[str, Any]) -> AGProof:
         cfg = KCFG.from_dict(dct['cfg'])
-        return AGProof(cfg)
+        circularities = [KClaim.from_dict(d) for d in dct['circularities']]
+        return AGProof(cfg, circularities=circularities)
 
     @property
     def dict(self) -> Dict[str, Any]:
-        return {'type': 'AGProof', 'cfg': self.kcfg.to_dict()}
+        return {
+            'type': 'AGProof',
+            'cfg': self.kcfg.to_dict(),
+            'circularities': [c.to_dict() for c in self.circularities],
+        }
 
 
 class AGProver:

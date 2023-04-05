@@ -285,10 +285,9 @@ class TestImpProof(KCFGExploreTest):
         assert len(claims) == 1
 
         circularities = kprove.get_circularities(Path(spec_file), spec_module_name=spec_module)
-        _ = circularities
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        prover = AGProver(AGProof(kcfg))
+        prover = AGProver(AGProof(kcfg, circularities=circularities))
         kcfg = prover.advance_proof(
             f'{spec_module}.{claim_id}',
             kcfg_explore,
