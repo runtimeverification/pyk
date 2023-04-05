@@ -62,7 +62,7 @@ def split(i: int, js: Iterable[int]) -> KCFG.Split:
 
 
 def ndbranch(i: int, js: Iterable[int]) -> KCFG.NDBranch:
-    return KCFG.NDBranch(node(i), [node(j) for j in js])
+    return KCFG.NDBranch(node(i), tuple(node(j) for j in js))
 
 
 def node_dicts(n: int, start: int = 0) -> List[Dict[str, Any]]:
@@ -499,6 +499,7 @@ def test_pretty_print() -> None:
         f'┃  │\n'
         f'┃  ├─ {_short_hash(19)} (expanded)\n'
         f'┃  ┃\n'
+        f'┃  ┃ (1 step)\n'
         f'┃  ┣━━┓\n'
         f'┃  ┃  │\n'
         f'┃  ┃  └─ \033[1m{_short_hash(23)} (frontier, leaf)\033[0m\n'
@@ -623,6 +624,7 @@ def test_pretty_print() -> None:
         f'┃  │      V19\n'
         f'┃  │    </top>\n'
         f'┃  ┃\n'
+        f'┃  ┃ (1 step)\n'
         f'┃  ┣━━┓\n'
         f'┃  ┃  │\n'
         f'┃  ┃  └─ \033[1m{_short_hash(23)} (frontier, leaf)\033[0m\n'
