@@ -137,6 +137,25 @@ APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[
         None,
         ['IMP-VERIFICATION.halt'],
     ),
+    # Does not terminate because of missing Circularities support
+    (
+        'imp-simple-sum-N',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'sum-N',
+        None,
+        None,
+        ['IMP-VERIFICATION.halt'],
+    ),
+    (
+        'imp-simple-sum-loop',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'sum-loop',
+        10,
+        None,
+        ['IMP-VERIFICATION.halt'],
+    ),
 )
 
 
@@ -274,11 +293,17 @@ class TestImpProof(KCFGExploreTest):
         )
         assert len(claims) == 1
 
+        circularities = kprove.get_circularities(Path(spec_file), spec_module_name=spec_module)
+
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        prover = AGProver(AGProof(kcfg))
+        prover = AGProver(
+            AGProof(kcfg, circularities=circularities),
+            main_module=kprove.definition.main_module_name,
+            defn=kprove.definition,
+            kcfg_explore=kcfg_explore,
+        )
         kcfg = prover.advance_proof(
             f'{spec_module}.{claim_id}',
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,

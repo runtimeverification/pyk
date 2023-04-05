@@ -611,6 +611,10 @@ class KRule(KRuleLike):
     def let_att(self, att: KAtt) -> KRule:
         return self.let(att=att)
 
+    @property
+    def priority(self) -> int:
+        return int(self.att['priority']) if 'priority' in self.att else 50
+
 
 @final
 @dataclass(frozen=True)
@@ -661,6 +665,9 @@ class KClaim(KRuleLike):
 
     def let_att(self, att: KAtt) -> KClaim:
         return self.let(att=att)
+
+    def is_circularity(self) -> bool:
+        return 'circularity' in self.att.atts
 
 
 @final

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, List, Optional, Type, TypeVar
 
+from ..kast.outer import KClaim
 from ..kcfg import KCFG
 from ..prelude.ml import mlAnd
 from ..utils import hash_str, shorten_hashes
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
+    from ..kast.outer import KDefinition
     from ..kcfg import KCFGExplore
 
 T = TypeVar('T', bound='Proof')
@@ -23,9 +25,11 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class AGProof(Proof):
     kcfg: KCFG
+    circularities: List[KClaim]
 
-    def __init__(self, kcfg: KCFG):
+    def __init__(self, kcfg: KCFG, circularities: Iterable[KClaim] = ()):
         self.kcfg = kcfg
+        self.circularities = list(circularities)
 
     @property
     def status(self) -> ProofStatus:
@@ -39,18 +43,31 @@ class AGProof(Proof):
     @classmethod
     def from_dict(cls: Type[AGProof], dct: Dict[str, Any]) -> AGProof:
         cfg = KCFG.from_dict(dct['cfg'])
-        return AGProof(cfg)
+        circularities = [KClaim.from_dict(d) for d in dct['circularities']]
+        return AGProof(cfg, circularities=circularities)
 
     @property
     def dict(self) -> Dict[str, Any]:
-        return {'type': 'AGProof', 'cfg': self.kcfg.to_dict()}
+        return {
+            'type': 'AGProof',
+            'cfg': self.kcfg.to_dict(),
+            'circularities': [c.to_dict() for c in self.circularities],
+        }
 
 
 class AGProver:
     proof: AGProof
+    kcfg_explore: KCFGExplore
+    circularities_module_name: str
 
-    def __init__(self, proof: AGProof):
+    def __init__(self, proof: AGProof, main_module: str, defn: KDefinition, kcfg_explore: KCFGExplore):
         self.proof = proof
+        self.kcfg_explore = kcfg_explore
+        self.circularities_module_name = 'SOME-CIRCULARITIES'
+        # TODO the module name should be either a parameter, or we should generate it so that it is unique
+        self.kcfg_explore.add_circularities_module(
+            defn, main_module, self.circularities_module_name, proof.circularities
+        )
 
     def write_proof(self, proofid: str, kproofs_dir: Path) -> None:
         proof_dict = self.proof.dict
@@ -59,10 +76,17 @@ class AGProver:
         proof_path.write_text(json.dumps(proof_dict))
         _LOGGER.info(f'Updated AGProof file {proofid}: {proof_path}')
 
+    def nonzero_depth(self, node: KCFG.Node) -> bool:
+        init = self.proof.kcfg.init[0]
+        ps = self.proof.kcfg.paths_between(init.id, node.id)
+        for p in ps:
+            if len(p) >= 2:
+                return True
+        return False
+
     def advance_proof(
         self,
         proofid: str,
-        kcfg_explore: KCFGExplore,
         kproofs_dir: Optional[Path] = None,
         is_terminal: Optional[Callable[[CTerm], bool]] = None,
         extract_branches: Optional[Callable[[CTerm], Iterable[KInner]]] = None,
@@ -93,7 +117,7 @@ class AGProver:
                 _LOGGER.info(
                     f'Checking subsumption into target state {proofid}: {shorten_hashes((curr_node.id, target_node.id))}'
                 )
-                csubst = kcfg_explore.cterm_implies(curr_node.cterm, target_node.cterm)
+                csubst = self.kcfg_explore.cterm_implies(curr_node.cterm, target_node.cterm)
                 if csubst is not None:
                     self.proof.kcfg.create_cover(curr_node.id, target_node.id, csubst=csubst)
                     _LOGGER.info(
@@ -110,9 +134,15 @@ class AGProver:
 
             self.proof.kcfg.add_expanded(curr_node.id)
 
-            _LOGGER.info(f'Advancing proof from node {proofid}: {shorten_hashes(curr_node.id)}')
-            depth, cterm, next_cterms = kcfg_explore.cterm_execute(
-                curr_node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+            nz = self.nonzero_depth(curr_node)
+            mn = self.circularities_module_name if nz else None
+            _LOGGER.info(f'Advancing proof from node {proofid} with circularities={nz}: {shorten_hashes(curr_node.id)}')
+            depth, cterm, next_cterms = self.kcfg_explore.cterm_execute(
+                curr_node.cterm,
+                depth=execute_depth,
+                cut_point_rules=cut_point_rules,
+                terminal_rules=terminal_rules,
+                module_name=mn,
             )
 
             # Nonsense case.
@@ -138,7 +168,7 @@ class AGProver:
                     )
                     branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
                 _LOGGER.info(
-                    f'Found {len(branches)} branches for node {proofid}: {shorten_hashes(curr_node.id)}: {[kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
+                    f'Found {len(branches)} branches for node {proofid}: {shorten_hashes(curr_node.id)}: {[self.kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
                 )
                 self.proof.kcfg.split_on_constraints(curr_node.id, branches)
 

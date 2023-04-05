@@ -139,10 +139,14 @@ class TestCellMapProof(KCFGExploreTest):
         init = kcfg.get_unique_init()
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         kcfg.replace_node(init.id, new_init_term)
-        prover = AGProver(AGProof(kcfg))
+        prover = AGProver(
+            AGProof(kcfg),
+            main_module=kprove.definition.main_module_name,
+            defn=kprove.definition,
+            kcfg_explore=kcfg_explore,
+        )
         kcfg = prover.advance_proof(
             f'{spec_module}.{claim_id}',
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,

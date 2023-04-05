@@ -8,11 +8,15 @@ from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KVariable, Subst
 from ..kast.manip import flatten_label, free_vars
 from ..kore.rpc import KoreClient, KoreServer
+from ..kore.syntax import Axiom, Import, Module, Rewrites, SortApp
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_bottom, is_top, mlEquals, mlTop
 from ..utils import hash_str, shorten_hashes, single
 from .kcfg import KCFG
+
+from ..kast.outer import KClaim
+from ..prelude.kbool import notBool
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +24,8 @@ if TYPE_CHECKING:
 
     from ..cli_utils import BugReport
     from ..kast import KInner
+    from ..kast.outer import KClaim, KDefinition
+    from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
 
 
@@ -123,11 +129,18 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: Optional[int] = None,
         cut_point_rules: Optional[Iterable[str]] = None,
         terminal_rules: Optional[Iterable[str]] = None,
+        module_name: Optional[str] = None,
     ) -> Tuple[int, CTerm, List[CTerm]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
-        er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+        er = kore_client.execute(
+            kore,
+            max_depth=depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
+        )
         depth = er.depth
         next_state = CTerm(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None and len(er.next_states) > 1 else []
@@ -271,3 +284,41 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_nodes.append(curr_node_id)
             new_depth += section_depth
         return (cfg, tuple(new_nodes))
+
+    def claim_to_rule(self, defn: KDefinition, claim: KClaim) -> Axiom:
+        _LOGGER.info(f'claim to rule: {claim}')
+        #claim = KClaim(claim.body, claim.requires, notBool(notBool(claim.ensures)), claim.att)
+        claim_lhs, claim_rhs = KCFG.claim_to_cterm_pair(defn, claim)
+        kore_lhs = self.kprint.kast_to_kore(claim_lhs.kast, GENERATED_TOP_CELL)
+        kore_rhs = self.kprint.kast_to_kore(claim_rhs.kast, GENERATED_TOP_CELL)
+        # a = Axiom(
+        #     vars=(),
+        #     pattern=Implies(
+        #         sort=SortApp(name='SortGeneratedTopCell', sorts=()),
+        #         left=kore_lhs,
+        #         right=Next(sort=SortApp(name='SortGeneratedTopCell', sorts=()), pattern=kore_rhs),
+        #     ),
+        #     attrs=(),
+        # )
+        a = Axiom(
+            vars=(),
+            pattern=Rewrites(
+                sort=SortApp(name='SortGeneratedTopCell', sorts=()),
+                left=kore_lhs,
+                right=kore_rhs,
+            ),
+            attrs=(),
+        )
+        return a
+
+    def add_circularities_module(
+        self, defn: KDefinition, old_module_name: str, new_module_name: str, circularities: Iterable[KClaim]
+    ) -> None:
+        new_rules: List[Sentence] = [self.claim_to_rule(defn, c) for c in circularities]
+        _, kore_client = self._kore_rpc
+        sentences: List[Sentence] = [Import(module_name=old_module_name, attrs=())]
+        sentences = sentences + new_rules
+        m = Module(name=new_module_name, sentences=sentences)
+        _LOGGER.info(f"Adding module {m.text}")
+        kore_client.add_module(m)
+        return None
