@@ -275,13 +275,13 @@ def test_get_successors() -> None:
     # When
     edges = set(cfg.edges(source_id=nid(11)))
     covers = set(cfg.covers(source_id=nid(14)))
-    splits = set(cfg.splits(source_id=nid(12)))
+    splits = sorted(cfg.splits(source_id=nid(12)))
     ndbranches = set(cfg.ndbranches(source_id=nid(13)))
 
     # Then
     assert edges == {edge(11, 12)}
     assert covers == {cover(14, 11)}
-    assert splits == {split(12, [13, 14])}
+    assert splits == [split(12, [13, 14])]
     assert ndbranches == {ndbranch(13, [16, 17])}
 
 
@@ -338,22 +338,22 @@ def test_paths_between() -> None:
     cfg = KCFG.from_dict(d)
 
     # When
-    paths = set(cfg.paths_between(nid(15), nid(14)))
+    paths = sorted(cfg.paths_between(nid(15), nid(14)))
 
     # Then
-    assert paths == {
-        (split(15, [11]), cover(11, 12), edge(12, 14)),
+    assert paths == [
         (split(15, [12]), edge(12, 14)),
         (split(15, [16]), split(16, [11]), cover(11, 12), edge(12, 14)),
-    }
+        (split(15, [11]), cover(11, 12), edge(12, 14)),
+    ]
 
     # When
-    paths = set(cfg.paths_between(nid(16), nid(19)))
+    paths = sorted(cfg.paths_between(nid(16), nid(19)))
 
     # Then
-    assert paths == {
+    assert paths == [
         (split(16, [17]), ndbranch(17, [19])),
-    }
+    ]
 
 
 def test_resolve() -> None:
