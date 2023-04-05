@@ -222,17 +222,20 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         return [node for node in self.nodes if self.is_stuck(node.id)]
 
     @staticmethod
-    def from_claim(defn: KDefinition, claim: KClaim) -> KCFG:
-        cfg = KCFG()
+    def claim_to_cterm_pair(defn: KDefinition, claim: KClaim) -> Tuple[CTerm, CTerm]:
         claim_body = claim.body
         claim_body = defn.instantiate_cell_vars(claim_body)
         claim_body = rename_generated_vars(claim_body)
-
         claim_lhs = CTerm(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
+        claim_rhs = CTerm(extract_rhs(claim_body)).add_constraint(bool_to_ml_pred(claim.ensures))
+        return (claim_lhs, claim_rhs)
+
+    @staticmethod
+    def from_claim(defn: KDefinition, claim: KClaim) -> KCFG:
+        cfg = KCFG()
+        claim_lhs, claim_rhs = KCFG.claim_to_cterm_pair(defn, claim)
         init_state = cfg.create_node(claim_lhs)
         cfg.add_init(init_state.id)
-
-        claim_rhs = CTerm(extract_rhs(claim_body)).add_constraint(bool_to_ml_pred(claim.ensures))
         target_state = cfg.create_node(claim_rhs)
         cfg.add_target(target_state.id)
 
