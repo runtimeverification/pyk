@@ -28,9 +28,10 @@
                 });
             };
         in rec {
-          pyk = pyk-python39;
+          pyk = pyk-python311;
           pyk-python39 = mkPyk prev.python39;
           pyk-python310 = mkPyk prev.python310;
+          pyk-python311 = mkPyk prev.python311;
         };
     } // (flake-utils.lib.eachDefaultSystem (system:
       let
