@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Container, List, Union, cast
 from graphviz import Digraph
 
 from ..cterm import CSubst, CTerm
-from ..kast.inner import KInner
 from ..kast.manip import (
     bool_to_ml_pred,
     extract_lhs,
@@ -27,7 +26,7 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Set, Tuple, Type
 
-    from ..kast.inner import KVariable
+    from ..kast.inner import KInner, KVariable
     from ..kast.outer import KClaim, KDefinition
     from ..ktool.kprint import KPrint
 
@@ -145,15 +144,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     @dataclass(frozen=True)
     class NDBranch(Successor):
         source: KCFG.Node
-        targets: Tuple[Tuple[KCFG.Node, Tuple[KInner, ...]], ...]
+        targets: Tuple[KCFG.Node, ...]
 
         def __init__(
             self,
             source: KCFG.Node,
-            targets: Iterable[Tuple[KCFG.Node, Iterable[KInner]]],
+            targets: Iterable[KCFG.Node],
         ):
             object.__setattr__(self, 'source', source)
-            object.__setattr__(self, 'targets', tuple((node, tuple(constraints)) for node, constraints in targets))
+            object.__setattr__(self, 'targets', tuple(targets))
 
         def __lt__(self, other: Any) -> bool:
             if not isinstance(other, KCFG.NDBranch):
@@ -163,12 +162,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         def to_dict(self) -> Dict[str, Any]:
             return {
                 'source': self.source.id,
-                'targets': {target.id: [c.to_dict() for c in constraints] for target, constraints in self.targets},
+                'targets': list(self.targets),
             }
 
         @property
         def target_ids(self) -> List[str]:
-            return sorted(t.id for t, _ in self.targets)
+            return sorted([t.id for t in self.targets])
 
         def pretty(self, kprint: KPrint) -> List[str]:
             return [f'NDBranch node: {len(self.targets)}']
@@ -351,10 +350,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         for ndbranch_dict in dct.get('ndbranches', {}).values():
             source_id = resolve(ndbranch_dict['source'])
-            nd_targets = [
-                (resolve(target_id), [KInner.from_dict(constraint) for constraint in constraints])
-                for target_id, constraints in ndbranch_dict['targets'].items()
-            ]
+            nd_targets = [resolve(target_id) for target_id in ndbranch_dict['targets']]
             cfg.create_ndbranch(source_id, nd_targets)
 
         return cfg
@@ -431,7 +427,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 ret_split_lines.extend(f'    {vname} <- {kprint.pretty_print(term)}' for vname, term in substs)
             return ret_split_lines
 
-        def _print_nd_edge(constraints: Tuple[KInner, ...]) -> List[str]:
+        def _print_nd_edge(
+            current_constraints: Tuple[KInner, ...], successor_constraints: Tuple[KInner, ...]
+        ) -> List[str]:
+            constraints = [c for c in successor_constraints if not c in current_constraints]
             ret_split_lines: List[str] = []
             if len(constraints) == 1:
                 ret_split_lines.append(f'constraint: {kprint.pretty_print(constraints[0])}')
@@ -499,19 +498,30 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if type(successor) is KCFG.NDBranch:
                 ret_lines.append(('unknown', [f'{indent}┃']))
 
-                for target, constraints in successor.targets[:-1]:
-                    ret_edge_lines = _print_nd_edge(constraints)
-                    ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
-                        indent + '┃  ┃ ', ret_edge_lines[1:]
+                for target in successor.targets[:-1]:
+                    ret_edge_lines = _print_nd_edge(
+                        current_constraints=curr_node.cterm.constraints,
+                        successor_constraints=target.cterm.constraints,
                     )
+                    if ret_edge_lines:
+                        ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
+                            indent + '┃  ┃ ', ret_edge_lines[1:]
+                        )
+                    else:
+                        ret_edge_lines = [indent + '┣━━┓ ']
                     ret_edge_lines.append(indent + '┃  │')
                     ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
-                target, constraints = successor.targets[-1]
-                ret_edge_lines = _print_nd_edge(constraints)
-                ret_edge_lines = [indent + '┗━━┓ ' + ret_edge_lines[0]] + add_indent(
-                    indent + '   ┃ ', ret_edge_lines[1:]
+                target = successor.targets[-1]
+                ret_edge_lines = _print_nd_edge(
+                    current_constraints=curr_node.cterm.constraints, successor_constraints=target.cterm.constraints
                 )
+                if ret_edge_lines:
+                    ret_edge_lines = [indent + '┗━━┓ ' + ret_edge_lines[0]] + add_indent(
+                        indent + '   ┃ ', ret_edge_lines[1:]
+                    )
+                else:
+                    ret_edge_lines = [indent + '┗━━┓ ']
                 ret_edge_lines.append(indent + '   │')
                 ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
                 _print_subgraph(indent + '   ', target, prior_on_trace + [curr_node])
@@ -925,7 +935,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         split = KCFG.Split(self.node(source_id), ((self.node(nid), csubst) for nid, csubst in splits))
         self._splits[source_id] = split
 
-    def create_ndbranch(self, source_id: str, ndbranches: Iterable[Tuple[str, Iterable[KInner]]]) -> None:
+    def create_ndbranch(self, source_id: str, ndbranches: Iterable[str]) -> None:
         self._check_no_successors(source_id)
 
         ndbranches = list(ndbranches)
@@ -936,9 +946,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             )
 
         source_id = self._resolve(source_id)
-        ndbranch = KCFG.NDBranch(
-            self.node(source_id), ((self.node(nid), constraints) for nid, constraints in ndbranches)
-        )
+        ndbranch = KCFG.NDBranch(self.node(source_id), (self.node(nid) for nid in ndbranches))
         self._ndbranches[source_id] = ndbranch
 
     def split_on_constraints(self, source_id: str, constraints: Iterable[KInner]) -> List[str]:
@@ -1113,7 +1121,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
             elif type(curr_successor) is KCFG.NDBranch:
                 if len(list(curr_successor.targets)) == 1:
-                    target, _ = list(curr_successor.targets)[0]
+                    target = list(curr_successor.targets)[0]
                     if target.id == target_id:
                         paths.append(tuple(curr_path))
                         continue
@@ -1135,7 +1143,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                         worklist.append(curr_path + [successor])
                 elif type(successor) is KCFG.NDBranch:
                     if len(list(successor.targets)) == 1:
-                        target, _ = list(successor.targets)[0]
+                        target = list(successor.targets)[0]
                         if not _in_path(target.id, curr_path):
                             worklist.append(curr_path + [successor])
                     elif len(list(successor.targets)) > 1:
@@ -1162,7 +1170,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 for split in self.splits(source_id=node.id):
                     worklist.extend(node for node, _ in split.targets)
                 for ndbranch in self.ndbranches(source_id=node.id):
-                    worklist.extend(node for node, _ in ndbranch.targets)
+                    worklist.extend(node for node in ndbranch.targets)
             else:
                 edges = chain(self.edges(target_id=node.id), self.covers(target_id=node.id) if traverse_covers else [])
                 worklist.extend(edge.source for edge in edges)
