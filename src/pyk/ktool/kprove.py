@@ -313,6 +313,18 @@ class KProve(KPrint):
         all_claims = {c.label: c for m in flat_module_list.modules for c in m.claims}
         return all_claims
 
+    def get_circularities(
+        self,
+        spec_file: Path,
+        spec_module_name: Optional[str] = None,
+        include_dirs: Iterable[Path] = (),
+        md_selector: Optional[str] = None,
+    ) -> List[KClaim]:
+        all_claims = self.get_all_claims(
+            spec_file=spec_file, spec_module_name=spec_module_name, include_dirs=include_dirs, md_selector=md_selector
+        )
+        return [cl for l, cl in all_claims.items() if cl.is_circularity()]
+
     def get_claims(
         self,
         spec_file: Path,
