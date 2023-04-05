@@ -5,6 +5,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, Optional, Type, TypeVar
 
 from ..kcfg import KCFG
+from ..kcfg.kcfg import is_nd_branch
 from ..prelude.ml import mlAnd
 from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus
@@ -130,6 +131,9 @@ class AGProver:
             if len(next_cterms) == 0:
                 _LOGGER.info(f'Found stuck node {proofid}: {shorten_hashes(curr_node.id)}')
 
+            elif is_nd_branch(next_cterms):
+                next_ids = [self.proof.kcfg.get_or_create_node(ct).id for ct in next_cterms]
+                self.proof.kcfg.create_ndbranch(curr_node.id, next_ids)
             else:
                 branches = list(extract_branches(cterm)) if extract_branches is not None else []
                 if len(branches) != len(next_cterms):
