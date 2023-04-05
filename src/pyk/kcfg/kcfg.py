@@ -437,18 +437,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 ret_split_lines.extend(f'    {vname} <- {kprint.pretty_print(term)}' for vname, term in substs)
             return ret_split_lines
 
-        def _print_nd_edge(
-            current_constraints: Tuple[KInner, ...], successor_constraints: Tuple[KInner, ...]
-        ) -> List[str]:
-            constraints = [c for c in successor_constraints if not c in current_constraints]
-            ret_split_lines: List[str] = []
-            if len(constraints) == 1:
-                ret_split_lines.append(f'constraint: {kprint.pretty_print(constraints[0])}')
-            elif len(constraints) > 1:
-                ret_split_lines.append('constraints:')
-                ret_split_lines.extend(f'    {kprint.pretty_print(c)}' for c in constraints)
-            return ret_split_lines
-
         def _print_subgraph(indent: str, curr_node: KCFG.Node, prior_on_trace: List[KCFG.Node]) -> None:
             processed = curr_node in processed_nodes
             processed_nodes.append(curr_node)
@@ -492,19 +480,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     if type(successor) is KCFG.Split:
                         csubst = successor.splits[target.id]
                         ret_edge_lines = _print_split_edge(csubst)
-                    elif type(successor) is KCFG.NDBranch:
-                        ret_edge_lines = _print_nd_edge(
-                            current_constraints=curr_node.cterm.constraints,
-                            successor_constraints=target.cterm.constraints,
-                        )
-                    else:
-                        assert False
-                    if ret_edge_lines:
                         ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
                             indent + '┃  ┃ ', ret_edge_lines[1:]
                         )
-                    else:
+                    elif type(successor) is KCFG.NDBranch:
                         ret_edge_lines = [indent + '┣━━┓ ']
+                    else:
+                        assert False
                     ret_edge_lines.append(indent + '┃  │')
                     ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
@@ -512,19 +494,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 if type(successor) is KCFG.Split:
                     csubst = successor.splits[target.id]
                     ret_edge_lines = _print_split_edge(csubst)
-                elif type(successor) is KCFG.NDBranch:
-                    target = successor.targets[-1]
-                    ret_edge_lines = _print_nd_edge(
-                        current_constraints=curr_node.cterm.constraints, successor_constraints=target.cterm.constraints
-                    )
-                else:
-                    assert False
-                if ret_edge_lines:
                     ret_edge_lines = [indent + '┗━━┓ ' + ret_edge_lines[0]] + add_indent(
                         indent + '   ┃ ', ret_edge_lines[1:]
                     )
-                else:
+                elif type(successor) is KCFG.NDBranch:
+                    target = successor.targets[-1]
                     ret_edge_lines = [indent + '┗━━┓ ']
+                else:
+                    assert False
                 ret_edge_lines.append(indent + '   │')
                 ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
                 _print_subgraph(indent + '   ', target, prior_on_trace + [curr_node])
