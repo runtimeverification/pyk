@@ -131,20 +131,21 @@ class AGProver:
             if len(next_cterms) == 0:
                 _LOGGER.info(f'Found stuck node {proofid}: {shorten_hashes(curr_node.id)}')
 
-            elif is_nd_branch(next_cterms):
-                next_ids = [self.proof.kcfg.get_or_create_node(ct).id for ct in next_cterms]
-                self.proof.kcfg.create_ndbranch(curr_node.id, next_ids)
             else:
                 branches = list(extract_branches(cterm)) if extract_branches is not None else []
-                if len(branches) != len(next_cterms):
-                    _LOGGER.warning(
-                        f'Falling back to manual branch extraction {proofid}: {shorten_hashes(curr_node.id)}'
+                if len(branches) != len(next_cterms) and is_nd_branch(next_cterms):
+                    next_ids = [self.proof.kcfg.get_or_create_node(ct).id for ct in next_cterms]
+                    self.proof.kcfg.create_ndbranch(curr_node.id, next_ids)
+                else:
+                    if len(branches) != len(next_cterms):
+                        _LOGGER.warning(
+                            f'Falling back to manual branch extraction {proofid}: {shorten_hashes(curr_node.id)}'
+                        )
+                        branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
+                    _LOGGER.info(
+                        f'Found {len(branches)} branches for node {proofid}: {shorten_hashes(curr_node.id)}: {[kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
                     )
-                    branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
-                _LOGGER.info(
-                    f'Found {len(branches)} branches for node {proofid}: {shorten_hashes(curr_node.id)}: {[kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
-                )
-                self.proof.kcfg.split_on_constraints(curr_node.id, branches)
+                    self.proof.kcfg.split_on_constraints(curr_node.id, branches)
 
         _write_proof()
         return self.proof.kcfg
