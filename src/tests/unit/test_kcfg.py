@@ -31,7 +31,7 @@ def term(i: int, with_cond: bool = False) -> CTerm:
     term: KInner = KApply('<top>', [inside])
     if with_cond:
         term = mlAnd([term, mlEquals(KVariable('x'), token(i))])
-    return CTerm(term)
+    return CTerm(term, ())
 
 
 def node_short_info(ct: CTerm) -> Iterable[str]:
@@ -210,8 +210,8 @@ def test_cover_then_remove() -> None:
     cfg = KCFG()
 
     # When
-    node1 = cfg.create_node(CTerm(KApply('<top>', [token(1)])))
-    node2 = cfg.create_node(CTerm(KApply('<top>', [KVariable('X')])))
+    node1 = cfg.create_node(CTerm(KApply('<top>', token(1)), ()))
+    node2 = cfg.create_node(CTerm(KApply('<top>', KVariable('X')), ()))
     cover = cfg.create_cover(node1.id, node2.id)
 
     # Then
