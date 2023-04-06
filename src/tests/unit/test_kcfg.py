@@ -7,7 +7,7 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KVariable
 from pyk.kcfg import KCFG
-from pyk.prelude.ml import mlAnd, mlEquals, mlTop
+from pyk.prelude.ml import mlEquals, mlTop
 from pyk.prelude.utils import token
 from pyk.utils import shorten_hash
 
@@ -29,9 +29,8 @@ def term(i: int, with_cond: bool = False) -> CTerm:
     if i > 10:
         inside = KVariable('V' + str(i))
     term: KInner = KApply('<top>', [inside])
-    if with_cond:
-        term = mlAnd([term, mlEquals(KVariable('x'), token(i))])
-    return CTerm(term, ())
+    conds = (mlEquals(KVariable('x'), token(i)),) if with_cond else ()
+    return CTerm(term, conds)
 
 
 def node_short_info(ct: CTerm) -> Iterable[str]:
