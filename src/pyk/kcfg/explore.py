@@ -7,6 +7,7 @@ from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KVariable, Subst
 from ..kast.manip import flatten_label, free_vars
 from ..kore.rpc import KoreClient, KoreServer
+from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_bottom, is_top, mlEquals, mlTop
 from ..utils import shorten_hashes, single
@@ -44,6 +45,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         smt_timeout: Optional[int] = None,
         smt_retry_limit: Optional[int] = None,
         bug_report: Optional[BugReport] = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Optional[Path] = None,
     ):
         self.kprint = kprint
         self._port = port
@@ -51,6 +55,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._smt_timeout = smt_timeout
         self._smt_retry_limit = smt_retry_limit
         self._bug_report = bug_report
+        self._haskell_log_format = haskell_log_format
+        self._haskell_log_entries = haskell_log_entries
+        self._log_axioms_file = log_axioms_file
         self._kore_server = None
         self._kore_client = None
         self._rpc_closed = False
@@ -74,6 +81,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 command=self._kore_rpc_command,
                 smt_timeout=self._smt_timeout,
                 smt_retry_limit=self._smt_retry_limit,
+                haskell_log_format=self._haskell_log_format,
+                haskell_log_entries=self._haskell_log_entries,
+                log_axioms_file=self._log_axioms_file,
             )
         if not self._kore_client:
             self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
@@ -100,17 +110,17 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _, kore_client = self._kore_rpc
         er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
         depth = er.depth
-        next_state = CTerm(self.kprint.kore_to_kast(er.state.kore))
+        next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None and len(er.next_states) > 1 else []
         # TODO: should not have to prune bottom branches, the backend should do this for us.
         next_states = []
         for ns in _next_states:
             _LOGGER.info(f'Checking for bottom branch: {ns}')
-            _ns = self.cterm_simplify(CTerm(self.kprint.kore_to_kast(ns.kore)))
+            _ns = self.cterm_simplify(CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)))
             if is_bottom(_ns):
                 _LOGGER.warning(f'Found bottom branch: {ns}')
             else:
-                next_states.append(CTerm(_ns))
+                next_states.append(CTerm.from_kast(_ns))
         if len(next_states) == 1 and len(next_states) < len(_next_states):
             return depth + 1, next_states[0], []
         return depth, next_state, next_states
@@ -191,7 +201,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if is_bottom(new_term):
                 raise ValueError(f'Node simplified to #Bottom {cfgid}: {shorten_hashes(node.id)}')
             if new_term != node.cterm.kast:
-                cfg.replace_node(node.id, CTerm(new_term))
+                cfg.replace_node(node.id, CTerm.from_kast(new_term))
         return cfg
 
     def step(self, cfgid: str, cfg: KCFG, node_id: str, depth: int = 1) -> Tuple[KCFG, str]:
