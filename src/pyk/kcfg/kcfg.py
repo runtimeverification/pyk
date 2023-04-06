@@ -158,7 +158,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         def to_dict(self) -> Dict[str, Any]:
             return {
                 'source': self.source.id,
-                'targets': list(self.targets),
+                'targets': [target.id for target in self.targets],
             }
 
         def pretty(self, kprint: KPrint) -> List[str]:
