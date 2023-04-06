@@ -1,7 +1,7 @@
 from typing import Final
 
+from ..dequote import dequote_str, enquote_str
 from ..kast.inner import KSort, KToken
-from ..utils import dequote_str, enquote_str
 
 BYTES: Final = KSort('Bytes')
 
