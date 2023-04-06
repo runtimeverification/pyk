@@ -174,7 +174,7 @@ def tuple_of(
 
 def tuple_of(*args: Callable) -> Callable:
     def res(t: tuple) -> tuple:
-        return tuple(f(x) for f, x in zip(args, t))
+        return tuple(f(x) for f, x in zip(args, t, strict=True))
 
     return res
 

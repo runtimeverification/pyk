@@ -1075,7 +1075,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             if type(_kast) is KApply:
                 prod = self.production_for_klabel(_kast.label)
                 if len(prod.params) == 0:
-                    for t, a in zip(prod.argument_sorts, _kast.args):
+                    for t, a in zip(prod.argument_sorts, _kast.args, strict=True):
                         if type(a) is KVariable:
                             _var_sort_occurrences[a.name].append(a.let_sort(t))
             if type(_kast) is KSequence and _kast.arity > 0:
@@ -1191,7 +1191,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 production = self.production_for_klabel(_kast.label)
                 production_arity = [prod_item.sort for prod_item in production.items if type(prod_item) is KNonTerminal]
                 new_args = []
-                for sort, arg in zip(production_arity, _kast.args):
+                for sort, arg in zip(production_arity, _kast.args, strict=True):
                     if sort.name.endswith('Cell') and type(arg) is KVariable:
                         new_args.append(self.empty_config(sort))
                     else:

@@ -853,7 +853,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         source = self.node(source_id)
         branch_node_ids = [self.get_or_create_node(source.cterm.add_constraint(c)).id for c in constraints]
         csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
-        self.create_split(source.id, zip(branch_node_ids, csubsts))
+        self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids
 
     def add_alias(self, alias: str, node_id: str) -> None:

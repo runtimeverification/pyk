@@ -289,7 +289,9 @@ def push_down_rewrites(kast: KInner) -> KInner:
             if type(lhs) is KVariable and type(rhs) is KVariable and lhs.name == rhs.name:
                 return lhs
             if type(lhs) is KApply and type(rhs) is KApply and lhs.label == rhs.label and lhs.arity == rhs.arity:
-                new_args = [KRewrite(left_arg, right_arg) for left_arg, right_arg in zip(lhs.args, rhs.args)]
+                new_args = [
+                    KRewrite(left_arg, right_arg) for left_arg, right_arg in zip(lhs.args, rhs.args, strict=True)
+                ]
                 return lhs.let(args=new_args)
             if type(lhs) is KSequence and type(rhs) is KSequence and lhs.arity > 0 and rhs.arity > 0:
                 if lhs.arity == 1 and rhs.arity == 1:

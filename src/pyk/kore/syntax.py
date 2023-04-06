@@ -2256,7 +2256,7 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
         if nr_sort_vars != nr_sorts:
             raise ValueError(f'Expected {nr_sort_vars} sort parameters, got {nr_sorts} for: {symbol_id}')
 
-        sort_table: dict[Sort, Sort] = dict(zip(symbol.vars, sorts))
+        sort_table: dict[Sort, Sort] = dict(zip(symbol.vars, sorts, strict=True))
 
         def resolve_sort(sort: Sort) -> Sort:
             if type(sort) is SortVar:

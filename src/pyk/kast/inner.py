@@ -446,7 +446,9 @@ class KApply(KInner):
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KApply and term.label.name == self.label.name and term.arity == self.arity:
-            return KInner._combine_matches(arg.match(term_arg) for arg, term_arg in zip(self.args, term.args))
+            return KInner._combine_matches(
+                arg.match(term_arg) for arg, term_arg in zip(self.args, term.args, strict=True)
+            )
         _LOGGER.debug(f'Matching failed: ({self}.match({term}))')
         return None
 
@@ -650,11 +652,13 @@ class KSequence(KInner, Sequence[KInner]):
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KSequence:
             if term.arity == self.arity:
-                return KInner._combine_matches(item.match(term_item) for item, term_item in zip(self.items, term.items))
+                return KInner._combine_matches(
+                    item.match(term_item) for item, term_item in zip(self.items, term.items, strict=True)
+                )
             if 0 < self.arity and self.arity < term.arity and type(self.items[-1]) is KVariable:
                 common_length = len(self.items) - 1
                 _subst: Subst | None = Subst({self.items[-1].name: KSequence(term.items[common_length:])})
-                for si, ti in zip(self.items[:common_length], term.items[:common_length]):
+                for si, ti in zip(self.items[:common_length], term.items[:common_length], strict=True):
                     _subst = KInner._combine_matches([_subst, si.match(ti)])
                 return _subst
         _LOGGER.debug(f'Matching failed: ({self}.match({term}))')
