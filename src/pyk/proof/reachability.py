@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, Optional, Type, TypeVar
 
 from ..kcfg import KCFG
 from ..prelude.ml import mlAnd
-from ..utils import shorten_hashes
+from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -26,6 +27,20 @@ class AGProof(Proof):
     def __init__(self, id: str, kcfg: KCFG, proof_dir: Optional[Path] = None):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
+
+    @staticmethod
+    def read_proof(id: str, proof_dir: Path) -> Proof:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if AGProof.proof_exists(id, proof_dir):
+            proof_dict = json.loads(proof_path.read_text())
+            _LOGGER.info(f'Reading AGProof from file {id}: {proof_path}')
+            return AGProof.from_dict(proof_dict)
+        raise ValueError(f'Could not load AGProof from file {id}: {proof_path}')
+
+    @staticmethod
+    def proof_exists(id: str, proof_dir: Path) -> bool:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        return proof_path.exists() and proof_path.is_file()
 
     @property
     def status(self) -> ProofStatus:

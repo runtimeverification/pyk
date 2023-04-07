@@ -38,21 +38,6 @@ class Proof(ABC):
         proof_path.write_text(json.dumps(self.dict))
         _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
 
-    @classmethod
-    @staticmethod
-    def read_proof(cls: Type[Proof], id: str, proof_dir: Path) -> Proof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if Proof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading {type(cls)} from file {id}: {proof_path}')
-            return cls.from_dict(proof_dict)
-        raise ValueError(f'Could not load {type(cls)} from file {id}: {proof_path}')
-
-    @staticmethod
-    def proof_exists(id: str, proof_dir: Path) -> bool:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        return proof_path.exists() and proof_path.is_file()
-
     @property
     @abstractmethod
     def status(self) -> ProofStatus:
