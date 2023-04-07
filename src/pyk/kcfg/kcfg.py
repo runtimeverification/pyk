@@ -145,6 +145,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
     @dataclass(frozen=True)
     class NDBranch(MultiEdge):
+        source: KCFG.Node
+        targets: Tuple[KCFG.Node, ...]
+
         def to_dict(self) -> Dict[str, Any]:
             return {
                 'source': self.source.id,
