@@ -885,7 +885,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if (source_id is None or source_id == s.source.id) and (target_id is None or target_id in s.target_ids)
         ]
 
-    def ndbranches(self, *, source_id: Optional[str] = None, target_id: Optional[str] = None) -> list[NDBranch]:
+    def ndbranches(self, *, source_id: str | None = None, target_id: str | None = None) -> list[NDBranch]:
         return [
             b
             for b in self._ndbranches.values()

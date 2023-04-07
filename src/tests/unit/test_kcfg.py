@@ -58,7 +58,9 @@ def split(i: int, js: Iterable[int]) -> KCFG.Split:
         csubst = term(i).match_with_constraint(term(j))
         assert csubst is not None
         split_substs.append(csubst)
-    return KCFG.Split(node(i), tuple(map(node, js)), {n.id: s for n, s in zip(map(node, js), split_substs, strict=True)})
+    return KCFG.Split(
+        node(i), tuple(map(node, js)), {n.id: s for n, s in zip(map(node, js), split_substs, strict=True)}
+    )
 
 
 def ndbranch(i: int, js: Iterable[int]) -> KCFG.NDBranch:
@@ -102,7 +104,7 @@ def split_dicts(*edges: tuple[int, Iterable[tuple[int, KInner]]]) -> dict[str, A
     return splits
 
 
-def ndbranch_dicts(*edges: Tuple[int, Iterable[Tuple[int, bool]]]) -> Dict[str, Any]:
+def ndbranch_dicts(*edges: tuple[int, Iterable[tuple[int, bool]]]) -> dict[str, Any]:
     ndbranches = {}
     for s, ts in edges:
         target_ids = [nid(t, b) for t, b in ts]
