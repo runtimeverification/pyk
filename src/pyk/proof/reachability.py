@@ -138,7 +138,7 @@ class AGProver:
 
             else:
                 branches = list(extract_branches(cterm)) if extract_branches is not None else []
-                if len(branches) != len(next_cterms) and AGProver._is_nd_branch(next_cterms):
+                if len(branches) != len(next_cterms) and AGProver.is_nd_branch(next_cterms):
                     next_ids = [self.proof.kcfg.get_or_create_node(ct).id for ct in next_cterms]
                     self.proof.kcfg.create_ndbranch(curr_node.id, next_ids)
                 else:
@@ -156,7 +156,7 @@ class AGProver:
         return self.proof.kcfg
 
     @staticmethod
-    def _is_nd_branch(next_cterms: Iterable[CTerm]) -> bool:
+    def is_nd_branch(next_cterms: Iterable[CTerm]) -> bool:
         def has_unused_questionmark_variables(term: KInner, *, used_variable_names: dict[str, Any]) -> bool:
             return (
                 len([var for var in var_occurrences(term) if var not in used_variable_names and var.startswith('?')])
