@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, Optional, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Dict, Final, Iterable, List, Optional, Type, TypeVar
 
+from ..kast.inner import var_occurrences
 from ..kcfg import KCFG
-from ..kcfg.kcfg import is_nd_branch
 from ..prelude.ml import mlAnd
 from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from ..cterm import CTerm
-    from ..kast.inner import KInner
+    from ..kast.inner import KInner, KVariable
     from ..kcfg import KCFGExplore
 
 T = TypeVar('T', bound='Proof')
@@ -133,7 +133,7 @@ class AGProver:
 
             else:
                 branches = list(extract_branches(cterm)) if extract_branches is not None else []
-                if len(branches) != len(next_cterms) and is_nd_branch(next_cterms):
+                if len(branches) != len(next_cterms) and AGProver._is_nd_branch(next_cterms):
                     next_ids = [self.proof.kcfg.get_or_create_node(ct).id for ct in next_cterms]
                     self.proof.kcfg.create_ndbranch(curr_node.id, next_ids)
                 else:
@@ -149,3 +149,23 @@ class AGProver:
 
         _write_proof()
         return self.proof.kcfg
+
+    @staticmethod
+    def _is_nd_branch(next_cterms: Iterable[CTerm]) -> bool:
+        def has_unused_questionmark_variables(term: KInner, *, used_variable_names: Dict[str, Any]) -> bool:
+            return (
+                len([var for var in var_occurrences(term) if var not in used_variable_names and var.startswith('?')])
+                > 0  #
+            )
+
+        for ct in next_cterms:
+            used_variables: Dict[str, List[KVariable]] = var_occurrences(ct.config)
+            has_constraint = False
+            for constraint in ct.constraints:
+                if not constraint in ct.constraints:
+                    if has_unused_questionmark_variables(constraint, used_variable_names=used_variables):
+                        continue
+                    has_constraint = True
+            if not has_constraint:
+                return True
+        return False

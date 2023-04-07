@@ -1124,21 +1124,3 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         return visited
 
-
-def is_nd_branch(next_cterms: Iterable[CTerm]) -> bool:
-    def has_unused_questionmark_variables(term: KInner, *, used_variable_names: Dict[str, Any]) -> bool:
-        return (
-            len([var for var in var_occurrences(term) if var not in used_variable_names and var.startswith('?')]) > 0  #
-        )
-
-    for ct in next_cterms:
-        used_variables: Dict[str, List[KVariable]] = var_occurrences(ct.config)
-        has_constraint = False
-        for constraint in ct.constraints:
-            if not constraint in ct.constraints:
-                if has_unused_questionmark_variables(constraint, used_variable_names=used_variables):
-                    continue
-                has_constraint = True
-        if not has_constraint:
-            return True
-    return False
