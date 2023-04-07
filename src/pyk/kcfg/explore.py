@@ -14,6 +14,7 @@ from ..utils import shorten_hashes, single
 from .kcfg import KCFG
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from typing import Any, Dict, Final, Iterable, List, Optional, Tuple, Union
 
     from ..cli_utils import BugReport
