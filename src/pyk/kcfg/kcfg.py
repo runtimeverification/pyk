@@ -264,6 +264,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> KCFG:
         cfg = KCFG()
+        dct = dct.get('cfg')
 
         nodes: Dict[str, str] = {}
 

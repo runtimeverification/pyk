@@ -76,7 +76,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if cfg_path.exists():
             cfg_dict = json.loads(cfg_path.read_text())
             _LOGGER.info(f'Reading KCFG from file {cfgid}: {cfg_path}')
-            return KCFG.from_dict(cfg_dict['cfg'])
+            return KCFG.from_dict(cfg_dict)
         return None
 
     @staticmethod
