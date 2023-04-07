@@ -453,8 +453,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
             if isinstance(successor, KCFG.MultiEdge):
                 ret_lines.append(('unknown', [f'{indent}┃']))
-                if type(successor) is KCFG.NDBranch:
-                    ret_lines.append(('unknown', [f'{indent}┃ (1 step)']))
+                multiedge_label = '1 step' if type(successor) is KCFG.NDBranch else 'branch'
+                ret_lines.append(('unknown', [f'{indent}┃ ({multiedge_label})']))
 
                 for target in successor.targets[:-1]:
                     if type(successor) is KCFG.Split:
