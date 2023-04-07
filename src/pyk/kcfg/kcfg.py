@@ -117,7 +117,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         targets: tuple[KCFG.Node, ...]
 
         @property
-        def target_ids(self) -> List[str]:
+        def target_ids(self) -> list[str]:
             return sorted([t.id for t in self.targets])
 
         def __lt__(self, other: Any) -> bool:

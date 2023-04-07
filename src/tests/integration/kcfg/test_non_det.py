@@ -11,13 +11,13 @@ from pyk.proof import AGProof, AGProver
 from ..utils import KCFGExploreTest
 
 if TYPE_CHECKING:
-    from typing import Iterable, Optional, Tuple
+    from collections.abc import Iterable
 
     from pyk.kcfg import KCFGExplore
     from pyk.ktool.kprove import KProve
 
 
-APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[int], Iterable[str]]] = (
+APR_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, int | None, int | None, Iterable[str]]] = (
     ('test-nondet', 'k-files/non-det-spec.k', 'NON-DET-SPEC', 'non-det', 8, 1, []),
 )
 
@@ -68,7 +68,7 @@ class TestImpProof(KCFGExploreTest):
 
         id1 = kcfg.get_unique_init().id
 
-        def assert_nd_branch(id: str) -> Tuple[str, str]:
+        def assert_nd_branch(id: str) -> tuple[str, str]:
             assert len(kcfg.successors(source_id=id)) == 1
             ndbranches = kcfg.ndbranches(source_id=id)
             assert len(ndbranches) == 1
