@@ -18,7 +18,6 @@ from ..kast.manip import (
     ml_pred_to_bool,
     remove_source_attributes,
     rename_generated_vars,
-    var_occurrences,
 )
 from ..utils import add_indent, compare_short_hashes, shorten_hash
 
@@ -26,7 +25,7 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Set, Tuple, Type
 
-    from ..kast.inner import KInner, KVariable
+    from ..kast.inner import KInner
     from ..kast.outer import KClaim, KDefinition
     from ..ktool.kprint import KPrint
 
@@ -132,15 +131,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     class Split(MultiEdge):
         splits: Dict[str, CSubst]
 
-        def __init__(
-            self,
-            source: KCFG.Node,
-            targets: Iterable[Tuple[KCFG.Node, CSubst]],
-        ):
-            targets = list(targets)
-            super().__init__(source, tuple(n for n, _ in targets))
-            object.__setattr__(self, 'splits', {n.id: s for n, s in targets})
-
         def to_dict(self) -> Dict[str, Any]:
             return {
                 'source': self.source.id,
@@ -151,7 +141,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return [f'Split node: {len(self.targets)}']
 
         def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
-            return KCFG.Split(self.source, [(target, self.splits[target.id])])
+            return KCFG.Split(self.source, (target,), {target.id: self.splits[target.id]})
 
     @dataclass(frozen=True)
     class NDBranch(MultiEdge):
@@ -899,7 +889,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
 
         source_id = self._resolve(source_id)
-        split = KCFG.Split(self.node(source_id), ((self.node(nid), csubst) for nid, csubst in splits))
+        split = KCFG.Split(self.node(source_id), tuple(self.node(nid) for nid, _ in splits), dict(splits))
         self._splits[source_id] = split
 
     def create_ndbranch(self, source_id: str, ndbranches: Iterable[str]) -> None:
@@ -1123,4 +1113,3 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     worklist.append(ndbranch.source)
 
         return visited
-

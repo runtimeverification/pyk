@@ -57,7 +57,7 @@ def split(i: int, js: Iterable[int]) -> KCFG.Split:
         csubst = term(i).match_with_constraint(term(j))
         assert csubst is not None
         split_substs.append(csubst)
-    return KCFG.Split(node(i), zip(map(node, js), split_substs))
+    return KCFG.Split(node(i), tuple(map(node, js)), {n.id: s for n, s in zip(map(node, js), split_substs)})
 
 
 def ndbranch(i: int, js: Iterable[int]) -> KCFG.NDBranch:
