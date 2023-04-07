@@ -34,7 +34,7 @@ class AGProof(Proof):
         if AGProof.proof_exists(id, proof_dir):
             proof_dict = json.loads(proof_path.read_text())
             _LOGGER.info(f'Reading AGProof from file {id}: {proof_path}')
-            return AGProof.from_dict(proof_dict)
+            return AGProof.from_dict(proof_dict, proof_dir=proof_dir)
         raise ValueError(f'Could not load AGProof from file {id}: {proof_path}')
 
     @staticmethod
@@ -52,10 +52,10 @@ class AGProof(Proof):
             return ProofStatus.PASSED
 
     @classmethod
-    def from_dict(cls: Type[AGProof], dct: Dict[str, Any]) -> AGProof:
+    def from_dict(cls: Type[AGProof], dct: Dict[str, Any], proof_dir: Optional[Path] = None) -> AGProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
-        return AGProof(id, cfg)
+        return AGProof(id, cfg, proof_dir=proof_dir)
 
     @property
     def dict(self) -> Dict[str, Any]:
