@@ -129,6 +129,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
     @dataclass(frozen=True)
     class Split(MultiEdge):
+        source: KCFG.Node
+        targets: Tuple[KCFG.Node, ...]
         splits: Dict[str, CSubst]
 
         def to_dict(self) -> Dict[str, Any]:
