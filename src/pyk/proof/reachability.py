@@ -39,11 +39,6 @@ class AGProof(Proof):
             return AGProof.from_dict(proof_dict, proof_dir=proof_dir)
         raise ValueError(f'Could not load AGProof from file {id}: {proof_path}')
 
-    @staticmethod
-    def proof_exists(id: str, proof_dir: Path) -> bool:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        return proof_path.exists() and proof_path.is_file()
-
     @property
     def status(self) -> ProofStatus:
         if len(self.kcfg.stuck) > 0:
