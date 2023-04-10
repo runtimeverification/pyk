@@ -420,6 +420,7 @@ class TestImpProof(KCFGExploreTest):
             return False
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
+        kcfg = kcfg_explore.simplify(f'test: {test_id}', kcfg)
         proof = AGBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
         prover = AGBMCProver(proof, _same_loop)
         kcfg = prover.advance_proof(
