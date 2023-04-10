@@ -11,13 +11,13 @@ from .kast.manip import (
     count_vars,
     flatten_label,
     free_vars,
-    get_cell,
     minimize_rule,
     ml_pred_to_bool,
     push_down_rewrites,
     remove_generated_cells,
     simplify_bool,
     split_config_and_constraints,
+    split_config_from,
 )
 from .kast.outer import KClaim, KRule
 from .prelude.k import GENERATED_TOP_CELL
@@ -95,8 +95,13 @@ class CTerm:
     def hash(self) -> str:
         return self.kast.hash
 
+    @cached_property
+    def cells(self) -> Subst:
+        _, subst = split_config_from(self.config)
+        return Subst(subst)
+
     def cell(self, cell: str) -> KInner:
-        return get_cell(self.config, cell)
+        return self.cells[cell]
 
     def match(self, cterm: CTerm) -> Subst | None:
         csubst = self.match_with_constraint(cterm)
