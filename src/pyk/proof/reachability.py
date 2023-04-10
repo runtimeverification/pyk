@@ -78,7 +78,6 @@ class AGProver:
         implication_every_block: bool = True,
     ) -> bool:
         target_node = self.proof.kcfg.get_unique_target()
-
         if implication_every_block or (is_terminal is not None and is_terminal(curr_node.cterm)):
             _LOGGER.info(
                 f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((curr_node.id, target_node.id))}'
