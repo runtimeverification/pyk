@@ -111,6 +111,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, int | None, int | None, 
     ('imp-simple-addition-1', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-1', 2, 1, []),
     ('imp-simple-addition-2', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-2', 2, 7, []),
     ('imp-simple-addition-var', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-var', 2, 1, []),
+    ('pre-branch-proved', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'pre-branch-proved', 1, 100, []),
     (
         'imp-simple-sum-10',
         'k-files/imp-simple-spec.k',
