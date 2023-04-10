@@ -232,7 +232,7 @@ class AGBMCProver(AGProver):
                         if nd.id != f.id and self._same_loop(nd.cterm, f.cterm)
                     ]
                     _LOGGER.warning(f'prior loops: {prior_loops}')
-                    if len(prior_loops) > self.proof.bmc_depth:
+                    if len(prior_loops) >= self.proof.bmc_depth:
                         self.proof.kcfg.add_expanded(f.id)
                         self.proof.bound_state(f.id)
             _LOGGER.warning('marker 1')
