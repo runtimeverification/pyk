@@ -100,7 +100,6 @@ class AGProver:
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-        simplify_init: bool = True,
         implication_every_block: bool = True,
     ) -> KCFG:
         iterations = 0
