@@ -17,6 +17,10 @@ module IMP-SIMPLE-SPEC
     claim [while-cut-rule-delayed]: <k> $n = 7 ; while (B:Bool) BB:Block => if (B) { BB while (B) BB } else {} ... </k>
                                     <state> $n |-> (_ => ?_) </state>
 
+    claim [bmc-loop]: <k> while (0 <= $n) { $n = $n + -1 ; } => . ... </k>
+                      <state> $n |-> (4 => ?N) </state>
+      ensures 0 <=Int ?N
+
     claim [sum-10]: <k> int $s, $n, .Ids ; $n = 10 ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
                     <state> .Map => $s |-> 55 $n |-> -1 </state>
 
