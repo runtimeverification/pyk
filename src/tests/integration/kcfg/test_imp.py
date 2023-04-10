@@ -7,7 +7,6 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import get_cell
 from pyk.kcfg import KCFG
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
@@ -194,13 +193,13 @@ class TestImpProof(KCFGExploreTest):
         actual_depth, actual_post_term, actual_next_terms = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, k, state), depth=depth
         )
-        actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post_term.kast, 'K_CELL'))
-        actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post_term.kast, 'STATE_CELL'))
+        actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
+        actual_state = kcfg_explore.kprint.pretty_print(actual_post_term.cell('STATE_CELL'))
 
         actual_next_states = [
             (
-                kcfg_explore.kprint.pretty_print(get_cell(s.kast, 'K_CELL')),
-                kcfg_explore.kprint.pretty_print(get_cell(s.kast, 'STATE_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cell('K_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cell('STATE_CELL')),
             )
             for s in actual_next_terms
         ]
