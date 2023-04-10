@@ -11,6 +11,7 @@ from .kast.manip import (
     count_vars,
     flatten_label,
     free_vars,
+    get_cell,
     minimize_rule,
     ml_pred_to_bool,
     push_down_rewrites,
@@ -93,6 +94,9 @@ class CTerm:
     @property
     def hash(self) -> str:
         return self.kast.hash
+
+    def cell(self, cell: str) -> KInner:
+        return get_cell(self.config, cell)
 
     def match(self, cterm: CTerm) -> Subst | None:
         csubst = self.match_with_constraint(cterm)
