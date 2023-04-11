@@ -144,10 +144,10 @@ class AGProver:
                 )
                 curr_node = next_node
 
-            if self._check_subsumption(
-                kcfg_explore, curr_node, is_terminal=is_terminal, implication_every_block=implication_every_block
-            ):
-                continue
+                if self._check_subsumption(
+                    kcfg_explore, curr_node, is_terminal=is_terminal, implication_every_block=implication_every_block
+                ):
+                    continue
 
             if len(next_cterms) == 0:
                 _LOGGER.info(f'Found stuck node {self.proof.id}: {shorten_hashes(curr_node.id)}')
