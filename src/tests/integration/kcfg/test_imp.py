@@ -259,6 +259,14 @@ class TestImpProof(KCFGExploreTest):
         return False
 
     @staticmethod
+    def _same_loop(cterm1: CTerm, cterm2: CTerm) -> bool:
+        k_cell_1 = cterm1.cell('K_CELL')
+        k_cell_2 = cterm2.cell('K_CELL')
+        if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
+            return k_cell_1[0].label.name == 'while(_)_'
+        return False
+
+    @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: KInner | None = None) -> CTerm:
         k_parsed = kprint.parse_token(KToken(k, 'Pgm'), as_rule=True)
         state_parsed = kprint.parse_token(KToken(state, 'Map'), as_rule=True)
@@ -424,17 +432,10 @@ class TestImpProof(KCFGExploreTest):
         )
         assert len(claims) == 1
 
-        def _same_loop(cterm1: CTerm, cterm2: CTerm) -> bool:
-            k_cell_1 = cterm1.cell('K_CELL')
-            k_cell_2 = cterm2.cell('K_CELL')
-            if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
-                return k_cell_1[0].label.name == 'while(_)_'
-            return False
-
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
         kcfg = kcfg_explore.simplify(f'test: {test_id}', kcfg)
         proof = AGBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
-        prover = AGBMCProver(proof, _same_loop)
+        prover = AGBMCProver(proof, TestImpProof._same_loop)
         kcfg = prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
