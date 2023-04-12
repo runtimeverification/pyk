@@ -221,9 +221,7 @@ class AGBMCProver(AGProver):
         while self.proof.kcfg.frontier:
             self.proof.write_proof()
 
-            _LOGGER.warning(f'bmc prove frontier: {[nd.id for nd in self.proof.kcfg.frontier]}')
             for f in self.proof.kcfg.frontier:
-                _LOGGER.warning(f'checking node: {f.id}')
                 if f.id not in self._checked_nodes:
                     self._checked_nodes.append(f.id)
                     prior_loops = [
@@ -231,17 +229,14 @@ class AGBMCProver(AGProver):
                         for nd in self.proof.kcfg.reachable_nodes(f.id, reverse=True, traverse_covers=True)
                         if nd.id != f.id and self._same_loop(nd.cterm, f.cterm)
                     ]
-                    _LOGGER.warning(f'prior loops: {prior_loops}')
                     if len(prior_loops) >= self.proof.bmc_depth:
                         self.proof.kcfg.add_expanded(f.id)
                         self.proof.bound_state(f.id)
-            _LOGGER.warning('marker 1')
             if max_iterations is not None and max_iterations <= iterations:
                 _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
                 break
             iterations += 1
 
-            _LOGGER.warning('marker 2')
             super().advance_proof(
                 kcfg_explore,
                 is_terminal=is_terminal,
@@ -252,7 +247,6 @@ class AGBMCProver(AGProver):
                 terminal_rules=terminal_rules,
                 implication_every_block=implication_every_block,
             )
-            _LOGGER.warning('marker 3')
 
         self.proof.write_proof()
         return self.proof.kcfg
