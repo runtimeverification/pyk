@@ -219,6 +219,16 @@ class TestImpProof(KCFGExploreTest):
         symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
 
     @staticmethod
+    def _is_terminal(cterm1: CTerm) -> bool:
+        k_cell = cterm1.cell('K_CELL')
+        if type(k_cell) is KSequence:
+            if len(k_cell) == 0:
+                return True
+            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
+                return True
+        return False
+
+    @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: KInner | None = None) -> CTerm:
         k_parsed = kprint.parse_token(KToken(k, 'Pgm'), as_rule=True)
         state_parsed = kprint.parse_token(KToken(state, 'Map'), as_rule=True)
@@ -355,6 +365,7 @@ class TestImpProof(KCFGExploreTest):
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
+            is_terminal=TestImpProof._is_terminal,
         )
 
         assert proof.status == proof_status
