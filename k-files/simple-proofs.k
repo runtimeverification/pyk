@@ -29,7 +29,8 @@ module SIMPLE-PROOFS
     rule [foo-to-bar-false]:
          <k> (foo => bar) ~> _RestK </k>
          <state> (3 |-> N) _RestState </state>
-      requires pred1(N) andBool false   
+      requires pred1(N) andBool false
+      [priority(30)]
 
     syntax KItem ::= Step
     syntax Step ::= "a" | "b" | "c" | "d" | "e"

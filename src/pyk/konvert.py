@@ -71,13 +71,14 @@ def kast_to_kore(
     return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
 
 
-def _krule_to_kore(defn: KDefinition, kprint: KPrint, krule: KRule) -> Axiom:
+def _krule_to_kore(kprint: KPrint, krule: KRule) -> Axiom:
     krule_body = krule.body
     krule_lhs = CTerm(extract_lhs(krule_body), constraints=()).add_constraint(bool_to_ml_pred(krule.requires))
     krule_rhs = CTerm(extract_rhs(krule_body), constraints=()).add_constraint(bool_to_ml_pred(krule.ensures))
 
     kore_lhs = kprint.kast_to_kore(krule_lhs.kast, GENERATED_TOP_CELL)
     kore_rhs = kprint.kast_to_kore(krule_rhs.kast, GENERATED_TOP_CELL)
+    prio = krule.priority
     a = Axiom(
         vars=(),
         pattern=Rewrites(
@@ -85,7 +86,10 @@ def _krule_to_kore(defn: KDefinition, kprint: KPrint, krule: KRule) -> Axiom:
             left=kore_lhs,
             right=kore_rhs,
         ),
-        attrs=(),
+        attrs=(
+            # App(symbol='priority', sorts=(), args=(DV(SortApp(name='SortInt', sorts=()), value=String(str(prio))),)),
+            App(symbol='priority', sorts=(), args=(String(str(prio)),)),
+        ),
     )
     return a
 
