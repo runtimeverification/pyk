@@ -607,6 +607,10 @@ class KRule(KRuleLike):
     def let_att(self, att: KAtt) -> KRule:
         return self.let(att=att)
 
+    @property
+    def priority(self) -> int:
+        return int(self.att['priority']) if 'priority' in self.att else 50
+
 
 @final
 @dataclass(frozen=True)

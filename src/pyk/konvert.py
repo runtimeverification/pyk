@@ -4,10 +4,12 @@ import logging
 from functools import reduce
 from typing import TYPE_CHECKING
 
+from .cterm import CTerm
 from .kast.inner import KApply, KSequence, KSort, KToken, KVariable
-from .kore.syntax import DV, App, EVar, MLPattern, MLQuant, SortApp, String
+from .kast.manip import bool_to_ml_pred, extract_lhs, extract_rhs
+from .kore.syntax import DV, App, Axiom, EVar, MLPattern, MLQuant, Rewrites, SortApp, String
 from .prelude.bytes import BYTES
-from .prelude.k import K
+from .prelude.k import GENERATED_TOP_CELL, K
 from .prelude.string import STRING
 from .utils import FrozenDict
 
@@ -15,9 +17,10 @@ if TYPE_CHECKING:
     from typing import Final
 
     from .kast import KInner
-    from .kast.outer import KDefinition
+    from .kast.outer import KDefinition, KRule
     from .kore.kompiled import KompiledKore
     from .kore.syntax import Pattern, Sort
+    from .ktool.kprint import KPrint
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -66,6 +69,29 @@ def kast_to_kore(
     kast = kast_defn.add_cell_map_items(kast)
     kore = _kast_to_kore(kast)
     return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
+
+
+def _krule_to_kore(kprint: KPrint, krule: KRule) -> Axiom:
+    krule_body = krule.body
+    krule_lhs = CTerm(extract_lhs(krule_body), constraints=()).add_constraint(bool_to_ml_pred(krule.requires))
+    krule_rhs = CTerm(extract_rhs(krule_body), constraints=()).add_constraint(bool_to_ml_pred(krule.ensures))
+
+    kore_lhs = kprint.kast_to_kore(krule_lhs.kast, GENERATED_TOP_CELL)
+    kore_rhs = kprint.kast_to_kore(krule_rhs.kast, GENERATED_TOP_CELL)
+    prio = krule.priority
+    a = Axiom(
+        vars=(),
+        pattern=Rewrites(
+            sort=SortApp(name='SortGeneratedTopCell', sorts=()),
+            left=kore_lhs,
+            right=kore_rhs,
+        ),
+        attrs=(
+            # App(symbol='priority', sorts=(), args=(DV(SortApp(name='SortInt', sorts=()), value=String(str(prio))),)),
+            App(symbol='priority', sorts=(), args=(String(str(prio)),)),
+        ),
+    )
+    return a
 
 
 def _kast_to_kore(kast: KInner) -> Pattern:
