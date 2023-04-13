@@ -304,6 +304,8 @@ class TestImpProof(KCFGExploreTest):
                 return True
             if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
                 return True
+        if type(k_cell) is KVariable:
+            return True
         return False
 
     @staticmethod
@@ -490,6 +492,7 @@ class TestImpProof(KCFGExploreTest):
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
+            is_terminal=TestImpProof._is_terminal,
         )
 
         assert proof.status == proof_status
