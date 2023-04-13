@@ -59,5 +59,6 @@ class Proof(ABC):
     def from_dict(cls: type[Proof], dct: Mapping[str, Any]) -> Proof:
         ...
 
+    @property
     def summary(self) -> Iterable[str]:
         return [self.id]

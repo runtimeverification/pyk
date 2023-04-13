@@ -58,6 +58,7 @@ class AGProof(Proof):
     def dict(self) -> dict[str, Any]:
         return {'type': 'AGProof', 'id': self.id, 'cfg': self.kcfg.to_dict()}
 
+    @property
     def summary(self) -> Iterable[str]:
         return [
             f'AGProof: {self.id}',
