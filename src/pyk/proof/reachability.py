@@ -105,6 +105,15 @@ class AGProver:
                 return True
         return False
 
+    def _check_terminal(self, curr_node: KCFG.Node, is_terminal: Callable[[CTerm], bool] | None = None) -> bool:
+        if is_terminal is not None:
+            _LOGGER.info(f'Checking terminal {self.proof.id}: {shorten_hashes(curr_node.id)}')
+            if is_terminal(curr_node.cterm):
+                _LOGGER.info(f'Terminal node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
+                self.proof.kcfg.add_expanded(curr_node.id)
+                return True
+        return False
+
     def advance_proof(
         self,
         kcfg_explore: KCFGExplore,
@@ -132,12 +141,8 @@ class AGProver:
             ):
                 continue
 
-            if is_terminal is not None:
-                _LOGGER.info(f'Checking terminal {self.proof.id}: {shorten_hashes(curr_node.id)}')
-                if is_terminal(curr_node.cterm):
-                    _LOGGER.info(f'Terminal node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
-                    self.proof.kcfg.add_expanded(curr_node.id)
-                    continue
+            if self._check_terminal(curr_node, is_terminal=is_terminal):
+                continue
 
             self.proof.kcfg.add_expanded(curr_node.id)
 
