@@ -17,13 +17,13 @@ module IMP-SIMPLE-SPEC
     claim [while-cut-rule-delayed]: <k> $n = 7 ; while (B:Bool) BB:Block => if (B) { BB while (B) BB } else {} ... </k>
                                     <state> $n |-> (_ => ?_) </state>
 
-    claim [bmc-loop]: <k> while (0 <= $n) { $n = $n + -1 ; } => . ... </k>
-                      <state> $n |-> (1 => ?N) </state>
+    claim [bmc-loop-concrete]: <k> while (0 <= $n) { $n = $n + -1 ; } => . ... </k>
+                               <state> $n |-> (1 => ?N) </state>
       ensures 0 <Int ?N
 
-    claim [bmc-loop-indeterminate]: <k> while ($s <= $n) { $n = $n + -1 ; } => . ... </k>
-                      <state> ($n |-> (1 => ?N)) ($s |-> M) </state>
-      requires 0 <=Int M
+    claim [bmc-loop-symbolic]: <k> while ($s <= $n) { $n = $n + -1 ; } => . ... </k>
+                               <state> ($n |-> (1 => ?N)) ($s |-> S) </state>
+      requires 0 <=Int S
        ensures 0 <Int ?N
 
     claim [sum-10]: <k> int $s, $n, .Ids ; $n = 10 ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
