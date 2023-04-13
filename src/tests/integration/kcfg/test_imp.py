@@ -226,6 +226,18 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         ['IMP.while'],
         ProofStatus.PASSED,
     ),
+    (
+        'bmc-loop-past-loop',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-loop',
+        5,
+        20,
+        3,
+        [],
+        ['IMP.while'],
+        ProofStatus.PASSED,
+    ),
 )
 
 
