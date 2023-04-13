@@ -146,7 +146,7 @@ def test_kore_rpc(definition_dir: Path, text: str) -> None:
     try:
         text.encode('latin-1')
     except ValueError:
-        # https://github.com/runtimeverification/haskell-backend/issues/3563
+        # https://github.com/runtimeverification/pyk/issues/348
         pytest.skip()
 
     # Given
