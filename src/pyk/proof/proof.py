@@ -11,7 +11,7 @@ from ..utils import hash_str
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
-    from typing import Any, Final, TypeVar
+    from typing import Any, Final, Iterable, TypeVar
 
     T = TypeVar('T', bound='Proof')
 
@@ -58,3 +58,6 @@ class Proof(ABC):
     @abstractmethod
     def from_dict(cls: type[Proof], dct: Mapping[str, Any]) -> Proof:
         ...
+
+    def summary(self) -> Iterable[str]:
+        return [self.id]
