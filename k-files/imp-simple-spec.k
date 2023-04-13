@@ -18,8 +18,13 @@ module IMP-SIMPLE-SPEC
                                     <state> $n |-> (_ => ?_) </state>
 
     claim [bmc-loop]: <k> while (0 <= $n) { $n = $n + -1 ; } => . ... </k>
-                      <state> $n |-> (4 => ?N) </state>
-      ensures 0 <=Int ?N
+                      <state> $n |-> (1 => ?N) </state>
+      ensures 0 <Int ?N
+
+    claim [bmc-loop-indeterminate]: <k> while ($s <= $n) { $n = $n + -1 ; } => . ... </k>
+                      <state> ($n |-> (1 => ?N)) ($s |-> M) </state>
+      requires 0 <=Int M
+       ensures 0 <Int ?N
 
     claim [sum-10]: <k> int $s, $n, .Ids ; $n = 10 ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
                     <state> .Map => $s |-> 55 $n |-> -1 </state>
