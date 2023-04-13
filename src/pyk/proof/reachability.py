@@ -123,6 +123,16 @@ class AGBMCProof(AGProof):
     def bound_state(self, nid: str) -> None:
         self._bounded_states.append(nid)
 
+    @property
+    def summary(self) -> Iterable[str]:
+        return [
+            f'AGBMCProof: {self.id}',
+            f'    nodes: {len(self.kcfg.nodes)}',
+            f'    frontier: {len(self.kcfg.frontier)}',
+            f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_states])}',
+            f'    bmc-depth-bounded: {len(self._bounded_states)}',
+        ]
+
 
 class AGProver:
     proof: AGProof
