@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from ..cterm import CTerm
     from ..kast.inner import KInner
     from ..kcfg import KCFGExplore
-    from ..ktool.kprint import KPrint
 
     T = TypeVar('T', bound='Proof')
 
@@ -66,15 +65,6 @@ class AGProof(Proof):
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
         ]
-
-    def pretty(
-        self,
-        kprint: KPrint,
-        minimize: bool = True,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-        omit_node_hash: bool = False,
-    ) -> Iterable[str]:
-        return self.kcfg.pretty(kprint, minimize=minimize, node_printer=node_printer, omit_node_hash=omit_node_hash)
 
 
 class AGProver:
