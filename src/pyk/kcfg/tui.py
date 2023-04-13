@@ -251,18 +251,18 @@ class KCFGViewer(App):
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
         if message.chunk_id.startswith('node_'):
             self._selected_chunk = message.chunk_id
-            node = message.chunk_id[5:]
+            node, *_ = message.chunk_id[5:].split('_')
             self.query_one('#node-view', NodeView).update(self._kcfg.node(node))
 
         elif message.chunk_id.startswith('edge_'):
             self._selected_chunk = None
-            node_source, node_target = message.chunk_id[5:].split('_')
+            node_source, node_target, *_ = message.chunk_id[5:].split('_')
             edge = single(self._kcfg.edges(source_id=node_source, target_id=node_target))
             self.query_one('#node-view', NodeView).update(edge)
 
         elif message.chunk_id.startswith('cover_'):
             self._selected_chunk = None
-            node_source, node_target = message.chunk_id[6:].split('_')
+            node_source, node_target, *_ = message.chunk_id[6:].split('_')
             cover = single(self._kcfg.covers(source_id=node_source, target_id=node_target))
             self.query_one('#node-view', NodeView).update(cover)
 
