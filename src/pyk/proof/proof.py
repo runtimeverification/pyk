@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 from ..utils import hash_str
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
     from pathlib import Path
-    from typing import Any, Final, Iterable, TypeVar
+    from typing import Any, Final, TypeVar
 
     T = TypeVar('T', bound='Proof')
 
