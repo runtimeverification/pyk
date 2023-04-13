@@ -73,7 +73,6 @@ class AGProof(Proof):
         minimize: bool = True,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
         omit_node_hash: bool = False,
-        **kwargs: Any,
     ) -> Iterable[str]:
         return self.kcfg.pretty(kprint, minimize=minimize, node_printer=node_printer, omit_node_hash=omit_node_hash)
 
