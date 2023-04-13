@@ -73,25 +73,22 @@ def kast_to_kore(
 
 def _krule_to_kore(kprint: KPrint, krule: KRule) -> Axiom:
     krule_body = krule.body
-    krule_lhs = CTerm(extract_lhs(krule_body), constraints=()).add_constraint(bool_to_ml_pred(krule.requires))
-    krule_rhs = CTerm(extract_rhs(krule_body), constraints=()).add_constraint(bool_to_ml_pred(krule.ensures))
+    krule_lhs = CTerm(extract_lhs(krule_body), [bool_to_ml_pred(krule.requires)])
+    krule_rhs = CTerm(extract_rhs(krule_body), [bool_to_ml_pred(krule.ensures)])
 
     kore_lhs = kprint.kast_to_kore(krule_lhs.kast, GENERATED_TOP_CELL)
     kore_rhs = kprint.kast_to_kore(krule_rhs.kast, GENERATED_TOP_CELL)
     prio = krule.priority
-    a = Axiom(
+    axiom = Axiom(
         vars=(),
         pattern=Rewrites(
             sort=SortApp(name='SortGeneratedTopCell', sorts=()),
             left=kore_lhs,
             right=kore_rhs,
         ),
-        attrs=(
-            # App(symbol='priority', sorts=(), args=(DV(SortApp(name='SortInt', sorts=()), value=String(str(prio))),)),
-            App(symbol='priority', sorts=(), args=(String(str(prio)),)),
-        ),
+        attrs=(App(symbol='priority', sorts=(), args=(String(str(prio)),)),),
     )
-    return a
+    return axiom
 
 
 def _kast_to_kore(kast: KInner) -> Pattern:

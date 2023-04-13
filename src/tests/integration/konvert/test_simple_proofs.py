@@ -13,6 +13,7 @@ from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
+from pyk.utils import single
 
 from ..utils import KPrintTest
 
@@ -389,18 +390,21 @@ class TestKonvertSimpleProofs(KPrintTest):
         rule_id: str,
         kore_text: str,
     ) -> None:
+        # cannot do the following because mypy complains:
+        # `error: "KDefinition" has no attribute "main_module"; maybe "main_module_name"?``
+        # main_module = kprint.definition.main_module
         k_definition = kprint.definition
         ms = [m for m in k_definition.modules if m.name == k_definition.main_module_name]
         assert len(ms) == 1
-        mm = ms[0]
+        main_module = ms[0]
 
-        rules = [r for r in mm.rules if (('label' in r.att) and (r.att['label'] == rule_id))]
-        assert len(rules) == 1
-        r = rules[0]
+        # rules = [r for r in main_module.rules if (('label' in r.att) and (r.att['label'] == rule_id))]
+        # assert len(rules) == 1
+        # r = rules[0]
+        r = single(r for r in main_module.rules if 'label' in r.att and r.att['label'] == rule_id)
 
         # When
         actual_kore_text = _krule_to_kore(kprint, r).text
-        # print(actual_kore_text)
 
         # Then
         assert actual_kore_text == kore_text
