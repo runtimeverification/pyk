@@ -16,7 +16,7 @@ from .kcfg import KCFG
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, Final
+    from typing import Any, Final, Tuple
 
     from ..cli_utils import BugReport
     from ..kast import KInner
@@ -262,6 +262,20 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_nodes.append(curr_node_id)
             new_depth += section_depth
         return (cfg, tuple(new_nodes))
+
+    def target_subsume(
+        self,
+        kcfg: KCFG,
+        node: KCFG.Node,
+    ) -> Tuple[bool, KCFG]:
+        target_node = kcfg.get_unique_target()
+        _LOGGER.info(f'Checking subsumption into target state {self.id}: {shorten_hashes((node.id, target_node.id))}')
+        csubst = self.cterm_implies(node.cterm, target_node.cterm)
+        if csubst is not None:
+            kcfg.create_cover(node.id, target_node.id, csubst=csubst)
+            _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((node.id, target_node.id))}')
+            return (True, kcfg)
+        return (False, kcfg)
 
     def extend(
         self,
