@@ -30,7 +30,7 @@ class AGProof(Proof):
         self.kcfg = kcfg
 
     @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> Proof:
+    def read_proof(id: str, proof_dir: Path) -> AGProof:
         proof_path = proof_dir / f'{hash_str(id)}.json'
         if AGProof.proof_exists(id, proof_dir):
             proof_dict = json.loads(proof_path.read_text())
