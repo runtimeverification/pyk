@@ -117,7 +117,7 @@ class AGBMCProof(AGProof):
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
             'bmc_depth': self.bmc_depth,
-            'bounded_states': list(self._bounded_states),
+            'bounded_states': self._bounded_states,
         }
 
     def bound_state(self, nid: str) -> None:
