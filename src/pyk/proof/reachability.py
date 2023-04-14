@@ -69,14 +69,23 @@ class AGProof(Proof):
 
 class AGProver:
     proof: AGProof
+    _is_terminal: Callable[[CTerm], bool] | None
+    _extract_branches: Callable[[CTerm], Iterable[KInner]] | None
 
-    def __init__(self, proof: AGProof) -> None:
+    def __init__(
+        self,
+        proof: AGProof,
+        is_terminal: Callable[[CTerm], bool] | None = None,
+        extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
+    ) -> None:
         self.proof = proof
+        self._is_terminal = is_terminal
+        self._extract_branches = extract_branches
 
-    def _check_terminal(self, curr_node: KCFG.Node, is_terminal: Callable[[CTerm], bool] | None = None) -> bool:
-        if is_terminal is not None:
+    def _check_terminal(self, curr_node: KCFG.Node) -> bool:
+        if self._is_terminal is not None:
             _LOGGER.info(f'Checking terminal {self.proof.id}: {shorten_hashes(curr_node.id)}')
-            if is_terminal(curr_node.cterm):
+            if self._is_terminal(curr_node.cterm):
                 _LOGGER.info(f'Terminal node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
                 self.proof.kcfg.add_expanded(curr_node.id)
                 return True
@@ -85,8 +94,6 @@ class AGProver:
     def advance_proof(
         self,
         kcfg_explore: KCFGExplore,
-        is_terminal: Callable[[CTerm], bool] | None = None,
-        extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
         max_iterations: int | None = None,
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
@@ -107,11 +114,11 @@ class AGProver:
             if kcfg_explore.target_subsume(self.proof.kcfg, curr_node):
                 continue
 
-            if self._check_terminal(curr_node, is_terminal=is_terminal):
+            if self._check_terminal(curr_node):
                 continue
 
-            if extract_branches is not None:
-                branches = list(extract_branches(curr_node.cterm))
+            if self._extract_branches is not None:
+                branches = list(self._extract_branches(curr_node.cterm))
                 if len(branches) > 0:
                     self.proof.kcfg.split_on_constraints(curr_node.id, branches)
                     _LOGGER.info(
