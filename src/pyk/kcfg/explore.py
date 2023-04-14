@@ -187,14 +187,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
 
-    def remove_subgraph_from(self, cfg: KCFG, node: str) -> KCFG:
+    def remove_subgraph_from(self, cfg: KCFG, node: str) -> None:
         for _node in cfg.reachable_nodes(node, traverse_covers=True):
             if not cfg.is_target(_node.id):
                 _LOGGER.info(f'Removing node: {shorten_hashes(_node.id)}')
                 cfg.remove_node(_node.id)
-        return cfg
 
-    def simplify(self, cfg: KCFG) -> KCFG:
+    def simplify(self, cfg: KCFG) -> None:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
             new_term = self.cterm_simplify(node.cterm)
@@ -204,9 +203,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 raise ValueError(f'Node simplified to #Bottom {self.id}: {shorten_hashes(node.id)}')
             if new_term != node.cterm.kast:
                 cfg.replace_node(node.id, CTerm.from_kast(new_term))
-        return cfg
 
-    def step(self, cfg: KCFG, node_id: str, depth: int = 1) -> tuple[KCFG, str]:
+    def step(self, cfg: KCFG, node_id: str, depth: int = 1) -> str:
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
@@ -233,11 +231,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             cfg.remove_edge(edge.source.id, edge.target.id)
             cfg.create_edge(edge.source.id, new_node.id, depth=depth)
             cfg.create_edge(new_node.id, edge.target.id, depth=(edge.depth - depth))
-        return (cfg, new_node.id)
+        return new_node.id
 
-    def section_edge(
-        self, cfg: KCFG, source_id: str, target_id: str, sections: int = 2
-    ) -> tuple[KCFG, tuple[str, ...]]:
+    def section_edge(self, cfg: KCFG, source_id: str, target_id: str, sections: int = 2) -> tuple[str, ...]:
         if sections <= 1:
             raise ValueError(f'Cannot section an edge less than twice {self.id}: {sections}')
         edge = single(cfg.edges(source_id=source_id, target_id=target_id))
@@ -250,10 +246,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         curr_node_id = edge.source.id
         while new_depth < orig_depth:
             _LOGGER.info(f'Taking {section_depth} steps from node {self.id}: {shorten_hashes(curr_node_id)}')
-            cfg, curr_node_id = self.step(cfg, curr_node_id, depth=section_depth)
+            curr_node_id = self.step(cfg, curr_node_id, depth=section_depth)
             new_nodes.append(curr_node_id)
             new_depth += section_depth
-        return (cfg, tuple(new_nodes))
+        return tuple(new_nodes)
 
     def target_subsume(
         self,
