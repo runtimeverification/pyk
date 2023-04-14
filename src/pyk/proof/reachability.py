@@ -126,7 +126,8 @@ class AGBMCProof(AGProof):
     @property
     def summary(self) -> Iterable[str]:
         return [
-            f'AGBMCProof: {self.id}',
+            f'AGBMCProof(depth={self.bmc_depth}): {self.id}',
+            f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_states])}',
