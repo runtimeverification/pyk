@@ -110,6 +110,15 @@ class AGProver:
             if self._check_terminal(curr_node, is_terminal=is_terminal):
                 continue
 
+            if extract_branches is not None:
+                branches = list(extract_branches(curr_node.cterm))
+                if len(branches) > 0:
+                    self.proof.kcfg.split_on_constraints(curr_node.id, branches)
+                    _LOGGER.info(
+                        f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
+                    )
+                    continue
+
             kcfg_explore.extend(
                 self.proof.kcfg,
                 curr_node,
