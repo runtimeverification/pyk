@@ -483,16 +483,15 @@ class TestImpProof(KCFGExploreTest):
         assert len(claims) == 1
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        kcfg = kcfg_explore.simplify(f'test: {test_id}', kcfg)
+        kcfg = kcfg_explore.simplify(kcfg)
         proof = AGBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
-        prover = AGBMCProver(proof, TestImpProof._same_loop)
+        prover = AGBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
         kcfg = prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
-            is_terminal=TestImpProof._is_terminal,
         )
 
         assert proof.status == proof_status

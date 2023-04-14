@@ -85,7 +85,7 @@ class AGBMCProof(AGProof):
         self._bounded_states = list(bounded_states) if bounded_states is not None else []
 
     @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> Proof:
+    def read_proof(id: str, proof_dir: Path) -> AGBMCProof:
         proof_path = proof_dir / f'{hash_str(id)}.json'
         if AGBMCProof.proof_exists(id, proof_dir):
             proof_dict = json.loads(proof_path.read_text())
@@ -211,16 +211,20 @@ class AGBMCProver(AGProver):
     _same_loop: Callable[[CTerm, CTerm], bool]
     _checked_nodes: list[str]
 
-    def __init__(self, proof: AGBMCProof, same_loop: Callable[[CTerm, CTerm], bool]) -> None:
-        super().__init__(proof)
+    def __init__(
+        self,
+        proof: AGBMCProof,
+        same_loop: Callable[[CTerm, CTerm], bool],
+        is_terminal: Callable[[CTerm], bool] | None = None,
+        extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
+    ) -> None:
+        super().__init__(proof, is_terminal=is_terminal, extract_branches=extract_branches)
         self._same_loop = same_loop
         self._checked_nodes = []
 
     def advance_proof(
         self,
         kcfg_explore: KCFGExplore,
-        is_terminal: Callable[[CTerm], bool] | None = None,
-        extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
         max_iterations: int | None = None,
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
@@ -251,8 +255,6 @@ class AGBMCProver(AGProver):
 
             super().advance_proof(
                 kcfg_explore,
-                is_terminal=is_terminal,
-                extract_branches=extract_branches,
                 max_iterations=1,
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
