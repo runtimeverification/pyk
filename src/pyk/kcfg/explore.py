@@ -288,33 +288,32 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             curr_node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
         )
 
-        # Cut Rule
-        if depth == 0 and len(next_cterms) == 1:
-            new_execute_depth = execute_depth - 1 if execute_depth is not None else None
-            depth, cterm, next_cterms = self.cterm_execute(
-                next_cterms[0],
-                depth=new_execute_depth,
-                cut_point_rules=cut_point_rules,
-                terminal_rules=terminal_rules,
-            )
-            depth = depth + 1
-
+        # Basic block
         if depth > 0:
             next_node = kcfg.get_or_create_node(cterm)
             kcfg.create_edge(curr_node.id, next_node.id, depth)
             _LOGGER.info(
                 f'Found basic block at depth {depth} for {self.id}: {shorten_hashes((curr_node.id, next_node.id))}.'
             )
-            curr_node = next_node
 
+        # Stuck
         elif len(next_cterms) == 0:
             _LOGGER.info(f'Found stuck node {self.id}: {shorten_hashes(curr_node.id)}')
 
+        # Cut Rule
+        elif len(next_cterms) == 1:
+            next_node = kcfg.get_or_create_node(next_cterms[0])
+            kcfg.create_edge(curr_node.id, next_node.id, 1)
+            _LOGGER.info(
+                f'Inserted cut-rule basic block at depth 1 for {self.id}: {shorten_hashes((curr_node.id, next_node.id))}'
+            )
+
+        # Branch
         elif len(next_cterms) > 1:
             branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
+            kcfg.split_on_constraints(curr_node.id, branches)
             _LOGGER.info(
                 f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(curr_node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
             )
-            kcfg.split_on_constraints(curr_node.id, branches)
 
         return kcfg
