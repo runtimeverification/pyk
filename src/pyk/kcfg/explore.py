@@ -9,7 +9,7 @@ from ..kast.manip import flatten_label, free_vars
 from ..kore.rpc import KoreClient, KoreServer, StopReason
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
-from ..prelude.ml import is_bottom, is_top, mlEquals, mlTop
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
 
@@ -262,3 +262,59 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_nodes.append(curr_node_id)
             new_depth += section_depth
         return (cfg, tuple(new_nodes))
+
+    def breadth_first_search(
+        self,
+        kcfg: KCFG,
+        execute_depth: int | None = None,
+        cut_point_rules: Iterable[str] = (),
+        terminal_rules: Iterable[str] = (),
+    ) -> KCFG:
+        def _node_depth(node_id: str) -> int:
+            _root_paths = kcfg.paths_between(kcfg.get_unique_init().id, node_id, traverse_covers=True)
+            return sorted([len(list(path)) for path in _root_paths])[0]
+
+        if not kcfg.frontier:
+            return kcfg
+
+        sorted_frontier = sorted([nd.id for nd in kcfg.frontier], key=_node_depth)
+
+        curr_node = kcfg.node(sorted_frontier[0])
+
+        kcfg.add_expanded(curr_node.id)
+
+        _LOGGER.info(f'Advancing proof from node {self.id}: {shorten_hashes(curr_node.id)}')
+        depth, cterm, next_cterms = self.cterm_execute(
+            curr_node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+        )
+
+        # Cut Rule
+        if depth == 0 and len(next_cterms) == 1:
+            new_execute_depth = execute_depth - 1 if execute_depth is not None else None
+            depth, cterm, next_cterms = self.cterm_execute(
+                next_cterms[0],
+                depth=new_execute_depth,
+                cut_point_rules=cut_point_rules,
+                terminal_rules=terminal_rules,
+            )
+            depth = depth + 1
+
+        if depth > 0:
+            next_node = kcfg.get_or_create_node(cterm)
+            kcfg.create_edge(curr_node.id, next_node.id, depth)
+            _LOGGER.info(
+                f'Found basic block at depth {depth} for {self.id}: {shorten_hashes((curr_node.id, next_node.id))}.'
+            )
+            curr_node = next_node
+
+        elif len(next_cterms) == 0:
+            _LOGGER.info(f'Found stuck node {self.id}: {shorten_hashes(curr_node.id)}')
+
+        elif len(next_cterms) > 1:
+            branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
+            _LOGGER.info(
+                f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(curr_node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+            )
+            kcfg.split_on_constraints(curr_node.id, branches)
+
+        return kcfg
