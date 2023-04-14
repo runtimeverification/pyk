@@ -231,6 +231,11 @@ class AGBMCProver(AGProver):
         while self.proof.kcfg.frontier:
             self.proof.write_proof()
 
+            if max_iterations is not None and max_iterations <= iterations:
+                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
+                break
+            iterations += 1
+
             for f in self.proof.kcfg.frontier:
                 if f.id not in self._checked_nodes:
                     self._checked_nodes.append(f.id)
@@ -242,10 +247,6 @@ class AGBMCProver(AGProver):
                     if len(prior_loops) >= self.proof.bmc_depth:
                         self.proof.kcfg.add_expanded(f.id)
                         self.proof.bound_state(f.id)
-            if max_iterations is not None and max_iterations <= iterations:
-                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
-                break
-            iterations += 1
 
             super().advance_proof(
                 kcfg_explore,
