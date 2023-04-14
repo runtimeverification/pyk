@@ -28,6 +28,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class KCFGExplore(ContextManager['KCFGExplore']):
     kprint: KPrint
+    id: str
     _port: int | None
     _kore_rpc_command: str | Iterable[str]
     _smt_timeout: int | None
@@ -42,6 +43,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self,
         kprint: KPrint,
         *,
+        id: str | None = None,
         port: int | None = None,
         kore_rpc_command: str | Iterable[str] = 'kore-rpc',
         smt_timeout: int | None = None,
@@ -52,6 +54,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         log_axioms_file: Path | None = None,
     ):
         self.kprint = kprint
+        self.id = id if id is not None else 'NO ID'
         self._port = port
         self._kore_rpc_command = kore_rpc_command
         self._smt_timeout = smt_timeout
@@ -192,40 +195,40 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
 
-    def remove_subgraph_from(self, cfgid: str, cfg: KCFG, node: str) -> KCFG:
+    def remove_subgraph_from(self, cfg: KCFG, node: str) -> KCFG:
         for _node in cfg.reachable_nodes(node, traverse_covers=True):
             if not cfg.is_target(_node.id):
                 _LOGGER.info(f'Removing node: {shorten_hashes(_node.id)}')
                 cfg.remove_node(_node.id)
         return cfg
 
-    def simplify(self, cfgid: str, cfg: KCFG) -> KCFG:
+    def simplify(self, cfg: KCFG) -> KCFG:
         for node in cfg.nodes:
-            _LOGGER.info(f'Simplifying node {cfgid}: {shorten_hashes(node.id)}')
+            _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
             new_term = self.cterm_simplify(node.cterm)
             if is_top(new_term):
-                raise ValueError(f'Node simplified to #Top {cfgid}: {shorten_hashes(node.id)}')
+                raise ValueError(f'Node simplified to #Top {self.id}: {shorten_hashes(node.id)}')
             if is_bottom(new_term):
-                raise ValueError(f'Node simplified to #Bottom {cfgid}: {shorten_hashes(node.id)}')
+                raise ValueError(f'Node simplified to #Bottom {self.id}: {shorten_hashes(node.id)}')
             if new_term != node.cterm.kast:
                 cfg.replace_node(node.id, CTerm.from_kast(new_term))
         return cfg
 
-    def step(self, cfgid: str, cfg: KCFG, node_id: str, depth: int = 1) -> tuple[KCFG, str]:
+    def step(self, cfg: KCFG, node_id: str, depth: int = 1) -> tuple[KCFG, str]:
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
         successors = list(cfg.successors(node.id))
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
-            raise ValueError(f'Cannot take step from split node {cfgid}: {shorten_hashes(node.id)}')
-        _LOGGER.info(f'Taking {depth} steps from node {cfgid}: {shorten_hashes(node.id)}')
+            raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
+        _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
         actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth)
         if actual_depth != depth:
-            raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {cfgid}: {node.id}')
+            raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
         if len(next_cterms) > 0:
-            raise ValueError(f'Found branch within {depth} steps {cfgid}: {node.id}')
+            raise ValueError(f'Found branch within {depth} steps {self.id}: {node.id}')
         new_node = cfg.get_or_create_node(cterm)
-        _LOGGER.info(f'Found new node at depth {depth} {cfgid}: {shorten_hashes((node.id, new_node.id))}')
+        _LOGGER.info(f'Found new node at depth {depth} {self.id}: {shorten_hashes((node.id, new_node.id))}')
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) == 0:
             cfg.create_edge(node.id, new_node.id, depth=depth)
@@ -233,7 +236,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             edge = out_edges[0]
             if depth > edge.depth:
                 raise ValueError(
-                    f'Step depth {depth} greater than original edge depth {edge.depth} {cfgid}: {shorten_hashes((edge.source.id, edge.target.id))}'
+                    f'Step depth {depth} greater than original edge depth {edge.depth} {self.id}: {shorten_hashes((edge.source.id, edge.target.id))}'
                 )
             cfg.remove_edge(edge.source.id, edge.target.id)
             cfg.create_edge(edge.source.id, new_node.id, depth=depth)
@@ -241,21 +244,21 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         return (cfg, new_node.id)
 
     def section_edge(
-        self, cfgid: str, cfg: KCFG, source_id: str, target_id: str, sections: int = 2
+        self, cfg: KCFG, source_id: str, target_id: str, sections: int = 2
     ) -> tuple[KCFG, tuple[str, ...]]:
         if sections <= 1:
-            raise ValueError(f'Cannot section an edge less than twice {cfgid}: {sections}')
+            raise ValueError(f'Cannot section an edge less than twice {self.id}: {sections}')
         edge = single(cfg.edges(source_id=source_id, target_id=target_id))
         section_depth = int(edge.depth / sections)
         if section_depth == 0:
-            raise ValueError(f'Too many sections, results in 0-length section {cfgid}: {sections}')
+            raise ValueError(f'Too many sections, results in 0-length section {self.id}: {sections}')
         orig_depth = edge.depth
         new_depth = section_depth
         new_nodes = []
         curr_node_id = edge.source.id
         while new_depth < orig_depth:
-            _LOGGER.info(f'Taking {section_depth} steps from node {cfgid}: {shorten_hashes(curr_node_id)}')
-            cfg, curr_node_id = self.step(cfgid, cfg, curr_node_id, depth=section_depth)
+            _LOGGER.info(f'Taking {section_depth} steps from node {self.id}: {shorten_hashes(curr_node_id)}')
+            cfg, curr_node_id = self.step(cfg, curr_node_id, depth=section_depth)
             new_nodes.append(curr_node_id)
             new_depth += section_depth
         return (cfg, tuple(new_nodes))
