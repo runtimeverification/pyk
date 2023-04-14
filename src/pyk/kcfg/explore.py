@@ -16,7 +16,7 @@ from .kcfg import KCFG
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, Final, Tuple
+    from typing import Any, Final
 
     from ..cli_utils import BugReport
     from ..kast import KInner
@@ -267,15 +267,15 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self,
         kcfg: KCFG,
         node: KCFG.Node,
-    ) -> Tuple[bool, KCFG]:
+    ) -> bool:
         target_node = kcfg.get_unique_target()
         _LOGGER.info(f'Checking subsumption into target state {self.id}: {shorten_hashes((node.id, target_node.id))}')
         csubst = self.cterm_implies(node.cterm, target_node.cterm)
         if csubst is not None:
             kcfg.create_cover(node.id, target_node.id, csubst=csubst)
             _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((node.id, target_node.id))}')
-            return (True, kcfg)
-        return (False, kcfg)
+            return True
+        return False
 
     def extend(
         self,
@@ -284,7 +284,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-    ) -> KCFG:
+    ) -> None:
         if not kcfg.is_frontier(node.id):
             raise ValueError(f'Cannot extend non-frontier node {self.id}: {node.id}')
 
@@ -323,4 +323,5 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
             )
 
-        return kcfg
+        else:
+            raise ValueError('Unhandled case.')
