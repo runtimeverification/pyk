@@ -61,6 +61,7 @@ class AGProof(Proof):
     def summary(self) -> Iterable[str]:
         return [
             f'AGProof: {self.id}',
+            f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
