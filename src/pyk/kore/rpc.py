@@ -100,7 +100,6 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         self._req_id += 1
         bug_report_id = str(id(self))
 
-
         payload = {
             'jsonrpc': self._JSON_RPC_VERSION,
             'id': old_id,
@@ -138,7 +137,13 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
             bug_report_response = f'rpc_{bug_report_id}/{old_id:03}_response.json'
             self._bug_report.add_file_contents(resp, Path(bug_report_response))
             self._bug_report.add_command(
-                ['diff', '-b', '-s', f'rpc_{bug_report_id}/{old_id:03}_actual.json', f'rpc_{bug_report_id}/{old_id:03}_response.json']
+                [
+                    'diff',
+                    '-b',
+                    '-s',
+                    f'rpc_{bug_report_id}/{old_id:03}_actual.json',
+                    f'rpc_{bug_report_id}/{old_id:03}_response.json',
+                ]
             )
 
         data = json.loads(resp)
