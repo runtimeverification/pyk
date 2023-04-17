@@ -16,7 +16,7 @@ from ..cli_utils import (
     check_relative_path,
     relative_path,
 )
-from ..ktool.kompile import KompileBackend
+from ..ktool.kompile import KompileBackend, LLVMKompileType
 from ..utils import FrozenDict, single
 from .config import PROJECT_FILE_NAME
 
@@ -87,6 +87,8 @@ class Target:
     ccopts: tuple[str, ...] | None
     no_llvm_kompile: bool | None
     enable_search: bool | None
+    llvm_kompile_type: LLVMKompileType | None
+    llvm_kompile_output: str | None
     # Haskell backend
     concrete_rules: tuple[str, ...] | None
 
@@ -106,6 +108,8 @@ class Target:
         ccopts: Iterable[str] | None = None,
         no_llvm_kompile: bool | None = None,
         enable_search: bool | None = None,
+        llvm_kompile_type: LLVMKompileType | None = None,
+        llvm_kompile_output: str | None = None,
         concrete_rules: Iterable[str] | None = None,
     ):
         main_file = Path(main_file)
@@ -119,10 +123,13 @@ class Target:
         object.__setattr__(self, 'hook_namespaces', tuple(hook_namespaces) if hook_namespaces is not None else None)
         object.__setattr__(self, 'emit_json', emit_json)
         object.__setattr__(self, 'gen_bison_parser', gen_bison_parser)
+        object.__setattr__(self, 'bison_parser_library', bison_parser_library)
         object.__setattr__(self, 'opt_level', opt_level)
         object.__setattr__(self, 'ccopts', tuple(ccopts) if ccopts is not None else None)
         object.__setattr__(self, 'no_llvm_kompile', no_llvm_kompile)
         object.__setattr__(self, 'enable_search', enable_search)
+        object.__setattr__(self, 'llvm_kompile_type', llvm_kompile_type)
+        object.__setattr__(self, 'llvm_kompile_output', llvm_kompile_output)
         object.__setattr__(self, 'concrete_rules', tuple(concrete_rules) if concrete_rules is not None else None)
 
     @staticmethod
@@ -137,10 +144,13 @@ class Target:
             hook_namespaces=dct.get('hook-namespaces'),
             emit_json=dct.get('emit-json'),
             gen_bison_parser=dct.get('gen-bison-parser'),
+            bison_parser_library=dct.get('bison-parser-library'),
             opt_level=dct.get('opt-level'),
             ccopts=dct.get('ccopts'),
             no_llvm_kompile=dct.get('no-llvm-kompile'),
             enable_search=dct.get('enable-search'),
+            llvm_kompile_type=LLVMKompileType(dct.get('llvm-kompile-type')) if dct.get('llvm-kompile-type') else None,
+            llvm_kompile_output=dct.get('llvm-kompile-output'),
             concrete_rules=dct.get('concrete-rules'),
         )
 
