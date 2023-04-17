@@ -110,7 +110,8 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         _LOGGER.info(f'Sending request to {server_addr}: {old_id} - {method}')
         req = json.dumps(payload)
         if self._bug_report:
-            bug_report_request = f'rpc/{old_id:03}_request.json'
+            id_with_port = f'{self._port}_{old_id:03}'
+            bug_report_request = f'rpc/{id_with_port}_request.json'
             self._bug_report.add_file_contents(req, Path(bug_report_request))
             self._bug_report.add_command(
                 [
@@ -122,7 +123,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
                     self._host,
                     str(self._port),
                     '>',
-                    f'rpc/{old_id:03}_actual.json',
+                    f'rpc/{id_with_port}_actual.json',
                 ]
             )
 
@@ -133,10 +134,10 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         _LOGGER.debug(f'Received response from {server_addr}: {resp}')
 
         if self._bug_report:
-            bug_report_response = f'rpc/{old_id:03}_response.json'
+            bug_report_response = f'rpc/{id_with_port}_response.json'
             self._bug_report.add_file_contents(resp, Path(bug_report_response))
             self._bug_report.add_command(
-                ['diff', '-b', '-s', f'rpc/{old_id:03}_actual.json', f'rpc/{old_id:03}_response.json']
+                ['diff', '-b', '-s', f'rpc/{id_with_port}_actual.json', f'rpc/{id_with_port}_response.json']
             )
 
         data = json.loads(resp)
