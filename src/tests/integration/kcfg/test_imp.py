@@ -210,6 +210,21 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
 )
 
+PATH_CONSTRAINTS_TEST_DATA: Iterable[
+    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str]]
+] = (
+    (
+        'imp-simple-fail-branch',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'fail-branch',
+        None,
+        None,
+        ['IMP-VERIFICATION.halt'],
+        ['IMP-VERIFICATION.halt'],
+    ),
+)
+
 
 class TestImpProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = 'k-files/imp-verification.k'
@@ -369,3 +384,43 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert proof.status == proof_status
+
+        
+    @pytest.mark.parametrize(
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules',
+        PATH_CONSTRAINTS_TEST_DATA,
+        ids=[test_id for test_id, *_ in PATH_CONSTRAINTS_TEST_DATA],
+    )
+    def test_collect_path_constraints(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        spec_file: str,
+        spec_module: str,
+        claim_id: str,
+        max_iterations: int,
+        max_depth: int,
+        terminal_rules: Iterable[str],
+        cut_rules: Iterable[str],
+    ) -> None:
+        claims = kprove.get_claims(
+            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+        )
+        assert len(claims) == 1
+
+        kcfg = KCFG.from_claim(kprove.definition, claims[0])
+        proof = AGProof(f'{spec_module}.{claim_id}', kcfg)
+        prover = AGProver(proof)
+        kcfg = prover.advance_proof(
+            kcfg_explore,
+            max_iterations=max_iterations,
+            execute_depth=max_depth,
+            cut_point_rules=cut_rules,
+            terminal_rules=terminal_rules,
+            is_terminal=TestImpProof._is_terminal,
+        )
+
+        for node in kcfg.frontier:
+            print(kprove.pretty_print(node.cterm.kast))
+            print(kcfg.path_constraints(node.id))

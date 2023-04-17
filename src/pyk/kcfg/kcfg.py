@@ -970,7 +970,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             raise ValueError(f'Multiple paths found to specified node: {final_node_id}')
         path = paths[0]
         for edge in path:
-            print('edge')
             if type(edge) is KCFG.Split:
                 for _, csubst in edge.targets:
                     constraints += csubst.constraints
