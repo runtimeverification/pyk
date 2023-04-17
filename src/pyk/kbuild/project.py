@@ -82,6 +82,7 @@ class Target:
     hook_namespaces: tuple[str, ...] | None
     emit_json: bool | None
     gen_bison_parser: bool | None
+    bison_parser_library: bool | None
     # LLVM backend
     opt_level: int | None
     ccopts: tuple[str, ...] | None
@@ -104,6 +105,7 @@ class Target:
         hook_namespaces: Iterable[str] | None = None,
         emit_json: bool | None = None,
         gen_bison_parser: bool | None = None,
+        bison_parser_library: bool | None = None,
         opt_level: int | None = None,
         ccopts: Iterable[str] | None = None,
         no_llvm_kompile: bool | None = None,
