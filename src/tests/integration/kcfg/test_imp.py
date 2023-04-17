@@ -3,11 +3,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import logging
 import pytest
 
 from pyk.cterm import CSubst, CTerm
+
+from pyk.kast.manip import minimize_term
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kcfg import KCFG
+from pyk.kcfg import KCFG, KCFGShow
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
 from pyk.proof import AGProof, AGProver, ProofStatus
@@ -22,6 +25,9 @@ if TYPE_CHECKING:
     from pyk.kcfg import KCFGExplore
     from pyk.ktool.kprint import KPrint, SymbolTable
     from pyk.ktool.kprove import KProve
+
+
+_LOGGER: Final = logging.getLogger(__name__)
 
 
 PROVE_CTERM_TEST_DATA: Final = (
@@ -214,12 +220,22 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
     tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str]]
 ] = (
     (
-        'imp-simple-fail-branch',
+        'imp-simple-fail-branch-unlimited-iterations',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'fail-branch',
         None,
-        None,
+        1,
+        ['IMP-VERIFICATION.halt'],
+        [],
+    ),
+    (
+        'imp-simple-fail-branch-14-iterations',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'fail-branch',
+        14,
+        1,
         ['IMP-VERIFICATION.halt'],
         [],
     ),
@@ -403,6 +419,11 @@ class TestImpProof(KCFGExploreTest):
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
     ) -> None:
+
+        def _node_printer(cterm: CTerm) -> list[str]:
+            _kast = minimize_term(cterm.kast)
+            return kcfg_explore.kprint.pretty_print(_kast).split('\n')
+
         claims = kprove.get_claims(
             Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
         )
@@ -419,8 +440,11 @@ class TestImpProof(KCFGExploreTest):
             terminal_rules=terminal_rules,
         )
 
-        for node in kcfg.frontier:
-            print(kprove.pretty_print(node.cterm.kast))
-            print(kcfg.path_constraints(node.id))
+        kcfg_show = KCFGShow(kcfg_explore.kprint)
+        kcfg_str = '\n'.join(kcfg_show.show('test', proof.kcfg, node_printer=_node_printer))
+        summary_str = '\n'.join(proof.summary)
+
+        _LOGGER.warning(f'PROOF OUTPUT:\n{summary_str}')
+        _LOGGER.warning(f'KCFG:\n{kcfg_str}')
 
         assert 1 == 2
