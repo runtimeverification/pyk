@@ -1,13 +1,21 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
-from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, Subst
-from pyk.kast.manip import flatten_label, get_cell
+from pyk.kast.inner import KApply, KSequence, KSort, KToken, Subst
+from pyk.kast.manip import flatten_label
 from pyk.kore.prelude import int_dv
-from pyk.kore.syntax import App, Pattern
-from pyk.ktool.krun import KRun
+from pyk.kore.syntax import App
 from pyk.prelude.kint import intToken
 
 from .utils import KRunTest
+
+if TYPE_CHECKING:
+    from pyk.kast import KInner
+    from pyk.kore.syntax import Pattern
+    from pyk.ktool.krun import KRun
 
 
 class TestImpRun(KRunTest):
@@ -26,8 +34,8 @@ class TestImpRun(KRunTest):
         ]
 
         # When
-        actual_k = get_cell(final_cterm.config, 'K_CELL')
-        actual_map_items = flatten_label('_Map_', get_cell(final_cterm.config, 'STATE_CELL'))
+        actual_k = final_cterm.cell('K_CELL')
+        actual_map_items = flatten_label('_Map_', final_cterm.cell('STATE_CELL'))
 
         assert actual_k == expected_k
         assert set(actual_map_items) == set(expected_map_items)

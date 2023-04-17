@@ -1,6 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
-from pyk.kllvm.ast import CompositeSort, Sort, SortVariable
+import pyk.kllvm.load  # noqa: F401
+from pyk.kllvm.ast import CompositeSort, SortVariable
+
+if TYPE_CHECKING:
+    from pyk.kllvm.ast import Sort
 
 
 @pytest.mark.parametrize(

@@ -1,19 +1,25 @@
+from __future__ import annotations
+
 import re
 import shutil
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from re import Match
-from typing import Any, Dict, List, Optional, Union, final
+from typing import TYPE_CHECKING, final
 
 from filelock import FileLock
 
 from ..ktool.kompile import kompile
 from ..utils import single
 from .config import KBUILD_DIR
-from .package import Package
-from .project import Target
 from .utils import k_version, sync_files
+
+if TYPE_CHECKING:
+    from re import Match
+    from typing import Any
+
+    from .package import Package
+    from .project import Target
 
 
 @final
@@ -21,7 +27,7 @@ from .utils import k_version, sync_files
 class KBuild:
     kbuild_dir: Path
 
-    def __init__(self, kbuild_dir: Optional[Union[str, Path]] = None):
+    def __init__(self, kbuild_dir: str | Path | None = None):
         kbuild_dir = kbuild_dir if kbuild_dir is not None else KBUILD_DIR
         kbuild_dir = Path(kbuild_dir).resolve()
         object.__setattr__(self, 'kbuild_dir', kbuild_dir)
@@ -36,7 +42,7 @@ class KBuild:
     def resource_dir(self, package: Package, resource_name: str) -> Path:
         return self.kbuild_dir / package.resource_dir / resource_name
 
-    def resource_files(self, package: Package, resource_name: str) -> List[Path]:
+    def resource_files(self, package: Package, resource_name: str) -> list[Path]:
         return [
             self.resource_dir(package, resource_name) / file_name
             for file_name in package.project.resource_file_names[resource_name]
@@ -48,14 +54,14 @@ class KBuild:
     def source_dir(self, package: Package) -> Path:
         return self.include_dir(package) / package.name
 
-    def source_files(self, package: Package) -> List[Path]:
+    def source_files(self, package: Package) -> list[Path]:
         return [self.source_dir(package) / file_name for file_name in package.project.source_file_names]
 
     def clean(self, package: Package, target_name: str) -> None:
         shutil.rmtree(self.definition_dir(package, target_name), ignore_errors=True)
 
-    def sync(self, package: Package) -> List[Path]:
-        res: List[Path] = []
+    def sync(self, package: Package) -> list[Path]:
+        res: list[Path] = []
 
         # Sync sources
         res += sync_files(
@@ -103,7 +109,7 @@ class KBuild:
         if not timestamp.exists():
             return False
 
-        input_files: List[Path] = []
+        input_files: list[Path] = []
         for sub_package in package.sub_packages:
             input_files.append(sub_package.project.project_file)
             input_files.extend(self.source_files(sub_package))
@@ -114,7 +120,7 @@ class KBuild:
         target_timestamp = timestamp.stat().st_mtime
         return all(input_timestamp < target_timestamp for input_timestamp in input_timestamps)
 
-    def kompile_args(self, package: Package, target: Target) -> Dict[str, Any]:
+    def kompile_args(self, package: Package, target: Target) -> dict[str, Any]:
         args = target.dict
         args.pop('name')
         args['main_file'] = self.source_dir(package) / args['main_file']

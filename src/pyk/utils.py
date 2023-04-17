@@ -1,47 +1,38 @@
+from __future__ import annotations
+
 import hashlib
 import string
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Final,
-    Generic,
-    Hashable,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    cast,
-    overload,
-)
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Hashable, Iterable, Iterator
+    from typing import Any, Final
+
+    P1 = TypeVar('P1')
+    P2 = TypeVar('P2')
+    P3 = TypeVar('P3')
+    P4 = TypeVar('P4')
+    Q = TypeVar('Q')
+    R1 = TypeVar('R1')
+    R2 = TypeVar('R2')
+    R3 = TypeVar('R3')
+    R4 = TypeVar('R4')
+    T = TypeVar('T')
+    S = TypeVar('S')
+    H = TypeVar('H', bound=Hashable)
 
 P = TypeVar('P')
-P1 = TypeVar('P1')
-P2 = TypeVar('P2')
-P3 = TypeVar('P3')
-P4 = TypeVar('P4')
-Q = TypeVar('Q')
 R = TypeVar('R')
-R1 = TypeVar('R1')
-R2 = TypeVar('R2')
-R3 = TypeVar('R3')
-R4 = TypeVar('R4')
-T = TypeVar('T')
-S = TypeVar('S')
 K = TypeVar('K')
 V = TypeVar('V')
-H = TypeVar('H', bound=Hashable)
 
 
 # Based on: https://stackoverflow.com/a/2704866
 # Perhaps one day: https://peps.python.org/pep-0603/
 class FrozenDict(Mapping[K, V]):
-    _dict: Dict[K, V]
-    _hash: Optional[int]
+    _dict: dict[K, V]
+    _hash: int | None
 
     # TODO overload
     # TODO try __init__(self: FrozenDict[str, V], **kwargs: V)
@@ -76,13 +67,13 @@ class FrozenDict(Mapping[K, V]):
 EMPTY_FROZEN_DICT: Final[FrozenDict] = FrozenDict()
 
 
-def check_type(x: Any, typ: Type[T]) -> T:
+def check_type(x: Any, typ: type[T]) -> T:
     if not isinstance(x, typ):
         raise ValueError(f'Expected object of type {typ.__name__}, got: {x}')
     return x
 
 
-def raised(f: Callable, *args: Any, **kwargs: Any) -> Optional[BaseException]:
+def raised(f: Callable, *args: Any, **kwargs: Any) -> BaseException | None:
     try:
         f(*args, **kwargs)
     except BaseException as e:
@@ -91,7 +82,7 @@ def raised(f: Callable, *args: Any, **kwargs: Any) -> Optional[BaseException]:
     return None
 
 
-def merge_with(f: Callable[[V, V], V], d1: Mapping[K, V], d2: Mapping[K, V]) -> Dict[K, V]:
+def merge_with(f: Callable[[V, V], V], d1: Mapping[K, V], d2: Mapping[K, V]) -> dict[K, V]:
     res = dict(d1)
     for k, v2 in d2.items():
         if k in d1:
@@ -102,7 +93,7 @@ def merge_with(f: Callable[[V, V], V], d1: Mapping[K, V], d2: Mapping[K, V]) -> 
     return res
 
 
-def filter_none(mapping: Mapping[K, V]) -> Dict[K, V]:
+def filter_none(mapping: Mapping[K, V]) -> dict[K, V]:
     return {k: v for k, v in mapping.items() if v is not None}
 
 
@@ -118,7 +109,7 @@ class Chainable(Generic[P, R]):
     def __call__(self, p: P) -> R:
         return self._f(p)
 
-    def __rshift__(self, other: Callable[[R], Q]) -> 'Chainable[P, Q]':
+    def __rshift__(self, other: Callable[[R], Q]) -> Chainable[P, Q]:
         return Chainable(lambda p: other(self(p)))
 
 
@@ -129,15 +120,15 @@ def none(x: Any) -> None:
     pass
 
 
-def maybe(f: Callable[[P], R]) -> Callable[[Optional[P]], Optional[R]]:
-    def res(p: Optional[P]) -> Optional[R]:
+def maybe(f: Callable[[P], R]) -> Callable[[P | None], R | None]:
+    def res(p: P | None) -> R | None:
         return f(p) if p is not None else None
 
     return res
 
 
 @overload
-def tuple_of() -> Callable[[Tuple[()]], Tuple[()]]:
+def tuple_of() -> Callable[[tuple[()]], tuple[()]]:
     ...
 
 
@@ -145,7 +136,7 @@ def tuple_of() -> Callable[[Tuple[()]], Tuple[()]]:
 def tuple_of(
     f1: Callable[[P1], R1],
     /,
-) -> Callable[[Tuple[P1]], Tuple[R1]]:
+) -> Callable[[tuple[P1]], tuple[R1]]:
     ...
 
 
@@ -154,7 +145,7 @@ def tuple_of(
     f1: Callable[[P1], R1],
     f2: Callable[[P2], R2],
     /,
-) -> Callable[[Tuple[P1, P2]], Tuple[R1, R2]]:
+) -> Callable[[tuple[P1, P2]], tuple[R1, R2]]:
     ...
 
 
@@ -164,7 +155,7 @@ def tuple_of(
     f2: Callable[[P2], R2],
     f3: Callable[[P3], R3],
     /,
-) -> Callable[[Tuple[P1, P2, P3]], Tuple[R1, R2, R3]]:
+) -> Callable[[tuple[P1, P2, P3]], tuple[R1, R2, R3]]:
     ...
 
 
@@ -175,20 +166,20 @@ def tuple_of(
     f3: Callable[[P3], R3],
     f4: Callable[[P4], R4],
     /,
-) -> Callable[[Tuple[P1, P2, P3, P4]], Tuple[R1, R2, R3, R4]]:
+) -> Callable[[tuple[P1, P2, P3, P4]], tuple[R1, R2, R3, R4]]:
     ...
 
 
 def tuple_of(*args: Callable) -> Callable:
-    def res(t: Tuple) -> Tuple:
-        return tuple(f(x) for f, x in zip(args, t))
+    def res(t: tuple) -> tuple:
+        return tuple(f(x) for f, x in zip(args, t, strict=True))
 
     return res
 
 
 def case(
-    cases: Iterable[Tuple[Callable[[P], bool], Callable[[P], R]]],
-    default: Optional[Callable[[P], R]] = None,
+    cases: Iterable[tuple[Callable[[P], bool], Callable[[P], R]]],
+    default: Callable[[P], R] | None = None,
 ) -> Callable[[P], R]:
     def res(p: P) -> R:
         for cond, then in cases:  # noqa: B905
@@ -206,7 +197,7 @@ def case(
 # Iterables
 
 
-def find_common_items(l1: Iterable[T], l2: Iterable[T]) -> Tuple[List[T], List[T], List[T]]:
+def find_common_items(l1: Iterable[T], l2: Iterable[T]) -> tuple[list[T], list[T], list[T]]:
     common = []
     for i in l1:
         if i in l2:
@@ -252,7 +243,7 @@ def single(iterable: Iterable[T]) -> T:
     fst = next(it, sentinel)
     if fst is sentinel:
         raise ValueError('Expected a single element, found none')
-    fst = cast(T, fst)
+    fst = cast('T', fst)
 
     snd = next(it, sentinel)
     if snd is not sentinel:
@@ -261,13 +252,13 @@ def single(iterable: Iterable[T]) -> T:
     return fst
 
 
-def some(iterable: Iterable[T]) -> Optional[T]:
+def some(iterable: Iterable[T]) -> T | None:
     return next(iter(iterable), None)
 
 
 def repeat_last(iterable: Iterable[T]) -> Iterator[T]:
     it = iter(iterable)
-    last: Optional[T] = None
+    last: T | None = None
     while True:
         try:
             last = next(it)
@@ -290,7 +281,7 @@ def nonempty_str(x: Any) -> str:
     return x
 
 
-def add_indent(indent: str, lines: Iterable[str]) -> List[str]:
+def add_indent(indent: str, lines: Iterable[str]) -> list[str]:
     return [indent + line for line in lines]
 
 
@@ -341,7 +332,7 @@ def shorten_hashes(value: Any, left_chars: int = 6, right_chars: int = 6) -> Any
     return result
 
 
-def deconstruct_short_hash(h: str) -> Tuple[str, str]:
+def deconstruct_short_hash(h: str) -> tuple[str, str]:
     x = h.lower()
     if is_hash(x):
         return (x, x)
@@ -355,65 +346,3 @@ def compare_short_hashes(lhs: str, rhs: str) -> bool:
     (l0, l1) = deconstruct_short_hash(lhs)
     (r0, r1) = deconstruct_short_hash(rhs)
     return (l0.startswith(r0) or r0.startswith(l0)) and (l1.endswith(r1) or r1.endswith(l1))
-
-
-# From enquoteKString: https://github.com/runtimeverification/k/blob/8b2e215fb46901b68532f9f3cb9656bfed7ed504/kore/src/main/java/org/kframework/utils/StringUtil.java#L224
-def enquote_str(orig_s: str) -> str:
-    def enquote_char(orig_c: str) -> str:
-        if orig_c == '"':
-            return r'\"'
-        elif orig_c == '\\':
-            return r'\\'
-        elif orig_c == '\n':
-            return r'\n'
-        elif orig_c == '\t':
-            return r'\t'
-        elif orig_c == '\r':
-            return r'\r'
-        elif orig_c == '\f':
-            return r'\f'
-        else:
-            ord_c = ord(orig_c)
-            if 32 <= ord_c and ord_c < 127:
-                return orig_c
-            ret = hex(ord(orig_c))[2:]
-            if ord_c <= 0xFF:
-                return r'\x' + ret.zfill(2)
-            if ord_c <= 0xFFFF:
-                return r'\u' + ret.zfill(4)
-            if ord_c <= 0xFFFFFFFF:
-                return r'\U' + ret.zfill(8)
-            else:
-                raise ValueError(f'Unsupported character for enquoting: {orig_c}')
-
-    return ''.join(enquote_char(c) for c in orig_s)
-
-
-def dequote_str(orig_str: str) -> str:
-    def dequote_str(s: str) -> Tuple[str, str]:
-        if len(s) >= 2:
-            if s[:2] == r'\"':
-                return ('"', s[2:])
-            if s[:2] == r'\\':
-                return ('\\', s[2:])
-            if s[:2] == r'\n':
-                return ('\n', s[2:])
-            if s[:2] == r'\t':
-                return ('\t', s[2:])
-            if s[:2] == r'\r':
-                return ('\r', s[2:])
-            if s[:2] == r'\f':
-                return ('\f', s[2:])
-            if len(s) >= 4 and s[:2] == r'\x':
-                return (chr(int(s[2:4], 16)), s[4:])
-            if len(s) >= 6 and s[:2] == r'\u':
-                return (chr(int(s[2:6], 16)), s[6:])
-            if len(s) >= 10 and s[:2] == r'\U':
-                return (chr(int(s[2:10], 16)), s[10:])
-        return (s[0], s[1:])
-
-    new_strs = []
-    while len(orig_str) > 0:
-        next_c, orig_str = dequote_str(orig_str)
-        new_strs.append(next_c)
-    return ''.join(new_strs)

@@ -1,4 +1,6 @@
-from typing import Final, Iterable
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -23,15 +25,20 @@ from pyk.kore.syntax import (
     Not,
     Nu,
     Or,
-    Pattern,
     Rewrites,
     RightAssoc,
-    Sort,
     SortApp,
     String,
     SVar,
     Top,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from typing import Final
+
+    from pyk.kore.syntax import Pattern, Sort
+
 
 s, t = (SortApp(name) for name in ('s', 't'))
 u = SVar('@u', s)

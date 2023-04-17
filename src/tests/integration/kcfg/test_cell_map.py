@@ -1,25 +1,34 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Final, Iterable, NamedTuple, Optional, Tuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import pytest
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KInner, KSequence, KToken, KVariable, build_assoc
-from pyk.kast.manip import get_cell
-from pyk.kcfg import KCFG, KCFGExplore
-from pyk.ktool.kprint import KPrint
-from pyk.ktool.kprove import KProve
+from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
+from pyk.kcfg import KCFG
+from pyk.proof import AGProof, AGProver, ProofStatus
 
 from ..utils import KCFGExploreTest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from typing import Final
+
+    from pyk.kast import KInner
+    from pyk.kcfg import KCFGExplore
+    from pyk.ktool.kprint import KPrint
+    from pyk.ktool.kprove import KProve
 
 
 class State(NamedTuple):
     pgm: str
     active_accounts: str
-    accounts: Iterable[Tuple[str, str]]
+    accounts: Iterable[tuple[str, str]]
 
 
-EXECUTE_TEST_DATA: Final[Iterable[Tuple[str, int, State, int, State, Iterable[State]]]] = (
+EXECUTE_TEST_DATA: Final[Iterable[tuple[str, int, State, int, State, Iterable[State]]]] = (
     (
         'account-nonexistent',
         1,
@@ -31,7 +40,7 @@ EXECUTE_TEST_DATA: Final[Iterable[Tuple[str, int, State, int, State, Iterable[St
 )
 
 
-APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[int], Iterable[str]]] = (
+APR_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, int | None, int | None, Iterable[str]]] = (
     ('cell-map-no-branch', 'k-files/cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 2, 1, []),
 )
 
@@ -40,7 +49,7 @@ class TestCellMapProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = 'k-files/cell-map.k'
 
     @staticmethod
-    def config(kprint: KPrint, k: str, active_accounts: str, accounts: Iterable[Tuple[str, str]]) -> CTerm:
+    def config(kprint: KPrint, k: str, active_accounts: str, accounts: Iterable[tuple[str, str]]) -> CTerm:
         def _parse(kt: KToken) -> KInner:
             return kprint.parse_token(kt, as_rule=True)
 
@@ -49,16 +58,12 @@ class TestCellMapProof(KCFGExploreTest):
         _accounts_parsed = (
             KApply(
                 'AccountCellMapItem',
-                [
-                    KApply('<id>', [_parse(KToken(act_id, 'Int'))]),
-                    KApply(
-                        '<account>',
-                        [
-                            KApply('<id>', [_parse(KToken(act_id, 'Int'))]),
-                            KApply('<balance>', [_parse(KToken(act_state, 'Int'))]),
-                        ],
-                    ),
-                ],
+                KApply('<id>', _parse(KToken(act_id, 'Int'))),
+                KApply(
+                    '<account>',
+                    KApply('<id>', _parse(KToken(act_id, 'Int'))),
+                    KApply('<balance>', _parse(KToken(act_state, 'Int'))),
+                ),
             )
             for act_id, act_state in accounts
         )
@@ -66,13 +71,12 @@ class TestCellMapProof(KCFGExploreTest):
         return CTerm(
             KApply(
                 '<generatedTop>',
-                [
-                    KApply('<k>', [KSequence([_k_parsed])]),
-                    KApply('<activeAccounts>', [_active_accounts]),
-                    KVariable('GENERATED_COUNTER_CELL'),
-                    KApply('<accounts>', [_accounts]),
-                ],
-            )
+                KApply('<k>', KSequence(_k_parsed)),
+                KApply('<activeAccounts>', _active_accounts),
+                KVariable('GENERATED_COUNTER_CELL'),
+                KApply('<accounts>', _accounts),
+            ),
+            (),
         )
 
     @pytest.mark.parametrize(
@@ -98,7 +102,7 @@ class TestCellMapProof(KCFGExploreTest):
         actual_depth, actual_post_term, _ = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, k, aacounts, accounts), depth=depth
         )
-        actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post_term.kast, 'K_CELL'))
+        actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
 
         # Then
         assert actual_depth == expected_depth
@@ -130,13 +134,13 @@ class TestCellMapProof(KCFGExploreTest):
         init = kcfg.get_unique_init()
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         kcfg.replace_node(init.id, new_init_term)
-        kcfg = kcfg_explore.all_path_reachability_prove(
-            f'{spec_module}.{claim_id}',
-            kcfg,
+        proof = AGProof(f'{spec_module}.{claim_id}', kcfg)
+        prover = AGProver(proof)
+        kcfg = prover.advance_proof(
+            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,
         )
 
-        failed_nodes = len(kcfg.frontier) + len(kcfg.stuck)
-        assert failed_nodes == 0
+        assert proof.status == ProofStatus.PASSED

@@ -1,18 +1,28 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Final, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KInner, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import get_cell
-from pyk.kcfg import KCFG, KCFGExplore
-from pyk.ktool.kprint import KPrint, SymbolTable
-from pyk.ktool.kprove import KProve
+from pyk.cterm import CSubst, CTerm
+from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
+from pyk.kcfg import KCFG
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
+from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
+from pyk.proof import AGProof, AGProver, ProofStatus
 
 from ..utils import KCFGExploreTest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from typing import Final
+
+    from pyk.kast import KInner
+    from pyk.kcfg import KCFGExplore
+    from pyk.ktool.kprint import KPrint, SymbolTable
+    from pyk.ktool.kprove import KProve
+
 
 PROVE_CTERM_TEST_DATA: Final = (
     ('step-1', ['--depth', '1'], 'int $n , $s ; $n = 3 ;', [('int $s , .Ids ; $n = 3 ;', '$n |-> 0')]),
@@ -25,7 +35,7 @@ PROVE_CTERM_TEST_DATA: Final = (
     ),
 )
 
-EMPTY_STATES: Final[List[Tuple[str, str]]] = []
+EMPTY_STATES: Final[list[tuple[str, str]]] = []
 EXECUTE_TEST_DATA: Final = (
     (
         'step-1',
@@ -59,19 +69,19 @@ IMPLIES_TEST_DATA: Final = (
         'constant-subst',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        (Subst({'X': intToken(3)}), mlTop()),
+        CSubst(Subst({'X': intToken(3)})),
     ),
     (
         'variable-subst',
         ('int $n , $s ; $n = Y ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        (Subst({'X': KVariable('Y', sort=KSort('AExp'))}), mlTop()),
+        CSubst(Subst({'X': KVariable('Y', sort=KSort('AExp'))})),
     ),
     (
         'trivial',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = 3 ;', '.Map'),
-        (Subst({}), mlTop()),
+        CSubst(Subst({})),
     ),
     (
         'consequent-constraint',
@@ -92,14 +102,79 @@ IMPLIES_TEST_DATA: Final = (
             ),
         ),
         ('int $n , $s ; $n = Y ;', '.Map'),
-        (Subst({}), mlBottom()),
+        CSubst(Subst({}), [mlBottom()]),
     ),
 )
 
-APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[int], Iterable[str]]] = (
-    ('imp-simple-addition-1', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-1', 2, 1, []),
-    ('imp-simple-addition-2', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-2', 2, 7, []),
-    ('imp-simple-addition-var', 'k-files/imp-simple-spec.k', 'IMP-SIMPLE-SPEC', 'addition-var', 2, 1, []),
+APR_PROVE_TEST_DATA: Iterable[
+    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus]
+] = (
+    (
+        'imp-simple-addition-1',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'addition-1',
+        2,
+        1,
+        [],
+        [],
+        ProofStatus.PASSED,
+    ),
+    (
+        'imp-simple-addition-2',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'addition-2',
+        2,
+        7,
+        [],
+        [],
+        ProofStatus.PASSED,
+    ),
+    (
+        'imp-simple-addition-var',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'addition-var',
+        2,
+        1,
+        [],
+        [],
+        ProofStatus.PASSED,
+    ),
+    (
+        'pre-branch-proved',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'pre-branch-proved',
+        1,
+        100,
+        [],
+        [],
+        ProofStatus.PASSED,
+    ),
+    (
+        'while-cut-rule',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'while-cut-rule',
+        1,
+        1,
+        [],
+        ['IMP.while'],
+        ProofStatus.PASSED,
+    ),
+    (
+        'while-cut-rule-delayed',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'while-cut-rule-delayed',
+        4,
+        100,
+        [],
+        ['IMP.while'],
+        ProofStatus.PASSED,
+    ),
     (
         'imp-simple-sum-10',
         'k-files/imp-simple-spec.k',
@@ -108,6 +183,8 @@ APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[
         None,
         None,
         ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.PASSED,
     ),
     (
         'imp-simple-sum-100',
@@ -117,6 +194,8 @@ APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[
         None,
         None,
         ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.PASSED,
     ),
     (
         'imp-simple-sum-1000',
@@ -126,6 +205,8 @@ APR_PROVE_TEST_DATA: Iterable[Tuple[str, str, str, str, Optional[int], Optional[
         None,
         None,
         ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.PASSED,
     ),
 )
 
@@ -138,23 +219,32 @@ class TestImpProof(KCFGExploreTest):
         symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
 
     @staticmethod
-    def config(kprint: KPrint, k: str, state: str, constraint: Optional[KInner] = None) -> CTerm:
+    def _is_terminal(cterm1: CTerm) -> bool:
+        k_cell = cterm1.cell('K_CELL')
+        if type(k_cell) is KSequence:
+            if len(k_cell) == 0:
+                return True
+            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
+                return True
+        return False
+
+    @staticmethod
+    def config(kprint: KPrint, k: str, state: str, constraint: KInner | None = None) -> CTerm:
         k_parsed = kprint.parse_token(KToken(k, 'Pgm'), as_rule=True)
         state_parsed = kprint.parse_token(KToken(state, 'Map'), as_rule=True)
         _config = CTerm(
             KApply(
                 '<generatedTop>',
-                [
-                    KApply(
-                        '<T>',
-                        (
-                            KApply('<k>', [KSequence([k_parsed])]),
-                            KApply('<state>', [state_parsed]),
-                        ),
+                KApply(
+                    '<T>',
+                    (
+                        KApply('<k>', KSequence(k_parsed)),
+                        KApply('<state>', state_parsed),
                     ),
-                    KVariable('GENERATED_COUNTER_CELL'),
-                ],
-            )
+                ),
+                KVariable('GENERATED_COUNTER_CELL'),
+            ),
+            (),
         )
         if constraint is not None:
             _config = _config.add_constraint(constraint)
@@ -170,10 +260,10 @@ class TestImpProof(KCFGExploreTest):
         kcfg_explore: KCFGExplore,
         test_id: str,
         depth: int,
-        pre: Tuple[str, str],
+        pre: tuple[str, str],
         expected_depth: int,
-        expected_post: Tuple[str, str],
-        expected_next_states: Iterable[Tuple[str, str]],
+        expected_post: tuple[str, str],
+        expected_next_states: Iterable[tuple[str, str]],
     ) -> None:
         # Given
         k, state = pre
@@ -183,13 +273,13 @@ class TestImpProof(KCFGExploreTest):
         actual_depth, actual_post_term, actual_next_terms = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, k, state), depth=depth
         )
-        actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post_term.kast, 'K_CELL'))
-        actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post_term.kast, 'STATE_CELL'))
+        actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
+        actual_state = kcfg_explore.kprint.pretty_print(actual_post_term.cell('STATE_CELL'))
 
         actual_next_states = [
             (
-                kcfg_explore.kprint.pretty_print(get_cell(s.kast, 'K_CELL')),
-                kcfg_explore.kprint.pretty_print(get_cell(s.kast, 'STATE_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cell('K_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cell('STATE_CELL')),
             )
             for s in actual_next_terms
         ]
@@ -209,9 +299,9 @@ class TestImpProof(KCFGExploreTest):
         self,
         kcfg_explore: KCFGExplore,
         test_id: str,
-        antecedent: Union[Tuple[str, str], Tuple[str, str, KInner]],
-        consequent: Union[Tuple[str, str], Tuple[str, str, KInner]],
-        expected: Tuple[Subst, KInner],
+        antecedent: tuple[str, str] | tuple[str, str, KInner],
+        consequent: tuple[str, str] | tuple[str, str, KInner],
+        expected: CSubst | None,
     ) -> None:
         # Given
         antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
@@ -243,7 +333,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -258,6 +348,8 @@ class TestImpProof(KCFGExploreTest):
         max_iterations: int,
         max_depth: int,
         terminal_rules: Iterable[str],
+        cut_rules: Iterable[str],
+        proof_status: ProofStatus,
     ) -> None:
         claims = kprove.get_claims(
             Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
@@ -265,13 +357,15 @@ class TestImpProof(KCFGExploreTest):
         assert len(claims) == 1
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        kcfg = kcfg_explore.all_path_reachability_prove(
-            f'{spec_module}.{claim_id}',
-            kcfg,
+        proof = AGProof(f'{spec_module}.{claim_id}', kcfg)
+        prover = AGProver(proof)
+        kcfg = prover.advance_proof(
+            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
+            cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
+            is_terminal=TestImpProof._is_terminal,
         )
 
-        failed_nodes = len(kcfg.frontier) + len(kcfg.stuck)
-        assert failed_nodes == 0
+        assert proof.status == proof_status

@@ -1,16 +1,25 @@
+from __future__ import annotations
+
 from itertools import count
-from typing import Final, List, Tuple
+from typing import TYPE_CHECKING
 
 import pytest
 
 from pyk.cterm import CTerm, build_claim, build_rule
-from pyk.kast.inner import KApply, KAtt, KInner, KLabel, KRewrite, KSequence, KVariable
+from pyk.kast import KAtt
+from pyk.kast.inner import KApply, KLabel, KRewrite, KSequence, KVariable
 from pyk.kast.outer import KClaim
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlAnd, mlEqualsTrue
 
 from .utils import a, b, c, f, g, h, k, x, y, z
+
+if TYPE_CHECKING:
+    from typing import Final
+
+    from pyk.kast import KInner
+
 
 mem = KLabel('<mem>')
 
@@ -26,10 +35,10 @@ v1_sorted = KVariable('V1', sort=INT)
 
 
 def _as_cterm(term: KInner) -> CTerm:
-    return CTerm(KApply(KLabel('<generatedTop>', GENERATED_TOP_CELL), term))
+    return CTerm(KApply(KLabel('<generatedTop>', GENERATED_TOP_CELL), term), ())
 
 
-MATCH_TEST_DATA: Final[Tuple[Tuple[KInner, KInner], ...]] = (
+MATCH_TEST_DATA: Final[tuple[tuple[KInner, KInner], ...]] = (
     (a, a),
     (a, x),
     (f(a), x),
@@ -87,9 +96,9 @@ BUILD_RULE_TEST_DATA: Final = (
 
 
 @pytest.mark.parametrize('lhs,rhs,keep_vars,expected', BUILD_RULE_TEST_DATA, ids=count())
-def test_build_rule(lhs: KInner, rhs: KInner, keep_vars: List[str], expected: KInner) -> None:
+def test_build_rule(lhs: KInner, rhs: KInner, keep_vars: list[str], expected: KInner) -> None:
     # When
-    rule, _ = build_rule('test-rule', CTerm(lhs), CTerm(rhs), keep_vars=keep_vars)
+    rule, _ = build_rule('test-rule', CTerm.from_kast(lhs), CTerm.from_kast(rhs), keep_vars=keep_vars)
     actual = rule.body
 
     # Then
@@ -139,8 +148,8 @@ BUILD_CLAIM_TEST_DATA: Final = (
 )
 def test_build_claim(test_id: str, init: KInner, target: KInner, expected: KClaim) -> None:
     # Given
-    init_cterm = CTerm(init)
-    target_cterm = CTerm(target)
+    init_cterm = CTerm.from_kast(init)
+    target_cterm = CTerm.from_kast(target)
 
     # When
     actual, _ = build_claim('claim', init_cterm, target_cterm)

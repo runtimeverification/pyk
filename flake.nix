@@ -4,6 +4,7 @@
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs";
   inputs.poetry2nix.url = "github:nix-community/poetry2nix/master";
+  inputs.poetry2nix.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs = { self, nixpkgs, flake-utils, poetry2nix }:
     {
@@ -19,32 +20,17 @@
               checkGroups = [ ];
               overrides = prev.poetry2nix.overrides.withDefaults
                 (finalPython: prevPython: {
-                  filelock = prevPython.filelock.overridePythonAttrs
-                    (oldAttrs: {
-                      buildInputs = (oldAttrs.buildInputs or [ ])
-                        ++ [ prevPython.hatchling prevPython.hatch-vcs ];
-                    });
                   nanoid = prevPython.nanoid.overridePythonAttrs
                     (oldAttrs: {
                       buildInputs = (oldAttrs.buildInputs or [ ])
                         ++ [ prevPython.setuptools ];
                     });
-                  pathspec = prevPython.pathspec.overridePythonAttrs
-                    (oldAttrs: {
-                      buildInputs = (oldAttrs.buildInputs or [ ])
-                        ++ [ prevPython.flit-core ];
-                    });
-                  packaging = prevPython.packaging.overridePythonAttrs
-                    (oldAttrs: {
-                      buildInputs = (oldAttrs.buildInputs or [ ])
-                        ++ [ prevPython.flit-core ];
-                    });
                 });
             };
         in rec {
-          pyk = pyk-python39;
-          pyk-python39 = mkPyk prev.python39;
+          pyk = pyk-python310;
           pyk-python310 = mkPyk prev.python310;
+          pyk-python311 = mkPyk prev.python311;
         };
     } // (flake-utils.lib.eachDefaultSystem (system:
       let
@@ -54,7 +40,7 @@
         };
       in {
         packages = {
-          inherit (pkgs) pyk pyk-python39 pyk-python310;
+          inherit (pkgs) pyk pyk-python310 pyk-python311;
           default = pkgs.pyk;
         };
       }));

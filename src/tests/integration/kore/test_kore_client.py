@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from string import Template
-from typing import Any, Final, Mapping, Tuple
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -9,17 +11,22 @@ from pyk.kore.rpc import (
     BranchingResult,
     CutPointResult,
     DepthBoundResult,
-    ExecuteResult,
     ImpliesResult,
-    KoreClient,
     KoreClientError,
     State,
     StuckResult,
     TerminalResult,
 )
-from pyk.kore.syntax import And, Equals, EVar, Implies, Module, Pattern, Top
+from pyk.kore.syntax import And, Equals, EVar, Implies, Module, Top
 
 from .utils import KoreClientTest
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from typing import Any, Final
+
+    from pyk.kore.rpc import ExecuteResult, KoreClient
+    from pyk.kore.syntax import Pattern
 
 int_top = Top(INT)
 x, y = (EVar(v, INT) for v in ['x', 'y'])
@@ -51,7 +58,7 @@ def state(n: int) -> State:
     return State(term=term(n), substitution=None, predicate=None)
 
 
-EXECUTE_TEST_DATA: Final[Tuple[Tuple[str, int, Mapping[str, Any], ExecuteResult], ...]] = (
+EXECUTE_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult], ...]] = (
     ('branching', 0, {}, BranchingResult(state=state(2), depth=2, next_states=(state(4), state(3)))),
     ('depth-bound', 0, {'max_depth': 2}, DepthBoundResult(state=state(2), depth=2)),
     ('stuck', 4, {}, StuckResult(state=state(6), depth=2)),

@@ -1,23 +1,32 @@
-from typing import Callable, Iterable, List, Optional, Tuple, Union
+from __future__ import annotations
 
-from textual.app import App, ComposeResult
+from typing import TYPE_CHECKING, Union
+
+from textual.app import App
 from textual.containers import Horizontal, Vertical
-from textual.events import Click
-from textual.message import Message, MessageTarget
+from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Footer, Static
 
-from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KInner, KRewrite
-from pyk.kast.manip import flatten_label, minimize_term, push_down_rewrites
-from pyk.ktool.kprint import KPrint
-from pyk.prelude.kbool import TRUE
-from pyk.prelude.ml import mlAnd
-
+from ..cterm import CTerm
+from ..kast.inner import KApply, KRewrite
+from ..kast.manip import flatten_label, minimize_term, push_down_rewrites
 from ..kcfg import KCFG
+from ..prelude.kbool import TRUE
 from ..utils import shorten_hashes, single
 
-KCFGElem = Union[KCFG.Node, KCFG.EdgeLike]
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from textual.app import ComposeResult
+    from textual.events import Click
+    from textual.message import MessageTarget
+
+    from ..kast import KInner
+    from ..ktool.kprint import KPrint
+
+
+KCFGElem = Union[KCFG.Node, KCFG.Successor]
 
 
 class GraphChunk(Static):
@@ -49,7 +58,7 @@ class BehaviorView(Widget):
     _kcfg: KCFG
     _kprint: KPrint
     _minimize: bool
-    _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
+    _node_printer: Callable[[CTerm], Iterable[str]] | None
     _nodes: Iterable[GraphChunk]
 
     def __init__(
@@ -57,7 +66,7 @@ class BehaviorView(Widget):
         kcfg: KCFG,
         kprint: KPrint,
         minimize: bool = True,
-        node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
+        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
         id: str = '',
     ):
         super().__init__(id=id)
@@ -77,9 +86,9 @@ class BehaviorView(Widget):
 
 class NodeView(Widget):
     _kprint: KPrint
-    _custom_view: Optional[Callable[[KCFGElem], Iterable[str]]]
+    _custom_view: Callable[[KCFGElem], Iterable[str]] | None
 
-    _element: Optional[KCFGElem]
+    _element: KCFGElem | None
 
     _minimize: bool
     _term_on: bool
@@ -94,7 +103,7 @@ class NodeView(Widget):
         term_on: bool = True,
         constraint_on: bool = True,
         custom_on: bool = False,
-        custom_view: Optional[Callable[[KCFGElem], Iterable[str]]] = None,
+        custom_view: Callable[[KCFGElem], Iterable[str]] | None = None,
     ):
         super().__init__(id=id)
         self._kprint = kprint
@@ -160,7 +169,7 @@ class NodeView(Widget):
             else:
                 return c
 
-        def _cterm_text(cterm: CTerm) -> Tuple[str, str]:
+        def _cterm_text(cterm: CTerm) -> tuple[str, str]:
             config = cterm.config
             constraints = map(_boolify, cterm.constraints)
             if self._minimize:
@@ -180,14 +189,27 @@ class NodeView(Widget):
                 config_target, *constraints_target = self._element.target.cterm
                 constraints_new = [c for c in constraints_target if c not in constraints_source]
                 config = push_down_rewrites(KRewrite(config_source, config_target))
-                crewrite = CTerm(mlAnd([config] + constraints_new))
+                crewrite = CTerm(config, constraints_new)
                 term_str, constraint_str = _cterm_text(crewrite)
 
             elif type(self._element) is KCFG.Cover:
-                subst_equalities = map(_boolify, flatten_label('#And', self._element.subst.ml_pred))
-                constraints = map(_boolify, flatten_label('#And', self._element.constraint))
+                subst_equalities = map(_boolify, flatten_label('#And', self._element.csubst.subst.ml_pred))
+                constraints = map(_boolify, flatten_label('#And', self._element.csubst.constraint))
                 term_str = '\n'.join(self._kprint.pretty_print(se) for se in subst_equalities)
                 constraint_str = '\n'.join(self._kprint.pretty_print(c) for c in constraints)
+
+            elif type(self._element) is KCFG.Split:
+                term_strs = [f'split: {shorten_hashes(self._element.source.id)}']
+                for target, csubst in self._element.targets:
+                    term_strs.append('')
+                    term_strs.append(f'  - {shorten_hashes(target.id)}')
+                    if len(csubst.subst) > 0:
+                        subst_equalities = map(_boolify, flatten_label('#And', csubst.subst.ml_pred))
+                        term_strs.extend(f'    {self._kprint.pretty_print(cline)}' for cline in subst_equalities)
+                    if len(csubst.constraints) > 0:
+                        constraints = map(_boolify, flatten_label('#And', csubst.constraint))
+                        term_strs.extend(f'    {self._kprint.pretty_print(cline)}' for cline in constraints)
+                term_str = '\n'.join(term_strs)
 
             if self._custom_view is not None:
                 custom_str = '\n'.join(self._custom_view(self._element))
@@ -204,20 +226,20 @@ class KCFGViewer(App):
     _kcfg: KCFG
     _kprint: KPrint
 
-    _node_printer: Optional[Callable[[CTerm], Iterable[str]]]
-    _custom_view: Optional[Callable[[KCFGElem], Iterable[str]]]
+    _node_printer: Callable[[CTerm], Iterable[str]] | None
+    _custom_view: Callable[[KCFGElem], Iterable[str]] | None
 
     _minimize: bool
 
-    _hidden_chunks: List[str]
-    _selected_chunk: Optional[str]
+    _hidden_chunks: list[str]
+    _selected_chunk: str | None
 
     def __init__(
         self,
         kcfg: KCFG,
         kprint: KPrint,
-        node_printer: Optional[Callable[[CTerm], Iterable[str]]] = None,
-        custom_view: Optional[Callable[[KCFGElem], Iterable[str]]] = None,
+        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        custom_view: Callable[[KCFGElem], Iterable[str]] | None = None,
         minimize: bool = True,
     ) -> None:
         super().__init__()
@@ -242,24 +264,26 @@ class KCFGViewer(App):
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
         if message.chunk_id.startswith('node_'):
             self._selected_chunk = message.chunk_id
-            node = message.chunk_id[5:]
+            node, *_ = message.chunk_id[5:].split('_')
             self.query_one('#node-view', NodeView).update(self._kcfg.node(node))
 
         elif message.chunk_id.startswith('edge_'):
             self._selected_chunk = None
-            node_source, node_target = message.chunk_id[5:].split('_')
+            node_source, node_target, *_ = message.chunk_id[5:].split('_')
             edge = single(self._kcfg.edges(source_id=node_source, target_id=node_target))
             self.query_one('#node-view', NodeView).update(edge)
 
         elif message.chunk_id.startswith('cover_'):
             self._selected_chunk = None
-            node_source, node_target = message.chunk_id[6:].split('_')
+            node_source, node_target, *_ = message.chunk_id[6:].split('_')
             cover = single(self._kcfg.covers(source_id=node_source, target_id=node_target))
             self.query_one('#node-view', NodeView).update(cover)
 
-        else:
-            # should be unreachable
-            raise AssertionError()
+        elif message.chunk_id.startswith('split_'):
+            self._selected_chunk = None
+            node_source, node_target, *_ = message.chunk_id[6:].split('_')
+            split = single(self._kcfg.splits(source_id=node_source, target_id=node_target))
+            self.query_one('#node-view', NodeView).update(split)
 
     BINDINGS = [
         ('h', 'keystroke("h")', 'Hide selected node.'),

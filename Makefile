@@ -15,7 +15,7 @@ clean:
 build:
 	$(POETRY) build
 
-.PHONY: install
+.PHONY: poetry-install
 poetry-install:
 	$(POETRY) install
 
@@ -54,6 +54,14 @@ cov-integration: TEST_ARGS += --cov-report=html:cov-integration-html $(COV_ARGS)
 cov-integration: test-integration
 
 
+# Profiling
+
+PROF_ARGS :=
+
+profile: poetry-install
+	$(POETRY_RUN) pytest src/tests/profiling --maxfail=1 --verbose --durations=0 --numprocesses=4 --dist=worksteal $(PROF_ARGS)
+
+
 # Checks and formatting
 
 format: autoflake isort black
@@ -82,3 +90,11 @@ black: poetry-install
 
 check-black: poetry-install
 	$(POETRY_RUN) black --check src
+
+
+# Optional tools
+
+SRC_FILES := $(shell find src -type f -name '*.py')
+
+pyupgrade: poetry-install
+	$(POETRY_RUN) pyupgrade --py310-plus $(SRC_FILES)

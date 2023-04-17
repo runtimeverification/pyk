@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 import json
 import logging
+from collections.abc import Callable
 from enum import Enum
 from functools import cached_property
 from pathlib import Path
-from subprocess import CalledProcessError, CompletedProcess
+from subprocess import CalledProcessError
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Dict, Final, Iterable, List, Optional, Union
+from typing import TYPE_CHECKING
 
-from ..cli_utils import BugReport, check_dir_path, check_file_path, run_process
+from ..cli_utils import check_dir_path, check_file_path, run_process
 from ..kast import kast_term
-from ..kast.inner import KApply, KAs, KAst, KAtt, KInner, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
+from ..kast.inner import KApply, KAs, KAtt, KInner, KRewrite, KSequence, KSort, KToken, KVariable
 from ..kast.manip import flatten_label
 from ..kast.outer import (
     KBubble,
@@ -31,21 +34,25 @@ from ..kast.outer import (
     KTerminal,
     read_kast_definition,
 )
-from ..konvert import KompiledKore, kast_to_kore, unmunge
+from ..konvert import kast_to_kore, kore_to_kast
+from ..kore.kompiled import KompiledKore
 from ..kore.parser import KoreParser
-from ..kore.prelude import BYTES as KORE_BYTES
-from ..kore.prelude import STRING as KORE_STRING
-from ..kore.syntax import DV, And, App, Assoc, Bottom, Ceil, Equals, EVar, Exists, Implies, Not, Pattern, SortApp, Top
-from ..prelude.bytes import BYTES, bytesToken
+from ..kore.syntax import App, SortApp
 from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
-from ..prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
-from ..prelude.string import STRING, stringToken
-from ..utils import enquote_str
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from subprocess import CompletedProcess
+    from typing import Any, Final
+
+    from ..cli_utils import BugReport
+    from ..kast import KAst
+    from ..kore.syntax import Pattern
 
 _LOGGER: Final = logging.getLogger(__name__)
 
-SymbolTable = Dict[str, Callable[..., str]]
+SymbolTable = dict[str, Callable[..., str]]
 
 
 class KAstInput(Enum):
@@ -69,15 +76,15 @@ class KAstOutput(Enum):
 
 
 def _kast(
-    file: Optional[Union[str, Path]] = None,
+    file: str | Path | None = None,
     *,
-    command: Optional[str] = None,
-    definition_dir: Optional[Union[str, Path]] = None,
-    input: Optional[Union[str, KAstInput]] = None,
-    output: Optional[Union[str, KAstOutput]] = None,
-    expression: Optional[str] = None,
-    module: Optional[str] = None,
-    sort: Optional[str] = None,
+    command: str | None = None,
+    definition_dir: str | Path | None = None,
+    input: str | KAstInput | None = None,
+    output: str | KAstOutput | None = None,
+    expression: str | None = None,
+    module: str | None = None,
+    sort: str | None = None,
     gen_glr_parser: bool = False,
     # ---
     check: bool = True,
@@ -122,12 +129,12 @@ def _kast(
 
 
 def gen_glr_parser(
-    parser_file: Union[str, Path],
+    parser_file: str | Path,
     *,
-    command: Optional[str] = None,
-    definition_dir: Optional[Union[str, Path]] = None,
-    module: Optional[str] = None,
-    sort: Optional[str] = None,
+    command: str | None = None,
+    definition_dir: str | Path | None = None,
+    module: str | None = None,
+    sort: str | None = None,
 ) -> Path:
     parser_file = Path(parser_file)
     _kast(
@@ -145,16 +152,16 @@ def gen_glr_parser(
 
 def _build_arg_list(
     *,
-    file: Optional[Path],
-    command: Optional[str],
-    definition_dir: Optional[Path],
-    input: Optional[KAstInput],
-    output: Optional[KAstOutput],
-    expression: Optional[str],
-    module: Optional[str],
-    sort: Optional[str],
+    file: Path | None,
+    command: str | None,
+    definition_dir: Path | None,
+    input: KAstInput | None,
+    output: KAstOutput | None,
+    expression: str | None,
+    module: str | None,
+    sort: str | None,
     gen_glr_parser: bool,
-) -> List[str]:
+) -> list[str]:
     args = [command if command is not None else 'kast']
     if file:
         args += [str(file)]
@@ -182,15 +189,15 @@ class KPrint:
     backend: str
     _extra_unparsing_modules: Iterable[KFlatModule]
 
-    _temp_dir: Optional[TemporaryDirectory] = None
+    _temp_dir: TemporaryDirectory | None = None
 
-    _bug_report: Optional[BugReport]
+    _bug_report: BugReport | None
 
     def __init__(
         self,
         definition_dir: Path,
-        use_directory: Optional[Path] = None,
-        bug_report: Optional[BugReport] = None,
+        use_directory: Path | None = None,
+        bug_report: BugReport | None = None,
         extra_unparsing_modules: Iterable[KFlatModule] = (),
     ) -> None:
         self.definition_dir = Path(definition_dir)
@@ -202,9 +209,9 @@ class KPrint:
         check_dir_path(self.use_directory)
         self._definition = None
         self._symbol_table = None
-        with open(self.definition_dir / 'mainModule.txt', 'r') as mm:
+        with open(self.definition_dir / 'mainModule.txt') as mm:
             self.main_module = mm.read()
-        with open(self.definition_dir / 'backend.txt', 'r') as ba:
+        with open(self.definition_dir / 'backend.txt') as ba:
             self.backend = ba.read()
         self._extra_unparsing_modules = extra_unparsing_modules
         self._bug_report = bug_report
@@ -256,9 +263,13 @@ class KPrint:
         return proc_res.stdout
 
     def kore_to_kast(self, kore: Pattern) -> KInner:
-        _kast_out = self._kore_to_kast(kore)
-        if _kast_out is not None:
-            return self.definition.remove_cell_map_items(_kast_out)
+        _LOGGER.debug(f'kore_to_kast: {kore.text}')
+
+        try:
+            return kore_to_kast(self.definition, kore)
+        except ValueError as err:
+            _LOGGER.warning(err)
+
         _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
         proc_res = self._expression_kast(
             kore.text,
@@ -267,113 +278,7 @@ class KPrint:
         )
         return kast_term(json.loads(proc_res.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
 
-    def _kore_to_kast(self, kore: Pattern) -> Optional[KInner]:
-        _LOGGER.debug(f'_kore_to_kast: {kore}')
-
-        if type(kore) is DV and kore.sort.name.startswith('Sort'):
-            if kore.sort == KORE_STRING:
-                return stringToken(kore.value.value)
-            if kore.sort == KORE_BYTES:
-                return bytesToken(kore.value.value)
-            return KToken(kore.value.value, KSort(kore.sort.name[4:]))
-
-        elif type(kore) is EVar:
-            vname = unmunge(kore.name[3:])
-            return KVariable(vname, sort=KSort(kore.sort.name[4:]))
-
-        elif type(kore) is App:
-            if kore.symbol == 'inj' and len(kore.sorts) == 2 and len(kore.args) == 1:
-                return self._kore_to_kast(kore.args[0])
-
-            elif len(kore.sorts) == 0:
-                if kore.symbol == 'dotk' and len(kore.args) == 0:
-                    return KSequence([])
-
-                elif kore.symbol == 'kseq' and len(kore.args) == 2:
-                    p0 = self._kore_to_kast(kore.args[0])
-                    p1 = self._kore_to_kast(kore.args[1])
-                    if p0 is not None and p1 is not None:
-                        return KSequence([p0, p1])
-
-                else:
-                    _label_name = unmunge(kore.symbol[3:])
-                    klabel = KLabel(_label_name, [KSort(k.name[4:]) for k in kore.sorts])
-                    args = [self._kore_to_kast(_a) for _a in kore.args]
-                    # TODO: Written like this to appease the type-checker.
-                    new_args = [a for a in args if a is not None]
-                    if len(new_args) == len(args):
-                        return KApply(klabel, new_args)
-
-            # hardcoded polymorphic operators
-            elif (
-                len(kore.sorts) == 1
-                and kore.symbol
-                == "Lbl'Hash'if'UndsHash'then'UndsHash'else'UndsHash'fi'Unds'K-EQUAL-SYNTAX'Unds'Sort'Unds'Bool'Unds'Sort'Unds'Sort"
-            ):
-                _label_name = unmunge(kore.symbol[3:])
-                klabel = KLabel(_label_name, [KSort(kore.sorts[0].name[4:])])
-                # TODO: Written like this to appease the type-checker.
-                args = [self._kore_to_kast(_a) for _a in kore.args]
-                new_args = [a for a in args if a is not None]
-                if len(new_args) == len(args):
-                    return KApply(klabel, new_args)
-
-        elif type(kore) is Top:
-            return mlTop(sort=KSort(kore.sort.name[4:]))
-
-        elif type(kore) is Bottom:
-            return mlBottom(sort=KSort(kore.sort.name[4:]))
-
-        elif type(kore) is And:
-            psort = KSort(kore.sort.name[4:])
-            larg = self._kore_to_kast(kore.left)
-            rarg = self._kore_to_kast(kore.right)
-            if larg is not None and rarg is not None:
-                return mlAnd([larg, rarg], sort=psort)
-
-        elif type(kore) is Implies:
-            psort = KSort(kore.sort.name[4:])
-            larg = self._kore_to_kast(kore.left)
-            rarg = self._kore_to_kast(kore.right)
-            if larg is not None and rarg is not None:
-                return mlImplies(larg, rarg, sort=psort)
-
-        elif type(kore) is Not:
-            psort = KSort(kore.sort.name[4:])
-            arg = self._kore_to_kast(kore.pattern)
-            if arg is not None:
-                return mlNot(arg, sort=psort)
-
-        elif type(kore) is Exists:
-            psort = KSort(kore.sort.name[4:])
-            var = self._kore_to_kast(kore.var)
-            body = self._kore_to_kast(kore.pattern)
-            if var is not None and body is not None:
-                assert type(var) is KVariable
-                return mlExists(var, body, sort=psort)
-
-        elif type(kore) is Equals:
-            osort = KSort(kore.op_sort.name[4:])
-            psort = KSort(kore.sort.name[4:])
-            larg = self._kore_to_kast(kore.left)
-            rarg = self._kore_to_kast(kore.right)
-            if larg is not None and rarg is not None:
-                return mlEquals(larg, rarg, arg_sort=osort, sort=psort)
-
-        elif type(kore) is Ceil:
-            osort = KSort(kore.op_sort.name[4:])
-            psort = KSort(kore.sort.name[4:])
-            arg = self._kore_to_kast(kore.pattern)
-            if arg is not None:
-                return mlCeil(arg, arg_sort=osort, sort=psort)
-
-        elif isinstance(kore, Assoc):
-            return self._kore_to_kast(kore.pattern)
-
-        _LOGGER.warning(f'KPrint._kore_to_kast failed on input: {kore}')
-        return None
-
-    def kast_to_kore(self, kast: KInner, sort: Optional[KSort] = None) -> Pattern:
+    def kast_to_kore(self, kast: KInner, sort: KSort | None = None) -> Pattern:
         try:
             return kast_to_kore(self.definition, self.kompiled_kore, kast, sort)
         except ValueError as ve:
@@ -405,11 +310,11 @@ class KPrint:
         self,
         expression: str,
         *,
-        command: Optional[str] = None,
-        input: Optional[Union[str, KAstInput]] = None,
-        output: Optional[Union[str, KAstOutput]] = None,
-        module: Optional[str] = None,
-        sort: Optional[str] = None,
+        command: str | None = None,
+        input: str | KAstInput | None = None,
+        output: str | KAstOutput | None = None,
+        module: str | None = None,
+        sort: str | None = None,
         # ---
         check: bool = True,
     ) -> CompletedProcess:
@@ -495,16 +400,6 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
     if type(kast) is KSort:
         return kast.name
     if type(kast) is KToken:
-        if kast.sort == BYTES:
-            assert len(kast.token) >= 3
-            assert kast.token[0:2] == 'b"'
-            assert kast.token[-1] == '"'
-            return 'b"' + enquote_str(kast.token[2:-1]) + '"'
-        if kast.sort == STRING:
-            assert len(kast.token) >= 2
-            assert kast.token[0] == '"'
-            assert kast.token[-1] == '"'
-            return '"' + enquote_str(kast.token[1:-1]) + '"'
         return kast.token
     if type(kast) is KApply:
         label = kast.label.name

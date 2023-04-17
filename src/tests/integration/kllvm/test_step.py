@@ -1,9 +1,16 @@
-from types import ModuleType
+from __future__ import annotations
 
-from pyk.kllvm.ast import Pattern
+from typing import TYPE_CHECKING
+
+import pyk.kllvm.load  # noqa: F401
 from pyk.kllvm.parser import Parser
 
 from .utils import RuntimeTest
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    from pyk.kllvm.ast import Pattern
 
 
 class TestStep(RuntimeTest):
@@ -31,6 +38,16 @@ class TestStep(RuntimeTest):
         term = runtime.Term(start_pattern())
         term.run()
         assert str(term) == bar_output()
+
+    def test_steps_to_pattern(self, runtime: ModuleType) -> None:
+        term = runtime.Term(start_pattern())
+        term.run()
+        pattern = term.pattern
+        assert str(pattern) == bar_output()
+
+    def test_interpret(self, runtime: ModuleType) -> None:
+        pattern = runtime.interpret(start_pattern())
+        assert str(pattern) == bar_output()
 
 
 def start_pattern() -> Pattern:

@@ -1,16 +1,24 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Final, Iterator, Tuple
+from typing import TYPE_CHECKING
 
 import pytest
-from pytest import TempPathFactory
 
-from pyk.konvert import KompiledKore, munge, unmunge
+from pyk.konvert import munge, unmunge
+from pyk.kore.kompiled import KompiledKore
 from pyk.kore.syntax import SortApp
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from typing import Final
 
-def munge_test_data_reader() -> Iterator[Tuple[str, str]]:
+    from pytest import TempPathFactory
+
+
+def munge_test_data_reader() -> Iterator[tuple[str, str]]:
     test_data_file = Path(__file__).parent / 'test-data/munge-tests'
-    with open(test_data_file, 'r') as f:
+    with open(test_data_file) as f:
         while True:
             try:
                 label = next(f)

@@ -1,14 +1,20 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property, reduce
 from pathlib import Path
-from typing import Dict, FrozenSet, Iterable, Optional, Set, Union, final
+from typing import TYPE_CHECKING, final
 
 from ..cli_utils import check_dir_path, check_file_path
-from ..kore.parser import KoreParser
-from ..kore.syntax import Definition, Sort
 from ..utils import FrozenDict
-from .syntax import App, Pattern, SortApp
+from .parser import KoreParser
+from .syntax import App, SortApp
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from .syntax import Definition, Pattern, Sort
 
 
 @final
@@ -17,7 +23,7 @@ class KompiledKore:
     path: Path
     timestamp: int
 
-    def __init__(self, definition_dir: Union[str, Path]):
+    def __init__(self, definition_dir: str | Path):
         definition_dir = Path(definition_dir)
         check_dir_path(definition_dir)
 
@@ -36,13 +42,13 @@ class KompiledKore:
         return KoreParser(self.path.read_text()).definition()
 
     @cached_property
-    def _subsort_table(self) -> FrozenDict[Sort, FrozenSet[Sort]]:
+    def _subsort_table(self) -> FrozenDict[Sort, frozenset[Sort]]:
         axioms = (axiom for module in self.definition for axiom in module.axioms)
         attrs = (attr for axiom in axioms for attr in axiom.attrs)
         subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
         subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
 
-        direct_subsorts: Dict[Sort, Set[Sort]] = defaultdict(set)
+        direct_subsorts: dict[Sort, set[Sort]] = defaultdict(set)
         for subsort, supersort in subsort_attr_sorts:
             direct_subsorts[supersort].add(subsort)
 
@@ -93,12 +99,12 @@ class KompiledKore:
         unit: Sort = SortApp('SortK')
         return reduce(self.meet_sorts, sorts, unit)
 
-    def add_injections(self, pattern: Pattern, sort: Optional[Sort] = None) -> Pattern:
+    def add_injections(self, pattern: Pattern, sort: Sort | None = None) -> Pattern:
         if sort is None:
             sort = SortApp('SortK')
         patterns = pattern.patterns
         sorts = self.definition.pattern_sorts(pattern)
-        pattern = pattern.let_patterns(self.add_injections(p, s) for p, s in zip(patterns, sorts))
+        pattern = pattern.let_patterns(self.add_injections(p, s) for p, s in zip(patterns, sorts, strict=True))
         return self._inject(pattern, sort)
 
     def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:

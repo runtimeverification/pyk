@@ -1,24 +1,31 @@
+from __future__ import annotations
+
 import logging
-import typing
 from collections import Counter
-from typing import Any, Callable, Collection, Dict, Final, Iterable, List, Optional, Sequence, Tuple, Type, TypeVar
+from typing import TYPE_CHECKING
 
 from ..prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
 from ..prelude.ml import is_top, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlOr
 from ..utils import find_common_items, hash_str
-from .inner import KApply, KInner, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
+from .inner import KApply, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
 from .kast import EMPTY_ATT, KAtt, WithKAtt
 from .outer import KDefinition, KFlatModule, KRuleLike
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Collection, Iterable, Sequence
+    from typing import Any, Final, TypeVar
+
+    from .inner import KInner
+
+    KI = TypeVar('KI', bound=KInner)
+    W = TypeVar('W', bound=WithKAtt)
+    RL = TypeVar('RL', bound=KRuleLike)
+
 _LOGGER: Final = logging.getLogger(__name__)
 
-KI = TypeVar('KI', bound=KInner)
-W = TypeVar('W', bound=WithKAtt)
-RL = TypeVar('RL', bound=KRuleLike)
 
-
-def flatten_label(label: str, kast: KInner) -> List[KInner]:
+def flatten_label(label: str, kast: KInner) -> list[KInner]:
     """Given a cons list, return a flat Python list of the elements.
 
     -   Input: Cons operation to flatten.
@@ -30,7 +37,7 @@ def flatten_label(label: str, kast: KInner) -> List[KInner]:
     return [kast]
 
 
-def if_ktype(ktype: Type[KI], then: Callable[[KI], KInner]) -> Callable[[KInner], KInner]:
+def if_ktype(ktype: type[KI], then: Callable[[KI], KInner]) -> Callable[[KInner], KInner]:
     def fun(term: KInner) -> KInner:
         if isinstance(term, ktype):
             return then(term)
@@ -126,15 +133,15 @@ def extract_rhs(term: KInner) -> KInner:
     return top_down(if_ktype(KRewrite, lambda rw: rw.rhs), term)
 
 
-def extract_subst(term: KInner) -> Tuple[Subst, KInner]:
-    def _subst_for_terms(term1: KInner, term2: KInner) -> Optional[Subst]:
+def extract_subst(term: KInner) -> tuple[Subst, KInner]:
+    def _subst_for_terms(term1: KInner, term2: KInner) -> Subst | None:
         if type(term1) is KVariable and type(term2) not in {KToken, KVariable}:
             return Subst({term1.name: term2})
         if type(term2) is KVariable and type(term1) not in {KToken, KVariable}:
             return Subst({term2.name: term1})
         return None
 
-    def _extract_subst(conjunct: KInner) -> Optional[Subst]:
+    def _extract_subst(conjunct: KInner) -> Subst | None:
         if type(conjunct) is KApply:
             if conjunct.label.name == '#Equals':
                 subst = _subst_for_terms(conjunct.args[0], conjunct.args[1])
@@ -156,7 +163,7 @@ def extract_subst(term: KInner) -> Tuple[Subst, KInner]:
 
     conjuncts = flatten_label('#And', term)
     subst = Subst()
-    rem_conjuncts: List[KInner] = []
+    rem_conjuncts: list[KInner] = []
 
     for conjunct in conjuncts:
         new_subst = _extract_subst(conjunct)
@@ -171,15 +178,15 @@ def extract_subst(term: KInner) -> Tuple[Subst, KInner]:
     return subst, mlAnd(rem_conjuncts)
 
 
-def count_vars(term: KInner) -> typing.Counter[str]:
-    counter: typing.Counter[str] = Counter()
+def count_vars(term: KInner) -> Counter[str]:
+    counter: Counter[str] = Counter()
     occurrences = var_occurrences(term)
     for vname in occurrences:
         counter[vname] = len(occurrences[vname])
     return counter
 
 
-def free_vars(kast: KInner) -> List[str]:
+def free_vars(kast: KInner) -> list[str]:
     return list(count_vars(kast).keys())
 
 
@@ -203,7 +210,7 @@ def propagate_up_constraints(k: KInner) -> KInner:
     return bottom_up(_propagate_up_constraints, k)
 
 
-def split_config_and_constraints(kast: KInner) -> Tuple[KInner, KInner]:
+def split_config_and_constraints(kast: KInner) -> tuple[KInner, KInner]:
     conjuncts = flatten_label('#And', kast)
     term = None
     constraints = []
@@ -219,7 +226,12 @@ def split_config_and_constraints(kast: KInner) -> Tuple[KInner, KInner]:
     return (term, mlAnd(constraints, GENERATED_TOP_CELL))
 
 
-def split_config_from(configuration: KInner) -> Tuple[KInner, Dict[str, KInner]]:
+def cell_label_to_var_name(label: str) -> str:
+    """Return a variable name based on a cell label."""
+    return label.replace('-', '_').replace('<', '').replace('>', '').upper() + '_CELL'
+
+
+def split_config_from(configuration: KInner) -> tuple[KInner, dict[str, KInner]]:
     """Split the substitution from a given configuration.
 
     Given an input configuration `config`, will return a tuple `(symbolic_config, subst)`, where:
@@ -230,13 +242,10 @@ def split_config_from(configuration: KInner) -> Tuple[KInner, Dict[str, KInner]]
     """
     initial_substitution = {}
 
-    def _mk_cell_var(label: str) -> str:
-        return label.replace('-', '_').replace('<', '').replace('>', '').upper() + '_CELL'
-
     def _replace_with_var(k: KInner) -> KInner:
         if type(k) is KApply and k.is_cell:
             if k.arity == 1 and not (type(k.args[0]) is KApply and k.args[0].is_cell):
-                config_var = _mk_cell_var(k.label.name)
+                config_var = cell_label_to_var_name(k.label.name)
                 initial_substitution[config_var] = k.args[0]
                 return KApply(k.label, [KVariable(config_var)])
         return k
@@ -280,7 +289,9 @@ def push_down_rewrites(kast: KInner) -> KInner:
             if type(lhs) is KVariable and type(rhs) is KVariable and lhs.name == rhs.name:
                 return lhs
             if type(lhs) is KApply and type(rhs) is KApply and lhs.label == rhs.label and lhs.arity == rhs.arity:
-                new_args = [KRewrite(left_arg, right_arg) for left_arg, right_arg in zip(lhs.args, rhs.args)]
+                new_args = [
+                    KRewrite(left_arg, right_arg) for left_arg, right_arg in zip(lhs.args, rhs.args, strict=True)
+                ]
                 return lhs.let(args=new_args)
             if type(lhs) is KSequence and type(rhs) is KSequence and lhs.arity > 0 and rhs.arity > 0:
                 if lhs.arity == 1 and rhs.arity == 1:
@@ -348,7 +359,7 @@ def useless_vars_to_dots(kast: KInner, keep_vars: Iterable[str] = ()) -> KInner:
 
     def _collapse_useless_vars(_kast: KInner) -> KInner:
         if type(_kast) is KApply and _kast.is_cell:
-            new_args: List[KInner] = []
+            new_args: list[KInner] = []
             for arg in _kast.args:
                 if type(arg) is KVariable and num_occs[arg.name] == 1:
                     new_args.append(DOTS)
@@ -480,7 +491,7 @@ def remove_attrs(term: KInner) -> KInner:
 
 
 def remove_source_attributes(term: KInner) -> KInner:
-    def _is_not_source_att(att: Tuple[str, Any]) -> bool:
+    def _is_not_source_att(att: tuple[str, Any]) -> bool:
         return att[0] not in ('org.kframework.attributes.Source', 'org.kframework.attributes.Location')
 
     def _remove_source_attr(term: KInner) -> KInner:
@@ -542,12 +553,19 @@ def remove_constraints_for(var_names: Collection[str], constrained_term: KInner)
     return mlAnd([state, constraint])
 
 
-def abstract_term_safely(kast: KInner, base_name: str = 'V') -> KVariable:
-    vname = hash_str(kast)[0:8]
-    return KVariable(base_name + '_' + vname)
+def abstract_term_safely(kast: KInner, base_name: str = 'V', existing_var_names: set[str] | None = None) -> KVariable:
+    def _abstract(k: KInner) -> KVariable:
+        vname = hash_str(k)[0:8]
+        return KVariable(base_name + '_' + vname)
+
+    new_var = _abstract(kast)
+    if existing_var_names is not None:
+        while new_var.name in existing_var_names:
+            new_var = _abstract(new_var)
+    return new_var
 
 
-def anti_unify(state1: KInner, state2: KInner) -> Tuple[KInner, Subst, Subst]:
+def anti_unify(state1: KInner, state2: KInner) -> tuple[KInner, Subst, Subst]:
     def _rewrites_to_abstractions(_kast: KInner) -> KInner:
         if type(_kast) is KRewrite:
             return abstract_term_safely(_kast)
@@ -643,7 +661,7 @@ def constraint_subsume(constraint1: KInner, constraint2: KInner) -> bool:
     return False
 
 
-def match_with_constraint(constrained_term_1: KInner, constrained_term_2: KInner) -> Optional[Subst]:
+def match_with_constraint(constrained_term_1: KInner, constrained_term_2: KInner) -> Subst | None:
     state1, constraint1 = split_config_and_constraints(constrained_term_1)
     state2, constraint2 = split_config_and_constraints(constrained_term_2)
     subst = state1.match(state2)
@@ -663,20 +681,24 @@ def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
 
 
 def rename_generated_vars(term: KInner) -> KInner:
-    state, _ = split_config_and_constraints(term)
-    _, config_subst = split_config_from(state)
-    config_var_count = {cvar: count_vars(ccontents) for cvar, ccontents in config_subst.items()}
-    vs = free_vars(term)
-    var_subst: Dict[str, KInner] = {}
-    for v in vs:
-        if v.startswith('_Gen') or v.startswith('?_Gen') or v.startswith('_DotVar') or v.startswith('?_DotVar'):
-            cvars = [cv for cv in config_var_count if v in config_var_count[cv]]
-            if len(cvars) > 1:
-                raise ValueError(f'Found "Gen*" or "DotVar*" variable with multiple occurrences: {v}')
-            cvar = cvars[0]
-            new_v = abstract_term_safely(KVariable(v), base_name=cvar)
-            while new_v.name in vs:
-                new_v = abstract_term_safely(KVariable(new_v.name), base_name=cvar)
-            var_subst[v] = new_v
-            vs.append(new_v.name)
-    return Subst(var_subst).apply(term)
+    vars: set[str] = set(free_vars(term))
+    cell_stack: list[str] = []
+
+    def _rename_vars(k: KInner) -> KInner:
+        if type(k) is KApply and k.is_cell:
+            cell_stack.append(cell_label_to_var_name(k.label.name))
+            res = k.map_inner(_rename_vars)
+            cell_stack.pop()
+            return res
+
+        if type(k) is KVariable and k.name.startswith(('_Gen', '?_Gen', '_DotVar', '?_DotVar')):
+            if not cell_stack:
+                return k
+            cell_name = cell_stack[-1]
+            new_var = abstract_term_safely(k, base_name=cell_name, existing_var_names=vars)
+            vars.add(new_var.name)
+            return new_var
+
+        return k.map_inner(_rename_vars)
+
+    return _rename_vars(term)

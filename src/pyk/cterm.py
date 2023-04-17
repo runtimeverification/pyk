@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from functools import cached_property
 from itertools import chain
-from typing import Dict, Iterable, Iterator, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from .kast.inner import KApply, KAtt, KInner, KRewrite, KVariable, Subst
 from .kast.manip import (
@@ -15,26 +17,49 @@ from .kast.manip import (
     remove_generated_cells,
     simplify_bool,
     split_config_and_constraints,
+    split_config_from,
 )
 from .kast.outer import KClaim, KRule
 from .prelude.k import GENERATED_TOP_CELL
-from .prelude.ml import mlAnd, mlImplies, mlTop
+from .prelude.ml import is_top, mlAnd, mlImplies, mlTop
 from .utils import unique
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
+    from typing import Any
 
 
 @dataclass(frozen=True, order=True)
 class CTerm:
     config: KInner  # TODO Optional?
-    constraints: Tuple[KInner, ...]
+    constraints: tuple[KInner, ...]
 
-    def __init__(self, term: KInner) -> None:
-        config, constraint = split_config_and_constraints(term)
-        constraints = CTerm._normalize_constraints(flatten_label('#And', constraint))
+    def __init__(self, config: KInner, constraints: Iterable[KInner]) -> None:
+        self._check_config(config)
+        constraints = self._normalize_constraints(constraints)
         object.__setattr__(self, 'config', config)
         object.__setattr__(self, 'constraints', constraints)
 
     @staticmethod
-    def _normalize_constraints(constraints: Iterable[KInner]) -> Tuple[KInner, ...]:
+    def from_kast(kast: KInner) -> CTerm:
+        config, constraint = split_config_and_constraints(kast)
+        constraints = flatten_label('#And', constraint)
+        return CTerm(config, constraints)
+
+    @staticmethod
+    def from_dict(dct: dict[str, Any]) -> CTerm:
+        config = KInner.from_dict(dct['config'])
+        constraints = [KInner.from_dict(c) for c in dct['constraints']]
+        return CTerm(config, constraints)
+
+    @staticmethod
+    def _check_config(config: KInner) -> None:
+        if not isinstance(config, KApply) or not config.is_cell:
+            raise ValueError('Expected cell label, found: {config.label.name}')
+
+    @staticmethod
+    def _normalize_constraints(constraints: Iterable[KInner]) -> tuple[KInner, ...]:
+        constraints = (constraint for _constraint in constraints for constraint in flatten_label('#And', _constraint))
         constraints = unique(constraints)
         constraints = (constraint for constraint in constraints if not CTerm._is_spurious_constraint(constraint))
         constraints = sorted(constraints, key=CTerm._constraint_sort_key)
@@ -42,15 +67,25 @@ class CTerm:
 
     @staticmethod
     def _is_spurious_constraint(term: KInner) -> bool:
-        return type(term) is KApply and term.label.name == '#Equals' and term.args[0] == term.args[1]
+        if type(term) is KApply and term.label.name == '#Equals' and term.args[0] == term.args[1]:
+            return True
+        if is_top(term):
+            return True
+        return False
 
     @staticmethod
-    def _constraint_sort_key(term: KInner) -> Tuple[int, str]:
+    def _constraint_sort_key(term: KInner) -> tuple[int, str]:
         term_str = str(term)
         return (len(term_str), term_str)
 
     def __iter__(self) -> Iterator[KInner]:
         return chain([self.config], self.constraints)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            'config': self.config.to_dict(),
+            'constraints': [c.to_dict() for c in self.constraints],
+        }
 
     @cached_property
     def kast(self) -> KInner:
@@ -60,20 +95,26 @@ class CTerm:
     def hash(self) -> str:
         return self.kast.hash
 
-    def match(self, cterm: 'CTerm') -> Optional[Subst]:
-        match_res = self.match_with_constraint(cterm)
+    @cached_property
+    def cells(self) -> Subst:
+        _, subst = split_config_from(self.config)
+        return Subst(subst)
 
-        if not match_res:
+    def cell(self, cell: str) -> KInner:
+        return self.cells[cell]
+
+    def match(self, cterm: CTerm) -> Subst | None:
+        csubst = self.match_with_constraint(cterm)
+
+        if not csubst:
             return None
 
-        subst, condition = match_res
-
-        if condition != mlTop(GENERATED_TOP_CELL):
+        if csubst.constraint != mlTop(GENERATED_TOP_CELL):
             return None
 
-        return subst
+        return csubst.subst
 
-    def match_with_constraint(self, cterm: 'CTerm') -> Optional[Tuple[Subst, KInner]]:
+    def match_with_constraint(self, cterm: CTerm) -> CSubst | None:
         subst = self.config.match(cterm.config)
 
         if subst is None:
@@ -81,7 +122,7 @@ class CTerm:
 
         constraint = self._ml_impl(cterm.constraints, map(subst, self.constraints))
 
-        return subst, constraint
+        return CSubst(subst=subst, constraints=[constraint])
 
     @staticmethod
     def _ml_impl(antecedents: Iterable[KInner], consequents: Iterable[KInner]) -> KInner:
@@ -93,8 +134,44 @@ class CTerm:
 
         return mlImplies(antecedent, consequent, GENERATED_TOP_CELL)
 
-    def add_constraint(self, new_constraint: KInner) -> 'CTerm':
-        return CTerm(mlAnd([self.config, new_constraint] + list(self.constraints), GENERATED_TOP_CELL))
+    def add_constraint(self, new_constraint: KInner) -> CTerm:
+        return CTerm(self.config, [new_constraint] + list(self.constraints))
+
+
+@dataclass(frozen=True, order=True)
+class CSubst:
+    subst: Subst
+    constraints: tuple[KInner, ...]
+
+    def __init__(self, subst: Subst | None = None, constraints: Iterable[KInner] = ()) -> None:
+        object.__setattr__(self, 'subst', subst if subst is not None else Subst({}))
+        object.__setattr__(self, 'constraints', CTerm._normalize_constraints(constraints))
+
+    def __iter__(self) -> Iterator[Subst | KInner]:
+        return chain([self.subst], self.constraints)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            'subst': self.subst.to_dict(),
+            'constraints': [c.to_dict() for c in self.constraints],
+        }
+
+    @staticmethod
+    def from_dict(dct: dict[str, Any]) -> CSubst:
+        subst = Subst.from_dict(dct['subst'])
+        constraints = (KInner.from_dict(c) for c in dct['constraints'])
+        return CSubst(subst=subst, constraints=constraints)
+
+    @property
+    def constraint(self) -> KInner:
+        return mlAnd(self.constraints)
+
+    def add_constraint(self, constraint: KInner) -> CSubst:
+        return CSubst(self.subst, list(self.constraints) + [constraint])
+
+    def apply(self, cterm: CTerm) -> CTerm:
+        _kast = self.subst(cterm.kast)
+        return CTerm(_kast, [self.constraint])
 
 
 def remove_useless_constraints(cterm: CTerm, keep_vars: Iterable[str] = ()) -> CTerm:
@@ -110,12 +187,12 @@ def remove_useless_constraints(cterm: CTerm, keep_vars: Iterable[str] = ()) -> C
                     new_constraints.append(c)
                     used_vars.extend(new_vars)
         used_vars = list(set(used_vars))
-    return CTerm(mlAnd([cterm.config] + new_constraints))
+    return CTerm(cterm.config, new_constraints)
 
 
 def build_claim(
     claim_id: str, init_cterm: CTerm, final_cterm: CTerm, keep_vars: Iterable[str] = ()
-) -> Tuple[KClaim, Subst]:
+) -> tuple[KClaim, Subst]:
     rule, var_map = build_rule(claim_id, init_cterm, final_cterm, keep_vars=keep_vars)
     claim = KClaim(rule.body, requires=rule.requires, ensures=rule.ensures, att=rule.att)
     return claim, var_map
@@ -125,9 +202,9 @@ def build_rule(
     rule_id: str,
     init_cterm: CTerm,
     final_cterm: CTerm,
-    priority: Optional[int] = None,
+    priority: int | None = None,
     keep_vars: Iterable[str] = (),
-) -> Tuple[KRule, Subst]:
+) -> tuple[KRule, Subst]:
     init_config, *init_constraints = init_cterm
     final_config, *final_constraints = final_cterm
     final_constraints = [c for c in final_constraints if c not in init_constraints]
@@ -142,8 +219,8 @@ def build_rule(
             GENERATED_TOP_CELL,
         )
     )
-    v_subst: Dict[str, KVariable] = {}
-    vremap_subst: Dict[str, KVariable] = {}
+    v_subst: dict[str, KVariable] = {}
+    vremap_subst: dict[str, KVariable] = {}
     for v in var_occurrences:
         new_v = v
         if var_occurrences[v] == 1:

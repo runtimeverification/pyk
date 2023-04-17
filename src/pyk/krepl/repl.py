@@ -1,17 +1,25 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from dataclasses import dataclass
 from functools import cached_property
-from pathlib import Path
-from typing import Any, Final, Generic, Iterator, Optional, Tuple, TypeVar, final
+from typing import TYPE_CHECKING, Generic, TypeVar, final
 
 from cmd2 import Cmd, with_argparser, with_category
 
 from ..cli_utils import check_dir_path, check_file_path, file_path
 from ..kore.parser import KoreParser
-from ..kore.syntax import Pattern
 from ..ktool.kprint import KPrint
 from ..ktool.krun import KRun, KRunOutput, _krun
+
+if TYPE_CHECKING:
+    from argparse import Namespace
+    from collections.abc import Iterator
+    from pathlib import Path
+    from typing import Any, Final
+
+    from ..kore.syntax import Pattern
 
 T = TypeVar('T')
 
@@ -28,7 +36,7 @@ class Interpreter(Generic[T], ABC):
         ...
 
     @abstractmethod
-    def next_state(self, state: T, steps: Optional[int] = None) -> T:
+    def next_state(self, state: T, steps: int | None = None) -> T:
         ...
 
 
@@ -76,7 +84,7 @@ class KInterpreter(Interpreter[KState]):
         pattern = KoreParser(proc_res.stdout).pattern()
         return KState(self.definition_dir, pattern)
 
-    def next_state(self, state: KState, steps: Optional[int] = None) -> KState:
+    def next_state(self, state: KState, steps: int | None = None) -> KState:
         pattern = KRun(self.definition_dir).run_kore_term(state.pattern, depth=steps)
         return KState(self.definition_dir, pattern)
 
@@ -101,8 +109,8 @@ class BaseRepl(Cmd, Generic[T], ABC):
 
     prompt = '> '
 
-    interpreter: Optional[Interpreter[T]]
-    state: Optional[T]
+    interpreter: Interpreter[T] | None
+    state: T | None
 
     def __init__(self) -> None:
         super().__init__(allow_cli_args=False)
@@ -112,7 +120,7 @@ class BaseRepl(Cmd, Generic[T], ABC):
         self.state = None
 
     @abstractmethod
-    def do_load(self, args: Any) -> Optional[bool]:  # Leaky abstraction - make extension mechanism more robust
+    def do_load(self, args: Any) -> bool | None:  # Leaky abstraction - make extension mechanism more robust
         """
         Abstract method to set up the interpreter.
         Subclasses are expected to
@@ -141,13 +149,13 @@ class BaseRepl(Cmd, Generic[T], ABC):
         except ReplError as err:
             self.poutput(err)
 
-    def _check_state(self) -> Tuple[Interpreter, T]:
+    def _check_state(self) -> tuple[Interpreter, T]:
         if self.interpreter is None:
             raise ReplError('No program is loaded')
         assert self.state is not None
         return self.interpreter, self.state
 
-    def _check_steps(self, steps: Optional[int] = None) -> None:
+    def _check_steps(self, steps: int | None = None) -> None:
         if steps and steps < 0:
             raise ReplError('Depth should be non-negative')
 

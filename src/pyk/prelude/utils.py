@@ -1,12 +1,18 @@
-from typing import Union
+from __future__ import annotations
 
-from ..kast.inner import KToken
+from typing import TYPE_CHECKING
+
 from .kbool import boolToken
 from .kint import intToken
 from .string import stringToken
 
+if TYPE_CHECKING:
+    pass
 
-def token(x: Union[bool, int, str]) -> KToken:
+    from ..kast.inner import KToken
+
+
+def token(x: bool | int | str) -> KToken:
     if type(x) is bool:
         return boolToken(x)
     if type(x) is int:

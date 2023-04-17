@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import re
 import shutil
 from dataclasses import dataclass
-from pathlib import Path
-from typing import ClassVar, Iterable, List, Optional, final
+from typing import TYPE_CHECKING, final
 
 from pyk.cli_utils import check_dir_path, check_file_path, run_process
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+    from typing import ClassVar
 
 
 @final
@@ -20,7 +26,7 @@ class KVersion:
     major: int
     minor: int
     patch: int
-    git: Optional[Git]
+    git: Git | None
 
     _PATTERN_STR: ClassVar = (
         r'v(?P<major>[1-9]+)'
@@ -34,7 +40,7 @@ class KVersion:
     PATTERN: ClassVar = re.compile(_PATTERN_STR)
 
     @staticmethod
-    def parse(text: str) -> 'KVersion':
+    def parse(text: str) -> KVersion:
         match = KVersion.PATTERN.fullmatch(text)
         if not match:
             raise ValueError(f'Invalid K version string: {text}')
@@ -72,7 +78,7 @@ def k_version() -> KVersion:
     return KVersion.parse(version)
 
 
-def sync_files(source_dir: Path, target_dir: Path, file_names: Iterable[str]) -> List[Path]:
+def sync_files(source_dir: Path, target_dir: Path, file_names: Iterable[str]) -> list[Path]:
     check_dir_path(source_dir)
     shutil.rmtree(target_dir, ignore_errors=True)
     target_dir.mkdir(parents=True)

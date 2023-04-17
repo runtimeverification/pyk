@@ -1,44 +1,55 @@
-import json
+from __future__ import annotations
+
 import logging
-from pathlib import Path
-from typing import Any, Callable, ContextManager, Dict, Final, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, ContextManager
 
-from pyk.cli_utils import BugReport
-from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KInner, KLabel, KVariable, Subst
-from pyk.kast.manip import flatten_label, free_vars
-from pyk.kore.rpc import KoreClient, KoreServer
-from pyk.ktool.kprint import KPrint
-from pyk.prelude.k import GENERATED_TOP_CELL
-from pyk.prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
-from pyk.utils import hash_str, shorten_hashes, single
-
+from ..cterm import CSubst, CTerm
+from ..kast.inner import KApply, KLabel, KVariable, Subst
+from ..kast.manip import flatten_label, free_vars
+from ..kore.rpc import KoreClient, KoreServer, StopReason
+from ..ktool.kprove import KoreExecLogFormat
+from ..prelude.k import GENERATED_TOP_CELL
+from ..prelude.ml import is_bottom, is_top, mlEquals, mlTop
+from ..utils import shorten_hashes, single
 from .kcfg import KCFG
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+    from typing import Any, Final
+
+    from ..cli_utils import BugReport
+    from ..kast import KInner
+    from ..ktool.kprint import KPrint
+
 
 _LOGGER: Final = logging.getLogger(__name__)
 
 
 class KCFGExplore(ContextManager['KCFGExplore']):
     kprint: KPrint
-    _port: Optional[int]
-    _kore_rpc_command: Union[str, Iterable[str]]
-    _smt_timeout: Optional[int]
-    _smt_retry_limit: Optional[int]
-    _bug_report: Optional[BugReport]
+    _port: int | None
+    _kore_rpc_command: str | Iterable[str]
+    _smt_timeout: int | None
+    _smt_retry_limit: int | None
+    _bug_report: BugReport | None
 
-    _kore_server: Optional[KoreServer]
-    _kore_client: Optional[KoreClient]
+    _kore_server: KoreServer | None
+    _kore_client: KoreClient | None
     _rpc_closed: bool
 
     def __init__(
         self,
         kprint: KPrint,
         *,
-        port: Optional[int] = None,
-        kore_rpc_command: Union[str, Iterable[str]] = 'kore-rpc',
-        smt_timeout: Optional[int] = None,
-        smt_retry_limit: Optional[int] = None,
-        bug_report: Optional[BugReport] = None,
+        port: int | None = None,
+        kore_rpc_command: str | Iterable[str] = 'kore-rpc',
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        bug_report: BugReport | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
     ):
         self.kprint = kprint
         self._port = port
@@ -46,35 +57,21 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._smt_timeout = smt_timeout
         self._smt_retry_limit = smt_retry_limit
         self._bug_report = bug_report
+        self._haskell_log_format = haskell_log_format
+        self._haskell_log_entries = haskell_log_entries
+        self._log_axioms_file = log_axioms_file
         self._kore_server = None
         self._kore_client = None
         self._rpc_closed = False
 
-    def __enter__(self) -> 'KCFGExplore':
+    def __enter__(self) -> KCFGExplore:
         return self
 
     def __exit__(self, *args: Any) -> None:
         self.close()
 
-    @staticmethod
-    def read_cfg(cfgid: str, kcfgs_dir: Path) -> Optional[KCFG]:
-        cfg_path = kcfgs_dir / f'{hash_str(cfgid)}.json'
-        if cfg_path.exists():
-            cfg_dict = json.loads(cfg_path.read_text())
-            _LOGGER.info(f'Reading KCFG from file {cfgid}: {cfg_path}')
-            return KCFG.from_dict(cfg_dict)
-        return None
-
-    @staticmethod
-    def write_cfg(cfgid: str, kcfgs_dir: Path, cfg: KCFG) -> None:
-        cfg_dict = cfg.to_dict()
-        cfg_dict['cfgid'] = cfgid
-        cfg_path = kcfgs_dir / f'{hash_str(cfgid)}.json'
-        cfg_path.write_text(json.dumps(cfg_dict))
-        _LOGGER.info(f'Updated CFG file {cfgid}: {cfg_path}')
-
     @property
-    def _kore_rpc(self) -> Tuple[KoreServer, KoreClient]:
+    def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
         if not self._kore_server:
@@ -86,6 +83,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 command=self._kore_rpc_command,
                 smt_timeout=self._smt_timeout,
                 smt_retry_limit=self._smt_retry_limit,
+                haskell_log_format=self._haskell_log_format,
+                haskell_log_entries=self._haskell_log_entries,
+                log_axioms_file=self._log_axioms_file,
             )
         if not self._kore_client:
             self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
@@ -103,28 +103,33 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def cterm_execute(
         self,
         cterm: CTerm,
-        depth: Optional[int] = None,
-        cut_point_rules: Optional[Iterable[str]] = None,
-        terminal_rules: Optional[Iterable[str]] = None,
-    ) -> Tuple[int, CTerm, List[CTerm]]:
+        depth: int | None = None,
+        cut_point_rules: Iterable[str] | None = None,
+        terminal_rules: Iterable[str] | None = None,
+    ) -> tuple[int, CTerm, list[CTerm]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
         er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
         depth = er.depth
-        next_state = CTerm(self.kprint.kore_to_kast(er.state.kore))
-        _next_states = er.next_states if er.next_states is not None and len(er.next_states) > 1 else []
+        next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
+        _next_states = er.next_states if er.next_states is not None else []
         # TODO: should not have to prune bottom branches, the backend should do this for us.
         next_states = []
         for ns in _next_states:
             _LOGGER.info(f'Checking for bottom branch: {ns}')
-            _ns = self.cterm_simplify(CTerm(self.kprint.kore_to_kast(ns.kore)))
+            _ns = self.cterm_simplify(CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)))
             if is_bottom(_ns):
                 _LOGGER.warning(f'Found bottom branch: {ns}')
             else:
-                next_states.append(CTerm(_ns))
+                next_states.append(CTerm.from_kast(_ns))
         if len(next_states) == 1 and len(next_states) < len(_next_states):
             return depth + 1, next_states[0], []
+        elif len(next_states) == 1:
+            if er.reason == StopReason.CUT_POINT_RULE:
+                return depth, next_state, next_states
+            else:
+                next_states = []
         return depth, next_state, next_states
 
     def cterm_simplify(self, cterm: CTerm) -> KInner:
@@ -137,7 +142,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
     def cterm_implies(
         self, antecedent: CTerm, consequent: CTerm, bind_consequent_variables: bool = True
-    ) -> Optional[Tuple[Subst, KInner]]:
+    ) -> CSubst | None:
         _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
         _consequent = consequent.kast
         if bind_consequent_variables:
@@ -164,24 +169,27 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             raise ValueError('Received empty predicate for satisfiable implication.')
         ml_subst = self.kprint.kore_to_kast(result.substitution)
         ml_pred = self.kprint.kore_to_kast(result.predicate) if result.predicate is not None else mlTop()
+        ml_preds = flatten_label('#And', ml_pred)
         if is_top(ml_subst):
-            return (Subst({}), ml_pred)
+            return CSubst(subst=Subst({}), constraints=ml_preds)
         subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
-        _subst: Dict[str, KInner] = {}
+        _subst: dict[str, KInner] = {}
         for subst_pred in flatten_label('#And', ml_subst):
             m = subst_pattern.match(subst_pred)
             if m is not None and type(m['###VAR']) is KVariable:
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
-        return (Subst(_subst), ml_pred)
+        return CSubst(subst=Subst(_subst), constraints=ml_preds)
 
     def cterm_assume_defined(self, cterm: CTerm) -> CTerm:
+        _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
         kore_simplified = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
+        _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
 
     def remove_subgraph_from(self, cfgid: str, cfg: KCFG, node: str) -> KCFG:
@@ -200,22 +208,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if is_bottom(new_term):
                 raise ValueError(f'Node simplified to #Bottom {cfgid}: {shorten_hashes(node.id)}')
             if new_term != node.cterm.kast:
-                cfg.replace_node(node.id, CTerm(new_term))
+                cfg.replace_node(node.id, CTerm.from_kast(new_term))
         return cfg
 
-    def step(self, cfgid: str, cfg: KCFG, node_id: str, depth: int = 1) -> Tuple[KCFG, str]:
+    def step(self, cfgid: str, cfg: KCFG, node_id: str, depth: int = 1) -> tuple[KCFG, str]:
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
-        out_edges = cfg.edges(source_id=node.id)
-        if len(out_edges) > 1:
-            raise ValueError(
-                f'Only support stepping from nodes with 0 or 1 out edges {cfgid}: {(node.id, [e.target.id for e in out_edges])}'
-            )
-        elif len(out_edges) == 1 and not is_top(out_edges[0].condition):
-            raise ValueError(
-                f'Only allow stepping on out edges with #Top condition {cfgid}: {(node.id, shorten_hashes(out_edges[0].target.id))}'
-            )
+        successors = list(cfg.successors(node.id))
+        if len(successors) != 0 and type(successors[0]) is KCFG.Split:
+            raise ValueError(f'Cannot take step from split node {cfgid}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {cfgid}: {shorten_hashes(node.id)}')
         actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth)
         if actual_depth != depth:
@@ -224,8 +226,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             raise ValueError(f'Found branch within {depth} steps {cfgid}: {node.id}')
         new_node = cfg.get_or_create_node(cterm)
         _LOGGER.info(f'Found new node at depth {depth} {cfgid}: {shorten_hashes((node.id, new_node.id))}')
+        out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) == 0:
-            cfg.create_edge(node.id, new_node.id, condition=mlTop(), depth=depth)
+            cfg.create_edge(node.id, new_node.id, depth=depth)
         else:
             edge = out_edges[0]
             if depth > edge.depth:
@@ -233,13 +236,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     f'Step depth {depth} greater than original edge depth {edge.depth} {cfgid}: {shorten_hashes((edge.source.id, edge.target.id))}'
                 )
             cfg.remove_edge(edge.source.id, edge.target.id)
-            cfg.create_edge(edge.source.id, new_node.id, condition=mlTop(), depth=depth)
-            cfg.create_edge(new_node.id, edge.target.id, condition=mlTop(), depth=(edge.depth - depth))
+            cfg.create_edge(edge.source.id, new_node.id, depth=depth)
+            cfg.create_edge(new_node.id, edge.target.id, depth=(edge.depth - depth))
         return (cfg, new_node.id)
 
     def section_edge(
         self, cfgid: str, cfg: KCFG, source_id: str, target_id: str, sections: int = 2
-    ) -> Tuple[KCFG, Tuple[str, ...]]:
+    ) -> tuple[KCFG, tuple[str, ...]]:
         if sections <= 1:
             raise ValueError(f'Cannot section an edge less than twice {cfgid}: {sections}')
         edge = single(cfg.edges(source_id=source_id, target_id=target_id))
@@ -256,98 +259,3 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_nodes.append(curr_node_id)
             new_depth += section_depth
         return (cfg, tuple(new_nodes))
-
-    def all_path_reachability_prove(
-        self,
-        cfgid: str,
-        cfg: KCFG,
-        cfg_dir: Optional[Path] = None,
-        is_terminal: Optional[Callable[[CTerm], bool]] = None,
-        extract_branches: Optional[Callable[[CTerm], Iterable[KInner]]] = None,
-        max_iterations: Optional[int] = None,
-        execute_depth: Optional[int] = None,
-        cut_point_rules: Iterable[str] = (),
-        terminal_rules: Iterable[str] = (),
-        simplify_init: bool = True,
-        implication_every_block: bool = True,
-    ) -> KCFG:
-        def _write_cfg(_cfg: KCFG) -> None:
-            if cfg_dir is not None:
-                KCFGExplore.write_cfg(cfgid, cfg_dir, _cfg)
-
-        target_node = cfg.get_unique_target()
-        iterations = 0
-
-        while cfg.frontier:
-            _write_cfg(cfg)
-
-            if max_iterations is not None and max_iterations <= iterations:
-                _LOGGER.warning(f'Reached iteration bound {cfgid}: {max_iterations}')
-                break
-            iterations += 1
-            curr_node = cfg.frontier[0]
-
-            if implication_every_block or (is_terminal is not None and is_terminal(curr_node.cterm)):
-                _LOGGER.info(
-                    f'Checking subsumption into target state {cfgid}: {shorten_hashes((curr_node.id, target_node.id))}'
-                )
-                impl = self.cterm_implies(curr_node.cterm, target_node.cterm)
-                if impl is not None:
-                    subst, pred = impl
-                    cfg.create_cover(curr_node.id, target_node.id, subst=subst, constraint=pred)
-                    _LOGGER.info(f'Subsumed into target node {cfgid}: {shorten_hashes((curr_node.id, target_node.id))}')
-                    continue
-
-            if is_terminal is not None:
-                _LOGGER.info(f'Checking terminal {cfgid}: {shorten_hashes(curr_node.id)}')
-                if is_terminal(curr_node.cterm):
-                    _LOGGER.info(f'Terminal node {cfgid}: {shorten_hashes(curr_node.id)}.')
-                    cfg.add_expanded(curr_node.id)
-                    continue
-
-            cfg.add_expanded(curr_node.id)
-
-            _LOGGER.info(f'Advancing proof from node {cfgid}: {shorten_hashes(curr_node.id)}')
-            depth, cterm, next_cterms = self.cterm_execute(
-                curr_node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
-            )
-
-            # Nonsense case.
-            if len(next_cterms) == 1:
-                raise ValueError(f'Found a single successor cterm {cfgid}: {(depth, cterm, next_cterms)}')
-
-            if len(next_cterms) == 0 and depth == 0:
-                _LOGGER.info(f'Found stuck node {cfgid}: {shorten_hashes(curr_node.id)}')
-                continue
-
-            if depth > 0:
-                next_node = cfg.get_or_create_node(cterm)
-                cfg.create_edge(curr_node.id, next_node.id, mlTop(), depth)
-                _LOGGER.info(
-                    f'Found basic block at depth {depth} for {cfgid}: {shorten_hashes((curr_node.id, next_node.id))}.'
-                )
-
-                branches = extract_branches(cterm) if extract_branches is not None else []
-                if len(list(branches)) > 0:
-                    cfg.add_expanded(next_node.id)
-                    _LOGGER.info(
-                        f'Found {len(list(branches))} branches {cfgid}: {[self.kprint.pretty_print(b) for b in branches]}'
-                    )
-                    splits = cfg.split_node(next_node.id, branches)
-                    _LOGGER.info(f'Made split for {cfgid}: {shorten_hashes((next_node.id, splits))}')
-                    continue
-
-            else:
-                _LOGGER.warning(f'Falling back to manual branch extraction {cfgid}: {shorten_hashes(curr_node.id)}')
-                branch_constraints = [
-                    mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms
-                ]
-                _LOGGER.info(
-                    f'Found {len(list(next_cterms))} branches manually at depth 1 for {cfgid}: {[self.kprint.pretty_print(bc) for bc in branch_constraints]}'
-                )
-                for bs, bc in zip(next_cterms, branch_constraints):
-                    branch_node = cfg.get_or_create_node(bs)
-                    cfg.create_edge(curr_node.id, branch_node.id, bc, 1)
-
-        _write_cfg(cfg)
-        return cfg

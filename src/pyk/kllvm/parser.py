@@ -1,15 +1,22 @@
-from .native import _kllvm  # isort: skip  # noqa: F401
+from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
+from typing import TYPE_CHECKING
 
 from _kllvm.parser import Parser  # type: ignore
 
 from ..cli_utils import check_file_path
-from .ast import Pattern
+
+if TYPE_CHECKING:
+    from .ast import Pattern
 
 
-def read_pattern(path: Union[str, Path]) -> Pattern:
+def parse_text(text: str) -> Pattern:
+    parser = Parser.from_string(text)
+    return parser.pattern()
+
+
+def parse_file(path: str | Path) -> Pattern:
     path = Path(path)
     check_file_path(path)
     parser = Parser(str(path))
