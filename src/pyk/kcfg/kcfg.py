@@ -961,6 +961,20 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for node in nodes:
             self.remove_node(node.id)
 
+    def path_constraints(self, final_node_id: str) -> list[KInner]:
+        constraints: list[KInner] = []
+        paths = self.paths_between(self.get_unique_init().id, final_node_id)
+        if len(paths) == 0:
+            raise ValueError(f'No path found to specified node: {final_node_id}')
+        if len(paths) > 1:
+            raise ValueError(f'Multiple paths found to specified node: {final_node_id}')
+        path = paths[0]
+        for edge in path:
+            if type(edge) is KCFG.Split:
+                for _, csubst in edge.targets:
+                    constraints += csubst.constraints
+        return constraints
+
     def paths_between(
         self, source_id: str, target_id: str, *, traverse_covers: bool = False
     ) -> list[tuple[Successor, ...]]:
