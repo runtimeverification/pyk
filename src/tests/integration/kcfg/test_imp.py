@@ -221,7 +221,7 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
         None,
         None,
         ['IMP-VERIFICATION.halt'],
-        ['IMP-VERIFICATION.halt'],
+        [],
     ),
 )
 
@@ -424,3 +424,5 @@ class TestImpProof(KCFGExploreTest):
         for node in kcfg.frontier:
             print(kprove.pretty_print(node.cterm.kast))
             print(kcfg.path_constraints(node.id))
+
+        assert 1 == 2
