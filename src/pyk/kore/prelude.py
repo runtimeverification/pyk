@@ -7,7 +7,7 @@ from ..utils import check_type
 from .syntax import DV, App, LeftAssoc, RightAssoc, SortApp, String, SymbolId
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
     from typing import Any, Final
 
     from .syntax import EVar, Pattern, Sort
@@ -197,5 +197,56 @@ def json_to_kore(data: Any) -> Pattern:
             raise TypeError(f'Unsupported object of type: {type(data).__name__}: {data}')
 
 
-def kore_to_json(pattern: Pattern) -> dict[str, Any]:
-    return {}
+# TODO Eliminate circularity with kore.match
+def kore_to_json(pattern: Pattern) -> Any:
+    from . import match as km
+
+    if isinstance(pattern, DV):
+        if pattern.sort == BOOL:
+            return km.kore_bool(pattern)
+
+        if pattern.sort == INT:
+            return km.kore_int(pattern)
+
+        if pattern.sort == STRING:
+            return km.kore_str(pattern)
+
+    if isinstance(pattern, App):
+        if pattern.symbol == JSON_NULL.symbol:
+            return None
+
+        if pattern.symbol == INJ.value:  # can be further refined: arg is DV, ...
+            return kore_to_json(km.inj(pattern))
+
+        if pattern.symbol == LBL_JSON_LIST.value:
+            return [kore_to_json(elem) for elem in _iter_json_list(pattern)]
+
+        if pattern.symbol == LBL_JSON_OBJECT.value:
+            return {key: kore_to_json(value) for key, value in _iter_json_object(pattern)}
+
+    raise ValueError(f'Not a JSON pattern: {pattern.text}')
+
+
+def _iter_json_list(app: App) -> Iterator[Pattern]:
+    from . import match as km
+
+    km.match_symbol(app, LBL_JSON_LIST.value)
+    curr = km.match_app(app.args[0])
+    while curr.symbol != STOP_JSONS.symbol:
+        km.match_symbol(curr, LBL_JSONS.value)
+        yield curr.args[0]
+        curr = km.match_app(curr.args[1])
+
+
+def _iter_json_object(app: App) -> Iterator[tuple[str, Pattern]]:
+    from . import match as km
+
+    km.match_symbol(app, LBL_JSON_OBJECT.value)
+    curr = km.match_app(app.args[0])
+    while curr.symbol != STOP_JSONS.symbol:
+        km.match_symbol(curr, LBL_JSONS.value)
+        entry = km.match_app(curr.args[0], LBL_JSON_ENTRY.value)
+        key = km.kore_str(km.inj(entry.args[0]))
+        value = entry.args[1]
+        yield key, value
+        curr = km.match_app(curr.args[1])
