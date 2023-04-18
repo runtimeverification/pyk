@@ -3,6 +3,7 @@ from __future__ import annotations
 from itertools import chain
 from typing import TYPE_CHECKING
 
+from ..utils import check_type
 from .syntax import DV, App, LeftAssoc, RightAssoc, SortApp, String, SymbolId
 
 if TYPE_CHECKING:
@@ -141,6 +142,7 @@ LBL_JSON_LIST: Final = SymbolId('LblJSONList')
 LBL_JSON_OBJECT: Final = SymbolId('LblJSONObject')
 LBL_JSON_ENTRY: Final = SymbolId('LblJSONEntry')
 
+JSON_NULL: Final = App('LblJSONnull')
 STOP_JSONS: Final = App("Lbl'Stop'List'LBraQuot'JSONs'QuotRBraUnds'JSONs")
 
 LBL_STRING2JSON: Final = SymbolId("LblString2JSON'LParUndsRParUnds'JSON'Unds'JSON'Unds'String")
@@ -155,8 +157,44 @@ def json2string(pattern: Pattern) -> App:
     return App(LBL_JSON2STRING, (), (pattern,))
 
 
+def json_list(pattern: Pattern) -> App:
+    return App(LBL_JSON_LIST, (), (pattern,))
+
+
+def json_object(pattern: Pattern) -> App:
+    return App(LBL_JSON_OBJECT, (), (pattern,))
+
+
+def jsons(patterns: Iterable[Pattern]) -> RightAssoc:
+    return RightAssoc(App(LBL_JSONS, (), chain(patterns, (STOP_JSONS,))))
+
+
+def json_key(key: str) -> App:
+    return inj(STRING, SORT_JSON_KEY, string_dv(key))
+
+
+def json_entry(key: Pattern, value: Pattern) -> App:
+    return App(LBL_JSON_ENTRY, (), (key, value))
+
+
 def json_to_kore(data: Any) -> Pattern:
-    return App(LBL_JSON_OBJECT, (), (STOP_JSONS,))
+    match data:
+        case None:
+            return JSON_NULL
+        case bool():
+            return inj(BOOL, SORT_JSON, bool_dv(data))
+        case int():
+            return inj(INT, SORT_JSON, int_dv(data))
+        case str():
+            return inj(STRING, SORT_JSON, string_dv(data))
+        case list():
+            return json_list(jsons(json_to_kore(elem) for elem in data))
+        case dict():
+            return json_object(
+                jsons(json_entry(json_key(check_type(key, str)), json_to_kore(value)) for key, value in data.items())
+            )
+        case _:
+            raise TypeError(f'Unsupported object of type: {type(data).__name__}: {data}')
 
 
 def kore_to_json(pattern: Pattern) -> dict[str, Any]:
