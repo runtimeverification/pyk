@@ -151,7 +151,7 @@ class Target:
             ccopts=dct.get('ccopts'),
             no_llvm_kompile=dct.get('no-llvm-kompile'),
             enable_search=dct.get('enable-search'),
-            llvm_kompile_type=LLVMKompileType(dct.get('llvm-kompile-type')) if dct.get('llvm-kompile-type') else None,
+            llvm_kompile_type=LLVMKompileType(dct['llvm-kompile-type']) if 'llvm-kompile-type' in dct else None,
             llvm_kompile_output=dct.get('llvm-kompile-output'),
             concrete_rules=dct.get('concrete-rules'),
         )
