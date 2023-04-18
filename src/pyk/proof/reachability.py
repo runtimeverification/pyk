@@ -31,12 +31,31 @@ class AGProof(Proof):
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> AGProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if AGProof.proof_exists(id, proof_dir):
+        proof_filename = f'{hash_str(id)}.json'
+        proof_path = proof_dir / proof_filename
+        try:
+            return AGProof.proof_from_file(proof_filename, proof_dir)
+        except ValueError as err:
+            raise ValueError(f'Could not load AGProof from file {id}: {proof_path}') from err
+
+    @staticmethod
+    def proof_from_file(proof_filename: str, proof_dir: Path) -> AGProof:
+        proof_path = proof_dir / proof_filename
+        if proof_path.exists() and proof_path.is_file():
             proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading AGProof from file {id}: {proof_path}')
             return AGProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load AGProof from file {id}: {proof_path}')
+        raise ValueError(f'Could not load AGProof from file {proof_path}')
+
+    @staticmethod
+    def read_proofs(proof_dir: Path) -> list[AGProof]:
+        _LOGGER.info(f'Loading proofs in directory: {proof_dir}')
+        proofs: list[AGProof] = []
+        paths = proof_dir.glob('*.json')
+        for proof_path in paths:
+            proof = AGProof.proof_from_file(proof_path.name, proof_dir)
+            proofs.append(proof)
+            _LOGGER.info(f'Loaded proof: {proof.id}')
+        return proofs
 
     @property
     def status(self) -> ProofStatus:
