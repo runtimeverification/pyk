@@ -7,9 +7,11 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
+from pyk.kast.manip import extract_lhs, extract_rhs
 from pyk.kcfg import KCFG
+from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
+from pyk.prelude.ml import is_top, mlAnd, mlBottom, mlEquals, mlEqualsFalse, mlEqualsTrue
 from pyk.proof import AGBMCProof, AGBMCProver, AGProof, AGProver, ProofStatus
 from pyk.utils import single
 
@@ -289,6 +291,23 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
+FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (
+    (
+        'func-spec-concrete',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-addition',
+        ProofStatus.PASSED,
+    ),
+    (
+        'func-spec-concrete',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'int-comm',
+        ProofStatus.PASSED,
+    ),
+)
+
 
 class TestImpProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = 'k-files/imp-verification.k'
@@ -494,3 +513,34 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert proof.status == proof_status
+
+    @pytest.mark.parametrize(
+        'test_id,spec_file,spec_module,claim_id,proof_status',
+        FUNC_PROVE_TEST_DATA,
+        ids=[test_id for test_id, *_ in FUNC_PROVE_TEST_DATA],
+    )
+    def test_functional_prove(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        spec_file: str,
+        spec_module: str,
+        claim_id: str,
+        proof_status: ProofStatus,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
+        )
+
+        lhs = mlAnd([extract_lhs(claim.body), claim.requires])
+        rhs = mlAnd([extract_rhs(claim.body), claim.ensures])
+        equality = mlEquals(lhs, rhs)
+
+        kore = kprove.kast_to_kore(equality, GENERATED_TOP_CELL)
+
+        _, kore_client = kcfg_explore._kore_rpc
+        kore_simplified = kore_client.simplify(kore)
+        kast_simplified = kprove.kore_to_kast(kore_simplified)
+
+        assert is_top(kast_simplified)
