@@ -7,7 +7,6 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import extract_lhs, extract_rhs, flatten_label
 from pyk.kcfg import KCFG
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
@@ -525,16 +524,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        lhs_body = extract_lhs(claim.body)
-        rhs_body = extract_rhs(claim.body)
-        assert type(lhs_body) is KApply
-        sort = kprove.definition.return_sort(lhs_body.label)
-        lhs_constraints = flatten_label('_andBool_', claim.requires)
-        rhs_constraints = flatten_label('_andBool_', claim.ensures)
-        equality_proof = EqualityProof(
-            test_id, lhs_body, rhs_body, sort, lhs_constraints=lhs_constraints, rhs_constraints=rhs_constraints
-        )
-
+        equality_proof = EqualityProof.from_claim(claim, kprove.definition)
         equality_prover = EqualityProver(equality_proof)
         equality_prover.advance_proof(kcfg_explore)
 
