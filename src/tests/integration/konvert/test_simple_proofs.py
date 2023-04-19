@@ -312,11 +312,11 @@ KORE_TO_KAST_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
 )
 
 KRULE_TO_KORE_DATA: Final = (
-    # This test is commented out because the Python procedure generates different names for automatically-introduced variables
-    # (
-    #     'SIMPLE-PROOFS.foo-to-bar',
-    #     r"axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(),Var'Unds'DotVar1:SortK{})),Var'Unds'DotVar0:SortGeneratedCounterCell{},\and{SortStateCell{}}(Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(inj{SortInt{}, SortKItem{}}(\dv{SortInt{}}(\"3\")),inj{SortInt{}, SortKItem{}}(VarN:SortInt{})),Var'Unds'DotVar2:SortMap{})),Var'Unds'Gen3:SortStateCell{})), \equals{SortBool{},SortGeneratedTopCell{}}(Lblpred1{}(VarN:SortInt{}), \dv{SortBool{}}(\"true\"))), \and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(),Var'Unds'DotVar1:SortK{})),Var'Unds'DotVar0:SortGeneratedCounterCell{},Var'Unds'Gen3:SortStateCell{}),\top{SortGeneratedTopCell{}}()))"
-    # ),
+    # Note that the Python procedure generates different names for automatically-introduced variables than `kompile`
+    (
+        'SIMPLE-PROOFS.foo-to-bar',
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(inj{SortInt{}, SortKItem{}}(\dv{SortInt{}}("3")), inj{SortInt{}, SortKItem{}}(VarN : SortInt{})), Var'Unds'DotVar2 : SortMap{}))), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{}))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(inj{SortInt{}, SortKItem{}}(\dv{SortInt{}}("3")), inj{SortInt{}, SortKItem{}}(VarN : SortInt{})), Var'Unds'DotVar2 : SortMap{})))) [priority{}("50")]"""
+    ),
     (
         'SIMPLE-PROOFS.foo-to-bar-false',
         # This is what `kompile --disable-kore-antileft` really generates
@@ -393,18 +393,11 @@ class TestKonvertSimpleProofs(KPrintTest):
         # cannot do the following because mypy complains:
         # `error: "KDefinition" has no attribute "main_module"; maybe "main_module_name"?``
         # main_module = kprint.definition.main_module
-        k_definition = kprint.definition
-        ms = [m for m in k_definition.modules if m.name == k_definition.main_module_name]
-        assert len(ms) == 1
-        main_module = ms[0]
-
-        # rules = [r for r in main_module.rules if (('label' in r.att) and (r.att['label'] == rule_id))]
-        # assert len(rules) == 1
-        # r = rules[0]
-        r = single(r for r in main_module.rules if 'label' in r.att and r.att['label'] == rule_id)
+        main_module = kprint.definition.all_modules_dict[kprint.definition.main_module_name]
+        rule = single(r for r in main_module.rules if 'label' in r.att and r.att['label'] == rule_id)
 
         # When
-        actual_kore_text = _krule_to_kore(kprint, r).text
+        actual_kore_text = _krule_to_kore(kprint, rule).text
 
         # Then
         assert actual_kore_text == kore_text
