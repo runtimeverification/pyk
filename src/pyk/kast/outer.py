@@ -609,7 +609,7 @@ class KRule(KRuleLike):
 
     @property
     def priority(self) -> int:
-        return self.att.get('priority', 50)
+        return self.att.get('priority', 200 if 'owise' in self.att else 50)
 
 
 @final

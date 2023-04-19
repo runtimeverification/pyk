@@ -324,6 +324,10 @@ KRULE_TO_KORE_DATA: Final = (
         # But what we generate is a bit different
         r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'RestState : SortMap{}))), \and{SortGeneratedTopCell{}}(\equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), \dv{SortBool{}}("false")), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{})))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'RestState : SortMap{})))) [priority{}("30")]""",
     ),
+    (
+        'SIMPLE-PROOFS.foo-to-baz-owise',
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{}), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbaz{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{})) [priority{}("200")]""",
+    )
 )
 
 
