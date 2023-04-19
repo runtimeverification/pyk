@@ -312,16 +312,12 @@ KORE_TO_KAST_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
 )
 
 KRULE_TO_KORE_DATA: Final = (
-    # Note that the Python procedure generates different names for automatically-introduced variables than `kompile`
     (
         'SIMPLE-PROOFS.foo-to-bar',
         r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'DotVar2 : SortMap{}))), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{}))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'DotVar2 : SortMap{})))) [priority{}("50")]""",
     ),
     (
         'SIMPLE-PROOFS.foo-to-bar-false',
-        # This is what `kompile --disable-kore-antileft` really generates
-        # r"axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, \and{SortStateCell{}}(Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(inj{SortInt{}, SortKItem{}}(\dv{SortInt{}}(\"3\")), inj{SortInt{}, SortKItem{}}(VarN : SortInt{})), Var'Unds'RestState : SortMap{})), Var'Unds'Gen3 : SortStateCell{})), \equals{SortBool{}, SortGeneratedTopCell{}}(Lbl'Unds'andBool'Unds'{}(Lblpred1{}(VarN : SortInt{}), \dv{SortBool{}}(\"false\")), \dv{SortBool{}}(\"true\"))), \and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Var'Unds'Gen3 : SortStateCell{}), \top{SortGeneratedTopCell{}}()))"
-        # But what we generate is a bit different
         r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'RestState : SortMap{}))), \and{SortGeneratedTopCell{}}(\equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), \dv{SortBool{}}("false")), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{})))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'RestState : SortMap{})))) [priority{}("30")]""",
     ),
     (
