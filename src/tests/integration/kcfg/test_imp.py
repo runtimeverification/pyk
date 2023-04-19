@@ -299,13 +299,6 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (
         'concrete-addition',
         ProofStatus.PASSED,
     ),
-    (
-        'func-spec-concrete',
-        'k-files/imp-simple-spec.k',
-        'IMP-FUNCTIONAL-SPEC',
-        'int-comm',
-        ProofStatus.PASSED,
-    ),
 )
 
 

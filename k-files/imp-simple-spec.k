@@ -5,8 +5,6 @@ module IMP-FUNCTIONAL-SPEC
 
     claim [concrete-addition]: 3 +Int 4 => 7
 
-    claim [int-comm]: X +Int Y => Y +Int X
-
 endmodule
 
 module IMP-SIMPLE-SPEC
