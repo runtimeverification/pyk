@@ -4,7 +4,8 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from ..kast.inner import KInner, KSort
+from ..kast.inner import KApply, KInner, KSort
+from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_top, mlAnd, mlEquals
 from ..utils import hash_str
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
+    from ..kast.outer import KClaim, KDefinition
     from ..kcfg import KCFGExplore
 
     T = TypeVar('T', bound='Proof')
@@ -48,6 +50,18 @@ class EqualityProof(Proof):
         self.lhs_constraints = tuple(lhs_constraints)
         self.rhs_constraints = tuple(rhs_constraints)
         self.simplified_equality = simplified_equality
+
+    @staticmethod
+    def from_claim(claim: KClaim, defn: KDefinition) -> EqualityProof:
+        lhs_body = extract_lhs(claim.body)
+        rhs_body = extract_rhs(claim.body)
+        assert type(lhs_body) is KApply
+        sort = defn.return_sort(lhs_body.label)
+        lhs_constraints = flatten_label('_andBool_', claim.requires)
+        rhs_constraints = flatten_label('_andBool_', claim.ensures)
+        return EqualityProof(
+            claim.label, lhs_body, rhs_body, sort, lhs_constraints=lhs_constraints, rhs_constraints=rhs_constraints
+        )
 
     @property
     def equality(self) -> KInner:
