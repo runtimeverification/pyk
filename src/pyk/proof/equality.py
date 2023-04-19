@@ -28,8 +28,8 @@ class EqualityProof(Proof):
     lhs_body: KInner
     rhs_body: KInner
     sort: KSort
-    lhs_constraints: Iterable[KInner]
-    rhs_constraints: Iterable[KInner]
+    lhs_constraints: tuple[KInner, ...]
+    rhs_constraints: tuple[KInner, ...]
     simplified_equality: KInner | None
 
     def __init__(
