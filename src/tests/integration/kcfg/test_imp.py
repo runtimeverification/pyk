@@ -9,10 +9,9 @@ from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import extract_lhs, extract_rhs, flatten_label
 from pyk.kcfg import KCFG
-from pyk.prelude.kbool import BOOL, TRUE
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import is_top, mlAnd, mlBottom, mlEquals, mlEqualsFalse, mlEqualsTrue
-from pyk.proof import AGBMCProof, AGBMCProver, AGProof, AGProver, ProofStatus
+from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
+from pyk.proof import AGBMCProof, AGBMCProver, AGProof, AGProver, EqualityProof, EqualityProver, ProofStatus
 from pyk.utils import single
 
 from ..utils import KCFGExploreTest
@@ -530,20 +529,13 @@ class TestImpProof(KCFGExploreTest):
         rhs_body = extract_rhs(claim.body)
         assert type(lhs_body) is KApply
         sort = kprove.definition.return_sort(lhs_body.label)
-        lhs_constraints: list[KInner] = [
-            mlEquals(TRUE, c, arg_sort=BOOL, sort=sort) for c in flatten_label('_andBool_', claim.requires)
-        ]
-        rhs_constraints: list[KInner] = [
-            mlEquals(TRUE, c, arg_sort=BOOL, sort=sort) for c in flatten_label('_andBool_', claim.ensures)
-        ]
-        lhs = mlAnd([lhs_body] + lhs_constraints, sort=sort)
-        rhs = mlAnd([rhs_body] + rhs_constraints, sort=sort)
-        equality = mlEquals(lhs, rhs, arg_sort=sort, sort=sort)
+        lhs_constraints = flatten_label('_andBool_', claim.requires)
+        rhs_constraints = flatten_label('_andBool_', claim.ensures)
+        equality_proof = EqualityProof(
+            test_id, lhs_body, rhs_body, sort, lhs_constraints=lhs_constraints, rhs_constraints=rhs_constraints
+        )
 
-        kore = kprove.kast_to_kore(equality)
+        equality_prover = EqualityProver(equality_proof)
+        equality_prover.advance_proof(kcfg_explore)
 
-        _, kore_client = kcfg_explore._kore_rpc
-        kore_simplified = kore_client.simplify(kore)
-        kast_simplified = kprove.kore_to_kast(kore_simplified)
-
-        assert is_top(kast_simplified)
+        assert equality_proof.status == proof_status
