@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
-from pyk.konvert import _krule_to_kore, kast_to_kore, kore_to_kast
+from pyk.konvert import kast_to_kore, kore_to_kast, krule_to_kore
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
 from pyk.prelude.bytes import bytesToken
@@ -394,7 +394,7 @@ class TestKonvertSimpleProofs(KompiledTest):
         rule = single(r for r in main_module.rules if 'label' in r.att and r.att['label'] == rule_id)
 
         # When
-        actual_kore_text = _krule_to_kore(rule).text
+        actual_kore_text = krule_to_kore(rule).text
 
         # Then
         assert actual_kore_text == kore_text

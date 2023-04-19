@@ -93,7 +93,7 @@ def kast_to_kore(
     return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
 
 
-def _krule_to_kore(krule: KRule) -> Axiom:
+def krule_to_kore(krule: KRule) -> Axiom:
     krule_body = krule.body
     krule_lhs = CTerm(extract_lhs(krule_body), [bool_to_ml_pred(krule.requires)])
     krule_rhs = CTerm(extract_rhs(krule_body), [bool_to_ml_pred(krule.ensures)])
