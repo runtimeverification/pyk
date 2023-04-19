@@ -11,6 +11,7 @@ from pyk.kcfg import KCFG
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
 from pyk.proof import AGBMCProof, AGBMCProver, AGProof, AGProver, ProofStatus
+from pyk.utils import single
 
 from ..utils import KCFGExploreTest
 
@@ -439,12 +440,11 @@ class TestImpProof(KCFGExploreTest):
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
     ) -> None:
-        claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
-        assert len(claims) == 1
 
-        kcfg = KCFG.from_claim(kprove.definition, claims[0])
+        kcfg = KCFG.from_claim(kprove.definition, claim)
         proof = AGProof(f'{spec_module}.{claim_id}', kcfg)
         prover = AGProver(proof, is_terminal=TestImpProof._is_terminal)
         kcfg = prover.advance_proof(
@@ -477,12 +477,11 @@ class TestImpProof(KCFGExploreTest):
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
     ) -> None:
-        claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
-        assert len(claims) == 1
 
-        kcfg = KCFG.from_claim(kprove.definition, claims[0])
+        kcfg = KCFG.from_claim(kprove.definition, claim)
         kcfg_explore.simplify(kcfg)
         proof = AGBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
         prover = AGBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
