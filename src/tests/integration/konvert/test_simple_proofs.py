@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
-from pyk.konvert import _krule_to_kore, kast_to_kore
+from pyk.konvert import _krule_to_kore, kast_to_kore, kore_to_kast
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
 from pyk.prelude.bytes import bytesToken
@@ -15,14 +15,14 @@ from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
 from pyk.utils import single
 
-from ..utils import KPrintTest
+from ..utils import KompiledTest
 
 if TYPE_CHECKING:
     from pathlib import Path
     from typing import Final
 
     from pyk.kast import KInner
-    from pyk.ktool.kprint import KPrint
+    from pyk.kast.outer import KDefinition
 
 
 BIDIRECTIONAL_TEST_DATA: Final = (
@@ -327,7 +327,7 @@ KRULE_TO_KORE_DATA: Final = (
 )
 
 
-class TestKonvertSimpleProofs(KPrintTest):
+class TestKonvertSimpleProofs(KompiledTest):
     KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
 
     @pytest.fixture(scope='class')
@@ -341,7 +341,7 @@ class TestKonvertSimpleProofs(KPrintTest):
     )
     def test_kast_to_kore(
         self,
-        kprint: KPrint,
+        definition: KDefinition,
         kompiled_kore: KompiledKore,
         test_id: str,
         sort: KSort,
@@ -352,7 +352,7 @@ class TestKonvertSimpleProofs(KPrintTest):
         kore = KoreParser(kore_text).pattern()
 
         # When
-        actual_kore = kast_to_kore(kprint.definition, kompiled_kore, kast, sort=sort)
+        actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
 
         # Then
         assert actual_kore == kore
@@ -364,7 +364,7 @@ class TestKonvertSimpleProofs(KPrintTest):
     )
     def test_kore_to_kast(
         self,
-        kprint: KPrint,
+        definition: KDefinition,
         test_id: str,
         _sort: KSort,
         kore_text: str,
@@ -374,7 +374,7 @@ class TestKonvertSimpleProofs(KPrintTest):
         kore = KoreParser(kore_text).pattern()
 
         # When
-        actual_kast = kprint.kore_to_kast(kore)
+        actual_kast = kore_to_kast(definition, kore)
 
         # Then
         assert actual_kast == kast
