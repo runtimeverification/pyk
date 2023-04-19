@@ -7,9 +7,9 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import extract_lhs, extract_rhs
+from pyk.kast.manip import extract_lhs, extract_rhs, flatten_label
 from pyk.kcfg import KCFG
-from pyk.prelude.k import GENERATED_TOP_CELL
+from pyk.prelude.kbool import BOOL, TRUE
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import is_top, mlAnd, mlBottom, mlEquals, mlEqualsFalse, mlEqualsTrue
 from pyk.proof import AGBMCProof, AGBMCProver, AGProof, AGProver, ProofStatus
@@ -533,11 +533,21 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        lhs = mlAnd([extract_lhs(claim.body), claim.requires])
-        rhs = mlAnd([extract_rhs(claim.body), claim.ensures])
-        equality = mlEquals(lhs, rhs)
+        lhs_body = extract_lhs(claim.body)
+        rhs_body = extract_rhs(claim.body)
+        assert type(lhs_body) is KApply
+        sort = kprove.definition.return_sort(lhs_body.label)
+        lhs_constraints: list[KInner] = [
+            mlEquals(TRUE, c, arg_sort=BOOL, sort=sort) for c in flatten_label('_andBool_', claim.requires)
+        ]
+        rhs_constraints: list[KInner] = [
+            mlEquals(TRUE, c, arg_sort=BOOL, sort=sort) for c in flatten_label('_andBool_', claim.ensures)
+        ]
+        lhs = mlAnd([lhs_body] + lhs_constraints, sort=sort)
+        rhs = mlAnd([rhs_body] + rhs_constraints, sort=sort)
+        equality = mlEquals(lhs, rhs, arg_sort=sort, sort=sort)
 
-        kore = kprove.kast_to_kore(equality, GENERATED_TOP_CELL)
+        kore = kprove.kast_to_kore(equality)
 
         _, kore_client = kcfg_explore._kore_rpc
         kore_simplified = kore_client.simplify(kore)
