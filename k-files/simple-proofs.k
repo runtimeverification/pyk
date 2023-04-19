@@ -33,7 +33,7 @@ module SIMPLE-PROOFS
       [priority(30)]
 
     rule [foo-to-baz-owise]:
-         <k> foo => baz ...</k> [owise]
+         <k> foo ~> foo ~> foo => baz ~> foo ~> foo ...</k> [owise]
 
     syntax KItem ::= Step
     syntax Step ::= "a" | "b" | "c" | "d" | "e"

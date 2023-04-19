@@ -326,7 +326,7 @@ KRULE_TO_KORE_DATA: Final = (
     ),
     (
         'SIMPLE-PROOFS.foo-to-baz-owise',
-        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{}), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbaz{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{})) [priority{}("200")]""",
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})))), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{}), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbaz{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})))), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{})) [priority{}("200")]""",
     ),
 )
 
