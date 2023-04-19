@@ -9,7 +9,6 @@ from .kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
 from .kast.manip import bool_to_ml_pred, extract_lhs, extract_rhs
 from .kore.prelude import BYTES as KORE_BYTES
 from .kore.prelude import STRING as KORE_STRING
-from .prelude.k import GENERATED_TOP_CELL, K
 from .kore.syntax import (
     DV,
     And,
@@ -31,6 +30,7 @@ from .kore.syntax import (
     Top,
 )
 from .prelude.bytes import BYTES, bytesToken, pretty_bytes
+from .prelude.k import K
 from .prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
 from .prelude.string import STRING, pretty_string, stringToken
 from .utils import FrozenDict
@@ -43,7 +43,6 @@ if TYPE_CHECKING:
     from .kast.outer import KDefinition, KRule
     from .kore.kompiled import KompiledKore
     from .kore.syntax import Pattern, Sort
-    from .ktool.kprint import KPrint
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -94,13 +93,13 @@ def kast_to_kore(
     return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
 
 
-def _krule_to_kore(kprint: KPrint, krule: KRule) -> Axiom:
+def _krule_to_kore(krule: KRule) -> Axiom:
     krule_body = krule.body
     krule_lhs = CTerm(extract_lhs(krule_body), [bool_to_ml_pred(krule.requires)])
     krule_rhs = CTerm(extract_rhs(krule_body), [bool_to_ml_pred(krule.ensures)])
 
-    kore_lhs = kprint.kast_to_kore(krule_lhs.kast, GENERATED_TOP_CELL)
-    kore_rhs = kprint.kast_to_kore(krule_rhs.kast, GENERATED_TOP_CELL)
+    kore_lhs = _kast_to_kore(krule_lhs.kast)
+    kore_rhs = _kast_to_kore(krule_rhs.kast)
     prio = krule.priority
     axiom = Axiom(
         vars=(),
