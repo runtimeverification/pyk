@@ -125,7 +125,10 @@ class KCFGShow:
                 return rule
 
             rules = [to_rule(e) for e in cfg.edges() if e.depth > 0]
-            claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), -1), claim=True) for nd in cfg.frontier]
+            claims = [
+                to_rule(KCFG.Edge(nd, cfg.get_unique_target(), -1, is_backedge=False), claim=True)
+                for nd in cfg.frontier
+            ]
             cfg_module_name = cfgid.upper().replace('.', '-').replace('_', '-')
             new_module = KFlatModule(f'SUMMARY-{cfg_module_name}', rules + claims)
             res_lines.append(self.kprint.pretty_print(new_module))
