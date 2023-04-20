@@ -1,19 +1,20 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import logging
 import pytest
 
 from pyk.cterm import CSubst, CTerm
-
-from pyk.kast.manip import minimize_term
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
+from pyk.kast.manip import minimize_term
 from pyk.kcfg import KCFG, KCFGShow
+from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
-from pyk.proof import AGProof, AGProver, ProofStatus
+from pyk.proof import AGBMCProof, AGBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
+from pyk.utils import single
 
 from ..utils import KCFGExploreTest
 
@@ -21,7 +22,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
 
-    from pyk.kast import KInner
+    from pyk.kast.inner import KInner
+    from pyk.kast.outer import KDefinition
     from pyk.kcfg import KCFGExplore
     from pyk.ktool.kprint import KPrint, SymbolTable
     from pyk.ktool.kprove import KProve
@@ -182,6 +184,17 @@ APR_PROVE_TEST_DATA: Iterable[
         ProofStatus.PASSED,
     ),
     (
+        'failing-if',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'failing-if',
+        10,
+        1,
+        [],
+        [],
+        ProofStatus.FAILED,
+    ),
+    (
         'imp-simple-sum-10',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
@@ -242,6 +255,94 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
 )
 
 
+APRBMC_PROVE_TEST_DATA: Iterable[
+    tuple[str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus]
+] = (
+    (
+        'bmc-loop-concrete-1',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-loop-concrete',
+        20,
+        20,
+        1,
+        [],
+        ['IMP.while'],
+        ProofStatus.PASSED,
+    ),
+    (
+        'bmc-loop-concrete-2',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-loop-concrete',
+        20,
+        20,
+        2,
+        [],
+        ['IMP.while'],
+        ProofStatus.PASSED,
+    ),
+    (
+        'bmc-loop-concrete-3',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-loop-concrete',
+        20,
+        20,
+        3,
+        [],
+        ['IMP.while'],
+        ProofStatus.FAILED,
+    ),
+    (
+        'bmc-loop-symbolic-1',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-loop-symbolic',
+        20,
+        20,
+        1,
+        [],
+        ['IMP.while'],
+        ProofStatus.PASSED,
+    ),
+    (
+        'bmc-loop-symbolic-2',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-loop-symbolic',
+        20,
+        20,
+        2,
+        [],
+        ['IMP.while'],
+        ProofStatus.FAILED,
+    ),
+    (
+        'bmc-loop-symbolic-3',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-loop-symbolic',
+        20,
+        20,
+        3,
+        [],
+        ['IMP.while'],
+        ProofStatus.FAILED,
+    ),
+)
+
+FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (
+    (
+        'func-spec-concrete',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-addition',
+        ProofStatus.PASSED,
+    ),
+)
+
+
 class TestImpProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = 'k-files/imp-verification.k'
 
@@ -257,6 +358,29 @@ class TestImpProof(KCFGExploreTest):
                 return True
             if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
                 return True
+        if type(k_cell) is KVariable:
+            return True
+        return False
+
+    @staticmethod
+    def _extract_branches(defn: KDefinition, cterm: CTerm) -> list[KInner]:
+        k_cell = cterm.cell('K_CELL')
+        if type(k_cell) is KSequence and len(k_cell) > 0:
+            k_cell = k_cell[0]
+        if type(k_cell) is KApply and k_cell.label.name == 'if(_)_else_':
+            condition = k_cell.args[0]
+            if (type(condition) is KVariable and condition.sort == BOOL) or (
+                type(condition) is KApply and defn.return_sort(condition.label) == BOOL
+            ):
+                return [mlEqualsTrue(condition), mlEqualsTrue(notBool(condition))]
+        return []
+
+    @staticmethod
+    def _same_loop(cterm1: CTerm, cterm2: CTerm) -> bool:
+        k_cell_1 = cterm1.cell('K_CELL')
+        k_cell_2 = cterm2.cell('K_CELL')
+        if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
+            return k_cell_1[0].label.name == 'while(_)_'
         return False
 
     @staticmethod
@@ -382,14 +506,17 @@ class TestImpProof(KCFGExploreTest):
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
     ) -> None:
-        claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
-        assert len(claims) == 1
 
-        kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        proof = AGProof(f'{spec_module}.{claim_id}', kcfg)
-        prover = AGProver(proof, is_terminal=TestImpProof._is_terminal)
+        kcfg = KCFG.from_claim(kprove.definition, claim)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        prover = APRProver(
+            proof,
+            is_terminal=TestImpProof._is_terminal,
+            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+        )
         kcfg = prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
@@ -400,7 +527,6 @@ class TestImpProof(KCFGExploreTest):
 
         assert proof.status == proof_status
 
-        
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules',
         PATH_CONSTRAINTS_TEST_DATA,
@@ -419,7 +545,6 @@ class TestImpProof(KCFGExploreTest):
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
     ) -> None:
-
         def _node_printer(cterm: CTerm) -> list[str]:
             _kast = minimize_term(cterm.kast)
             return kcfg_explore.kprint.pretty_print(_kast).split('\n')
@@ -430,8 +555,9 @@ class TestImpProof(KCFGExploreTest):
         assert len(claims) == 1
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        proof = AGProof(f'{spec_module}.{claim_id}', kcfg)
-        prover = AGProver(proof, is_terminal=TestImpProof._is_terminal)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        prover = APRProver(proof, is_terminal=TestImpProof._is_terminal)
+
         kcfg = prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
@@ -448,3 +574,66 @@ class TestImpProof(KCFGExploreTest):
         _LOGGER.warning(f'KCFG:\n{kcfg_str}')
 
         assert 1 == 2
+
+    @pytest.mark.parametrize(
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status',
+        APRBMC_PROVE_TEST_DATA,
+        ids=[test_id for test_id, *_ in APRBMC_PROVE_TEST_DATA],
+    )
+    def test_all_path_bmc_reachability_prove(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        spec_file: str,
+        spec_module: str,
+        claim_id: str,
+        max_iterations: int,
+        max_depth: int,
+        bmc_depth: int,
+        terminal_rules: Iterable[str],
+        cut_rules: Iterable[str],
+        proof_status: ProofStatus,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
+        )
+
+        kcfg = KCFG.from_claim(kprove.definition, claim)
+        kcfg_explore.simplify(kcfg)
+        proof = AGBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
+        prover = AGBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
+        kcfg = prover.advance_proof(
+            kcfg_explore,
+            max_iterations=max_iterations,
+            execute_depth=max_depth,
+            cut_point_rules=cut_rules,
+            terminal_rules=terminal_rules,
+        )
+
+        assert proof.status == proof_status
+
+    @pytest.mark.parametrize(
+        'test_id,spec_file,spec_module,claim_id,proof_status',
+        FUNC_PROVE_TEST_DATA,
+        ids=[test_id for test_id, *_ in FUNC_PROVE_TEST_DATA],
+    )
+    def test_functional_prove(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        spec_file: str,
+        spec_module: str,
+        claim_id: str,
+        proof_status: ProofStatus,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
+        )
+
+        equality_proof = EqualityProof.from_claim(claim, kprove.definition)
+        equality_prover = EqualityProver(equality_proof)
+        equality_prover.advance_proof(kcfg_explore)
+
+        assert equality_proof.status == proof_status

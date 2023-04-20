@@ -1,5 +1,12 @@
 requires "imp-verification.k"
 
+module IMP-FUNCTIONAL-SPEC
+    imports IMP-VERIFICATION
+
+    claim [concrete-addition]: 3 +Int 4 => 7
+
+endmodule
+
 module IMP-SIMPLE-SPEC
     imports IMP-VERIFICATION
 
@@ -16,6 +23,18 @@ module IMP-SIMPLE-SPEC
 
     claim [while-cut-rule-delayed]: <k> $n = 7 ; while (B:Bool) BB:Block => if (B) { BB while (B) BB } else {} ... </k>
                                     <state> $n |-> (_ => ?_) </state>
+
+    claim [bmc-loop-concrete]: <k> while (0 <= $n) { $n = $n + -1 ; } => . ... </k>
+                               <state> $n |-> (1 => ?N) </state>
+      ensures 0 <Int ?N
+
+    claim [bmc-loop-symbolic]: <k> while ($s <= $n) { $n = $n + -1 ; } => . ... </k>
+                               <state> ($n |-> (1 => ?N)) ($s |-> S) </state>
+      requires 0 <=Int S
+       ensures 0 <Int ?N
+
+    claim [failing-if]: <k> if(B:Bool) { $n = 1 ; } else { $n = 2 ; } => . ... </k>
+                        <state> $n |-> (0 => 1) </state>
 
     claim [sum-10]: <k> int $s, $n, .Ids ; $n = 10 ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
                     <state> .Map => $s |-> 55 $n |-> -1 </state>
