@@ -310,7 +310,7 @@ def _build_arg_list(
 
     if concrete_rules:
         args.extend(['--concrete-rules', ','.join(concrete_rules)])
-    
+
     if enable_llvm_debug:
         args.append('--enable-llvm-debug')
 
