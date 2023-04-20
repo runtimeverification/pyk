@@ -1051,3 +1051,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     worklist.append(split.source)
 
         return visited
+
+    def branching_factor(self) -> int:
+        def node_branching_factor(node: KCFG.Node) -> int:
+            # Covers do not count
+            split_successors = list(chain(*[[t[0] for t in s.targets] for s in self.splits(source_id=node.id)]))
+            edge_successors = [e.target for e in self.edges(source_id=node.id)]
+            total_successors = split_successors + edge_successors
+            if len(total_successors) == 0:
+                return 1
+
+            return sum([node_branching_factor(n) for n in total_successors])
+
+        return sum([node_branching_factor(n) for n in self.init])

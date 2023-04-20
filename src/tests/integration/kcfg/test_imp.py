@@ -213,7 +213,7 @@ APR_PROVE_TEST_DATA: Iterable[
 
 
 APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus]
+    tuple[str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'bmc-loop-concrete-1',
@@ -226,6 +226,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'bmc-loop-concrete-2',
@@ -238,6 +239,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'bmc-loop-concrete-3',
@@ -250,6 +252,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.FAILED,
+        1,
     ),
     (
         'bmc-loop-symbolic-1',
@@ -262,6 +265,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
+        2,
     ),
     (
         'bmc-loop-symbolic-2',
@@ -274,6 +278,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.FAILED,
+        3,
     ),
     (
         'bmc-loop-symbolic-3',
@@ -286,6 +291,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.FAILED,
+        3,
     ),
 )
 
@@ -466,9 +472,10 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert proof.status == proof_status
+        assert kcfg.branching_factor() == 1
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,branching_factor',
         APRBMC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APRBMC_PROVE_TEST_DATA],
     )
@@ -486,6 +493,7 @@ class TestImpProof(KCFGExploreTest):
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
+        branching_factor: int,
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
@@ -504,6 +512,7 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert proof.status == proof_status
+        assert kcfg.branching_factor() == branching_factor
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,proof_status',
