@@ -213,7 +213,7 @@ APR_PROVE_TEST_DATA: Iterable[
 
 
 APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus]
+    tuple[str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'bmc-loop-concrete-1',
@@ -493,7 +493,7 @@ class TestImpProof(KCFGExploreTest):
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
-        branching_factor,
+        branching_factor: int,
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
