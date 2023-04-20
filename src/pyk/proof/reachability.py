@@ -24,7 +24,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class APRProof(Proof):
     """APRProof and APRProver implement all-path reachability logic,
-    as introduced by A. Stefanescu and others in their 'All-Path Reachability Logic' paper:
+    as introduced by A. Stefanescu and others in their paper 'All-Path Reachability Logic':
     https://doi.org/10.23638/LMCS-15(2:5)2019
     Note that reachability logic formula `phi =>A psi` has *not* the same meaning
     as CTL/CTL*'s `phi -> AF psi`, since reachability logic ignores infinite traces.
