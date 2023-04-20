@@ -9,7 +9,7 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term
-from pyk.kcfg import KCFG, KCFGShow
+from pyk.kcfg import KCFG
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
@@ -230,7 +230,7 @@ APR_PROVE_TEST_DATA: Iterable[
 )
 
 PATH_CONSTRAINTS_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
+    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], list[str]]
 ] = (
     (
         'imp-simple-fail-branch-unlimited-iterations',
@@ -535,7 +535,7 @@ class TestImpProof(KCFGExploreTest):
         max_depth: int,
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
-        expected_constraints: Iterable[str],
+        expected_constraints: list[str],
     ) -> None:
         def _node_printer(cterm: CTerm) -> list[str]:
             _kast = minimize_term(cterm.kast)
@@ -557,10 +557,6 @@ class TestImpProof(KCFGExploreTest):
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
         )
-
-        kcfg_show = KCFGShow(kcfg_explore.kprint)
-        kcfg_str = '\n'.join(kcfg_show.show('test', proof.kcfg, node_printer=_node_printer))
-        summary_str = '\n'.join(proof.summary)
 
         assert len(kcfg.stuck) == 1
         path_constraints = kcfg.path_constraints(kcfg.stuck[0].id)

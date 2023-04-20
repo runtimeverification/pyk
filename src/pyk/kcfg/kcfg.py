@@ -968,18 +968,29 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for node in nodes:
             self.remove_node(node.id)
 
+    def shortest_path_between(self, source_node_id: str, target_node_id: str) -> Iterable[Successor] | None:
+        paths = self.paths_between(source_node_id, target_node_id)
+        return sorted(paths, key=(lambda path: len(path)))[0]
+
     def path_constraints(self, final_node_id: str) -> list[KInner]:
+        cover_substs: list[CSubst] = []
         constraints: list[KInner] = []
-        paths = self.paths_between(self.get_unique_init().id, final_node_id)
-        if len(paths) == 0:
+
+        def apply_substs(constraint: KInner) -> KInner:
+            curr_constraint = constraint
+            for subst in cover_substs:
+                curr_constraint = subst.apply(CTerm.from_kast(curr_constraint)).kast
+            return constraint
+
+        path = self.shortest_path_between(self.get_unique_init().id, final_node_id)
+        if path is None:
             raise ValueError(f'No path found to specified node: {final_node_id}')
-        if len(paths) > 1:
-            raise ValueError(f'Multiple paths found to specified node: {final_node_id}')
-        path = paths[0]
         for edge in path:
             if type(edge) is KCFG.Split:
                 for _, csubst in edge.targets:
-                    constraints += csubst.constraints
+                    constraints.append(apply_substs(csubst.constraint))
+            if type(edge) is KCFG.Cover:
+                cover_substs.append(edge.csubst)
         return constraints
 
     def paths_between(
