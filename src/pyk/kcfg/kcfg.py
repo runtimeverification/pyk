@@ -65,12 +65,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         source: KCFG.Node
         target: KCFG.Node
         depth: int
+        is_backedge: bool
 
         def to_dict(self) -> dict[str, Any]:
             return {
                 'source': self.source.id,
                 'target': self.target.id,
                 'depth': self.depth,
+                'is_backedge': self.is_backedge,
             }
 
         def pretty(self, kprint: KPrint) -> Iterable[str]:
@@ -287,7 +289,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             source_id = resolve(edge_dict['source'])
             target_id = resolve(edge_dict['target'])
             depth = edge_dict['depth']
-            cfg.create_edge(source_id, target_id, depth)
+            is_backedge = edge_dict['is_backedge']
+            cfg.create_edge(source_id, target_id, depth, is_backedge)
 
         for cover_dict in dct.get('covers') or []:
             source_id = resolve(cover_dict['source'])
@@ -527,7 +530,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             for line in seg_lines
         )
 
-    def to_dot(self, kprint: KPrint) -> str:
+    def to_dot(self, kprint: KPrint, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> str:
         def _short_label(label: str) -> str:
             return '\n'.join(
                 [
@@ -539,7 +542,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         graph = Digraph()
 
         for node in self.nodes:
-            label = '\n'.join(self.node_short_info(node))
+            label = '\n'.join(self.node_short_info(node, node_printer=node_printer))
             class_attrs = ' '.join(self.node_attrs(node.id))
             attrs = {'class': class_attrs} if class_attrs else {}
             graph.node(name=node.id, label=label, **attrs)
@@ -547,7 +550,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for edge in self.edges():
             depth = edge.depth
             label = f'{depth} steps'
-            graph.edge(tail_name=edge.source.id, head_name=edge.target.id, label=f'  {label}        ')
+            attrs = {'style': 'solid', 'color': 'blue'} if edge.is_backedge else {}
+            graph.edge(tail_name=edge.source.id, head_name=edge.target.id, label=f'  {label}        ', **attrs)
+
+        for split in self.splits():
+            for split_target, csubst in split.targets:
+                label = '\n#And'.join(
+                    f'{kprint.pretty_print(v)}' for v in split.source.cterm.constraints + csubst.constraints
+                )
+                graph.edge(tail_name=split.source.id, head_name=split_target.id, label=f'  {label}        ')
 
         for cover in self.covers():
             label = ', '.join(f'{k} |-> {kprint.pretty_print(v)}' for k, v in cover.csubst.subst.minimize().items())
@@ -733,7 +744,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             return edge == other
         return False
 
-    def create_edge(self, source_id: str, target_id: str, depth: int) -> Edge:
+    def create_edge(self, source_id: str, target_id: str, depth: int, is_backedge: bool = False) -> Edge:
         self._check_no_successors(source_id)
 
         if depth <= 0:
@@ -745,7 +756,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         if source.id not in self._edges:
             self._edges[source.id] = {}
 
-        edge = KCFG.Edge(source, target, depth)
+        edge = KCFG.Edge(source, target, depth, is_backedge)
         self._edges[source.id][target.id] = edge
         return edge
 
