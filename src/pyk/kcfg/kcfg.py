@@ -551,7 +551,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
         for split in self.splits():
             for split_target, csubst in split.targets:
-                label = ', '.join(f'{kprint.pretty_print(v)}' for v in csubst.constraints)
+                label = '\n#And'.join(
+                    f'{kprint.pretty_print(v)}' for v in split.source.cterm.constraints + csubst.constraints
+                )
                 graph.edge(tail_name=split.source.id, head_name=split_target.id, label=f'  {label}        ')
 
         for cover in self.covers():
