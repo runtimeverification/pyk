@@ -481,7 +481,7 @@ class TestImpProof(KCFGExploreTest):
         )
 
         kcfg = KCFG.from_claim(kprove.definition, claim)
-        proof = APGProof(f'{spec_module}.{claim_id}', kcfg)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
         prover = APRProver(
             proof,
             is_terminal=TestImpProof._is_terminal,
