@@ -209,6 +209,7 @@ class AGProver:
 class AGBMCProver(AGProver):
     proof: AGBMCProof
     _same_loop: Callable[[CTerm, CTerm], bool]
+    _loop_nodes: list[KCFG.Node]
     _checked_nodes: list[str]
 
     def __init__(
@@ -220,6 +221,9 @@ class AGBMCProver(AGProver):
     ) -> None:
         super().__init__(proof, is_terminal=is_terminal, extract_branches=extract_branches)
         self._same_loop = same_loop
+        # loop detection predicate is reflexive _same_loop
+        self._is_loop = lambda cterm: same_loop(cterm, cterm)
+        self._loop_nodes = []
         self._checked_nodes = []
 
     def advance_proof(
@@ -244,14 +248,23 @@ class AGBMCProver(AGProver):
             for f in self.proof.kcfg.frontier:
                 if f.id not in self._checked_nodes:
                     self._checked_nodes.append(f.id)
+
+                    if self._is_loop(f.cterm) and not f.id in [n.id for n in self._loop_nodes]:
+                        self._loop_nodes.append(f)
+
                     prior_loops = [
-                        nd.id
-                        for nd in self.proof.kcfg.reachable_nodes(f.id, reverse=True, traverse_covers=True)
-                        if nd.id != f.id and self._same_loop(nd.cterm, f.cterm)
+                        nd.id for nd in self._loop_nodes if nd.id != f.id and self._same_loop(nd.cterm, f.cterm)
                     ]
                     if len(prior_loops) >= self.proof.bmc_depth:
-                        self.proof.kcfg.add_expanded(f.id)
-                        self.proof.bound_state(f.id)
+                        # follow the edge back from to get the predicessor of the last encountered loop head
+                        predecessor = self.proof.kcfg.edges(target_id=f.id)[0].source
+                        # remove the last encountered loop head
+                        self.proof.kcfg.remove_node(f.id)
+                        # mark predecessor as expanded and bounded
+                        self.proof.kcfg.add_expanded(predecessor.id)
+                        self.proof.bound_state(predecessor.id)
+                        # create a backedge to the first loop node
+                        self.proof.kcfg.create_edge(predecessor.id, prior_loops[0], 1, is_backedge=True)
 
             super().advance_proof(
                 kcfg_explore,
