@@ -18,12 +18,11 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Final
 
+    from pytest import FixtureRequest
+
     from pyk.kore.syntax import Pattern
 
     from .utils import Kompiler
-
-KOMPILE_MAIN_FILE = 'k-files/string-rewrite.k'
-KOMPILE_MAIN_MODULE = 'STRING-REWRITE'
 
 TEST_DATA: Final = (
     'hello',
@@ -32,14 +31,31 @@ TEST_DATA: Final = (
     '🙂',
 )
 
+KOMPILE_MAIN_FILE = 'k-files/string-rewrite.k'
+KOMPILE_MAIN_MODULE = 'STRING-REWRITE'
+
 
 @pytest.fixture(scope='module')
-def definition_dir(kompile: Kompiler) -> Path:
+def llvm_dir(kompile: Kompiler) -> Path:
     return kompile(
         KOMPILE_MAIN_FILE,
-        backend='haskell',
         main_module=KOMPILE_MAIN_MODULE,
+        backend='llvm',
     )
+
+
+@pytest.fixture(scope='module')
+def haskell_dir(kompile: Kompiler) -> Path:
+    return kompile(
+        KOMPILE_MAIN_FILE,
+        main_module=KOMPILE_MAIN_MODULE,
+        backend='haskell',
+    )
+
+
+@pytest.fixture(scope='module', params=['llvm', 'haskell'])
+def definition_dir(request: FixtureRequest) -> Path:
+    return request.getfixturevalue(f'{request.param}_dir')
 
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
@@ -67,7 +83,7 @@ def test_kore_to_kast(text: str) -> None:  # TODO turn into unit test
 
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_cli_kast_to_kore(definition_dir: Path, text: str) -> None:
+def test_cli_kast_to_kore(llvm_dir: Path, text: str) -> None:
     # Given
     kast = stringToken(text)
     kast_dict = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}  # TODO extract function
@@ -75,7 +91,7 @@ def test_cli_kast_to_kore(definition_dir: Path, text: str) -> None:
 
     # When
     proc_res = _kast(
-        definition_dir=definition_dir,
+        definition_dir=llvm_dir,
         expression=kast_json,
         input='json',
         output='kore',
@@ -88,14 +104,14 @@ def test_cli_kast_to_kore(definition_dir: Path, text: str) -> None:
 
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_cli_kore_to_kast(definition_dir: Path, text: str) -> None:
+def test_cli_kore_to_kast(llvm_dir: Path, text: str) -> None:
     # Given
     kore = string_dv(text)
     kore_text = kore.text
 
     # When
     proc_res = _kast(
-        definition_dir=definition_dir,
+        definition_dir=llvm_dir,
         expression=kore_text,
         input='kore',
         output='json',
@@ -107,15 +123,16 @@ def test_cli_kore_to_kast(definition_dir: Path, text: str) -> None:
     assert kast == stringToken(text)
 
 
+# @pytest.mark.parametrize('definition_dir', ['haskell', 'llvm'], indirect=True)
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_cli_rule_to_kast(definition_dir: Path, text: str) -> None:
+def test_cli_rule_to_kast(llvm_dir: Path, text: str) -> None:
     # Given
     input_kast = stringToken(text)
     rule_text = pretty_print_kast(input_kast, {})
 
     # When
     proc_res = _kast(
-        definition_dir=definition_dir,
+        definition_dir=llvm_dir,
         expression=rule_text,
         input='rule',
         output='json',
@@ -128,7 +145,7 @@ def test_cli_rule_to_kast(definition_dir: Path, text: str) -> None:
 
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_kore_rpc(definition_dir: Path, text: str) -> None:
+def test_kore_rpc(haskell_dir: Path, text: str) -> None:
     def config(k: Pattern | None, s: Pattern) -> Pattern:
         dotk = App('dotk', (), ())
         kseq = App('kseq', (), (App('inj', (STRING, SortApp('SortKItem')), (k,)), dotk)) if k else dotk
@@ -152,7 +169,7 @@ def test_kore_rpc(definition_dir: Path, text: str) -> None:
     init = config(string_dv(text), string_dv(''))
 
     # When
-    with KoreServer(definition_dir, KOMPILE_MAIN_MODULE) as server:
+    with KoreServer(haskell_dir, KOMPILE_MAIN_MODULE) as server:
         with KoreClient('localhost', server.port) as client:
             result = client.execute(init)
 
