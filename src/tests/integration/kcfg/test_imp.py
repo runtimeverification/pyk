@@ -240,7 +240,7 @@ APR_PROVE_TEST_DATA: Iterable[
         ['IMP-VERIFICATION.halt'],
         [],
         ProofStatus.PASSED,
-        2, # Change this to 1 once we can reuse subproofs
+        2,  # Change this to 1 once we can reuse subproofs
     ),
 )
 
@@ -337,6 +337,18 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (
         ProofStatus.PASSED,
     ),
 )
+
+
+def leaf_number(kcfg: KCFG) -> int:
+    target_id = kcfg.get_unique_target().id
+    target_subsumed_nodes = (
+        len(kcfg.edges(target_id=target_id))
+        + len(kcfg.covers(target_id=target_id))
+        + len(kcfg.splits(target_id=target_id))
+    )
+    frontier_nodes = len(kcfg.frontier)
+    stuck_nodes = len(kcfg.stuck)
+    return target_subsumed_nodes + frontier_nodes + stuck_nodes
 
 
 class TestImpProof(KCFGExploreTest):
@@ -471,7 +483,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status,branching_factor',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -488,7 +500,7 @@ class TestImpProof(KCFGExploreTest):
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
-        branching_factor: int,
+        expected_leaf_number: int,
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
@@ -506,10 +518,10 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert proof.status == proof_status
-        assert kcfg.branching_factor() == branching_factor
+        assert leaf_number(kcfg) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,branching_factor',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
         APRBMC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APRBMC_PROVE_TEST_DATA],
     )
@@ -527,7 +539,7 @@ class TestImpProof(KCFGExploreTest):
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
-        branching_factor: int,
+        expected_leaf_number: int,
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
@@ -546,7 +558,7 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert proof.status == proof_status
-        assert kcfg.branching_factor() == branching_factor
+        assert leaf_number(kcfg) == expected_leaf_number
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,proof_status',
