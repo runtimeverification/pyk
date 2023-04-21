@@ -194,6 +194,7 @@ APR_PROVE_TEST_DATA: Iterable[
         [],
         [],
         ProofStatus.FAILED,
+        2,
     ),
     (
         'imp-simple-sum-10',
