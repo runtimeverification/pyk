@@ -287,6 +287,30 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         ['IMP.while'],
         ProofStatus.FAILED,
     ),
+    (
+        'bmc-two-loops-symbolic-1',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-two-loops-symbolic',
+        20,
+        20,
+        1,
+        [],
+        ['IMP.while'],
+        ProofStatus.PASSED,
+    ),
+    (
+        'bmc-two-loops-symbolic-2',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'bmc-two-loops-symbolic',
+        50,
+        20,
+        2,
+        [],
+        ['IMP.while'],
+        ProofStatus.FAILED,
+    ),
 )
 
 FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (

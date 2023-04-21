@@ -43,6 +43,18 @@ module IMP-SIMPLE-SPEC
       requires 0 <=Int S
        ensures 0 <Int ?N andBool ?I ==Int 1
 
+    claim [bmc-two-loops-symbolic]: <k> while ($s <= $n) { $n = $n + -1 ; }
+                                        while ($k <= $m) { $m = $m + -1 ; }
+                                        $i = 1;
+                                     => . ...
+                                    </k>
+                                    <state> ($n |-> (1 => ?N)) ($s |-> S)
+                                            ($m |-> (1 => ?M)) ($k |-> K)
+                                            ($i |-> (0 => ?I))
+                                    </state>
+      requires 0 <=Int S andBool 0 <=Int K
+       ensures 0 <Int ?N andBool 0 <Int ?M andBool ?I ==Int 1
+
     claim [sum-10]: <k> int $s, $n, .Ids ; $n = 10 ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
                     <state> .Map => $s |-> 55 $n |-> -1 </state>
 
