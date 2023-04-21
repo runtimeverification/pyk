@@ -982,9 +982,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if type(edge) is KCFG.Split:
                 assert len(edge.targets) == 1
                 _, csubst = edge.targets[0]
-                curr_constraint = mlAnd([csubst.constraint, curr_constraint])
+                curr_constraint = mlAnd([csubst.subst.ml_pred, csubst.constraint, curr_constraint])
             if type(edge) is KCFG.Cover:
-                curr_constraint = edge.csubst.apply(CTerm.from_kast(curr_constraint)).kast
+                curr_constraint = mlAnd([edge.csubst.constraint, edge.csubst.subst.apply(curr_constraint)])
         return curr_constraint
 
     def paths_between(

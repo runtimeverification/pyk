@@ -275,7 +275,7 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
         1,
         ['IMP-VERIFICATION.halt'],
         [],
-        '{ false #Equals _S:Int <=Int 123 }',
+        '#Top #And { false #Equals _S:Int <=Int 123 }',
     ),
 )
 
@@ -614,7 +614,8 @@ class TestImpProof(KCFGExploreTest):
 
         assert len(kcfg.stuck) == 1
         path_constraint = kcfg.path_constraints(kcfg.stuck[0].id)
-        assert kcfg_explore.kprint.pretty_print(path_constraint) == expected_constraint
+        actual_constraint = kcfg_explore.kprint.pretty_print(path_constraint).replace('\n', ' ')
+        assert actual_constraint == expected_constraint
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
