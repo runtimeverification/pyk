@@ -20,6 +20,7 @@ from ..kast.manip import (
     remove_source_attributes,
     rename_generated_vars,
 )
+from ..prelude.ml import mlAnd, mlTop
 from ..utils import add_indent, compare_short_hashes, shorten_hash
 
 if TYPE_CHECKING:
@@ -968,30 +969,23 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for node in nodes:
             self.remove_node(node.id)
 
-    def shortest_path_between(self, source_node_id: str, target_node_id: str) -> Iterable[Successor] | None:
+    def shortest_path_between(self, source_node_id: str, target_node_id: str) -> tuple[Successor, ...] | None:
         paths = self.paths_between(source_node_id, target_node_id)
         return sorted(paths, key=(lambda path: len(path)))[0]
 
-    def path_constraints(self, final_node_id: str) -> list[KInner]:
-        cover_substs: list[CSubst] = []
-        constraints: list[KInner] = []
-
-        def apply_substs(constraint: KInner) -> KInner:
-            curr_constraint = constraint
-            for subst in cover_substs:
-                curr_constraint = subst.apply(CTerm.from_kast(curr_constraint)).kast
-            return constraint
-
+    def path_constraints(self, final_node_id: str) -> KInner:
         path = self.shortest_path_between(self.get_unique_init().id, final_node_id)
         if path is None:
             raise ValueError(f'No path found to specified node: {final_node_id}')
-        for edge in path:
+        curr_constraint: KInner = mlTop()
+        for edge in reversed(path):
             if type(edge) is KCFG.Split:
-                for _, csubst in edge.targets:
-                    constraints.append(apply_substs(csubst.constraint))
+                assert len(edge.targets) == 1
+                _, csubst = edge.targets[0]
+                curr_constraint = mlAnd([csubst.constraint, curr_constraint])
             if type(edge) is KCFG.Cover:
-                cover_substs.append(edge.csubst)
-        return constraints
+                curr_constraint = edge.csubst.apply(CTerm.from_kast(curr_constraint)).kast
+        return curr_constraint
 
     def paths_between(
         self, source_id: str, target_id: str, *, traverse_covers: bool = False

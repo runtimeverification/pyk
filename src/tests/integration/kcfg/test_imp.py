@@ -230,7 +230,7 @@ APR_PROVE_TEST_DATA: Iterable[
 )
 
 PATH_CONSTRAINTS_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], list[str]]
+    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
 ] = (
     (
         'imp-simple-fail-branch-unlimited-iterations',
@@ -241,7 +241,7 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
         1,
         ['IMP-VERIFICATION.halt'],
         [],
-        ['{ false #Equals _S:Int <=Int 123 }'],
+        '{ false #Equals _S:Int <=Int 123 }',
     ),
 )
 
@@ -519,7 +519,7 @@ class TestImpProof(KCFGExploreTest):
         assert proof.status == proof_status
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraints',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
         PATH_CONSTRAINTS_TEST_DATA,
         ids=[test_id for test_id, *_ in PATH_CONSTRAINTS_TEST_DATA],
     )
@@ -535,7 +535,7 @@ class TestImpProof(KCFGExploreTest):
         max_depth: int | None,
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
-        expected_constraints: list[str],
+        expected_constraint: str,
     ) -> None:
         def _node_printer(cterm: CTerm) -> list[str]:
             _kast = minimize_term(cterm.kast)
@@ -559,10 +559,8 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert len(kcfg.stuck) == 1
-        path_constraints = kcfg.path_constraints(kcfg.stuck[0].id)
-        assert len(path_constraints) == len(expected_constraints)
-        for i, c in enumerate(path_constraints):
-            assert kcfg_explore.kprint.pretty_print(c) == expected_constraints[i]
+        path_constraint = kcfg.path_constraints(kcfg.stuck[0].id)
+        assert kcfg_explore.kprint.pretty_print(path_constraint) == expected_constraint
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status',
