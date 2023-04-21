@@ -108,7 +108,7 @@ IMPLIES_TEST_DATA: Final = (
 )
 
 APR_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus]
+    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'imp-simple-addition-1',
@@ -120,6 +120,7 @@ APR_PROVE_TEST_DATA: Iterable[
         [],
         [],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'imp-simple-addition-2',
@@ -131,6 +132,7 @@ APR_PROVE_TEST_DATA: Iterable[
         [],
         [],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'imp-simple-addition-var',
@@ -142,6 +144,7 @@ APR_PROVE_TEST_DATA: Iterable[
         [],
         [],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'pre-branch-proved',
@@ -153,6 +156,7 @@ APR_PROVE_TEST_DATA: Iterable[
         [],
         [],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'while-cut-rule',
@@ -164,6 +168,7 @@ APR_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'while-cut-rule-delayed',
@@ -175,6 +180,7 @@ APR_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'imp-simple-sum-10',
@@ -186,6 +192,7 @@ APR_PROVE_TEST_DATA: Iterable[
         ['IMP-VERIFICATION.halt'],
         [],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'imp-simple-sum-100',
@@ -197,6 +204,7 @@ APR_PROVE_TEST_DATA: Iterable[
         ['IMP-VERIFICATION.halt'],
         [],
         ProofStatus.PASSED,
+        1,
     ),
     (
         'imp-simple-sum-1000',
@@ -208,6 +216,31 @@ APR_PROVE_TEST_DATA: Iterable[
         ['IMP-VERIFICATION.halt'],
         [],
         ProofStatus.PASSED,
+        1,
+    ),
+    (
+        'imp-if-almost-same',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'if-almost-same',
+        None,
+        None,
+        ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.PASSED,
+        2,
+    ),
+    (
+        'imp-use-if-almost-same',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'use-if-almost-same',
+        None,
+        None,
+        ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.PASSED,
+        2, # Change this to 1 once we can reuse subproofs
     ),
 )
 
@@ -438,7 +471,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status,branching_factor',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -455,6 +488,7 @@ class TestImpProof(KCFGExploreTest):
         terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
+        branching_factor: int,
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
@@ -472,7 +506,7 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert proof.status == proof_status
-        assert kcfg.branching_factor() == 1
+        assert kcfg.branching_factor() == branching_factor
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,branching_factor',
