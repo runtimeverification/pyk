@@ -47,5 +47,15 @@ module IMP-SIMPLE-SPEC
 
     claim [fail-branch]: <k> if ( $s <= 123) { $n = 1; } else { } ~> #FINISH => . ... </k>
                          <state> $n |-> (0 => 1) $s |-> _S:Int </state>
+    
+    claim [if-almost-same]:
+        <k> if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } ~> #FINISH => . ...</k>
+        <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N) $n |-> N) </state>
+    
+    // The vision is that the proof of `use-if-almost-same` will re-use the proof of `if-almost-same`
+    // and then it will be without branching.
+    claim [use-if-almost-same]:
+        <k> $n = $n + 1; if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } $s = $s + 1; ~> #FINISH => . ...</k>
+        <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N +Int 2) $n |-> N:Int +Int 1) </state>
 
 endmodule
