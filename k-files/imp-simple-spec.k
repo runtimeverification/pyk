@@ -55,6 +55,9 @@ module IMP-SIMPLE-SPEC
       requires 0 <=Int S andBool 0 <=Int K
        ensures 0 <Int ?N andBool 0 <Int ?M andBool ?I ==Int 1
 
+    claim [failing-if]: <k> if(B:Bool) { $n = 1 ; } else { $n = 2 ; } => . ... </k>
+                        <state> $n |-> (0 => 1) </state>
+
     claim [sum-10]: <k> int $s, $n, .Ids ; $n = 10 ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
                     <state> .Map => $s |-> 55 $n |-> -1 </state>
 
