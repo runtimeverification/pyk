@@ -12,6 +12,7 @@ from pyk.kore.prelude import SORT_K_ITEM, STRING, generated_counter, generated_t
 from pyk.kore.rpc import KoreClient, KoreServer, StuckResult
 from pyk.kore.syntax import App
 from pyk.ktool.kprint import _kast, pretty_print_kast
+from pyk.ktool.krun import KRun
 from pyk.prelude.string import stringToken
 
 if TYPE_CHECKING:
@@ -137,7 +138,6 @@ def test_cli_kore_to_kast(llvm_dir: Path, text: str) -> None:
     assert kast == stringToken(text)
 
 
-# @pytest.mark.parametrize('definition_dir', ['haskell', 'llvm'], indirect=True)
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
 def test_cli_rule_to_kast(llvm_dir: Path, text: str) -> None:
     # Given
@@ -156,6 +156,20 @@ def test_cli_rule_to_kast(llvm_dir: Path, text: str) -> None:
 
     # Then
     assert input_kast == output_kast
+
+
+@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
+def test_krun(haskell_dir: Path, text: str) -> None:
+    # Given
+    kore = kore_config(text, '')
+    expected = kore_config(None, text)
+    krun = KRun(haskell_dir)
+
+    # When
+    actual = krun.run_kore_term(kore)
+
+    # Then
+    assert actual == expected
 
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
