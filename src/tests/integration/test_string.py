@@ -8,9 +8,9 @@ import pytest
 from pyk.kast import KInner, kast_term
 from pyk.konvert import _kast_to_kore, _kore_to_kast
 from pyk.kore.parser import KoreParser
-from pyk.kore.prelude import STRING, int_dv, string_dv
+from pyk.kore.prelude import SORT_K_ITEM, STRING, generated_counter, generated_top, inj, int_dv, k, kseq, string_dv
 from pyk.kore.rpc import KoreClient, KoreServer, StuckResult
-from pyk.kore.syntax import App, SortApp
+from pyk.kore.syntax import App
 from pyk.ktool.kprint import _kast, pretty_print_kast
 from pyk.prelude.string import stringToken
 
@@ -56,6 +56,20 @@ def haskell_dir(kompile: Kompiler) -> Path:
 @pytest.fixture(scope='module', params=['llvm', 'haskell'])
 def definition_dir(request: FixtureRequest) -> Path:
     return request.getfixturevalue(f'{request.param}_dir')
+
+
+def kore_config(kval: str | None, sval: str) -> Pattern:
+    def s(pattern: Pattern) -> App:
+        return App("Lbl'-LT-'s'-GT-'", (), (pattern,))
+
+    kitems = (inj(STRING, SORT_K_ITEM, string_dv(kval)),) if kval is not None else ()
+    return generated_top(
+        (
+            k(kseq(kitems)),
+            generated_counter(int_dv(0)),
+            s(string_dv(sval)),
+        )
+    )
 
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
@@ -146,19 +160,6 @@ def test_cli_rule_to_kast(llvm_dir: Path, text: str) -> None:
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
 def test_kore_rpc(haskell_dir: Path, text: str) -> None:
-    def config(k: Pattern | None, s: Pattern) -> Pattern:
-        dotk = App('dotk', (), ())
-        kseq = App('kseq', (), (App('inj', (STRING, SortApp('SortKItem')), (k,)), dotk)) if k else dotk
-        return App(
-            "Lbl'-LT-'generatedTop'-GT-'",
-            (),
-            (
-                App("Lbl'-LT-'k'-GT-'", (), (kseq,)),
-                App("Lbl'-LT-'generatedCounter'-GT-'", (), (int_dv(0),)),
-                App("Lbl'-LT-'s'-GT-'", (), (s,)),
-            ),
-        )
-
     try:
         text.encode('latin-1')
     except ValueError:
@@ -166,12 +167,13 @@ def test_kore_rpc(haskell_dir: Path, text: str) -> None:
         pytest.skip()
 
     # Given
-    init = config(string_dv(text), string_dv(''))
+    kore = kore_config(text, '')
+    expected = kore_config(None, text)
 
     # When
     with KoreServer(haskell_dir, KOMPILE_MAIN_MODULE) as server:
         with KoreClient('localhost', server.port) as client:
-            result = client.execute(init)
+            result = client.execute(kore)
 
     assert isinstance(result, StuckResult)
-    assert result.state.term == config(None, string_dv(text))
+    assert result.state.term == expected
