@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast import KInner, kast_term
+from pyk.kllvm.compiler import compile_runtime
+from pyk.kllvm.importer import import_runtime
 from pyk.konvert import _kast_to_kore, _kore_to_kast
 from pyk.kore.parser import KoreParser
 from pyk.kore.prelude import SORT_K_ITEM, STRING, generated_counter, generated_top, inj, int_dv, k, kseq, string_dv
@@ -17,6 +19,7 @@ from pyk.prelude.string import stringToken
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from types import ModuleType
     from typing import Final
 
     from pytest import FixtureRequest
@@ -28,6 +31,7 @@ if TYPE_CHECKING:
 TEST_DATA: Final = (
     'hello',
     '\n',
+    '\x01',
     '武天老師',
     '🙂',
 )
@@ -57,6 +61,14 @@ def haskell_dir(kompile: Kompiler) -> Path:
 @pytest.fixture(scope='module', params=['llvm', 'haskell'])
 def definition_dir(request: FixtureRequest) -> Path:
     return request.getfixturevalue(f'{request.param}_dir')
+
+
+@pytest.fixture(scope='module')
+def runtime(llvm_dir: Path) -> ModuleType:
+    import pyk.kllvm.load  # noqa: F401
+
+    compile_runtime(llvm_dir)
+    return import_runtime(llvm_dir)
 
 
 def kore_config(kval: str | None, sval: str) -> Pattern:
@@ -167,6 +179,23 @@ def test_krun(haskell_dir: Path, text: str) -> None:
 
     # When
     actual = krun.run_kore_term(kore)
+
+    # Then
+    assert actual == expected
+
+
+@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
+def test_bindings(runtime: ModuleType, text: str) -> None:
+    from pyk.kllvm.convert import kore_to_llvm, llvm_to_kore
+
+    # Given
+    kore = kore_config(text, '')
+    expected = kore_config(None, text)
+
+    # When
+    assert kore_to_llvm(kore)
+    kore_llvm = runtime.interpret(kore_to_llvm(kore))
+    actual = llvm_to_kore(kore_llvm)
 
     # Then
     assert actual == expected
