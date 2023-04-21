@@ -11,7 +11,7 @@ from pyk.kcfg import KCFG
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
-from pyk.proof import AGBMCProof, AGBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
+from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
 from pyk.utils import single
 
 from ..utils import KCFGExploreTest
@@ -547,8 +547,8 @@ class TestImpProof(KCFGExploreTest):
 
         kcfg = KCFG.from_claim(kprove.definition, claim)
         kcfg_explore.simplify(kcfg)
-        proof = AGBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
-        prover = AGBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
+        proof = APRBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
+        prover = APRBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
         kcfg = prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
