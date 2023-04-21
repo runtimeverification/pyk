@@ -55,7 +55,7 @@ def test_kast_to_kore(text: str) -> None:  # TODO turn into unit test
 
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_kore_to_kast(definition_dir: Path, text: str) -> None:  # TODO turn into unit test
+def test_kore_to_kast(text: str) -> None:  # TODO turn into unit test
     # Given
     kore = string_dv(text)
 
