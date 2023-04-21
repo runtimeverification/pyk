@@ -41,7 +41,7 @@ def node(i: int) -> KCFG.Node:
 
 
 def edge(i: int, j: int) -> KCFG.Edge:
-    return KCFG.Edge(node(i), node(j), 1, is_backedge=False)
+    return KCFG.Edge(node(i), node(j), 1)
 
 
 def cover(i: int, j: int) -> KCFG.Cover:
