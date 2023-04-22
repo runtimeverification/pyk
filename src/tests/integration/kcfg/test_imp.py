@@ -351,6 +351,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
+        3,
     ),
     (
         'bmc-two-loops-symbolic-2',
@@ -363,6 +364,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         [],
         ['IMP.while'],
         ProofStatus.FAILED,
+        7,
     ),
 )
 
