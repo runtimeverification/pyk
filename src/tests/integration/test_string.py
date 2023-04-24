@@ -207,7 +207,6 @@ def test_bindings(runtime: ModuleType, text: str) -> None:
     expected = kore_config(None, text)
 
     # When
-    assert kore_to_llvm(kore)
     kore_llvm = runtime.interpret(kore_to_llvm(kore))
     actual = llvm_to_kore(kore_llvm)
 
