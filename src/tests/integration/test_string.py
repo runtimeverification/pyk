@@ -61,8 +61,13 @@ def haskell_dir(kompile: Kompiler) -> Path:
 
 
 @pytest.fixture(scope='module', params=['llvm', 'haskell'])
-def definition_dir(request: FixtureRequest) -> Path:
-    return request.getfixturevalue(f'{request.param}_dir')
+def backend(request: FixtureRequest) -> str:
+    return request.param
+
+
+@pytest.fixture(scope='module')
+def definition_dir(request: FixtureRequest, backend: str) -> Path:
+    return request.getfixturevalue(f'{backend}_dir')
 
 
 @pytest.fixture(scope='module')
@@ -173,11 +178,18 @@ def test_cli_rule_to_kast(llvm_dir: Path, text: str) -> None:
 
 
 @pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_krun(haskell_dir: Path, text: str) -> None:
+def test_krun(backend: str, definition_dir: Path, text: str) -> None:
+    if backend == 'llvm':
+        try:
+            text.encode('latin-1')
+        except ValueError:
+            # https://github.com/runtimeverification/k/issues/3344
+            pytest.skip()
+
     # Given
     kore = kore_config(text, '')
     expected = kore_config(None, text)
-    krun = KRun(haskell_dir)
+    krun = KRun(definition_dir)
 
     # When
     actual = krun.run_kore_term(kore)
