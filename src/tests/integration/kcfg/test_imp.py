@@ -267,7 +267,7 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
     tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
 ] = (
     (
-        'imp-simple-fail-branch-unlimited-iterations',
+        'imp-simple-fail-branch',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'fail-branch',
@@ -275,7 +275,7 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
         1,
         ['IMP-VERIFICATION.halt'],
         [],
-        '{ false #Equals _S:Int <=Int 123 }',
+        'notBool _S:Int <=Int 123',
     ),
 )
 
