@@ -83,15 +83,17 @@ class APRProof(Proof):
 
     @property
     def summary(self) -> Iterable[str]:
-        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
-        return chain(
+        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
+        yield from [
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
-            *subproofs_summaries,
-        )
+            'Subproofs' if len(self.subproofs) else '',
+        ]
+        for summary in subproofs_summaries:
+            yield from summary
 
 
 class APRBMCProof(APRProof):
@@ -169,16 +171,18 @@ class APRBMCProof(APRProof):
 
     @property
     def summary(self) -> Iterable[str]:
-        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
-        return chain(
+        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
+        yield from [
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_states])}',
             f'    bmc-depth-bounded: {len(self._bounded_states)}',
-            *subproofs_summaries,
-        )
+            'Subproofs' if len(self.subproofs) else '',
+        ]
+        for summary in subproofs_summaries:
+            yield from summary
 
 
 class APRProver:
