@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from itertools import chain
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from ..kcfg import KCFG
 from ..utils import hash_str, shorten_hashes
@@ -34,7 +34,7 @@ class APRProof(Proof):
 
     kcfg: KCFG
 
-    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None, subproofs: List[Proof] | None = None):
+    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None, subproofs: list[Proof] | None = None):
         super().__init__(id, proof_dir=proof_dir, subproofs=subproofs)
         self.kcfg = kcfg
 
@@ -61,7 +61,7 @@ class APRProof(Proof):
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
         subproof_dicts = dct['subproofs'] if 'subproofs' in dct else []
-        subproofs: List[Proof] = []
+        subproofs: list[Proof] = []
         for subproof_dict in subproof_dicts:
             match subproof_dict['type']:
                 case 'APRProof':
@@ -105,7 +105,7 @@ class APRBMCProof(APRProof):
         bmc_depth: int,
         bounded_states: Iterable[str] | None = None,
         proof_dir: Path | None = None,
-        subproofs: List[Proof] | None = None,
+        subproofs: list[Proof] | None = None,
     ):
         super().__init__(id, kcfg, proof_dir=proof_dir, subproofs=subproofs)
         self.bmc_depth = bmc_depth
@@ -136,7 +136,7 @@ class APRBMCProof(APRProof):
         bounded_states = dct['bounded_states']
         bmc_depth = dct['bmc_depth']
         subproof_dicts = dct['subproofs'] if 'subproofs' in dct else []
-        subproofs: List[Proof] = []
+        subproofs: list[Proof] = []
         for subproof_dict in subproof_dicts:
             match subproof_dict['type']:
                 case 'APRProof':

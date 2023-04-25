@@ -5,7 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from enum import Enum
 from itertools import chain
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from ..utils import hash_str
 
@@ -28,9 +28,9 @@ class ProofStatus(Enum):
 class Proof(ABC):
     id: str
     proof_dir: Path | None
-    subproofs: List[Proof]
+    subproofs: list[Proof]
 
-    def __init__(self, id: str, proof_dir: Path | None = None, subproofs: List[Proof] | None = None) -> None:
+    def __init__(self, id: str, proof_dir: Path | None = None, subproofs: list[Proof] | None = None) -> None:
         self.id = id
         self.proof_dir = proof_dir
         self.subproofs = subproofs if subproofs is not None else []
