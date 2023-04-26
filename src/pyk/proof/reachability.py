@@ -197,6 +197,11 @@ class APRProver:
             if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=curr_node.id)) == 0:
                 branches = list(self._extract_branches(curr_node.cterm))
                 if len(branches) > 0:
+                    if len(branches) < 2:
+                        print(kcfg_explore.kprint.pretty_print(curr_node.cterm.kast))
+                        raise ValueError(
+                            f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
+                        )
                     self.proof.kcfg.split_on_constraints(curr_node.id, branches)
                     _LOGGER.info(
                         f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'

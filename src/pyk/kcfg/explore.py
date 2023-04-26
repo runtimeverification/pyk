@@ -306,6 +306,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         # Branch
         elif len(next_cterms) > 1:
             branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
+            if len(branches) < 2:
+                raise ValueError(
+                    f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+                )
             kcfg.split_on_constraints(node.id, branches)
             _LOGGER.info(
                 f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'

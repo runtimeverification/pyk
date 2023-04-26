@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from ..kast.outer import KClaim, KDefinition
     from ..ktool.kprint import KPrint
 
+_LOGGER: Final = logging.getLogger(__name__)
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     @dataclass(frozen=True, order=True)
@@ -847,6 +849,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         ]
 
     def create_split(self, source_id: str, splits: Iterable[tuple[str, CSubst]]) -> None:
+        _LOGGER.warning(f'source_id: {source_id}')
         self._check_no_successors(source_id)
 
         splits = list(splits)
