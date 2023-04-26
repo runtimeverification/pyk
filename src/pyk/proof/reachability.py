@@ -190,6 +190,14 @@ class APRProver:
                 return True
         return False
 
+    def nonzero_depth(self, node: KCFG.Node) -> bool:
+        init = self.proof.kcfg.init[0]
+        ps = self.proof.kcfg.paths_between(init.id, node.id)
+        for p in ps:
+            if len([n for n in p if type(n) is KCFG.Edge]) >= 2:
+                return True
+        return False
+
     def advance_proof(
         self,
         max_iterations: int | None = None,
@@ -224,13 +232,14 @@ class APRProver:
                     )
                     continue
 
+            module_name = self.circularities_module_name if self.nonzero_depth(curr_node) else self.main_module_name
             self.kcfg_explore.extend(
                 self.proof.kcfg,
                 curr_node,
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
-                module_name=self.main_module_name,
+                module_name=module_name,
             )
 
         self.proof.write_proof()
