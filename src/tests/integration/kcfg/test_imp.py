@@ -115,12 +115,13 @@ IMPLIES_TEST_DATA: Final = (
 )
 
 APR_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
+    tuple[str, str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'imp-simple-addition-1',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'addition-1',
         2,
         1,
@@ -133,6 +134,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-addition-2',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'addition-2',
         2,
         7,
@@ -145,6 +147,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-addition-var',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'addition-var',
         2,
         1,
@@ -157,6 +160,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'pre-branch-proved',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'pre-branch-proved',
         2,
         100,
@@ -169,6 +173,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'while-cut-rule',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'while-cut-rule',
         2,
         1,
@@ -181,6 +186,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'while-cut-rule-delayed',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'while-cut-rule-delayed',
         4,
         100,
@@ -193,6 +199,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'failing-if',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'failing-if',
         10,
         1,
@@ -205,6 +212,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-sum-10',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'sum-10',
         None,
         None,
@@ -217,6 +225,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-sum-100',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'sum-100',
         None,
         None,
@@ -229,6 +238,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-sum-1000',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'sum-1000',
         None,
         None,
@@ -241,6 +251,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-if-almost-same',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'if-almost-same',
         None,
         None,
@@ -253,6 +264,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-use-if-almost-same',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'use-if-almost-same',
         None,
         None,
@@ -261,15 +273,42 @@ APR_PROVE_TEST_DATA: Iterable[
         ProofStatus.PASSED,
         2,  # Change this to 1 once we can reuse subproofs
     ),
+    (
+        'imp-simple-sum-loop',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
+        'sum-loop',
+        None,
+        None,
+        ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.PASSED,
+        2,
+    ),
+    (
+        'imp-simple-sum-N',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
+        'sum-N',
+        None,
+        None,
+        ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.PASSED,
+        1,
+    ),
 )
 
 PATH_CONSTRAINTS_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
+    tuple[str, str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
 ] = (
     (
         'imp-simple-fail-branch',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'fail-branch',
         None,
         1,
@@ -281,12 +320,13 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
 
 
 APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
+    tuple[str, str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'bmc-loop-concrete-1',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'bmc-loop-concrete',
         20,
         20,
@@ -300,6 +340,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-concrete-2',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'bmc-loop-concrete',
         20,
         20,
@@ -313,6 +354,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-concrete-3',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'bmc-loop-concrete',
         20,
         20,
@@ -326,6 +368,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-symbolic-1',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'bmc-loop-symbolic',
         20,
         20,
@@ -339,6 +382,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-symbolic-2',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'bmc-loop-symbolic',
         20,
         20,
@@ -352,6 +396,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-symbolic-3',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'bmc-loop-symbolic',
         20,
         20,
@@ -365,6 +410,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-two-loops-symbolic-1',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'bmc-two-loops-symbolic',
         20,
         20,
@@ -378,6 +424,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-two-loops-symbolic-2',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'bmc-two-loops-symbolic',
         50,
         20,
@@ -557,7 +604,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,main_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -568,6 +615,7 @@ class TestImpProof(KCFGExploreTest):
         test_id: str,
         spec_file: str,
         spec_module: str,
+        main_module: str,
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
@@ -580,15 +628,18 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
+        circularities = kprove.get_circularities(Path(spec_file), spec_module_name=spec_module)
+        _LOGGER.info(f'We have {len(circularities)} circularities')
         kcfg = KCFG.from_claim(kprove.definition, claim)
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, circularities=circularities, uuid=claim.att['UNIQUE_ID'])
         prover = APRProver(
             proof,
+            kcfg_explore=kcfg_explore,
+            main_module_name=main_module,
             is_terminal=TestImpProof._is_terminal,
             extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
         kcfg = prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
@@ -599,7 +650,7 @@ class TestImpProof(KCFGExploreTest):
         assert leaf_number(kcfg) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
+        'test_id,spec_file,spec_module,main_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
         PATH_CONSTRAINTS_TEST_DATA,
         ids=[test_id for test_id, *_ in PATH_CONSTRAINTS_TEST_DATA],
     )
@@ -610,6 +661,7 @@ class TestImpProof(KCFGExploreTest):
         test_id: str,
         spec_file: str,
         spec_module: str,
+        main_module: str,
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
@@ -628,10 +680,14 @@ class TestImpProof(KCFGExploreTest):
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
         proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
-        prover = APRProver(proof, is_terminal=TestImpProof._is_terminal)
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            main_module_name=main_module,
+            is_terminal=TestImpProof._is_terminal,
+        )
 
         kcfg = prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
@@ -644,7 +700,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual_constraint == expected_constraint
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,main_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
         APRBMC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APRBMC_PROVE_TEST_DATA],
     )
@@ -655,6 +711,7 @@ class TestImpProof(KCFGExploreTest):
         test_id: str,
         spec_file: str,
         spec_module: str,
+        main_module: str,
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
@@ -671,9 +728,14 @@ class TestImpProof(KCFGExploreTest):
         kcfg = KCFG.from_claim(kprove.definition, claim)
         kcfg_explore.simplify(kcfg)
         proof = APRBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
-        prover = APRBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
+        prover = APRBMCProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            main_module_name=main_module,
+            same_loop=TestImpProof._same_loop,
+            is_terminal=TestImpProof._is_terminal,
+        )
         kcfg = prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,

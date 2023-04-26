@@ -314,15 +314,15 @@ KORE_TO_KAST_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
 KRULE_TO_KORE_DATA: Final = (
     (
         'SIMPLE-PROOFS.foo-to-bar',
-        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'DotVar2 : SortMap{}))), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{}))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'DotVar2 : SortMap{})))) [priority{}("50")]""",
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(inj{SortInt{}, SortKItem{}}(\dv{SortInt{}}("3")), inj{SortInt{}, SortKItem{}}(VarN : SortInt{})), Var'Unds'DotVar2 : SortMap{}))), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{}))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(inj{SortInt{}, SortKItem{}}(\dv{SortInt{}}("3")), inj{SortInt{}, SortKItem{}}(VarN : SortInt{})), Var'Unds'DotVar2 : SortMap{})))) [priority{}("50")]""",
     ),
     (
         'SIMPLE-PROOFS.foo-to-bar-false',
-        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'RestState : SortMap{}))), \and{SortGeneratedTopCell{}}(\equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), \dv{SortBool{}}("false")), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{})))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'RestState : SortMap{})))) [priority{}("30")]""",
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(inj{SortInt{}, SortKItem{}}(\dv{SortInt{}}("3")), inj{SortInt{}, SortKItem{}}(VarN : SortInt{})), Var'Unds'RestState : SortMap{}))), \and{SortGeneratedTopCell{}}(\equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), \dv{SortBool{}}("false")), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{})))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(inj{SortInt{}, SortKItem{}}(\dv{SortInt{}}("3")), inj{SortInt{}, SortKItem{}}(VarN : SortInt{})), Var'Unds'RestState : SortMap{})))) [priority{}("30")]""",
     ),
     (
         'SIMPLE-PROOFS.foo-to-baz-owise',
-        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})))), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{}), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbaz{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})))), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{})) [priority{}("200")]""",
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})))), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{}), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(inj{SortBaz{}, SortKItem{}}(Lblbaz{}()), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})))), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{})) [priority{}("200")]""",
     ),
 )
 
@@ -387,6 +387,7 @@ class TestKonvertSimpleProofs(KompiledTest):
     def test_krule_to_kore(
         self,
         definition: KDefinition,
+        kompiled_kore: KompiledKore,
         rule_id: str,
         kore_text: str,
     ) -> None:
@@ -394,7 +395,7 @@ class TestKonvertSimpleProofs(KompiledTest):
         rule = single(r for r in main_module.rules if 'label' in r.att and r.att['label'] == rule_id)
 
         # When
-        actual_kore_text = krule_to_kore(rule).text
+        actual_kore_text = krule_to_kore(kompiled_kore, rule).text
 
         # Then
         assert actual_kore_text == kore_text

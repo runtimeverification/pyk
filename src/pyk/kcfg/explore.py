@@ -4,9 +4,12 @@ import logging
 from typing import TYPE_CHECKING, ContextManager
 
 from ..cterm import CSubst, CTerm
-from ..kast.inner import KApply, KLabel, KVariable, Subst
+from ..kast.inner import KApply, KAtt, KLabel, KVariable, Subst
 from ..kast.manip import flatten_label, free_vars
+from ..kast.outer import KRule
+from ..konvert import krule_to_kore
 from ..kore.rpc import KoreClient, KoreServer, StopReason
+from ..kore.syntax import Import, Module
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
@@ -16,10 +19,12 @@ from .kcfg import KCFG
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, Final
+    from typing import Any, Final, List, Optional
 
     from ..cli_utils import BugReport
     from ..kast import KInner
+    from ..kast.outer import KClaim
+    from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
 
 
@@ -109,11 +114,18 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
+        module_name: Optional[str] = None,
     ) -> tuple[int, CTerm, list[CTerm]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
-        er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+        er = kore_client.execute(
+            kore,
+            max_depth=depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
+        )
         depth = er.depth
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None else []
@@ -204,7 +216,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if new_term != node.cterm.kast:
                 cfg.replace_node(node.id, CTerm.from_kast(new_term))
 
-    def step(self, cfg: KCFG, node_id: str, depth: int = 1) -> str:
+    def step(self, cfg: KCFG, node_id: str, depth: int = 1, module_name: Optional[str] = None) -> str:
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
@@ -212,7 +224,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth)
+        actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth, module_name=module_name)
         if actual_depth != depth:
             raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
         if len(next_cterms) > 0:
@@ -272,6 +284,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
+        module_name: Optional[str] = None,
     ) -> None:
         if not kcfg.is_frontier(node.id):
             raise ValueError(f'Cannot extend non-frontier node {self.id}: {node.id}')
@@ -280,7 +293,11 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
         depth, cterm, next_cterms = self.cterm_execute(
-            node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+            node.cterm,
+            depth=execute_depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
         )
 
         # Basic block
@@ -313,3 +330,20 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         else:
             raise ValueError('Unhandled case.')
+
+    def add_circularities_module(
+        self, old_module_name: str, new_module_name: str, circularities: Iterable[KClaim]
+    ) -> None:
+        max_priority: int = 1 # Maybe we should compute this dynamically?
+        kast_rules = [
+            KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=KAtt({'priority': max_priority}))
+            for c in circularities
+        ]
+        kore_axioms: List[Sentence] = [krule_to_kore(self.kprint.kompiled_kore, r) for r in kast_rules]
+        _, kore_client = self._kore_rpc
+        sentences: List[Sentence] = [Import(module_name=old_module_name, attrs=())]
+        sentences = sentences + kore_axioms
+        m = Module(name=new_module_name, sentences=sentences)
+        _LOGGER.info(f'Adding module {m.text}')
+        kore_client.add_module(m)
+        return None
