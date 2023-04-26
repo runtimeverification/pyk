@@ -398,7 +398,7 @@ class KoreClient(ContextManager['KoreClient']):
         max_depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
-        module_name: Optional[str] = None,
+        module_name: str | None = None,
     ) -> ExecuteResult:
         params = filter_none(
             {

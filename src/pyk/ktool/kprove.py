@@ -296,9 +296,9 @@ class KProve(KPrint):
     def get_all_claims(
         self,
         spec_file: Path,
-        spec_module_name: Optional[str] = None,
+        spec_module_name: str | None = None,
         include_dirs: Iterable[Path] = (),
-        md_selector: Optional[str] = None,
+        md_selector: str | None = None,
     ) -> Mapping[str, KClaim]:
         with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
             self.prove(
@@ -317,10 +317,10 @@ class KProve(KPrint):
     def get_circularities(
         self,
         spec_file: Path,
-        spec_module_name: Optional[str] = None,
+        spec_module_name: str | None = None,
         include_dirs: Iterable[Path] = (),
-        md_selector: Optional[str] = None,
-    ) -> List[KClaim]:
+        md_selector: str | None = None,
+    ) -> list[KClaim]:
         all_claims = self.get_all_claims(
             spec_file=spec_file, spec_module_name=spec_module_name, include_dirs=include_dirs, md_selector=md_selector
         )

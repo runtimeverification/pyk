@@ -114,7 +114,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
-        module_name: Optional[str] = None,
+        module_name: str | None = None,
     ) -> tuple[int, CTerm, list[CTerm]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
@@ -216,7 +216,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if new_term != node.cterm.kast:
                 cfg.replace_node(node.id, CTerm.from_kast(new_term))
 
-    def step(self, cfg: KCFG, node_id: str, depth: int = 1, module_name: Optional[str] = None) -> str:
+    def step(self, cfg: KCFG, node_id: str, depth: int = 1, module_name: str | None = None) -> str:
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
@@ -284,7 +284,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-        module_name: Optional[str] = None,
+        module_name: str | None = None,
     ) -> None:
         if not kcfg.is_frontier(node.id):
             raise ValueError(f'Cannot extend non-frontier node {self.id}: {node.id}')
@@ -339,9 +339,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=KAtt({'priority': max_priority}))
             for c in circularities
         ]
-        kore_axioms: List[Sentence] = [krule_to_kore(self.kprint.kompiled_kore, r) for r in kast_rules]
+        kore_axioms: list[Sentence] = [krule_to_kore(self.kprint.kompiled_kore, r) for r in kast_rules]
         _, kore_client = self._kore_rpc
-        sentences: List[Sentence] = [Import(module_name=old_module_name, attrs=())]
+        sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
         sentences = sentences + kore_axioms
         m = Module(name=new_module_name, sentences=sentences)
         _LOGGER.info(f'Adding module {m.text}')

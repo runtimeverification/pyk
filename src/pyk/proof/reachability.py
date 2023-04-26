@@ -32,8 +32,8 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
-    circularities: List[KClaim]
-    uuid: Optional[str] = None
+    circularities: list[KClaim]
+    uuid: str | None = None
 
     def __init__(
         self,
@@ -41,7 +41,7 @@ class APRProof(Proof):
         kcfg: KCFG,
         proof_dir: Path | None = None,
         circularities: Iterable[KClaim] = (),
-        uuid: Optional[str] = None,
+        uuid: str | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
