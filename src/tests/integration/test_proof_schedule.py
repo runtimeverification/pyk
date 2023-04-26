@@ -15,6 +15,7 @@ from .utils import KCFGExploreTest
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
+
     from pytest import TempPathFactory
 
 
@@ -57,10 +58,10 @@ class TestProofSchedule(KCFGExploreTest):
     )
     def test_init(
         self,
-        proof_dir,
-        test_id,
-        nproofs,
-        proof_dag_edges,
+        proof_dir: Path,
+        test_id: str,
+        nproofs: int,
+        proof_dag_edges: list[tuple[str, str]],
     ) -> None:
         # Given
         proofs = list(itertools.islice(equality_proofs(proof_dir), nproofs))

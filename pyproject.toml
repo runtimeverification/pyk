@@ -72,3 +72,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "coloredlogs"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "igraph"
+ignore_missing_imports = true
