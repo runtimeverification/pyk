@@ -334,7 +334,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def add_circularities_module(
         self, old_module_name: str, new_module_name: str, circularities: Iterable[KClaim]
     ) -> None:
-        max_priority: int = 1 # Maybe we should compute this dynamically?
+        max_priority: int = 1  # Maybe we should compute this dynamically?
         kast_rules = [
             KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=KAtt({'priority': max_priority}))
             for c in circularities
