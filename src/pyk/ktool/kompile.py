@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ['KompileBackend', 'kompile', 'llvm_kompile', 'haskell_kompile']
+__all__ = ['KompileBackend', 'kompile']
 
 import logging
 import shlex
@@ -129,103 +129,6 @@ def kompile(
     kompiled_dir = output_dir if output_dir else Path(main_file.stem + '-kompiled')
     assert kompiled_dir.is_dir()
     return kompiled_dir
-
-
-def llvm_kompile(
-    main_file: str | Path,
-    *,
-    command: Iterable[str] = ('kompile',),
-    output_dir: str | Path | None = None,
-    main_module: str | None = None,
-    syntax_module: str | None = None,
-    include_dirs: Iterable[str | Path] = (),
-    md_selector: str | None = None,
-    hook_namespaces: Iterable[str] = (),
-    emit_json: bool = True,
-    gen_bison_parser: bool = False,
-    bison_parser_library: bool = False,
-    debug: bool = False,
-    post_process: str | None = None,
-    read_only: bool = False,
-    llvm_kompile_type: LLVMKompileType | None = None,
-    opt_level: int | None = None,
-    ccopts: Iterable[str] = (),
-    no_llvm_kompile: bool = False,
-    enable_search: bool = False,
-    enable_llvm_debug: bool = False,
-    # ---
-    cwd: Path | None = None,
-    check: bool = True,
-) -> Path:
-    return kompile(
-        main_file=main_file,
-        backend=KompileBackend.LLVM,
-        command=command,
-        output_dir=output_dir,
-        main_module=main_module,
-        syntax_module=syntax_module,
-        include_dirs=include_dirs,
-        md_selector=md_selector,
-        hook_namespaces=hook_namespaces,
-        emit_json=emit_json,
-        gen_bison_parser=gen_bison_parser,
-        bison_parser_library=bison_parser_library,
-        debug=debug,
-        post_process=post_process,
-        read_only=read_only,
-        opt_level=opt_level,
-        ccopts=ccopts,
-        no_llvm_kompile=no_llvm_kompile,
-        enable_search=enable_search,
-        enable_llvm_debug=enable_llvm_debug,
-        llvm_kompile_type=llvm_kompile_type,
-        cwd=cwd,
-        check=check,
-    )
-
-
-def haskell_kompile(
-    main_file: str | Path,
-    *,
-    command: Iterable[str] = ('kompile',),
-    output_dir: str | Path | None = None,
-    backend: KompileBackend | None = None,
-    main_module: str | None = None,
-    syntax_module: str | None = None,
-    include_dirs: Iterable[str | Path] = (),
-    md_selector: str | None = None,
-    hook_namespaces: Iterable[str] = (),
-    emit_json: bool = True,
-    gen_bison_parser: bool = False,
-    bison_parser_library: bool = False,
-    debug: bool = False,
-    post_process: str | None = None,
-    read_only: bool = False,
-    concrete_rules: Iterable[str] = (),
-    # ---
-    cwd: Path | None = None,
-    check: bool = True,
-) -> Path:
-    return kompile(
-        main_file=main_file,
-        backend=KompileBackend.HASKELL,
-        command=command,
-        output_dir=output_dir,
-        main_module=main_module,
-        syntax_module=syntax_module,
-        include_dirs=include_dirs,
-        md_selector=md_selector,
-        hook_namespaces=hook_namespaces,
-        emit_json=emit_json,
-        gen_bison_parser=gen_bison_parser,
-        bison_parser_library=bison_parser_library,
-        debug=debug,
-        post_process=post_process,
-        read_only=read_only,
-        concrete_rules=concrete_rules,
-        cwd=cwd,
-        check=check,
-    )
 
 
 def _check_backend_param(check: bool, param_name: str, backend: KompileBackend | None) -> None:
