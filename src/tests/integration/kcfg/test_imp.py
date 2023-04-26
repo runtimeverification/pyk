@@ -9,7 +9,7 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term
-from pyk.kcfg import KCFG
+from pyk.kcfg import KCFG, KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
@@ -645,6 +645,13 @@ class TestImpProof(KCFGExploreTest):
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
         )
+        def _node_printer(cterm: CTerm) -> list[str]:
+            _kast = minimize_term(cterm.kast)
+            return kcfg_explore.kprint.pretty_print(_kast).split('\n')
+        kcfg_show = KCFGShow(kcfg_explore.kprint)
+        kcfg_str = '\n'.join(kcfg_show.show('test', kcfg, node_printer=_node_printer))
+        summary_str = '\n'.join(proof.summary)
+        _LOGGER.info(f'PROOF_OUTPUT:\n{summary_str}\n{kcfg_str}')
 
         assert proof.status == proof_status
         assert leaf_number(kcfg) == expected_leaf_number
