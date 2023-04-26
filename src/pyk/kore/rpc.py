@@ -22,7 +22,7 @@ from .syntax import And, Pattern, SortApp, kore_term
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from typing import Any, ClassVar, Final, TextIO, TypeVar
+    from typing import Any, ClassVar, Final, Optional, TextIO, TypeVar
 
     from ..cli_utils import BugReport
     from .syntax import Module
@@ -398,6 +398,7 @@ class KoreClient(ContextManager['KoreClient']):
         max_depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
+        module_name: Optional[str] = None,
     ) -> ExecuteResult:
         params = filter_none(
             {
@@ -405,6 +406,7 @@ class KoreClient(ContextManager['KoreClient']):
                 'cut-point-rules': list(cut_point_rules) if cut_point_rules is not None else None,
                 'terminal-rules': list(terminal_rules) if terminal_rules is not None else None,
                 'state': self._state(pattern),
+                'module': module_name,
             }
         )
 

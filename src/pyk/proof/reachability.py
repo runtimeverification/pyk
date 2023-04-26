@@ -230,6 +230,7 @@ class APRProver:
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
+                module_name=self.main_module_name,
             )
 
         self.proof.write_proof()
