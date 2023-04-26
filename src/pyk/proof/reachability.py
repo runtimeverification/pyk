@@ -4,6 +4,7 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from ..kast.outer import KClaim
 from ..kcfg import KCFG
 from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus
@@ -11,7 +12,7 @@ from .proof import Proof, ProofStatus
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
-    from typing import Any, Final, TypeVar
+    from typing import Any, Final, List, TypeVar
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
@@ -31,10 +32,12 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
+    circularities: List[KClaim]
 
-    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None):
+    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None, circularities: Iterable[KClaim] = ()):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
+        self.circularities = list(circularities)
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -58,11 +61,17 @@ class APRProof(Proof):
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
-        return APRProof(id, cfg, proof_dir=proof_dir)
+        circularities = [KClaim.from_dict(c) for c in dct['circularities']]
+        return APRProof(id, cfg, proof_dir=proof_dir, circularities=circularities)
 
     @property
     def dict(self) -> dict[str, Any]:
-        return {'type': 'APRProof', 'id': self.id, 'cfg': self.kcfg.to_dict()}
+        return {
+            'type': 'APRProof',
+            'id': self.id,
+            'cfg': self.kcfg.to_dict(),
+            'circularities': [c.to_dict() for c in self.circularities],
+        }
 
     @property
     def summary(self) -> Iterable[str]:
@@ -146,18 +155,31 @@ class APRBMCProof(APRProof):
 
 class APRProver:
     proof: APRProof
+    kcfg_explore: KCFGExplore
     _is_terminal: Callable[[CTerm], bool] | None
     _extract_branches: Callable[[CTerm], Iterable[KInner]] | None
+
+    main_module_name: str
+    circularities_module_name: str
 
     def __init__(
         self,
         proof: APRProof,
+        kcfg_explore: KCFGExplore,
+        main_module_name: str, 
         is_terminal: Callable[[CTerm], bool] | None = None,
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
     ) -> None:
         self.proof = proof
+        self.kcfg_explore = kcfg_explore
         self._is_terminal = is_terminal
         self._extract_branches = extract_branches
+        self.main_module_name = main_module_name
+        # TODO the module name should be either a parameter, or we should generate it so that it is unique
+        self.circularities_module_name = 'SOME-CIRCULARITIES'
+        self.kcfg_explore.add_circularities_module(
+            self.main_module_name, self.circularities_module_name, proof.circularities
+        )
 
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
         if self._is_terminal is not None:
@@ -170,7 +192,6 @@ class APRProver:
 
     def advance_proof(
         self,
-        kcfg_explore: KCFGExplore,
         max_iterations: int | None = None,
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
@@ -188,7 +209,7 @@ class APRProver:
             iterations += 1
             curr_node = self.proof.kcfg.frontier[0]
 
-            if kcfg_explore.target_subsume(self.proof.kcfg, curr_node):
+            if self.kcfg_explore.target_subsume(self.proof.kcfg, curr_node):
                 continue
 
             if self._check_terminal(curr_node):
@@ -199,11 +220,11 @@ class APRProver:
                 if len(branches) > 0:
                     self.proof.kcfg.split_on_constraints(curr_node.id, branches)
                     _LOGGER.info(
-                        f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
+                        f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[self.kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
                     )
                     continue
 
-            kcfg_explore.extend(
+            self.kcfg_explore.extend(
                 self.proof.kcfg,
                 curr_node,
                 execute_depth=execute_depth,
@@ -223,17 +244,18 @@ class APRBMCProver(APRProver):
     def __init__(
         self,
         proof: APRBMCProof,
+        kcfg_explore: KCFGExplore,
+        main_module_name: str, 
         same_loop: Callable[[CTerm, CTerm], bool],
         is_terminal: Callable[[CTerm], bool] | None = None,
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
     ) -> None:
-        super().__init__(proof, is_terminal=is_terminal, extract_branches=extract_branches)
+        super().__init__(proof, kcfg_explore=kcfg_explore, main_module_name=main_module_name, is_terminal=is_terminal, extract_branches=extract_branches)
         self._same_loop = same_loop
         self._checked_nodes = []
 
     def advance_proof(
         self,
-        kcfg_explore: KCFGExplore,
         max_iterations: int | None = None,
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
@@ -263,7 +285,6 @@ class APRBMCProver(APRProver):
                         self.proof.bound_state(f.id)
 
             super().advance_proof(
-                kcfg_explore,
                 max_iterations=1,
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,

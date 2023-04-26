@@ -5,8 +5,11 @@ from typing import TYPE_CHECKING, ContextManager
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KVariable, Subst
+from ..kast.outer import KRule
 from ..kast.manip import flatten_label, free_vars
 from ..kore.rpc import KoreClient, KoreServer, StopReason
+from ..kore.syntax import Import, Module
+from ..konvert import krule_to_kore
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
@@ -16,11 +19,13 @@ from .kcfg import KCFG
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, Final
+    from typing import Any, Final, List
 
     from ..cli_utils import BugReport
     from ..kast import KInner
+    from ..kast.outer import KClaim
     from ..ktool.kprint import KPrint
+    from ..kore.syntax import Sentence
 
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -313,3 +318,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         else:
             raise ValueError('Unhandled case.')
+
+    def add_circularities_module(
+        self, old_module_name: str, new_module_name: str, circularities: Iterable[KClaim]
+    ) -> None:
+        kast_rules = [KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=c.att) for c in circularities]
+        kore_axioms: List[Sentence] = [krule_to_kore(r) for r in kast_rules]
+        _, kore_client = self._kore_rpc
+        sentences: List[Sentence] = [Import(module_name=old_module_name, attrs=())]
+        sentences = sentences + kore_axioms
+        m = Module(name=new_module_name, sentences=sentences)
+        _LOGGER.info(f'Adding module {m.text}')
+        kore_client.add_module(m)
+        return None

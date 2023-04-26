@@ -115,12 +115,13 @@ IMPLIES_TEST_DATA: Final = (
 )
 
 APR_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
+    tuple[str, str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'imp-simple-addition-1',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'addition-1',
         2,
         1,
@@ -133,6 +134,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-addition-2',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'addition-2',
         2,
         7,
@@ -145,6 +147,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-addition-var',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'addition-var',
         2,
         1,
@@ -157,6 +160,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'pre-branch-proved',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'pre-branch-proved',
         2,
         100,
@@ -169,6 +173,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'while-cut-rule',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'while-cut-rule',
         2,
         1,
@@ -181,6 +186,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'while-cut-rule-delayed',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'while-cut-rule-delayed',
         4,
         100,
@@ -193,6 +199,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'failing-if',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'failing-if',
         10,
         1,
@@ -205,6 +212,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-sum-10',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'sum-10',
         None,
         None,
@@ -217,6 +225,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-sum-100',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'sum-100',
         None,
         None,
@@ -229,6 +238,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-simple-sum-1000',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'sum-1000',
         None,
         None,
@@ -241,6 +251,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-if-almost-same',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'if-almost-same',
         None,
         None,
@@ -253,6 +264,7 @@ APR_PROVE_TEST_DATA: Iterable[
         'imp-use-if-almost-same',
         'k-files/imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
         'use-if-almost-same',
         None,
         None,
@@ -557,7 +569,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,main_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -568,6 +580,7 @@ class TestImpProof(KCFGExploreTest):
         test_id: str,
         spec_file: str,
         spec_module: str,
+        main_module: str,
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
@@ -584,11 +597,12 @@ class TestImpProof(KCFGExploreTest):
         proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
         prover = APRProver(
             proof,
+            kcfg_explore=kcfg_explore,
+            main_module_name=main_module,
             is_terminal=TestImpProof._is_terminal,
             extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
         kcfg = prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
