@@ -16,7 +16,7 @@ from ..cli_utils import abs_or_rel_to, check_dir_path, check_file_path, run_proc
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Any, Final, Mapping
+    from typing import Any, Final, Literal, Mapping
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class Kompile(ABC):
 
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> Kompile:
-        backend = KompileBackend(dct.get('backend', 'llvm'))
+        backend = KompileBackend(dct.get('backend') or 'llvm')
         common_args = {key: value for key, value in dct.items() if key in COMMON_ARGS}
         base_args = KompileArgs(**common_args)
         match backend:
@@ -63,6 +63,11 @@ class Kompile(ABC):
                 return LLVMKompile(base_args, **llvm_args)
             case _:
                 raise ValueError(f'Unsupported backend: {backend.value}')
+
+    @property
+    @abstractmethod
+    def backend(self) -> KompileBackend:
+        ...
 
     def __call__(
         self,
@@ -112,6 +117,10 @@ class HaskellKompile(Kompile):
         concrete_rules = tuple(concrete_rules)
         object.__setattr__(self, 'base_args', base_args)
         object.__setattr__(self, 'concrete_rules', concrete_rules)
+
+    @property
+    def backend(self) -> Literal[KompileBackend.HASKELL]:
+        return KompileBackend.HASKELL
 
     def args(self) -> list[str]:
         args = self.base_args.args()
@@ -172,6 +181,10 @@ class LLVMKompile(Kompile):
         object.__setattr__(self, 'no_llvm_kompile', no_llvm_kompile)
         object.__setattr__(self, 'enable_search', enable_search)
         object.__setattr__(self, 'enable_llvm_debug', enable_llvm_debug)
+
+    @property
+    def backend(self) -> Literal[KompileBackend.LLVM]:
+        return KompileBackend.LLVM
 
     def args(self) -> list[str]:
         args = self.base_args.args()
