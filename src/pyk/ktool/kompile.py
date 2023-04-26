@@ -2,6 +2,7 @@ from __future__ import annotations
 
 __all__ = ['KompileBackend', 'kompile']
 
+import dataclasses
 import logging
 import shlex
 from abc import ABC, abstractmethod
@@ -15,96 +16,22 @@ from ..cli_utils import abs_or_rel_to, check_dir_path, check_file_path, run_proc
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Final
+    from typing import Any, Final, Mapping
 
 _LOGGER: Final = logging.getLogger(__name__)
-
-
-class KompileBackend(Enum):
-    LLVM = 'llvm'
-    HASKELL = 'haskell'
-    KORE = 'kore'
-
-
-class LLVMKompileType(Enum):
-    MAIN = 'main'
-    SEARCH = 'search'
-    LIBRARY = 'library'
-    STATIC = 'static'
-    PYTHON = 'python'
-    C = 'c'
 
 
 def kompile(
     main_file: str | Path,
     *,
-    backend: str | KompileBackend | None = None,
-    # Common args
-    main_module: str | None = None,
-    syntax_module: str | None = None,
-    include_dirs: Iterable[str | Path] = (),
-    md_selector: str | None = None,
-    hook_namespaces: Iterable[str] = (),
-    emit_json: bool = True,
-    gen_bison_parser: bool = False,
-    bison_parser_library: bool = False,
-    debug: bool = False,
-    post_process: str | None = None,
-    read_only: bool = False,
-    # LLVM backend
-    llvm_kompile_type: LLVMKompileType | None = None,
-    llvm_kompile_output: str | None = None,
-    opt_level: int | None = None,
-    ccopts: Iterable[str] = (),
-    no_llvm_kompile: bool = False,
-    enable_search: bool = False,
-    enable_llvm_debug: bool = False,
-    # Haskell backend
-    concrete_rules: Iterable[str] = (),
-    # ---
     command: Iterable[str] = ('kompile',),
     output_dir: str | Path | None = None,
     cwd: Path | None = None,
     check: bool = True,
+    **kwargs: Any,
 ) -> Path:
-    base_args = KompileArgs(
-        main_file=main_file,
-        main_module=main_module,
-        syntax_module=syntax_module,
-        include_dirs=include_dirs,
-        md_selector=md_selector,
-        hook_namespaces=hook_namespaces,
-        emit_json=emit_json,
-        gen_bison_parser=gen_bison_parser,
-        bison_parser_library=bison_parser_library,
-        debug=debug,
-        post_process=post_process,
-        read_only=read_only,
-    )
-
-    backend = KompileBackend(backend) if backend is not None else KompileBackend.LLVM
-
-    kompiler: Kompile
-    match backend:
-        case KompileBackend.HASKELL:
-            kompiler = HaskellKompile(
-                base_args=base_args,
-                concrete_rules=concrete_rules,
-            )
-        case KompileBackend.LLVM:
-            kompiler = LLVMKompile(
-                base_args=base_args,
-                llvm_kompile_type=llvm_kompile_type,
-                llvm_kompile_output=llvm_kompile_output,
-                opt_level=opt_level,
-                ccopts=ccopts,
-                no_llvm_kompile=no_llvm_kompile,
-                enable_search=enable_search,
-                enable_llvm_debug=enable_llvm_debug,
-            )
-        case _:
-            raise ValueError(f'Unsupported backend: {backend.value}')
-
+    kwargs['main_file'] = main_file
+    kompiler = Kompile.from_dict(kwargs)
     return kompiler(
         command=command,
         output_dir=output_dir,
@@ -113,8 +40,29 @@ def kompile(
     )
 
 
+class KompileBackend(Enum):
+    LLVM = 'llvm'
+    HASKELL = 'haskell'
+    KORE = 'kore'
+
+
 class Kompile(ABC):
     base_args: KompileArgs
+
+    @staticmethod
+    def from_dict(dct: Mapping[str, Any]) -> Kompile:
+        backend = KompileBackend(dct.get('backend', 'llvm'))
+        common_args = {key: value for key, value in dct.items() if key in COMMON_ARGS}
+        base_args = KompileArgs(**common_args)
+        match backend:
+            case KompileBackend.HASKELL:
+                haskell_args = {key: value for key, value in dct.items() if key in HASKELL_ARGS}
+                return HaskellKompile(base_args, **haskell_args)
+            case KompileBackend.LLVM:
+                llvm_args = {key: value for key, value in dct.items() if key in LLVM_ARGS}
+                return LLVMKompile(base_args, **llvm_args)
+            case _:
+                raise ValueError(f'Unsupported backend: {backend.value}')
 
     def __call__(
         self,
@@ -173,6 +121,15 @@ class HaskellKompile(Kompile):
             args += ['--concrete-rules', ','.join(self.concrete_rules)]
 
         return args
+
+
+class LLVMKompileType(Enum):
+    MAIN = 'main'
+    SEARCH = 'search'
+    LIBRARY = 'library'
+    STATIC = 'static'
+    PYTHON = 'python'
+    C = 'c'
 
 
 @final
@@ -330,3 +287,8 @@ class KompileArgs:
             args += ['--read-only-kompiled-directory']
 
         return args
+
+
+COMMON_ARGS: Final = {field.name for field in dataclasses.fields(KompileArgs)}
+HASKELL_ARGS: Final = {field.name for field in dataclasses.fields(HaskellKompile)} - {'base_args'}
+LLVM_ARGS: Final = {field.name for field in dataclasses.fields(LLVMKompile)} - {'base_args'}
