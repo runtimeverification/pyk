@@ -8,6 +8,7 @@ import shlex
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
+from functools import cached_property
 from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING, final
@@ -45,6 +46,18 @@ class KompileBackend(Enum):
     HASKELL = 'haskell'
     KORE = 'kore'
 
+    @cached_property
+    def args(self) -> frozenset[str]:
+        match self:
+            case KompileBackend.LLVM:
+                return frozenset(field.name for field in dataclasses.fields(LLVMKompile) if field.name != 'base_args')
+            case KompileBackend.HASKELL:
+                return frozenset(
+                    field.name for field in dataclasses.fields(HaskellKompile) if field.name != 'base_args'
+                )
+            case _:
+                raise ValueError(f'Method not supported for backend: {self.value}')
+
 
 class Kompile(ABC):
     base_args: KompileArgs
@@ -52,15 +65,25 @@ class Kompile(ABC):
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> Kompile:
         backend = KompileBackend(dct.get('backend') or 'llvm')
-        common_args = {key: value for key, value in dct.items() if key in COMMON_ARGS}
+
+        common_args: dict[str, Any] = {}
+        backend_args: dict[str, Any] = {}
+        for key, value in dct.items():
+            if key == 'backend':
+                continue
+            elif key in COMMON_ARGS:
+                common_args[key] = value
+            elif key in backend.args:
+                backend_args[key] = value
+            else:
+                raise ValueError(f'Unexpected argument for backend: {backend.value}: {key}={value!r}')
+
         base_args = KompileArgs(**common_args)
         match backend:
             case KompileBackend.HASKELL:
-                haskell_args = {key: value for key, value in dct.items() if key in HASKELL_ARGS}
-                return HaskellKompile(base_args, **haskell_args)
+                return HaskellKompile(base_args, **backend_args)
             case KompileBackend.LLVM:
-                llvm_args = {key: value for key, value in dct.items() if key in LLVM_ARGS}
-                return LLVMKompile(base_args, **llvm_args)
+                return LLVMKompile(base_args, **backend_args)
             case _:
                 raise ValueError(f'Unsupported backend: {backend.value}')
 
@@ -302,6 +325,4 @@ class KompileArgs:
         return args
 
 
-COMMON_ARGS: Final = {field.name for field in dataclasses.fields(KompileArgs)}
-HASKELL_ARGS: Final = {field.name for field in dataclasses.fields(HaskellKompile)} - {'base_args'}
-LLVM_ARGS: Final = {field.name for field in dataclasses.fields(LLVMKompile)} - {'base_args'}
+COMMON_ARGS: Final = frozenset(field.name for field in dataclasses.fields(KompileArgs))
