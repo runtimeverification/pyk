@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, ContextManager
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KVariable, Subst
-from ..kast.outer import KRule
 from ..kast.manip import flatten_label, free_vars
+from ..kast.outer import KRule
+from ..konvert import krule_to_kore
 from ..kore.rpc import KoreClient, KoreServer, StopReason
 from ..kore.syntax import Import, Module
-from ..konvert import krule_to_kore
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
@@ -24,8 +24,8 @@ if TYPE_CHECKING:
     from ..cli_utils import BugReport
     from ..kast import KInner
     from ..kast.outer import KClaim
-    from ..ktool.kprint import KPrint
     from ..kore.syntax import Sentence
+    from ..ktool.kprint import KPrint
 
 
 _LOGGER: Final = logging.getLogger(__name__)

@@ -166,7 +166,7 @@ class APRProver:
         self,
         proof: APRProof,
         kcfg_explore: KCFGExplore,
-        main_module_name: str, 
+        main_module_name: str,
         is_terminal: Callable[[CTerm], bool] | None = None,
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
     ) -> None:
@@ -245,12 +245,18 @@ class APRBMCProver(APRProver):
         self,
         proof: APRBMCProof,
         kcfg_explore: KCFGExplore,
-        main_module_name: str, 
+        main_module_name: str,
         same_loop: Callable[[CTerm, CTerm], bool],
         is_terminal: Callable[[CTerm], bool] | None = None,
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
     ) -> None:
-        super().__init__(proof, kcfg_explore=kcfg_explore, main_module_name=main_module_name, is_terminal=is_terminal, extract_branches=extract_branches)
+        super().__init__(
+            proof,
+            kcfg_explore=kcfg_explore,
+            main_module_name=main_module_name,
+            is_terminal=is_terminal,
+            extract_branches=extract_branches,
+        )
         self._same_loop = same_loop
         self._checked_nodes = []
 
