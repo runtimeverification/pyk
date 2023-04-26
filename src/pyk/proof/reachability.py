@@ -253,7 +253,6 @@ class APRProver:
                 if self.nonzero_depth(curr_node)
                 else self.some_circularities_module_name
             )
-            print(f'Executing in {module_name}')
             self.kcfg_explore.extend(
                 self.proof.kcfg,
                 curr_node,

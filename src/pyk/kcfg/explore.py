@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING, ContextManager
 
 from ..cterm import CSubst, CTerm
-from ..kast.inner import KApply, KLabel, KVariable, Subst
+from ..kast.inner import KApply, KAtt, KLabel, KVariable, Subst
 from ..kast.manip import flatten_label, free_vars
 from ..kast.outer import KRule
 from ..konvert import krule_to_kore
@@ -334,10 +334,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def add_circularities_module(
         self, old_module_name: str, new_module_name: str, circularities: Iterable[KClaim]
     ) -> None:
-        kast_rules = [KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=c.att) for c in circularities]
+        max_priority: int = 1 # Maybe we should compute this dynamically?
+        kast_rules = [
+            KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=KAtt({'priority': max_priority}))
+            for c in circularities
+        ]
         kore_axioms: List[Sentence] = [krule_to_kore(self.kprint.kompiled_kore, r) for r in kast_rules]
-        for ax in kore_axioms:
-            print(f'Axiom: {ax.text}')
         _, kore_client = self._kore_rpc
         sentences: List[Sentence] = [Import(module_name=old_module_name, attrs=())]
         sentences = sentences + kore_axioms
