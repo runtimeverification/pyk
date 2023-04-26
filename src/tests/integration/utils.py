@@ -6,13 +6,13 @@ import pytest
 
 from pyk.kast.outer import read_kast_definition
 from pyk.kcfg import KCFGExplore
-from pyk.ktool.kompile import Kompile, KompileBackend
+from pyk.ktool.kompile import Kompile
 from pyk.ktool.kprint import KPrint
 from pyk.ktool.kprove import KProve
 from pyk.ktool.krun import KRun
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterator
     from pathlib import Path
     from typing import Any, ClassVar
 
@@ -47,9 +47,7 @@ class Kompiler:
 class KompiledTest:
     KOMPILE_MAIN_FILE: ClassVar[str]
     KOMPILE_BACKEND: ClassVar[str | None] = None
-    KOMPILE_MAIN_MODULE: ClassVar[str | None] = None
-    KOMPILE_SYNTAX_MODULE: ClassVar[str | None] = None
-    KOMPILE_INCLUDE_DIRS: ClassVar[Iterable[str]] = []
+    KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
 
     @pytest.fixture(scope='class')
     def bug_report(self) -> BugReport | None:
@@ -59,13 +57,10 @@ class KompiledTest:
 
     @pytest.fixture(scope='class')
     def definition_dir(self, kompile: Kompiler) -> Path:
-        return kompile(
-            main_file=self.KOMPILE_MAIN_FILE,
-            backend=KompileBackend(self.KOMPILE_BACKEND) if self.KOMPILE_BACKEND else None,
-            main_module=self.KOMPILE_MAIN_MODULE,
-            syntax_module=self.KOMPILE_SYNTAX_MODULE,
-            include_dirs=self.KOMPILE_INCLUDE_DIRS,
-        )
+        kwargs = self.KOMPILE_ARGS
+        kwargs['main_file'] = self.KOMPILE_MAIN_FILE
+        kwargs['backend'] = self.KOMPILE_BACKEND
+        return kompile(**kwargs)
 
     @pytest.fixture(scope='class')
     def definition(self, definition_dir: Path) -> KDefinition:
