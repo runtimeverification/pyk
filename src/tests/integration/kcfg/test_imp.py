@@ -282,9 +282,9 @@ APR_PROVE_TEST_DATA: Iterable[
         None,
         None,
         ['IMP-VERIFICATION.halt'],
-        [],
+        ['IMP.while'], # If we do not include `IMP.while` in this list, we get 4 branches instead of 2
         ProofStatus.PASSED,
-        4,  # I am not sure why it is not 2
+        2,
     ),
     (
         'imp-simple-sum-N',
