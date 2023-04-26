@@ -19,7 +19,7 @@ from .kcfg import KCFG
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path
-    from typing import Any, Final, List, Optional
+    from typing import Any, Final
 
     from ..cli_utils import BugReport
     from ..kast import KInner

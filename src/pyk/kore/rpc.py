@@ -22,7 +22,7 @@ from .syntax import And, Pattern, SortApp, kore_term
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from typing import Any, ClassVar, Final, Optional, TextIO, TypeVar
+    from typing import Any, ClassVar, Final, TextIO, TypeVar
 
     from ..cli_utils import BugReport
     from .syntax import Module

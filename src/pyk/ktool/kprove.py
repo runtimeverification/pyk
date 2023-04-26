@@ -23,7 +23,7 @@ from .kprint import KPrint
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from subprocess import CompletedProcess
-    from typing import Final, List, Optional
+    from typing import Final
 
     from ..cli_utils import BugReport
     from ..cterm import CTerm

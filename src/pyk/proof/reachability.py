@@ -12,7 +12,7 @@ from .proof import Proof, ProofStatus
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
-    from typing import Any, Final, List, Optional, TypeVar
+    from typing import Any, Final, TypeVar
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
