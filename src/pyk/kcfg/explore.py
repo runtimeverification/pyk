@@ -335,7 +335,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self, old_module_name: str, new_module_name: str, circularities: Iterable[KClaim]
     ) -> None:
         kast_rules = [KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=c.att) for c in circularities]
-        kore_axioms: List[Sentence] = [krule_to_kore(r) for r in kast_rules]
+        kore_axioms: List[Sentence] = [krule_to_kore(self.kprint.kompiled_kore, r) for r in kast_rules]
+        for ax in kore_axioms:
+            print(f'Axiom: {ax.text}')
         _, kore_client = self._kore_rpc
         sentences: List[Sentence] = [Import(module_name=old_module_name, attrs=())]
         sentences = sentences + kore_axioms

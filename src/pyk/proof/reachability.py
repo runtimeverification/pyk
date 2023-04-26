@@ -12,7 +12,7 @@ from .proof import Proof, ProofStatus
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
-    from typing import Any, Final, List, TypeVar
+    from typing import Any, Final, List, Optional, TypeVar
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
@@ -33,11 +33,20 @@ class APRProof(Proof):
 
     kcfg: KCFG
     circularities: List[KClaim]
+    uuid: Optional[str] = None
 
-    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None, circularities: Iterable[KClaim] = ()):
+    def __init__(
+        self,
+        id: str,
+        kcfg: KCFG,
+        proof_dir: Path | None = None,
+        circularities: Iterable[KClaim] = (),
+        uuid: Optional[str] = None,
+    ):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
         self.circularities = list(circularities)
+        self.uuid = uuid
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -160,7 +169,8 @@ class APRProver:
     _extract_branches: Callable[[CTerm], Iterable[KInner]] | None
 
     main_module_name: str
-    circularities_module_name: str
+    some_circularities_module_name: str
+    all_circularities_module_name: str
 
     def __init__(
         self,
@@ -176,9 +186,15 @@ class APRProver:
         self._extract_branches = extract_branches
         self.main_module_name = main_module_name
         # TODO the module name should be either a parameter, or we should generate it so that it is unique
-        self.circularities_module_name = 'SOME-CIRCULARITIES'
+        self.some_circularities_module_name = 'SOME-CIRCULARITIES'
         self.kcfg_explore.add_circularities_module(
-            self.main_module_name, self.circularities_module_name, proof.circularities
+            self.main_module_name,
+            self.some_circularities_module_name,
+            [c for c in proof.circularities if c.att['UNIQUE_ID'] != self.proof.uuid],
+        )
+        self.all_circularities_module_name = 'ALL-CIRCULARITIES'
+        self.kcfg_explore.add_circularities_module(
+            self.main_module_name, self.all_circularities_module_name, proof.circularities
         )
 
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
@@ -232,7 +248,12 @@ class APRProver:
                     )
                     continue
 
-            module_name = self.circularities_module_name if self.nonzero_depth(curr_node) else self.main_module_name
+            module_name = (
+                self.all_circularities_module_name
+                if self.nonzero_depth(curr_node)
+                else self.some_circularities_module_name
+            )
+            _LOGGER.info(f'Executing in {module_name}')
             self.kcfg_explore.extend(
                 self.proof.kcfg,
                 curr_node,

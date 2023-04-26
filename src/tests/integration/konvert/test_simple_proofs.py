@@ -387,6 +387,7 @@ class TestKonvertSimpleProofs(KompiledTest):
     def test_krule_to_kore(
         self,
         definition: KDefinition,
+        kompiled_kore: KompiledKore,
         rule_id: str,
         kore_text: str,
     ) -> None:
@@ -394,7 +395,7 @@ class TestKonvertSimpleProofs(KompiledTest):
         rule = single(r for r in main_module.rules if 'label' in r.att and r.att['label'] == rule_id)
 
         # When
-        actual_kore_text = krule_to_kore(rule).text
+        actual_kore_text = krule_to_kore(kompiled_kore, rule).text
 
         # Then
         assert actual_kore_text == kore_text

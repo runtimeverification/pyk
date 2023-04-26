@@ -279,8 +279,8 @@ APR_PROVE_TEST_DATA: Iterable[
         'IMP-SIMPLE-SPEC',
         'IMP-VERIFICATION',
         'sum-loop',
-        None,
-        None,
+        10,
+        2,
         ['IMP-VERIFICATION.halt'],
         [],
         ProofStatus.PASSED,
@@ -615,8 +615,10 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
+        circularities = kprove.get_circularities(Path(spec_file), spec_module_name=spec_module)
+        _LOGGER.info(f'We have {len(circularities)} circularities')
         kcfg = KCFG.from_claim(kprove.definition, claim)
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, circularities=circularities, uuid=claim.att['UNIQUE_ID'])
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -663,10 +665,8 @@ class TestImpProof(KCFGExploreTest):
         )
         assert len(claims) == 1
 
-        circularities = kprove.get_circularities(Path(spec_file), spec_module_name=spec_module)
-
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, circularities=circularities)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
