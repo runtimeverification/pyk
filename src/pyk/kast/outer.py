@@ -662,6 +662,9 @@ class KClaim(KRuleLike):
     def let_att(self, att: KAtt) -> KClaim:
         return self.let(att=att)
 
+    def is_circularity(self) -> bool:
+        return 'circularity' in self.att.atts
+
 
 @final
 @dataclass(frozen=True)

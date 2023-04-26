@@ -273,6 +273,19 @@ APR_PROVE_TEST_DATA: Iterable[
         ProofStatus.PASSED,
         2,  # Change this to 1 once we can reuse subproofs
     ),
+    (
+        'imp-simple-sum-loop',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'IMP-VERIFICATION',
+        'sum-loop',
+        None,
+        None,
+        ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.PASSED,
+        2,
+    ),
 )
 
 PATH_CONSTRAINTS_TEST_DATA: Iterable[
@@ -650,10 +663,15 @@ class TestImpProof(KCFGExploreTest):
         )
         assert len(claims) == 1
 
+        circularities = kprove.get_circularities(Path(spec_file), spec_module_name=spec_module)
+
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, circularities=circularities)
         prover = APRProver(
-            proof, kcfg_explore=kcfg_explore, main_module_name=main_module, is_terminal=TestImpProof._is_terminal
+            proof,
+            kcfg_explore=kcfg_explore,
+            main_module_name=main_module,
+            is_terminal=TestImpProof._is_terminal,
         )
 
         kcfg = prover.advance_proof(

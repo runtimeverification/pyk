@@ -80,4 +80,15 @@ module IMP-SIMPLE-SPEC
         <k> $n = $n + 1; if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } $s = $s + 1; ~> #FINISH => . ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N +Int 2) $n |-> N:Int +Int 1) </state>
 
+
+
+    claim [sum-loop]: <k> while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
+                      <state> $s |-> (S => S +Int ((N *Int (N +Int 1)) /Int 2)) $n |-> (N => -1) </state>
+                      requires 0 <=Int N
+      [circularity]
+
+    claim [sum-N]: <k> int $s, $n, .Ids ; $n = N:Int ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
+                      <state> .Map => $s |-> ((N *Int (N +Int 1)) /Int 2) $n |-> -1 </state>
+                    requires 0 <=Int N
+
 endmodule
