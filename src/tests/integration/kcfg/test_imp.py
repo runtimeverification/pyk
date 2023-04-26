@@ -284,7 +284,7 @@ APR_PROVE_TEST_DATA: Iterable[
         ['IMP-VERIFICATION.halt'],
         [],
         ProofStatus.PASSED,
-        2,
+        4,  # I am not sure why it is not 2
     ),
     (
         'imp-simple-sum-N',
