@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING, final
 from ..cli_utils import abs_or_rel_to, check_dir_path, check_file_path, run_process
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-    from typing import Any, Final, Literal, Mapping
+    from collections.abc import Iterable, Mapping
+    from typing import Any, Final, Literal
 
 _LOGGER: Final = logging.getLogger(__name__)
 
