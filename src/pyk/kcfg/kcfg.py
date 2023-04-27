@@ -82,30 +82,30 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
     @dataclass(frozen=True)
     class Split(Successor):
         source: KCFG.Node
-        targets: tuple[tuple[KCFG.Node, CSubst], ...]
+        targets: tuple[KCFG.Node, ...]
+        _splits: tuple[CSubst, ...]
 
-        def __init__(
-            self,
-            source: KCFG.Node,
-            targets: Iterable[tuple[KCFG.Node, CSubst]],
-        ):
-            object.__setattr__(self, 'source', source)
-            object.__setattr__(self, 'targets', tuple(targets))
+        @property
+        def target_ids(self) -> list[str]:
+            return sorted([t.id for t in self.targets])
+
+        @property
+        def splits(self) -> dict[str, CSubst]:
+            return dict(zip((target.id for target in self.targets), self._splits, strict=True))
 
         def __lt__(self, other: Any) -> bool:
-            if not isinstance(other, KCFG.Split):
+            if not type(other) is type(self):
                 return NotImplemented
             return (self.source, self.target_ids) < (other.source, other.target_ids)
 
         def to_dict(self) -> dict[str, Any]:
             return {
                 'source': self.source.id,
-                'targets': {target.id: csubst.to_dict() for target, csubst in self.targets},
+                'targets': {target.id: self.splits[target.id].to_dict() for target in self.targets},
             }
 
-        @property
-        def target_ids(self) -> list[str]:
-            return sorted(t.id for t, _ in self.targets)
+        def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
+            return KCFG.Split(self.source, (target,), (self.splits[target.id],))
 
     _nodes: dict[str, Node]
     _edges: dict[str, dict[str, Edge]]
@@ -588,7 +588,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
 
         source_id = self._resolve(source_id)
-        split = KCFG.Split(self.node(source_id), ((self.node(nid), csubst) for nid, csubst in splits))
+        split = KCFG.Split(
+            self.node(source_id), tuple(self.node(nid) for nid, _ in splits), tuple(csubst for _, csubst in splits)
+        )
         self._splits[source_id] = split
 
     def split_on_constraints(self, source_id: str, constraints: Iterable[KInner]) -> list[str]:
@@ -715,7 +717,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for edge in reversed(path):
             if type(edge) is KCFG.Split:
                 assert len(edge.targets) == 1
-                _, csubst = edge.targets[0]
+                csubst = edge.splits[edge.targets[0].id]
                 curr_constraint = mlAnd([csubst.subst.ml_pred, csubst.constraint, curr_constraint])
             if type(edge) is KCFG.Cover:
                 curr_constraint = mlAnd([edge.csubst.constraint, edge.csubst.subst.apply(curr_constraint)])
@@ -760,7 +762,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
 
             elif type(curr_successor) is KCFG.Split:
                 if len(list(curr_successor.targets)) == 1:
-                    target, _ = list(curr_successor.targets)[0]
+                    target = list(curr_successor.targets)[0]
                     if target.id == target_id:
                         paths.append(tuple(curr_path))
                         continue
@@ -768,17 +770,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                         successors = list(self.successors(target.id))
                 if len(list(curr_successor.targets)) > 1:
                     curr_path = curr_path[0:-1]
-                    successors = [
-                        KCFG.Split(curr_successor.source, [(target, csubst)])
-                        for target, csubst in curr_successor.targets
-                    ]
+                    successors = [curr_successor.with_single_target(target) for target in curr_successor.targets]
 
             for successor in successors:
                 if isinstance(successor, KCFG.EdgeLike) and not _in_path(successor.target.id, curr_path):
                     worklist.append(curr_path + [successor])
                 elif type(successor) is KCFG.Split:
                     if len(list(successor.targets)) == 1:
-                        target, _ = list(successor.targets)[0]
+                        target = list(successor.targets)[0]
                         if not _in_path(target.id, curr_path):
                             worklist.append(curr_path + [successor])
                     elif len(list(successor.targets)) > 1:
@@ -803,7 +802,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 edges = chain(self.edges(source_id=node.id), self.covers(source_id=node.id) if traverse_covers else [])
                 worklist.extend(edge.target for edge in edges)
                 for split in self.splits(source_id=node.id):
-                    worklist.extend(node for node, _ in split.targets)
+                    worklist.extend(node for node in split.targets)
             else:
                 edges = chain(self.edges(target_id=node.id), self.covers(target_id=node.id) if traverse_covers else [])
                 worklist.extend(edge.source for edge in edges)
