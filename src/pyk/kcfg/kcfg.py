@@ -1137,17 +1137,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             edges: Iterable[KCFG.EdgeLike]
             if not reverse:
                 edges = chain(self.edges(source_id=node.id), self.covers(source_id=node.id) if traverse_covers else [])
+                multiedges = chain(self.splits(source_id=node.id), self.ndbranches(source_id=node.id))
                 worklist.extend(edge.target for edge in edges)
-                for split in self.splits(source_id=node.id):
-                    worklist.extend(node for node in split.targets)
-                for ndbranch in self.ndbranches(source_id=node.id):
-                    worklist.extend(node for node in ndbranch.targets)
+                worklist.extend(tg for me in multiedges for tg in me.targets)
             else:
                 edges = chain(self.edges(target_id=node.id), self.covers(target_id=node.id) if traverse_covers else [])
+                multiedges = chain(self.splits(target_id=node.id), self.ndbranches(target_id=node.id))
                 worklist.extend(edge.source for edge in edges)
-                for split in self.splits(target_id=node.id):
-                    worklist.append(split.source)
-                for ndbranch in self.ndbranches(target_id=node.id):
-                    worklist.append(ndbranch.source)
+                worklist.extend(me.source for me in multiedges)
 
         return visited
