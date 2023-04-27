@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -14,8 +13,8 @@ from .utils import KCFGExploreTest
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
 
-    # from pathlib import Path
     from pytest import TempPathFactory
 
     from pyk.kcfg import KCFGExplore
@@ -252,6 +251,3 @@ class TestProofSchedule(KCFGExploreTest):
         proof_schedule.fire_proof(proofs[4].id, kcfg_explore)
         for i in [0, 1, 2, 3, 4]:
             assert proof_schedule._proofs[proofs[i].id].status == ProofStatus.PASSED
-
-        f = Path('/home/geo2a/Desktop/t.dot')
-        f.write_text(proof_schedule.dot)
