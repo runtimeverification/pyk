@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
 from itertools import chain
@@ -60,9 +60,18 @@ class KCFG(
                 return NotImplemented
             return self.source < other.source
 
+        @property
+        @abstractmethod
+        def targets(self) -> tuple[KCFG.Node, ...]:
+            ...
+
     class EdgeLike(Successor):
         source: KCFG.Node
         target: KCFG.Node
+
+        @property
+        def targets(self) -> tuple[KCFG.Node]:
+            return (self.target,)
 
     @dataclass(frozen=True)
     class Edge(EdgeLike):
@@ -93,8 +102,12 @@ class KCFG(
     @dataclass(frozen=True)
     class Split(Successor):
         source: KCFG.Node
-        targets: tuple[KCFG.Node, ...]
+        _targets: tuple[KCFG.Node, ...]
         _splits: tuple[CSubst, ...]
+
+        @property
+        def targets(self) -> tuple[KCFG.Node, ...]:
+            return self._targets
 
         @property
         def target_ids(self) -> list[str]:
