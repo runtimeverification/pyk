@@ -33,7 +33,20 @@ if TYPE_CHECKING:
     from ..ktool.kprint import KPrint
 
 
-class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
+class KCFG(
+    Container[
+        Union[
+            'KCFG.Node',
+            'KCFG.Successor',
+            'KCFG.EdgeLike',
+            'KCFG.MultiEdge',
+            'KCFG.Edge',
+            'KCFG.Cover',
+            'KCFG.Split',
+            'KCFG.NDBranch',
+        ]
+    ]
+):
     @dataclass(frozen=True, order=True)
     class Node:
         cterm: CTerm
