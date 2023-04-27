@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Final
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
@@ -378,20 +379,27 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             ret_split_lines: list[str] = []
             substs = csubst.subst.items()
             constraints = csubst.constraints
+            _LOGGER.warning('in _print_split_edge()')
+            if len(constraints) == 0:
+                ret_split_lines.append('[None]')
             if len(constraints) == 1:
+                _LOGGER.warning('in _print_split_edge() 1')
                 first_line, *rest_lines = kprint.pretty_print(constraints[0]).split('\n')
                 ret_split_lines.append(f'constraint: {first_line}')
                 ret_split_lines.extend(f'              {line}' for line in rest_lines)
             elif len(constraints) > 1:
+                _LOGGER.warning('in _print_split_edge() 2')
                 ret_split_lines.append('constraints:')
                 for constraint in constraints:
                     first_line, *rest_lines = kprint.pretty_print(constraint).split('\n')
                     ret_split_lines.append(f'    {first_line}')
                     ret_split_lines.extend(f'      {line}' for line in rest_lines)
             if len(substs) == 1:
+                _LOGGER.warning('in _print_split_edge() 3')
                 vname, term = list(substs)[0]
                 ret_split_lines.append(f'subst: {vname} <- {kprint.pretty_print(term)}')
             elif len(substs) > 1:
+                _LOGGER.warning('in _print_split_edge() 4')
                 ret_split_lines.append('substs:')
                 ret_split_lines.extend(f'    {vname} <- {kprint.pretty_print(term)}' for vname, term in substs)
             return ret_split_lines
@@ -435,11 +443,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             if type(successor) is KCFG.Split:
                 ret_lines.append(('unknown', [f'{indent}┃']))
 
+                if curr_node.id == "3d833acf549ed2037177cfe864d8b67afbb6e3fd2d18b5a38301cd127e651411":
+
+                    for target, csubst in successor.targets:
+                        _LOGGER.warning(f'target: {kprint.pretty_print(target.cterm.kast)}')
+
                 for target, csubst in successor.targets[:-1]:
                     ret_edge_lines = _print_split_edge(csubst)
-                    ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
-                        indent + '┃  ┃ ', ret_edge_lines[1:]
-                    )
+                    if len(ret_edge_lines) == 0:
+                        _LOGGER.warning(f'ret_edge_lines: {ret_edge_lines}')
+                        _LOGGER.warning(f'ret_edge_lines[1:]: {ret_edge_lines[1:]}')
+                    var1 = ret_edge_lines[0]
+                    ret_edge_lines = [indent + '┣━━┓ ' + var1] + add_indent( indent + '┃  ┃ ', ret_edge_lines[1:])
                     ret_edge_lines.append(indent + '┃  │')
                     ret_lines.append((f'split_{curr_node.id}_{target.id}', ret_edge_lines))
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
@@ -852,18 +867,23 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         self._check_no_successors(source_id)
 
         splits = list(splits)
+#          _LOGGER.info(f'splits: {splits}')
 
-        if len(splits) <= 1:
-            raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
+#          if len(splits) <= 1:
+#              raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
 
         source_id = self._resolve(source_id)
         split = KCFG.Split(self.node(source_id), ((self.node(nid), csubst) for nid, csubst in splits))
         self._splits[source_id] = split
+#          _LOGGER.info(f'self._splits[source_id]: {self._splits[source_id]}')
 
     def split_on_constraints(self, source_id: str, constraints: Iterable[KInner]) -> list[str]:
         source = self.node(source_id)
         branch_node_ids = [self.get_or_create_node(source.cterm.add_constraint(c)).id for c in constraints]
         csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
+#          _LOGGER.info(f'branch_node_ids: {branch_node_ids}')
+#          _LOGGER.info(f'constraints: {constraints}')
+#          _LOGGER.info(f'csubsts: {csubsts}')
         self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids
 

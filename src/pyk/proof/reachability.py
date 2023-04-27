@@ -179,6 +179,8 @@ class APRProver:
     ) -> KCFG:
         iterations = 0
 
+        print('in advance_proof()')
+
         while self.proof.kcfg.frontier:
             self.proof.write_proof()
 
@@ -187,6 +189,8 @@ class APRProver:
                 break
             iterations += 1
             curr_node = self.proof.kcfg.frontier[0]
+            print('curr_node:')
+            print(kcfg_explore.kprint.pretty_print(curr_node.cterm.kast))
 
             if kcfg_explore.target_subsume(self.proof.kcfg, curr_node):
                 continue

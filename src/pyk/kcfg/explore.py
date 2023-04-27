@@ -273,6 +273,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
     ) -> None:
+
+        print('in extend()')
         if not kcfg.is_frontier(node.id):
             raise ValueError(f'Cannot extend non-frontier node {self.id}: {node.id}')
 
@@ -306,14 +308,28 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         # Branch
         elif len(next_cterms) > 1:
             branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
-            if len(branches) < 2:
-                raise ValueError(
-                    f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
-                )
+            for cterm in next_cterms:
+                _LOGGER.info(f'cterm:{cterm}')
+                _LOGGER.info(f'hash:{cterm.hash}')
+#              if len(branches) < 2:
+#                  raise ValueError(
+#                      f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+#                  )
             kcfg.split_on_constraints(node.id, branches)
             _LOGGER.info(
                 f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
             )
-
+#              print(
+#                  f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+#              )
+            _LOGGER.info('Current node:')
+            _LOGGER.info(
+                    self.kprint.pretty_print(node.cterm.kast)
+            )
+            _LOGGER.info('Next nodes:')
+            for next_term in next_cterms:
+                _LOGGER.info(
+                        self.kprint.pretty_print(next_term.kast)
+                )
         else:
             raise ValueError('Unhandled case.')
