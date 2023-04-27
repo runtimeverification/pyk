@@ -4,7 +4,6 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
-from itertools import chain
 from threading import RLock
 from typing import TYPE_CHECKING, List, Union, cast
 
@@ -831,16 +830,13 @@ class KCFG(
 
             visited.add(node)
 
-            edges: Iterable[KCFG.EdgeLike]
             if not reverse:
-                edges = chain(self.edges(source_id=node.id), self.covers(source_id=node.id) if traverse_covers else [])
-                splits = self.splits(source_id=node.id)
-                worklist.extend(edge.target for edge in edges)
-                worklist.extend(target for split in splits for target in split.targets)
+                worklist.extend(
+                    target
+                    for succ in self.successors(source_id=node.id, covers=traverse_covers)
+                    for target in succ.targets
+                )
             else:
-                edges = chain(self.edges(target_id=node.id), self.covers(target_id=node.id) if traverse_covers else [])
-                splits = self.splits(target_id=node.id)
-                worklist.extend(edge.source for edge in edges)
-                worklist.extend(target.source for target in splits)
+                worklist.extend(succ.source for succ in self.predecessors(target_id=node.id, covers=traverse_covers))
 
         return visited
