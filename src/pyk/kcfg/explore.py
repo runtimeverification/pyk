@@ -10,7 +10,7 @@ from ..kore.rpc import KoreClient, KoreServer, StopReason
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import notBool
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsTrue, mlTop
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
 
@@ -310,11 +310,22 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             branch_and = mlAnd(branches)
             branch_pattern_1 = mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsTrue(notBool(KVariable('B')))])
             branch_pattern_2 = mlAnd([mlEqualsTrue(notBool(KVariable('B'))), mlEqualsTrue(KVariable('B'))])
-            if branch_pattern_1.match(branch_and) or branch_pattern_2.match(branch_and):
+            branch_pattern_3 = mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsFalse(KVariable('B'))])
+            branch_pattern_4 = mlAnd([mlEqualsFalse(KVariable('B')), mlEqualsTrue(KVariable('B'))])
+
+            # Split on branch patterns
+            if (
+                branch_pattern_1.match(branch_and)
+                or branch_pattern_2.match(branch_and)
+                or branch_pattern_3.match(branch_and)
+                or branch_pattern_4.match(branch_and)
+            ):
                 kcfg.split_on_constraints(node.id, branches)
                 _LOGGER.info(
                     f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
                 )
+
+            # NDBranch on successor nodes
             else:
                 next_ids = [kcfg.get_or_create_node(ct).id for ct in next_cterms]
                 kcfg.create_ndbranch(node.id, next_ids)
