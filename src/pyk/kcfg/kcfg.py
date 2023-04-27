@@ -20,6 +20,7 @@ from ..kast.manip import (
     remove_source_attributes,
     rename_generated_vars,
 )
+from ..prelude.ml import mlAnd, mlTop
 from ..utils import add_indent, compare_short_hashes, shorten_hash
 
 if TYPE_CHECKING:
@@ -477,7 +478,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                     else:
                         raise AssertionError()
                     ret_edge_lines.append(indent + '┃  │')
-                    ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
+                    ret_lines.append((f'split_{curr_node.id}_{target.id}', ret_edge_lines))
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
                 target = successor.targets[-1]
                 if type(successor) is KCFG.Split:
@@ -492,7 +493,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 else:
                     raise AssertionError()
                 ret_edge_lines.append(indent + '   │')
-                ret_lines.append(('edge_{curr_node.id}_{target.id}', ret_edge_lines))
+                ret_lines.append((f'split_{curr_node.id}_{target.id}', ret_edge_lines))
                 _print_subgraph(indent + '   ', target, prior_on_trace + [curr_node])
 
             elif isinstance(successor, KCFG.EdgeLike):
@@ -531,7 +532,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         init, _ = _sorted_init_nodes()
         while init:
             ret_lines.append(('unknown', ['']))
-            _print_subgraph('', init[0], [init[0]])
+            _print_subgraph('', init[0], [])
             init, _ = _sorted_init_nodes()
         if self.frontier or self.stuck:
             ret_lines.append(('unknown', ['', 'Target Nodes:']))
@@ -573,7 +574,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             for line in seg_lines
         )
 
-    def to_dot(self, kprint: KPrint) -> str:
+    def to_dot(self, kprint: KPrint, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> str:
         def _short_label(label: str) -> str:
             return '\n'.join(
                 [
@@ -585,7 +586,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         graph = Digraph()
 
         for node in self.nodes:
-            label = '\n'.join(self.node_short_info(node))
+            label = '\n'.join(self.node_short_info(node, node_printer=node_printer))
             class_attrs = ' '.join(self.node_attrs(node.id))
             attrs = {'class': class_attrs} if class_attrs else {}
             graph.node(name=node.id, label=label, **attrs)
@@ -594,6 +595,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             depth = edge.depth
             label = f'{depth} steps'
             graph.edge(tail_name=edge.source.id, head_name=edge.target.id, label=f'  {label}        ')
+
+        for split in self.splits():
+            for split_target, csubst in split.targets:
+                label = '\n#And'.join(
+                    f'{kprint.pretty_print(v)}' for v in split.source.cterm.constraints + csubst.constraints
+                )
+                graph.edge(tail_name=split.source.id, head_name=split_target.id, label=f'  {label}        ')
 
         for cover in self.covers():
             label = ', '.join(f'{k} |-> {kprint.pretty_print(v)}' for k, v in cover.csubst.subst.minimize().items())
@@ -1033,6 +1041,24 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         nodes = self.reachable_nodes(node_id)
         for node in nodes:
             self.remove_node(node.id)
+
+    def shortest_path_between(self, source_node_id: str, target_node_id: str) -> tuple[Successor, ...] | None:
+        paths = self.paths_between(source_node_id, target_node_id)
+        return sorted(paths, key=(lambda path: len(path)))[0]
+
+    def path_constraints(self, final_node_id: str) -> KInner:
+        path = self.shortest_path_between(self.get_unique_init().id, final_node_id)
+        if path is None:
+            raise ValueError(f'No path found to specified node: {final_node_id}')
+        curr_constraint: KInner = mlTop()
+        for edge in reversed(path):
+            if type(edge) is KCFG.Split:
+                assert len(edge.targets) == 1
+                _, csubst = edge.targets[0]
+                curr_constraint = mlAnd([csubst.subst.ml_pred, csubst.constraint, curr_constraint])
+            if type(edge) is KCFG.Cover:
+                curr_constraint = mlAnd([edge.csubst.constraint, edge.csubst.subst.apply(curr_constraint)])
+        return mlAnd(flatten_label('#And', curr_constraint))
 
     def paths_between(
         self, source_id: str, target_id: str, *, traverse_covers: bool = False

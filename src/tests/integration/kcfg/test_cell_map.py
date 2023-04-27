@@ -7,9 +7,8 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
-from pyk.kast.manip import get_cell
 from pyk.kcfg import KCFG
-from pyk.proof import AGProof, AGProver
+from pyk.proof import APRProof, APRProver, ProofStatus
 
 from ..utils import KCFGExploreTest
 
@@ -103,7 +102,7 @@ class TestCellMapProof(KCFGExploreTest):
         actual_depth, actual_post_term, _ = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, k, aacounts, accounts), depth=depth
         )
-        actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post_term.kast, 'K_CELL'))
+        actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
 
         # Then
         assert actual_depth == expected_depth
@@ -135,7 +134,8 @@ class TestCellMapProof(KCFGExploreTest):
         init = kcfg.get_unique_init()
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         kcfg.replace_node(init.id, new_init_term)
-        prover = AGProver(AGProof(f'{spec_module}.{claim_id}', kcfg))
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        prover = APRProver(proof)
         kcfg = prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
@@ -143,5 +143,4 @@ class TestCellMapProof(KCFGExploreTest):
             terminal_rules=terminal_rules,
         )
 
-        failed_nodes = len(kcfg.frontier) + len(kcfg.stuck)
-        assert failed_nodes == 0
+        assert proof.status == ProofStatus.PASSED

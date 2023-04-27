@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
-from pyk.konvert import kast_to_kore
+from pyk.konvert import kast_to_kore, kore_to_kast, krule_to_kore
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
 from pyk.prelude.bytes import bytesToken
@@ -13,15 +13,16 @@ from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
+from pyk.utils import single
 
-from ..utils import KPrintTest
+from ..utils import KompiledTest
 
 if TYPE_CHECKING:
     from pathlib import Path
     from typing import Final
 
     from pyk.kast import KInner
-    from pyk.ktool.kprint import KPrint
+    from pyk.kast.outer import KDefinition
 
 
 BIDIRECTIONAL_TEST_DATA: Final = (
@@ -310,8 +311,23 @@ KORE_TO_KAST_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
     ),
 )
 
+KRULE_TO_KORE_DATA: Final = (
+    (
+        'SIMPLE-PROOFS.foo-to-bar',
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'DotVar2 : SortMap{}))), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{}))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'DotVar2 : SortMap{})))) [priority{}("50")]""",
+    ),
+    (
+        'SIMPLE-PROOFS.foo-to-bar-false',
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(\and{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'RestState : SortMap{}))), \and{SortGeneratedTopCell{}}(\equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), \dv{SortBool{}}("false")), \equals{SortBool{}, SortGeneratedTopCell{}}(\dv{SortBool{}}("true"), Lblpred1{}(VarN : SortInt{})))), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbar'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'RestK : SortK{})), Var'Unds'DotVar0 : SortGeneratedCounterCell{}, Lbl'-LT-'state'-GT-'{}(Lbl'Unds'Map'Unds'{}(Lbl'UndsPipe'-'-GT-Unds'{}(\dv{SortInt{}}("3"), VarN : SortInt{}), Var'Unds'RestState : SortMap{})))) [priority{}("30")]""",
+    ),
+    (
+        'SIMPLE-PROOFS.foo-to-baz-owise',
+        r"""axiom{} \rewrites{SortGeneratedTopCell{}}(Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})))), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{}), Lbl'-LT-'generatedTop'-GT-'{}(Lbl'-LT-'k'-GT-'{}(kseq{}(Lblbaz{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), kseq{}(Lblfoo'Unds'SIMPLE-PROOFS'Unds'KItem{}(), Var'Unds'DotVar1 : SortK{})))), Var'Unds'Gen0 : SortGeneratedCounterCell{}, Var'Unds'Gen1 : SortStateCell{})) [priority{}("200")]""",
+    ),
+)
 
-class TestKonvertSimpleProofs(KPrintTest):
+
+class TestKonvertSimpleProofs(KompiledTest):
     KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
 
     @pytest.fixture(scope='class')
@@ -325,7 +341,7 @@ class TestKonvertSimpleProofs(KPrintTest):
     )
     def test_kast_to_kore(
         self,
-        kprint: KPrint,
+        definition: KDefinition,
         kompiled_kore: KompiledKore,
         test_id: str,
         sort: KSort,
@@ -336,7 +352,7 @@ class TestKonvertSimpleProofs(KPrintTest):
         kore = KoreParser(kore_text).pattern()
 
         # When
-        actual_kore = kast_to_kore(kprint.definition, kompiled_kore, kast, sort=sort)
+        actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
 
         # Then
         assert actual_kore == kore
@@ -348,7 +364,7 @@ class TestKonvertSimpleProofs(KPrintTest):
     )
     def test_kore_to_kast(
         self,
-        kprint: KPrint,
+        definition: KDefinition,
         test_id: str,
         _sort: KSort,
         kore_text: str,
@@ -358,7 +374,27 @@ class TestKonvertSimpleProofs(KPrintTest):
         kore = KoreParser(kore_text).pattern()
 
         # When
-        actual_kast = kprint.kore_to_kast(kore)
+        actual_kast = kore_to_kast(definition, kore)
 
         # Then
         assert actual_kast == kast
+
+    @pytest.mark.parametrize(
+        'rule_id,kore_text',
+        KRULE_TO_KORE_DATA,
+        ids=[rule_id for rule_id, *_ in KRULE_TO_KORE_DATA],
+    )
+    def test_krule_to_kore(
+        self,
+        definition: KDefinition,
+        rule_id: str,
+        kore_text: str,
+    ) -> None:
+        main_module = definition.all_modules_dict[definition.main_module_name]
+        rule = single(r for r in main_module.rules if 'label' in r.att and r.att['label'] == rule_id)
+
+        # When
+        actual_kore_text = krule_to_kore(rule).text
+
+        # Then
+        assert actual_kore_text == kore_text

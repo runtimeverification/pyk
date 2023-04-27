@@ -6,15 +6,15 @@ import pytest
 
 from pyk.kast.outer import read_kast_definition
 from pyk.kcfg import KCFGExplore
-from pyk.ktool.kompile import KompileBackend, kompile
+from pyk.ktool.kompile import Kompile
 from pyk.ktool.kprint import KPrint
 from pyk.ktool.kprove import KProve
 from pyk.ktool.krun import KRun
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Iterator
     from pathlib import Path
-    from typing import ClassVar
+    from typing import Any, ClassVar
 
     from pytest import TempPathFactory
 
@@ -24,36 +24,30 @@ if TYPE_CHECKING:
 
 
 class Kompiler:
-    _tmp_path_factory: TempPathFactory
+    _path: Path
+    _cache: dict[Kompile, Path]
 
     def __init__(self, tmp_path_factory: TempPathFactory):
-        self._tmp_path_factory = tmp_path_factory
+        self._path = tmp_path_factory.mktemp('kompiled')
+        self._cache = {}
 
-    def __call__(
-        self,
-        main_file: str | Path,
-        *,
-        backend: str | KompileBackend | None = None,
-        main_module: str | None = None,
-        syntax_module: str | None = None,
-        include_dirs: Iterable[str | Path] = (),
-    ) -> Path:
-        return kompile(
-            main_file=main_file,
-            output_dir=self._tmp_path_factory.mktemp('kompiled'),
-            backend=backend,
-            main_module=main_module,
-            syntax_module=syntax_module,
-            include_dirs=include_dirs,
-        )
+    def __call__(self, main_file: str | Path, **kwargs: Any) -> Path:
+        kwargs['main_file'] = main_file
+        kompile = Kompile.from_dict(kwargs)
+        if kompile not in self._cache:
+            output_dir = self._path / self._uid(kompile)
+            self._cache[kompile] = kompile(output_dir=output_dir)
+
+        return self._cache[kompile]
+
+    def _uid(self, kompile: Kompile) -> str:
+        return f'{kompile.base_args.main_file.stem}-{kompile.backend.value}-{len(self._cache)}'
 
 
 class KompiledTest:
     KOMPILE_MAIN_FILE: ClassVar[str]
     KOMPILE_BACKEND: ClassVar[str | None] = None
-    KOMPILE_MAIN_MODULE: ClassVar[str | None] = None
-    KOMPILE_SYNTAX_MODULE: ClassVar[str | None] = None
-    KOMPILE_INCLUDE_DIRS: ClassVar[Iterable[str]] = []
+    KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
 
     @pytest.fixture(scope='class')
     def bug_report(self) -> BugReport | None:
@@ -63,13 +57,10 @@ class KompiledTest:
 
     @pytest.fixture(scope='class')
     def definition_dir(self, kompile: Kompiler) -> Path:
-        return kompile(
-            main_file=self.KOMPILE_MAIN_FILE,
-            backend=KompileBackend(self.KOMPILE_BACKEND) if self.KOMPILE_BACKEND else None,
-            main_module=self.KOMPILE_MAIN_MODULE,
-            syntax_module=self.KOMPILE_SYNTAX_MODULE,
-            include_dirs=self.KOMPILE_INCLUDE_DIRS,
-        )
+        kwargs = self.KOMPILE_ARGS
+        kwargs['main_file'] = self.KOMPILE_MAIN_FILE
+        kwargs['backend'] = self.KOMPILE_BACKEND
+        return kompile(**kwargs)
 
     @pytest.fixture(scope='class')
     def definition(self, definition_dir: Path) -> KDefinition:

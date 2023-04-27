@@ -1,2 +1,3 @@
+from .equality import EqualityProof, EqualityProver
 from .proof import ProofStatus
-from .reachability import AGProof, AGProver
+from .reachability import APRBMCProof, APRBMCProver, APRProof, APRProver
