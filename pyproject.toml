@@ -20,6 +20,7 @@ psutil = "^5.9.4"
 pybind11 = "^2.10.3"
 textual = "^0.10.1"
 tomli = "^2.0.1"
+igraph ="^0.10.4"
 
 [tool.poetry.group.dev.dependencies]
 autoflake = "*"
@@ -70,4 +71,8 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "coloredlogs"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "igraph"
 ignore_missing_imports = true
