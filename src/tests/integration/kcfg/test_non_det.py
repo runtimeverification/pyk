@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kcfg import KCFG
-from pyk.proof import AGProof, AGProver
+from pyk.proof import APRProof, APRProver
 
 from ..utils import KCFGExploreTest
 
@@ -48,7 +48,7 @@ class TestImpProof(KCFGExploreTest):
         assert len(claims) == 1
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        prover = AGProver(AGProof(f'{spec_module}.{claim_id}', kcfg))
+        prover = APRProver(APRProof(f'{spec_module}.{claim_id}', kcfg))
         kcfg = prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
