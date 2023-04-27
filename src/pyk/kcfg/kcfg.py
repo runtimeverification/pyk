@@ -29,7 +29,18 @@ if TYPE_CHECKING:
     from ..kast.outer import KClaim, KDefinition
 
 
-class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
+class KCFG(
+    Container[
+        Union[
+            'KCFG.Node',
+            'KCFG.Successor',
+            'KCFG.EdgeLike',
+            'KCFG.Edge',
+            'KCFG.Cover',
+            'KCFG.Split',
+        ]
+    ]
+):
     @dataclass(frozen=True, order=True)
     class Node:
         cterm: CTerm
