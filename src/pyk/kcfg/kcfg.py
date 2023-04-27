@@ -597,11 +597,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             graph.edge(tail_name=edge.source.id, head_name=edge.target.id, label=f'  {label}        ')
 
         for split in self.splits():
-            for split_target, csubst in split.targets:
+            for target_id, csubst in split.splits.items():
                 label = '\n#And'.join(
                     f'{kprint.pretty_print(v)}' for v in split.source.cterm.constraints + csubst.constraints
                 )
-                graph.edge(tail_name=split.source.id, head_name=split_target.id, label=f'  {label}        ')
+                graph.edge(tail_name=split.source.id, head_name=target_id, label=f'  {label}        ')
 
         for cover in self.covers():
             label = ', '.join(f'{k} |-> {kprint.pretty_print(v)}' for k, v in cover.csubst.subst.minimize().items())
@@ -1054,7 +1054,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         for edge in reversed(path):
             if type(edge) is KCFG.Split:
                 assert len(edge.targets) == 1
-                _, csubst = edge.targets[0]
+                csubst = edge.splits[edge.targets[0].id]
                 curr_constraint = mlAnd([csubst.subst.ml_pred, csubst.constraint, curr_constraint])
             if type(edge) is KCFG.Cover:
                 curr_constraint = mlAnd([edge.csubst.constraint, edge.csubst.subst.apply(curr_constraint)])
