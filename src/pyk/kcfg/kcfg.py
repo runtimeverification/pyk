@@ -70,9 +70,18 @@ class KCFG(
         def pretty(self, kprint: KPrint) -> Iterable[str]:
             ...
 
+        @property
+        @abstractmethod
+        def targets(self) -> tuple[KCFG.Node, ...]:
+            ...
+
     class EdgeLike(Successor):
         source: KCFG.Node
         target: KCFG.Node
+
+        @property
+        def targets(self) -> tuple[KCFG.Node]:
+            return (self.target,)
 
     @dataclass(frozen=True)
     class Edge(EdgeLike):
@@ -128,7 +137,11 @@ class KCFG(
     @dataclass(frozen=True)
     class MultiEdge(Successor):
         source: KCFG.Node
-        targets: tuple[KCFG.Node, ...]
+        _targets: tuple[KCFG.Node, ...]
+
+        @property
+        def targets(self) -> tuple[KCFG.Node, ...]:
+            return self._targets
 
         @property
         def target_ids(self) -> list[str]:
@@ -146,7 +159,7 @@ class KCFG(
     @dataclass(frozen=True)
     class Split(MultiEdge):
         source: KCFG.Node
-        targets: tuple[KCFG.Node, ...]
+        _targets: tuple[KCFG.Node, ...]
         splits: dict[str, CSubst]
 
         def to_dict(self) -> dict[str, Any]:
@@ -164,7 +177,7 @@ class KCFG(
     @dataclass(frozen=True)
     class NDBranch(MultiEdge):
         source: KCFG.Node
-        targets: tuple[KCFG.Node, ...]
+        _targets: tuple[KCFG.Node, ...]
 
         def to_dict(self) -> dict[str, Any]:
             return {
