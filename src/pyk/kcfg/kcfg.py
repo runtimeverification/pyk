@@ -628,6 +628,11 @@ class KCFG(
                 )
                 graph.edge(tail_name=split.source.id, head_name=target_id, label=f'  {label}        ')
 
+        for ndbranch in self.ndbranches():
+            for target in ndbranch.target_ids:
+                label = '1 step'
+                graph.edge(tail_name=ndbranch.source.id, head_name=target, label=f'  {label}        ')
+
         for cover in self.covers():
             label = ', '.join(f'{k} |-> {kprint.pretty_print(v)}' for k, v in cover.csubst.subst.minimize().items())
             label = _short_label(label)
