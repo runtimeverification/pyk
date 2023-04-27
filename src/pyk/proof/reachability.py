@@ -4,6 +4,7 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
+from ..kast.inner import var_occurrences
 from ..kcfg import KCFG
 from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
     from typing import Any, Final, TypeVar
 
     from ..cterm import CTerm
-    from ..kast.inner import KInner
+    from ..kast.inner import KInner, KVariable
     from ..kcfg import KCFGExplore
 
     T = TypeVar('T', bound='Proof')
@@ -273,3 +274,23 @@ class APRBMCProver(APRProver):
 
         self.proof.write_proof()
         return self.proof.kcfg
+
+    @staticmethod
+    def is_nd_branch(next_cterms: Iterable[CTerm]) -> bool:
+        def has_unused_questionmark_variables(term: KInner, *, used_variable_names: dict[str, Any]) -> bool:
+            return (
+                len([var for var in var_occurrences(term) if var not in used_variable_names and var.startswith('?')])
+                > 0  #
+            )
+
+        for ct in next_cterms:
+            used_variables: dict[str, list[KVariable]] = var_occurrences(ct.config)
+            has_constraint = False
+            for constraint in ct.constraints:
+                if not constraint in ct.constraints:
+                    if has_unused_questionmark_variables(constraint, used_variable_names=used_variables):
+                        continue
+                    has_constraint = True
+            if not has_constraint:
+                return True
+        return False
