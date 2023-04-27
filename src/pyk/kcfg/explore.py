@@ -316,8 +316,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
                 )
             else:
-                next_ids = [self.proof.kcfg.get_or_create_node(ct).id for ct in next_cterms]
-                self.proof.kcfg.create_ndbranch(node.id, next_ids)
+                next_ids = [kcfg.get_or_create_node(ct).id for ct in next_cterms]
+                kcfg.create_ndbranch(node.id, next_ids)
                 _LOGGER.info(f'Found {len(next_ids)} non-deterministic branches for node {self.id}: {shorten_hashes(node.id)}')
 
         else:
