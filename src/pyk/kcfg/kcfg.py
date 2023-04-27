@@ -79,7 +79,7 @@ class KCFG(
         target: KCFG.Node
 
         @property
-        def targets(self) -> tuple[KCFG.Node]:
+        def targets(self) -> tuple[KCFG.Node, ...]:
             return (self.target,)
 
     @dataclass(frozen=True)
