@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections.abc import Container
 from dataclasses import dataclass
 from itertools import chain
@@ -14,7 +14,6 @@ from ..kast.manip import (
     extract_lhs,
     extract_rhs,
     flatten_label,
-    ml_pred_to_bool,
     remove_source_attributes,
     rename_generated_vars,
 )
@@ -28,7 +27,6 @@ if TYPE_CHECKING:
 
     from ..kast.inner import KInner
     from ..kast.outer import KClaim, KDefinition
-    from ..ktool.kprint import KPrint
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
@@ -51,10 +49,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 return NotImplemented
             return self.source < other.source
 
-        @abstractmethod
-        def pretty(self, kprint: KPrint) -> Iterable[str]:
-            ...
-
     class EdgeLike(Successor):
         source: KCFG.Node
         target: KCFG.Node
@@ -72,12 +66,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 'depth': self.depth,
             }
 
-        def pretty(self, kprint: KPrint) -> Iterable[str]:
-            if self.depth == 1:
-                return ['(' + str(self.depth) + ' step)']
-            else:
-                return ['(' + str(self.depth) + ' steps)']
-
     @dataclass(frozen=True)
     class Cover(EdgeLike):
         source: KCFG.Node
@@ -90,25 +78,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
                 'target': self.target.id,
                 'csubst': self.csubst.to_dict(),
             }
-
-        def pretty(self, kprint: KPrint, minimize: bool = True) -> Iterable[str]:
-            subst_strs = [f'{k} <- {kprint.pretty_print(v)}' for k, v in self.csubst.subst.items()]
-            subst_str = ''
-            if len(subst_strs) == 0:
-                subst_str = '.Subst'
-            if len(subst_strs) == 1:
-                subst_str = subst_strs[0]
-            if len(subst_strs) > 1 and minimize:
-                subst_str = 'OMITTED SUBST'
-            if len(subst_strs) > 1 and not minimize:
-                subst_str = '{\n    ' + '\n    '.join(subst_strs) + '\n}'
-            constraint_str = kprint.pretty_print(ml_pred_to_bool(self.csubst.constraint, unsafe=True))
-            if len(constraint_str) > 78:
-                constraint_str = 'OMITTED CONSTRAINT'
-            return [
-                f'constraint: {constraint_str}',
-                f'subst: {subst_str}',
-            ]
 
     @dataclass(frozen=True)
     class Split(Successor):
@@ -137,9 +106,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         @property
         def target_ids(self) -> list[str]:
             return sorted(t.id for t, _ in self.targets)
-
-        def pretty(self, kprint: KPrint) -> list[str]:
-            return ['Split node: {len(self.targets)}']
 
     _nodes: dict[str, Node]
     _edges: dict[str, dict[str, Edge]]

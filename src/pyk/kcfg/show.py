@@ -8,7 +8,7 @@ from graphviz import Digraph
 from ..cli_utils import ensure_dir_path
 from ..cterm import CTerm, build_claim, build_rule
 from ..kast.inner import KApply, KRewrite, top_down
-from ..kast.manip import flatten_label, minimize_term, push_down_rewrites
+from ..kast.manip import flatten_label, minimize_term, ml_pred_to_bool, push_down_rewrites
 from ..kast.outer import KFlatModule
 from ..prelude.k import DOTS
 from ..prelude.ml import mlAnd
@@ -65,6 +65,31 @@ class KCFGShow:
             if kcfg.is_frontier(node.id):
                 short_info[0] = _bold(short_info[0])
             return short_info
+
+        def _print_edge(edge: KCFG.Edge) -> list[str]:
+            if edge.depth == 1:
+                return ['(' + str(edge.depth) + ' step)']
+            else:
+                return ['(' + str(edge.depth) + ' steps)']
+
+        def _print_cover(cover: KCFG.Cover) -> Iterable[str]:
+            subst_strs = [f'{k} <- {self.kprint.pretty_print(v)}' for k, v in cover.csubst.subst.items()]
+            subst_str = ''
+            if len(subst_strs) == 0:
+                subst_str = '.Subst'
+            if len(subst_strs) == 1:
+                subst_str = subst_strs[0]
+            if len(subst_strs) > 1 and minimize:
+                subst_str = 'OMITTED SUBST'
+            if len(subst_strs) > 1 and not minimize:
+                subst_str = '{\n    ' + '\n    '.join(subst_strs) + '\n}'
+            constraint_str = self.kprint.pretty_print(ml_pred_to_bool(cover.csubst.constraint, unsafe=True))
+            if len(constraint_str) > 78:
+                constraint_str = 'OMITTED CONSTRAINT'
+            return [
+                f'constraint: {constraint_str}',
+                f'subst: {subst_str}',
+            ]
 
         def _print_split_edge(csubst: CSubst) -> list[str]:
             ret_split_lines: list[str] = []
@@ -149,12 +174,12 @@ class KCFGShow:
 
                 if type(successor) is KCFG.Edge:
                     ret_edge_lines = []
-                    ret_edge_lines.extend(add_indent(indent + '│  ', successor.pretty(self.kprint)))
+                    ret_edge_lines.extend(add_indent(indent + '│  ', _print_edge(successor)))
                     ret_lines.append((f'edge_{successor.source.id}_{successor.target.id}', ret_edge_lines))
 
                 elif type(successor) is KCFG.Cover:
                     ret_edge_lines = []
-                    ret_edge_lines.extend(add_indent(indent + '┊  ', successor.pretty(self.kprint, minimize=minimize)))
+                    ret_edge_lines.extend(add_indent(indent + '┊  ', _print_cover(successor)))
                     ret_lines.append((f'cover_{successor.source.id}_{successor.target.id}', ret_edge_lines))
 
                 _print_subgraph(indent, successor.target, prior_on_trace + [curr_node])
