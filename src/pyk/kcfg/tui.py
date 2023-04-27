@@ -201,9 +201,9 @@ class NodeView(Widget):
 
             elif type(self._element) is KCFG.Split:
                 term_strs = [f'split: {shorten_hashes(self._element.source.id)}']
-                for target, csubst in self._element.targets:
+                for target_id, csubst in self._element.splits.items():
                     term_strs.append('')
-                    term_strs.append(f'  - {shorten_hashes(target.id)}')
+                    term_strs.append(f'  - {shorten_hashes(target_id)}')
                     if len(csubst.subst) > 0:
                         subst_equalities = map(_boolify, flatten_label('#And', csubst.subst.ml_pred))
                         term_strs.extend(f'    {self._kprint.pretty_print(cline)}' for cline in subst_equalities)
