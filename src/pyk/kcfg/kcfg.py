@@ -8,8 +8,6 @@ from itertools import chain
 from threading import RLock
 from typing import TYPE_CHECKING, List, Union, cast
 
-from graphviz import Digraph
-
 from ..cterm import CSubst, CTerm
 from ..kast.manip import (
     bool_to_ml_pred,
@@ -527,51 +525,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             )
             for line in seg_lines
         )
-
-    def to_dot(self, kprint: KPrint, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> str:
-        def _short_label(label: str) -> str:
-            return '\n'.join(
-                [
-                    label_line if len(label_line) < 100 else (label_line[0:100] + ' ...')
-                    for label_line in label.split('\n')
-                ]
-            )
-
-        graph = Digraph()
-
-        for node in self.nodes:
-            label = '\n'.join(self.node_short_info(node, node_printer=node_printer))
-            class_attrs = ' '.join(self.node_attrs(node.id))
-            attrs = {'class': class_attrs} if class_attrs else {}
-            graph.node(name=node.id, label=label, **attrs)
-
-        for edge in self.edges():
-            depth = edge.depth
-            label = f'{depth} steps'
-            graph.edge(tail_name=edge.source.id, head_name=edge.target.id, label=f'  {label}        ')
-
-        for split in self.splits():
-            for split_target, csubst in split.targets:
-                label = '\n#And'.join(
-                    f'{kprint.pretty_print(v)}' for v in split.source.cterm.constraints + csubst.constraints
-                )
-                graph.edge(tail_name=split.source.id, head_name=split_target.id, label=f'  {label}        ')
-
-        for cover in self.covers():
-            label = ', '.join(f'{k} |-> {kprint.pretty_print(v)}' for k, v in cover.csubst.subst.minimize().items())
-            label = _short_label(label)
-            attrs = {'class': 'abstraction', 'style': 'dashed'}
-            graph.edge(tail_name=cover.source.id, head_name=cover.target.id, label=f'  {label}        ', **attrs)
-
-        for target in self._target:
-            for node in self.frontier:
-                attrs = {'class': 'target', 'style': 'solid'}
-                graph.edge(tail_name=node.id, head_name=target, label='  ???', **attrs)
-            for node in self.stuck:
-                attrs = {'class': 'target', 'style': 'solid'}
-                graph.edge(tail_name=node.id, head_name=target, label='  false', **attrs)
-
-        return graph.source
 
     def _resolve_hash(self, id_like: str) -> list[str]:
         return [node_id for node_id in self._nodes if compare_short_hashes(id_like, node_id)]

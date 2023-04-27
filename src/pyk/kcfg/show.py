@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from graphviz import Digraph
+
 from ..cli_utils import ensure_dir_path
 from ..cterm import CTerm, build_claim, build_rule
 from ..kast.inner import KApply, KRewrite, top_down
@@ -133,6 +135,53 @@ class KCFGShow:
 
         return res_lines
 
+    def dot(self, kcfg: KCFG, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> str:
+        def _short_label(label: str) -> str:
+            return '\n'.join(
+                [
+                    label_line if len(label_line) < 100 else (label_line[0:100] + ' ...')
+                    for label_line in label.split('\n')
+                ]
+            )
+
+        graph = Digraph()
+
+        for node in kcfg.nodes:
+            label = '\n'.join(kcfg.node_short_info(node, node_printer=node_printer))
+            class_attrs = ' '.join(kcfg.node_attrs(node.id))
+            attrs = {'class': class_attrs} if class_attrs else {}
+            graph.node(name=node.id, label=label, **attrs)
+
+        for edge in kcfg.edges():
+            depth = edge.depth
+            label = f'{depth} steps'
+            graph.edge(tail_name=edge.source.id, head_name=edge.target.id, label=f'  {label}        ')
+
+        for split in kcfg.splits():
+            for target, csubst in split.targets:
+                label = '\n#And'.join(
+                    f'{self.kprint.pretty_print(v)}' for v in split.source.cterm.constraints + csubst.constraints
+                )
+                graph.edge(tail_name=split.source.id, head_name=target.id, label=f'  {label}        ')
+
+        for cover in kcfg.covers():
+            label = ', '.join(
+                f'{k} |-> {self.kprint.pretty_print(v)}' for k, v in cover.csubst.subst.minimize().items()
+            )
+            label = _short_label(label)
+            attrs = {'class': 'abstraction', 'style': 'dashed'}
+            graph.edge(tail_name=cover.source.id, head_name=cover.target.id, label=f'  {label}        ', **attrs)
+
+        for target_id in kcfg._target:
+            for node in kcfg.frontier:
+                attrs = {'class': 'target', 'style': 'solid'}
+                graph.edge(tail_name=node.id, head_name=target_id, label='  ???', **attrs)
+            for node in kcfg.stuck:
+                attrs = {'class': 'target', 'style': 'solid'}
+                graph.edge(tail_name=node.id, head_name=target_id, label='  false', **attrs)
+
+        return graph.source
+
     def dump(
         self,
         cfgid: str,
@@ -148,7 +197,7 @@ class KCFGShow:
         _LOGGER.info(f'Wrote CFG file {cfgid}: {cfg_file}')
 
         if dot:
-            cfg_dot = cfg.to_dot(self.kprint, node_printer=node_printer)
+            cfg_dot = self.dot(cfg, node_printer=node_printer)
             dot_file = dump_dir / f'{cfgid}.dot'
             dot_file.write_text(cfg_dot)
             _LOGGER.info(f'Wrote DOT file {cfgid}: {dot_file}')
