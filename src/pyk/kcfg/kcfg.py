@@ -800,13 +800,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             edges: Iterable[KCFG.EdgeLike]
             if not reverse:
                 edges = chain(self.edges(source_id=node.id), self.covers(source_id=node.id) if traverse_covers else [])
+                splits = self.splits(source_id=node.id)
                 worklist.extend(edge.target for edge in edges)
-                for split in self.splits(source_id=node.id):
-                    worklist.extend(node for node in split.targets)
+                worklist.extend(target for split in splits for target in split.targets)
             else:
                 edges = chain(self.edges(target_id=node.id), self.covers(target_id=node.id) if traverse_covers else [])
+                splits = self.splits(target_id=node.id)
                 worklist.extend(edge.source for edge in edges)
-                for split in self.splits(target_id=node.id):
-                    worklist.append(split.source)
+                worklist.extend(target.source for target in splits)
 
         return visited
