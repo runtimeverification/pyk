@@ -467,11 +467,21 @@ class KCFG(
 
         return new_node.id
 
-    def successors(self, source_id: str) -> list[Successor]:
-        out_edges: Iterable[KCFG.Successor] = self.edges(source_id=source_id)
-        out_covers: Iterable[KCFG.Successor] = self.covers(source_id=source_id)
-        out_splits: Iterable[KCFG.Successor] = self.splits(source_id=source_id)
+    def successors(
+        self, source_id: str, edges: bool = True, covers: bool = True, splits: bool = True
+    ) -> list[Successor]:
+        out_edges: Iterable[KCFG.Successor] = self.edges(source_id=source_id) if edges else []
+        out_covers: Iterable[KCFG.Successor] = self.covers(source_id=source_id) if covers else []
+        out_splits: Iterable[KCFG.Successor] = self.splits(source_id=source_id) if splits else []
         return list(out_edges) + list(out_covers) + list(out_splits)
+
+    def predecessors(
+        self, target_id: str, edges: bool = True, covers: bool = True, splits: bool = True
+    ) -> list[Successor]:
+        in_edges: Iterable[KCFG.Successor] = self.edges(target_id=target_id) if edges else []
+        in_covers: Iterable[KCFG.Successor] = self.covers(target_id=target_id) if covers else []
+        in_splits: Iterable[KCFG.Successor] = self.splits(target_id=target_id) if splits else []
+        return list(in_edges) + list(in_covers) + list(in_splits)
 
     def _check_no_successors(self, source_id: str) -> None:
         if len(list(self.successors(source_id))) > 0:
