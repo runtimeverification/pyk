@@ -28,18 +28,7 @@ if TYPE_CHECKING:
     from ..kast.outer import KClaim, KDefinition
 
 
-class KCFG(
-    Container[
-        Union[
-            'KCFG.Node',
-            'KCFG.Successor',
-            'KCFG.EdgeLike',
-            'KCFG.Edge',
-            'KCFG.Cover',
-            'KCFG.Split',
-        ]
-    ]
-):
+class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @dataclass(frozen=True, order=True)
     class Node:
         cterm: CTerm
@@ -157,6 +146,8 @@ class KCFG(
             return self.contains_edge(item)
         if type(item) is KCFG.Cover:
             return self.contains_cover(item)
+        if type(item) is KCFG.Split:
+            return self.contains_split(item)
         return False
 
     def __enter__(self) -> KCFG:
@@ -610,6 +601,9 @@ class KCFG(
             for s in self._splits.values()
             if (source_id is None or source_id == s.source.id) and (target_id is None or target_id in s.target_ids)
         ]
+
+    def contains_split(self, split: Split) -> bool:
+        return split in self._splits
 
     def create_split(self, source_id: str, splits: Iterable[tuple[str, CSubst]]) -> None:
         self._check_no_successors(source_id)
