@@ -189,6 +189,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return self.contains_cover(item)
         if type(item) is KCFG.Split:
             return self.contains_split(item)
+        if type(item) is KCFG.NDBranch:
+            return self.contains_ndbranch(item)
         return False
 
     def __enter__(self) -> KCFG:
@@ -674,6 +676,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             for b in self._ndbranches.values()
             if (source_id is None or source_id == b.source.id) and (target_id is None or target_id in b.target_ids)
         ]
+
+    def contains_ndbranch(self, ndbranch: NDBranch) -> bool:
+        return ndbranch in self._ndbranches
 
     def create_ndbranch(self, source_id: str, ndbranches: Iterable[str]) -> None:
         self._check_no_successors(source_id)
