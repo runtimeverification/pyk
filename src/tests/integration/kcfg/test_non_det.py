@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kcfg import KCFG
-from pyk.proof import APRProof, APRProver
+from pyk.proof import APRProof, APRProver, ProofStatus
 
 from ..utils import KCFGExploreTest
 
@@ -48,7 +48,8 @@ class TestImpProof(KCFGExploreTest):
         assert len(claims) == 1
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        prover = APRProver(APRProof(f'{spec_module}.{claim_id}', kcfg))
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        prover = APRProver(proof)
         kcfg = prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
@@ -92,5 +93,4 @@ class TestImpProof(KCFGExploreTest):
         assert_edge(id1b1)
         assert_edge(id1b2)
 
-        failed_nodes = len(kcfg.frontier) + len(kcfg.stuck)
-        assert failed_nodes == 0
+        assert proof.status == ProofStatus.PASSED
