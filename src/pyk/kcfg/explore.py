@@ -10,7 +10,7 @@ from ..kore.rpc import KoreClient, KoreServer, StopReason
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import notBool
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlTop
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
 
@@ -308,18 +308,17 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         elif len(next_cterms) > 1:
             branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
             branch_and = mlAnd(branches)
-            branch_pattern_1 = mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsTrue(notBool(KVariable('B')))])
-            branch_pattern_2 = mlAnd([mlEqualsTrue(notBool(KVariable('B'))), mlEqualsTrue(KVariable('B'))])
-            branch_pattern_3 = mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsFalse(KVariable('B'))])
-            branch_pattern_4 = mlAnd([mlEqualsFalse(KVariable('B')), mlEqualsTrue(KVariable('B'))])
+            branch_patterns = [
+                mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsTrue(notBool(KVariable('B')))]),
+                mlAnd([mlEqualsTrue(notBool(KVariable('B'))), mlEqualsTrue(KVariable('B'))]),
+                mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsFalse(KVariable('B'))]),
+                mlAnd([mlEqualsFalse(KVariable('B')), mlEqualsTrue(KVariable('B'))]),
+                mlAnd([mlNot(KVariable('B')), KVariable('B')]),
+                mlAnd([KVariable('B'), mlNot(KVariable('B'))]),
+            ]
 
             # Split on branch patterns
-            if (
-                branch_pattern_1.match(branch_and)
-                or branch_pattern_2.match(branch_and)
-                or branch_pattern_3.match(branch_and)
-                or branch_pattern_4.match(branch_and)
-            ):
+            if any(branch_pattern.match(branch_and) for branch_pattern in branch_patterns):
                 kcfg.split_on_constraints(node.id, branches)
                 _LOGGER.info(
                     f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
