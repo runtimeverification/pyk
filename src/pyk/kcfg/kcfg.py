@@ -805,9 +805,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             attrs.append('split')
         return attrs
 
-    def prune(self, node_id: str) -> list[str]:
+    def prune(self, node_id: str, keep_init: bool = True, keep_target: bool = True) -> list[str]:
         nodes = self.reachable_nodes(node_id, traverse_covers=True)
         for node in nodes:
+            if self.is_init(node.id) and keep_init:
+                continue
+            if self.is_target(node.id) and keep_target:
+                continue
             self.remove_node(node.id)
         return [node.id for node in nodes]
 
