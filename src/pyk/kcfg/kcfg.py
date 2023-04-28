@@ -64,6 +64,10 @@ class KCFG(
         def targets(self) -> tuple[KCFG.Node, ...]:
             ...
 
+        @property
+        def target_ids(self) -> list[str]:
+            return sorted([target.id for target in self.targets])
+
     class EdgeLike(Successor):
         source: KCFG.Node
         target: KCFG.Node
@@ -107,10 +111,6 @@ class KCFG(
         @property
         def targets(self) -> tuple[KCFG.Node, ...]:
             return self._targets
-
-        @property
-        def target_ids(self) -> list[str]:
-            return sorted([t.id for t in self.targets])
 
         @property
         def splits(self) -> dict[str, CSubst]:
