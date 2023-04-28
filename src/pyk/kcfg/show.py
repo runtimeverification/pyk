@@ -349,10 +349,15 @@ class KCFGShow:
                     rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=35)
                 return rule
 
-            rules = [to_rule(e) for e in cfg.edges() if e.depth > 0]
+            rules = [to_rule(e) for e in cfg.edges()]
+            nd_steps = [
+                to_rule(KCFG.Edge(ndbranch.source, target, 1))
+                for ndbranch in cfg.ndbranches()
+                for target in ndbranch.targets
+            ]
             claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), -1), claim=True) for nd in cfg.frontier]
             cfg_module_name = cfgid.upper().replace('.', '-').replace('_', '-')
-            new_module = KFlatModule(f'SUMMARY-{cfg_module_name}', rules + claims)
+            new_module = KFlatModule(f'SUMMARY-{cfg_module_name}', rules + nd_steps + claims)
             res_lines.append(self.kprint.pretty_print(new_module))
             res_lines.append('')
 
