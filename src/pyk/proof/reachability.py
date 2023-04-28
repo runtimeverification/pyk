@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from ..kcfg import KCFG
 from ..utils import hash_str, shorten_hashes
-from .equality import EqualityProof
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -34,8 +33,8 @@ class APRProof(Proof):
 
     kcfg: KCFG
 
-    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None, subproofs: list[Proof] | None = None):
-        super().__init__(id, proof_dir=proof_dir, subproofs=subproofs)
+    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None, subproof_ids: list[str] | None = None):
+        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
 
     @staticmethod
@@ -49,8 +48,8 @@ class APRProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
-        any_subproof_failed = any([p.status == ProofStatus.FAILED for p in self.subproofs])
-        any_subproof_pending = any([p.status == ProofStatus.PENDING for p in self.subproofs])
+        any_subproof_failed = any([p.status == ProofStatus.FAILED for p in self.read_subproofs()])
+        any_subproof_pending = any([p.status == ProofStatus.PENDING for p in self.read_subproofs()])
         if len(self.kcfg.stuck) > 0 or any_subproof_failed:
             return ProofStatus.FAILED
         elif len(self.kcfg.frontier) > 0 or any_subproof_pending:
@@ -62,35 +61,29 @@ class APRProof(Proof):
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
-        subproof_dicts = dct['subproofs'] if 'subproofs' in dct else []
-        subproofs: list[Proof] = []
-        for subproof_dict in subproof_dicts:
-            match subproof_dict['type']:
-                case 'APRProof':
-                    subproofs.append(APRProof.from_dict(subproof_dict))
-                case 'APRBMCProof':
-                    subproofs.append(APRBMCProof.from_dict(subproof_dict))
-                case 'EqualityProof':
-                    subproofs.append(EqualityProof.from_dict(subproof_dict))
-        return APRProof(id, cfg, proof_dir=proof_dir, subproofs=subproofs)
+        subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
+        return APRProof(id, cfg, proof_dir=proof_dir, subproof_ids=subproof_ids)
 
     @property
     def dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {'type': 'APRProof', 'id': self.id, 'cfg': self.kcfg.to_dict()}
-        if len(self.subproofs):
-            result['subproofs'] = [subproof.dict for subproof in self.subproofs]
+        result: dict[str, Any] = {
+            'type': 'APRProof',
+            'id': self.id,
+            'cfg': self.kcfg.to_dict(),
+            'subproof_ids': self.subproof_ids,
+        }
         return result
 
     @property
     def summary(self) -> Iterable[str]:
-        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
+        subproofs_summaries = chain(subproof.summary for subproof in self.read_subproofs())
         yield from [
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
-            'Subproofs' if len(self.subproofs) else '',
+            'Subproofs' if len(self.subproof_ids) else '',
         ]
         for summary in subproofs_summaries:
             yield from summary
@@ -109,9 +102,9 @@ class APRBMCProof(APRProof):
         bmc_depth: int,
         bounded_states: Iterable[str] | None = None,
         proof_dir: Path | None = None,
-        subproofs: list[Proof] | None = None,
+        subproof_ids: list[str] | None = None,
     ):
-        super().__init__(id, kcfg, proof_dir=proof_dir, subproofs=subproofs)
+        super().__init__(id, kcfg, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.bmc_depth = bmc_depth
         self._bounded_states = list(bounded_states) if bounded_states is not None else []
 
@@ -126,8 +119,8 @@ class APRBMCProof(APRProof):
 
     @property
     def status(self) -> ProofStatus:
-        any_subproof_failed = any([p.status == ProofStatus.FAILED for p in self.subproofs])
-        any_subproof_pending = any([p.status == ProofStatus.PENDING for p in self.subproofs])
+        any_subproof_failed = any([p.status == ProofStatus.FAILED for p in self.read_subproofs()])
+        any_subproof_pending = any([p.status == ProofStatus.PENDING for p in self.read_subproofs()])
         if any(nd.id not in self._bounded_states for nd in self.kcfg.stuck) or any_subproof_failed:
             return ProofStatus.FAILED
         elif len(self.kcfg.frontier) > 0 or any_subproof_pending:
@@ -141,17 +134,10 @@ class APRBMCProof(APRProof):
         id = dct['id']
         bounded_states = dct['bounded_states']
         bmc_depth = dct['bmc_depth']
-        subproof_dicts = dct['subproofs'] if 'subproofs' in dct else []
-        subproofs: list[Proof] = []
-        for subproof_dict in subproof_dicts:
-            match subproof_dict['type']:
-                case 'APRProof':
-                    subproofs.append(APRProof.from_dict(subproof_dict))
-                case 'APRBMCProof':
-                    subproofs.append(APRBMCProof.from_dict(subproof_dict))
-                case 'EqualityProof':
-                    subproofs.append(EqualityProof.from_dict(subproof_dict))
-        return APRBMCProof(id, cfg, bmc_depth, bounded_states=bounded_states, proof_dir=proof_dir, subproofs=subproofs)
+        subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
+        return APRBMCProof(
+            id, cfg, bmc_depth, bounded_states=bounded_states, proof_dir=proof_dir, subproof_ids=subproof_ids
+        )
 
     @property
     def dict(self) -> dict[str, Any]:
@@ -161,9 +147,8 @@ class APRBMCProof(APRProof):
             'cfg': self.kcfg.to_dict(),
             'bmc_depth': self.bmc_depth,
             'bounded_states': self._bounded_states,
+            'subproof_ids': self.subproof_ids,
         }
-        if len(self.subproofs):
-            result['subproofs'] = [subproof.dict for subproof in self.subproofs]
         return result
 
     def bound_state(self, nid: str) -> None:
@@ -171,7 +156,7 @@ class APRBMCProof(APRProof):
 
     @property
     def summary(self) -> Iterable[str]:
-        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
+        subproofs_summaries = chain(subproof.summary for subproof in self.read_subproofs())
         yield from [
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
@@ -179,7 +164,7 @@ class APRBMCProof(APRProof):
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_states])}',
             f'    bmc-depth-bounded: {len(self._bounded_states)}',
-            'Subproofs' if len(self.subproofs) else '',
+            'Subproofs' if len(self.subproof_ids) else '',
         ]
         for summary in subproofs_summaries:
             yield from summary
