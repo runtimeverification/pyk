@@ -152,7 +152,8 @@ class KCFGShow:
             if type(successor) is KCFG.Split:
                 ret_lines.append(('unknown', [f'{indent}┃']))
 
-                for target, csubst in successor.targets[:-1]:
+                for target in successor.targets[:-1]:
+                    csubst = successor.splits[target.id]
                     ret_edge_lines = _print_split_edge(csubst)
                     ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
                         indent + '┃  ┃ ', ret_edge_lines[1:]
@@ -160,7 +161,8 @@ class KCFGShow:
                     ret_edge_lines.append(indent + '┃  │')
                     ret_lines.append((f'split_{curr_node.id}_{target.id}', ret_edge_lines))
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
-                target, csubst = successor.targets[-1]
+                target = successor.targets[-1]
+                csubst = successor.splits[target.id]
                 ret_edge_lines = _print_split_edge(csubst)
                 ret_edge_lines = [indent + '┗━━┓ ' + ret_edge_lines[0]] + add_indent(
                     indent + '   ┃ ', ret_edge_lines[1:]
@@ -368,7 +370,8 @@ class KCFGShow:
             graph.edge(tail_name=edge.source.id, head_name=edge.target.id, label=f'  {label}        ')
 
         for split in kcfg.splits():
-            for target, csubst in split.targets:
+            for target in split.targets:
+                csubst = split.splits[target.id]
                 label = '\n#And'.join(
                     f'{self.kprint.pretty_print(v)}' for v in split.source.cterm.constraints + csubst.constraints
                 )
