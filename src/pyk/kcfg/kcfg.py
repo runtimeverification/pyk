@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
 from threading import RLock
-from typing import TYPE_CHECKING, List, Union, cast
+from typing import TYPE_CHECKING, List, Union, cast, final
 
 from ..cterm import CSubst, CTerm
 from ..kast.manip import (
@@ -28,20 +28,8 @@ if TYPE_CHECKING:
     from ..kast.outer import KClaim, KDefinition
 
 
-class KCFG(
-    Container[
-        Union[
-            'KCFG.Node',
-            'KCFG.Successor',
-            'KCFG.EdgeLike',
-            'KCFG.MultiEdge',
-            'KCFG.Edge',
-            'KCFG.Cover',
-            'KCFG.Split',
-            'KCFG.NDBranch',
-        ]
-    ]
-):
+class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
+    @final
     @dataclass(frozen=True, order=True)
     class Node:
         cterm: CTerm
@@ -66,6 +54,10 @@ class KCFG(
         def targets(self) -> tuple[KCFG.Node, ...]:
             ...
 
+        @property
+        def target_ids(self) -> list[str]:
+            return sorted([target.id for target in self.targets])
+
     class EdgeLike(Successor):
         source: KCFG.Node
         target: KCFG.Node
@@ -74,6 +66,7 @@ class KCFG(
         def targets(self) -> tuple[KCFG.Node, ...]:
             return (self.target,)
 
+    @final
     @dataclass(frozen=True)
     class Edge(EdgeLike):
         source: KCFG.Node
@@ -87,6 +80,7 @@ class KCFG(
                 'depth': self.depth,
             }
 
+    @final
     @dataclass(frozen=True)
     class Cover(EdgeLike):
         source: KCFG.Node
@@ -103,15 +97,6 @@ class KCFG(
     @dataclass(frozen=True)
     class MultiEdge(Successor):
         source: KCFG.Node
-        _targets: tuple[KCFG.Node, ...]
-
-        @property
-        def targets(self) -> tuple[KCFG.Node, ...]:
-            return self._targets
-
-        @property
-        def target_ids(self) -> list[str]:
-            return sorted([t.id for t in self.targets])
 
         def __lt__(self, other: Any) -> bool:
             if not type(other) is type(self):
@@ -122,11 +107,15 @@ class KCFG(
         def with_single_target(self, target: KCFG.Node) -> KCFG.MultiEdge:
             ...
 
+    @final
     @dataclass(frozen=True)
     class Split(MultiEdge):
         source: KCFG.Node
-        _targets: tuple[KCFG.Node, ...]
-        splits: dict[str, CSubst]
+        _targets: tuple[tuple[KCFG.Node, CSubst], ...]
+
+        def __init__(self, source: KCFG.Node, _targets: Iterable[tuple[KCFG.Node, CSubst]]) -> None:
+            object.__setattr__(self, 'source', source)
+            object.__setattr__(self, '_targets', tuple(_targets))
 
         def to_dict(self) -> dict[str, Any]:
             return {
@@ -134,13 +123,30 @@ class KCFG(
                 'targets': {target.id: self.splits[target.id].to_dict() for target in self.targets},
             }
 
-        def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
-            return KCFG.Split(self.source, (target,), {target.id: self.splits[target.id]})
+        @property
+        def targets(self) -> tuple[KCFG.Node, ...]:
+            return tuple(target for target, _ in self._targets)
 
+        @property
+        def splits(self) -> dict[str, CSubst]:
+            return {target.id: csubst for target, csubst in self._targets}
+
+        def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
+            return KCFG.Split(self.source, ((target, self.splits[target.id]),))
+
+    @final
     @dataclass(frozen=True)
     class NDBranch(MultiEdge):
         source: KCFG.Node
         _targets: tuple[KCFG.Node, ...]
+
+        def __init__(self, source: KCFG.Node, _targets: Iterable[KCFG.Node]) -> None:
+            object.__setattr__(self, 'source', source)
+            object.__setattr__(self, '_targets', tuple(_targets))
+
+        @property
+        def targets(self) -> tuple[KCFG.Node, ...]:
+            return self._targets
 
         def to_dict(self) -> dict[str, Any]:
             return {
@@ -181,6 +187,8 @@ class KCFG(
             return self.contains_edge(item)
         if type(item) is KCFG.Cover:
             return self.contains_cover(item)
+        if type(item) is KCFG.Split:
+            return self.contains_split(item)
         return False
 
     def __enter__(self) -> KCFG:
@@ -645,12 +653,8 @@ class KCFG(
             if (source_id is None or source_id == s.source.id) and (target_id is None or target_id in s.target_ids)
         ]
 
-    def ndbranches(self, *, source_id: str | None = None, target_id: str | None = None) -> list[NDBranch]:
-        return [
-            b
-            for b in self._ndbranches.values()
-            if (source_id is None or source_id == b.source.id) and (target_id is None or target_id in b.target_ids)
-        ]
+    def contains_split(self, split: Split) -> bool:
+        return split in self._splits
 
     def create_split(self, source_id: str, splits: Iterable[tuple[str, CSubst]]) -> None:
         self._check_no_successors(source_id)
@@ -661,8 +665,15 @@ class KCFG(
             raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
 
         source_id = self._resolve(source_id)
-        split = KCFG.Split(self.node(source_id), tuple(self.node(nid) for nid, _ in splits), dict(splits))
+        split = KCFG.Split(self.node(source_id), tuple((self.node(nid), csubst) for nid, csubst in splits))
         self._splits[source_id] = split
+
+    def ndbranches(self, *, source_id: str | None = None, target_id: str | None = None) -> list[NDBranch]:
+        return [
+            b
+            for b in self._ndbranches.values()
+            if (source_id is None or source_id == b.source.id) and (target_id is None or target_id in b.target_ids)
+        ]
 
     def create_ndbranch(self, source_id: str, ndbranches: Iterable[str]) -> None:
         self._check_no_successors(source_id)
@@ -789,10 +800,11 @@ class KCFG(
             attrs.append('split')
         return attrs
 
-    def prune(self, node_id: str) -> None:
-        nodes = self.reachable_nodes(node_id)
+    def prune(self, node_id: str) -> list[str]:
+        nodes = self.reachable_nodes(node_id, traverse_covers=True)
         for node in nodes:
             self.remove_node(node.id)
+        return [node.id for node in nodes]
 
     def shortest_path_between(self, source_node_id: str, target_node_id: str) -> tuple[Successor, ...] | None:
         paths = self.paths_between(source_node_id, target_node_id)
@@ -888,7 +900,9 @@ class KCFG(
 
             if not reverse:
                 worklist.extend(
-                    tg for succ in self.successors(source_id=node.id, covers=traverse_covers) for tg in succ.targets
+                    target
+                    for succ in self.successors(source_id=node.id, covers=traverse_covers)
+                    for target in succ.targets
                 )
             else:
                 worklist.extend(succ.source for succ in self.predecessors(target_id=node.id, covers=traverse_covers))

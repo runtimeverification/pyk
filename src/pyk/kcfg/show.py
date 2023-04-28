@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Final
 
-    from ..cterm import CSubst
     from ..kast import KInner
     from ..kast.outer import KRuleLike
     from ..ktool.kprint import KPrint
@@ -91,7 +90,8 @@ class KCFGShow:
                 f'subst: {subst_str}',
             ]
 
-        def _print_split_edge(csubst: CSubst) -> list[str]:
+        def _print_split_edge(split: KCFG.Split, target_id: str) -> list[str]:
+            csubst = split.splits[target_id]
             ret_split_lines: list[str] = []
             substs = csubst.subst.items()
             constraints = csubst.constraints
@@ -156,8 +156,7 @@ class KCFGShow:
 
                 for target in successor.targets[:-1]:
                     if type(successor) is KCFG.Split:
-                        csubst = successor.splits[target.id]
-                        ret_edge_lines = _print_split_edge(csubst)
+                        ret_edge_lines = _print_split_edge(successor, target.id)
                         ret_edge_lines = [indent + '┣━━┓ ' + ret_edge_lines[0]] + add_indent(
                             indent + '┃  ┃ ', ret_edge_lines[1:]
                         )
@@ -170,8 +169,7 @@ class KCFGShow:
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
                 target = successor.targets[-1]
                 if type(successor) is KCFG.Split:
-                    csubst = successor.splits[target.id]
-                    ret_edge_lines = _print_split_edge(csubst)
+                    ret_edge_lines = _print_split_edge(successor, target.id)
                     ret_edge_lines = [indent + '┗━━┓ ' + ret_edge_lines[0]] + add_indent(
                         indent + '   ┃ ', ret_edge_lines[1:]
                     )

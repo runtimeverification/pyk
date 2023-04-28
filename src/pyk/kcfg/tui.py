@@ -213,7 +213,11 @@ class NodeView(Widget):
                 term_str = '\n'.join(term_strs)
 
             if self._custom_view is not None:
-                custom_str = '\n'.join(self._custom_view(self._element))
+                # To appease the type-checker
+                if type(self._element) is KCFG.Node:
+                    custom_str = '\n'.join(self._custom_view(self._element))
+                elif type(self._element) is KCFG.Successor:
+                    custom_str = '\n'.join(self._custom_view(self._element))
 
         self.query_one('#info', Static).update(self._info_text())
         self.query_one('#term', Static).update(term_str)
