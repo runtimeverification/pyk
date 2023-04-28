@@ -380,8 +380,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
             substs = csubst.subst.items()
             constraints = csubst.constraints
             _LOGGER.warning('in _print_split_edge()')
-            if len(constraints) == 0:
-                ret_split_lines.append('[None]')
             if len(constraints) == 1:
                 _LOGGER.warning('in _print_split_edge() 1')
                 first_line, *rest_lines = kprint.pretty_print(constraints[0]).split('\n')
@@ -869,8 +867,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Edge', 'KCFG.Cover']]):
         splits = list(splits)
 #          _LOGGER.info(f'splits: {splits}')
 
-#          if len(splits) <= 1:
-#              raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
+        if len(splits) <= 1:
+            raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
 
         source_id = self._resolve(source_id)
         split = KCFG.Split(self.node(source_id), ((self.node(nid), csubst) for nid, csubst in splits))

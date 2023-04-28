@@ -9,6 +9,7 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kcfg import KCFG
+from pyk.kcfg.show import KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsTrue
@@ -194,5 +195,9 @@ class TestImpProof(KCFGExploreTest):
 #              terminal_rules=terminal_rules,
         )
 
+        kcfg_show = KCFGShow(kprove)
+        for line in kcfg_show.show(test_id, kcfg):
+            print(line)
+
         assert proof.status == proof_status
-        assert leaf_number(kcfg) == expected_leaf_number
+        assert(1 == 2)

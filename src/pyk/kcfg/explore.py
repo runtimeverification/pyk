@@ -311,10 +311,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             for cterm in next_cterms:
                 _LOGGER.info(f'cterm:{cterm}')
                 _LOGGER.info(f'hash:{cterm.hash}')
-#              if len(branches) < 2:
-#                  raise ValueError(
-#                      f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
-#                  )
+            if len(branches) < 2:
+                raise ValueError(
+                    f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+                )
             kcfg.split_on_constraints(node.id, branches)
             _LOGGER.info(
                 f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
