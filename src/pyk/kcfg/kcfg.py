@@ -96,6 +96,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         source: KCFG.Node
         _targets: tuple[tuple[KCFG.Node, CSubst], ...]
 
+        def __init__(self, source: KCFG.Node, _targets: Iterable[tuple[KCFG.Node, CSubst]]) -> None:
+            object.__setattr__(self, 'source', source)
+            object.__setattr__(self, '_targets', tuple(_targets))
+
         @property
         def targets(self) -> tuple[KCFG.Node, ...]:
             return tuple(target for target, _ in self._targets)
