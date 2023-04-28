@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import socket
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -25,9 +25,12 @@ if TYPE_CHECKING:
     from typing import Any, ClassVar, Final, TextIO, TypeVar
 
     from ..cli_utils import BugReport
+    from ..kast.inner import KInner
     from .syntax import Module
 
     ER = TypeVar('ER', bound='ExecuteResult')
+    RR = TypeVar('RR', bound='RewriteResult')
+    LE = TypeVar('LE', bound='LogEntry')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -210,6 +213,119 @@ class State:
         return _kore
 
 
+class RewriteResult(ABC):
+    rule_id: str
+
+    @classmethod
+    def from_dict(cls: type[RR], dct: Mapping[str, Any]) -> RR:
+        if dct['tag'] == 'success':
+            return globals()['RewriteSuccess'].from_dict(dct)
+        elif dct['tag'] == 'failure':
+            return globals()['RewriteFailure'].from_dict(dct)
+        else:
+            raise ValueError(f"Expected {dct['tag']} as 'success'/'failure'")
+
+    @abstractmethod
+    def to_dict(self) -> dict[str, Any]:
+        ...
+
+
+@final
+@dataclass(frozen=True)
+class RewriteSuccess(RewriteResult):
+    rule_id: str
+    rewritten_term: KInner | None
+
+    @classmethod
+    def from_dict(cls: type[RewriteSuccess], dct: Mapping[str, Any]) -> RewriteSuccess:
+        return RewriteSuccess(
+            rule_id=dct['rule-id'],
+            rewritten_term=None,  # TODO fixme
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {'rule-id': self.rule_id}  # TODO fixme
+
+
+@final
+@dataclass(frozen=True)
+class RewriteFailure(RewriteResult):
+    rule_id: str
+    reason: str
+
+    @classmethod
+    def from_dict(cls: type[RewriteFailure], dct: Mapping[str, Any]) -> RewriteFailure:
+        return RewriteFailure(
+            rule_id=dct['rule-id'],
+            reason=dct['reason'],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {'rule-id': self.rule_id, 'reason': self.reason}
+
+
+class LogOrigin(str, Enum):
+    KORE_RPC = 'kore-rpc'
+    BOOSTER = 'booster'
+    LLVM = 'llvm'
+
+
+class LogEntry(ABC):  # noqa: B024
+    origin: LogOrigin
+    result: RewriteResult
+
+    @classmethod
+    def from_dict(cls: type[LE], dct: Mapping[str, Any]) -> LE:
+        if dct['tag'] == 'rewrite':
+            return globals()['LogRewrite'].from_dict(dct)
+        elif dct['tag'] == 'simplification':
+            return globals()['LogSimplification'].from_dict(dct)
+        else:
+            raise ValueError(f"Expected {dct['tag']} as 'rewrite'/'simplification'")
+
+    @abstractmethod
+    def to_dict(self) -> dict[str, Any]:
+        ...
+
+
+@final
+@dataclass(frozen=True)
+class LogRewrite(LogEntry):
+    origin: LogOrigin
+    result: RewriteResult
+
+    @classmethod
+    def from_dict(cls: type[LogRewrite], dct: Mapping[str, Any]) -> LogRewrite:
+        return LogRewrite(
+            origin=LogOrigin(dct['origin']),
+            result=RewriteResult.from_dict(dct['result']),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {'tag': 'rewrite', 'origin': self.origin.encode(), 'result': self.result.to_dict()}
+
+
+@final
+@dataclass(frozen=True)
+class LogSimplification(LogEntry):
+    origin: LogOrigin
+    result: RewriteResult
+    original_term: KInner | None
+    original_term_index: tuple[int, ...] | None
+
+    @classmethod
+    def from_dict(cls: type[LogSimplification], dct: Mapping[str, Any]) -> LogSimplification:
+        return LogSimplification(
+            origin=LogOrigin(dct['origin']),
+            result=RewriteResult.from_dict(dct['result']),
+            original_term=None,  # TODO fixme
+            original_term_index=None,  # TODO fixme
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {'tag': 'simplification', 'origin': self.origin.encode(), 'result': self.result.to_dict()}  # TODO fixme
+
+
 class ExecuteResult(ABC):  # noqa: B024
     _TYPES: Mapping[StopReason, str] = {
         StopReason.STUCK: 'StuckResult',
@@ -225,6 +341,7 @@ class ExecuteResult(ABC):  # noqa: B024
     depth: int
     next_states: tuple[State, ...] | None
     rule: str | None
+    logs: tuple[LogEntry, ...]
 
     @classmethod
     def from_dict(cls: type[ER], dct: Mapping[str, Any]) -> ER:
@@ -248,13 +365,16 @@ class StuckResult(ExecuteResult):
 
     state: State
     depth: int
+    logs: tuple[LogEntry, ...]
 
     @classmethod
     def from_dict(cls: type[StuckResult], dct: Mapping[str, Any]) -> StuckResult:
         cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
         return StuckResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
+            logs=logs,
         )
 
 
@@ -267,13 +387,16 @@ class DepthBoundResult(ExecuteResult):
 
     state: State
     depth: int
+    logs: tuple[LogEntry, ...]
 
     @classmethod
     def from_dict(cls: type[DepthBoundResult], dct: Mapping[str, Any]) -> DepthBoundResult:
         cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
         return DepthBoundResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
+            logs=logs,
         )
 
 
@@ -286,14 +409,17 @@ class BranchingResult(ExecuteResult):
     state: State
     depth: int
     next_states: tuple[State, ...]
+    logs: tuple[LogEntry, ...]
 
     @classmethod
     def from_dict(cls: type[BranchingResult], dct: Mapping[str, Any]) -> BranchingResult:
         cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
         return BranchingResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
             next_states=tuple(State.from_dict(next_state) for next_state in dct['next-states']),
+            logs=logs,
         )
 
 
@@ -306,15 +432,18 @@ class CutPointResult(ExecuteResult):
     depth: int
     next_states: tuple[State, ...]
     rule: str
+    logs: tuple[LogEntry, ...]
 
     @classmethod
     def from_dict(cls: type[CutPointResult], dct: Mapping[str, Any]) -> CutPointResult:
         cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
         return CutPointResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
             next_states=tuple(State.from_dict(next_state) for next_state in dct['next-states']),
             rule=dct['rule'],
+            logs=logs,
         )
 
 
@@ -327,15 +456,13 @@ class TerminalResult(ExecuteResult):
     state: State
     depth: int
     rule: str
+    logs: tuple[LogEntry, ...]
 
     @classmethod
     def from_dict(cls: type[TerminalResult], dct: Mapping[str, Any]) -> TerminalResult:
         cls._check_reason(dct)
-        return TerminalResult(
-            state=State.from_dict(dct['state']),
-            depth=dct['depth'],
-            rule=dct['rule'],
-        )
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
+        return TerminalResult(state=State.from_dict(dct['state']), depth=dct['depth'], rule=dct['rule'], logs=logs)
 
 
 @final
@@ -398,6 +525,10 @@ class KoreClient(ContextManager['KoreClient']):
         max_depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
+        log_successful_rewrites: bool | None = None,
+        log_failed_rewrites: bool | None = None,
+        log_successful_simplifications: bool | None = None,
+        log_failed_simplifications: bool | None = None,
     ) -> ExecuteResult:
         params = filter_none(
             {
@@ -405,6 +536,10 @@ class KoreClient(ContextManager['KoreClient']):
                 'cut-point-rules': list(cut_point_rules) if cut_point_rules is not None else None,
                 'terminal-rules': list(terminal_rules) if terminal_rules is not None else None,
                 'state': self._state(pattern),
+                'log-successful-rewrites': log_successful_rewrites,
+                'log-failed-rewrites': log_failed_rewrites,
+                'log-successful-simplifications': log_successful_simplifications,
+                'log-failed-simplifications': log_failed_simplifications,
             }
         )
 

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
     from ..cli_utils import BugReport
     from ..kast import KInner
+    from ..kore.rpc import LogEntry
     from ..ktool.kprint import KPrint
 
 
@@ -109,7 +110,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
-    ) -> tuple[int, CTerm, list[CTerm]]:
+    ) -> tuple[int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
@@ -119,13 +120,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _next_states = er.next_states if er.next_states is not None else []
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
         if len(next_states) == 1 and len(next_states) < len(_next_states):
-            return depth + 1, next_states[0], []
+            return depth + 1, next_states[0], [], er.logs
         elif len(next_states) == 1:
             if er.reason == StopReason.CUT_POINT_RULE:
-                return depth, next_state, next_states
+                return depth, next_state, next_states, er.logs
             else:
                 next_states = []
-        return depth, next_state, next_states
+        return depth, next_state, next_states, er.logs
 
     def cterm_simplify(self, cterm: CTerm) -> KInner:
         _LOGGER.debug(f'Simplifying: {cterm}')
@@ -212,12 +213,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth)
+        actual_depth, cterm, next_cterms, logs = self.cterm_execute(node.cterm, depth=depth)
         if actual_depth != depth:
             raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
         if len(next_cterms) > 0:
             raise ValueError(f'Found branch within {depth} steps {self.id}: {node.id}')
-        new_node = cfg.get_or_create_node(cterm)
+        new_node = cfg.get_or_create_node(cterm, logs)
         _LOGGER.info(f'Found new node at depth {depth} {self.id}: {shorten_hashes((node.id, new_node.id))}')
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) == 0:
@@ -279,13 +280,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         kcfg.add_expanded(node.id)
 
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
-        depth, cterm, next_cterms = self.cterm_execute(
+        depth, cterm, next_cterms, logs = self.cterm_execute(
             node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
         )
 
         # Basic block
         if depth > 0:
-            next_node = kcfg.get_or_create_node(cterm)
+            next_node = kcfg.get_or_create_node(cterm, logs)
             kcfg.create_edge(node.id, next_node.id, depth)
             _LOGGER.info(
                 f'Found basic block at depth {depth} for {self.id}: {shorten_hashes((node.id, next_node.id))}.'
@@ -297,7 +298,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         # Cut Rule
         elif len(next_cterms) == 1:
-            next_node = kcfg.get_or_create_node(next_cterms[0])
+            next_node = kcfg.get_or_create_node(next_cterms[0], logs)
             kcfg.create_edge(node.id, next_node.id, 1)
             _LOGGER.info(
                 f'Inserted cut-rule basic block at depth 1 for {self.id}: {shorten_hashes((node.id, next_node.id))}'
