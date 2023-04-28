@@ -125,14 +125,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def splits(self) -> dict[str, CSubst]:
             return {target.id: csubst for target, csubst in self._targets}
 
-        def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
-            return KCFG.Split(self.source, ((target, self.splits[target.id]),))
-
         def to_dict(self) -> dict[str, Any]:
             return {
                 'source': self.source.id,
                 'targets': {target.id: csubst for target, csubst in self._targets},
             }
+
+        def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
+            return KCFG.Split(self.source, ((target, self.splits[target.id]),))
 
     @final
     @dataclass(frozen=True)
