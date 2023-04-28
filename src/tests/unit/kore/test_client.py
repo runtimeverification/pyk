@@ -81,7 +81,7 @@ EXECUTE_TEST_DATA: Final = (
             'depth': 1,
             'reason': 'stuck',
         },
-        StuckResult(State(int_dv(2), int_top, int_top), 1),
+        StuckResult(State(int_dv(2), int_top, int_top), 1, logs=()),
     ),
 )
 
