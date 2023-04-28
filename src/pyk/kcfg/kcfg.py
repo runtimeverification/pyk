@@ -105,16 +105,15 @@ class KCFG(
     @dataclass(frozen=True)
     class Split(Successor):
         source: KCFG.Node
-        _targets: tuple[KCFG.Node, ...]
-        _splits: tuple[CSubst, ...]
+        _targets: tuple[tuple[KCFG.Node, CSubst], ...]
 
         @property
         def targets(self) -> tuple[KCFG.Node, ...]:
-            return self._targets
+            return tuple(target for target, _ in self._targets)
 
         @property
         def splits(self) -> dict[str, CSubst]:
-            return dict(zip((target.id for target in self.targets), self._splits, strict=True))
+            return {target.id: csubst for target, csubst in self._targets}
 
         def __lt__(self, other: Any) -> bool:
             if not type(other) is type(self):
@@ -128,7 +127,7 @@ class KCFG(
             }
 
         def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
-            return KCFG.Split(self.source, (target,), (self.splits[target.id],))
+            return KCFG.Split(self.source, ((target, self.splits[target.id]),))
 
     _nodes: dict[str, Node]
     _edges: dict[str, dict[str, Edge]]
@@ -621,9 +620,7 @@ class KCFG(
             raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
 
         source_id = self._resolve(source_id)
-        split = KCFG.Split(
-            self.node(source_id), tuple(self.node(nid) for nid, _ in splits), tuple(csubst for _, csubst in splits)
-        )
+        split = KCFG.Split(self.node(source_id), tuple((self.node(nid), csubst) for nid, csubst in splits))
         self._splits[source_id] = split
 
     def split_on_constraints(self, source_id: str, constraints: Iterable[KInner]) -> list[str]:
