@@ -69,6 +69,17 @@ class Proof(ABC):
                 yield read_proof(proof_id, self.proof_dir)
 
     @property
+    def subproofs_status(self) -> ProofStatus:
+        any_subproof_failed = any([p.status == ProofStatus.FAILED for p in self.read_subproofs()])
+        any_subproof_pending = any([p.status == ProofStatus.PENDING for p in self.read_subproofs()])
+        if any_subproof_failed:
+            return ProofStatus.FAILED
+        elif any_subproof_pending:
+            return ProofStatus.PENDING
+        else:
+            return ProofStatus.PASSED
+
+    @property
     @abstractmethod
     def status(self) -> ProofStatus:
         ...

@@ -48,11 +48,9 @@ class APRProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
-        any_subproof_failed = any([p.status == ProofStatus.FAILED for p in self.read_subproofs()])
-        any_subproof_pending = any([p.status == ProofStatus.PENDING for p in self.read_subproofs()])
-        if len(self.kcfg.stuck) > 0 or any_subproof_failed:
+        if len(self.kcfg.stuck) > 0 or self.subproofs_status == ProofStatus.FAILED:
             return ProofStatus.FAILED
-        elif len(self.kcfg.frontier) > 0 or any_subproof_pending:
+        elif len(self.kcfg.frontier) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
@@ -119,11 +117,12 @@ class APRBMCProof(APRProof):
 
     @property
     def status(self) -> ProofStatus:
-        any_subproof_failed = any([p.status == ProofStatus.FAILED for p in self.read_subproofs()])
-        any_subproof_pending = any([p.status == ProofStatus.PENDING for p in self.read_subproofs()])
-        if any(nd.id not in self._bounded_states for nd in self.kcfg.stuck) or any_subproof_failed:
+        if (
+            any(nd.id not in self._bounded_states for nd in self.kcfg.stuck)
+            or self.subproofs_status == ProofStatus.FAILED
+        ):
             return ProofStatus.FAILED
-        elif len(self.kcfg.frontier) > 0 or any_subproof_pending:
+        elif len(self.kcfg.frontier) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
