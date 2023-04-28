@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
 from threading import RLock
-from typing import TYPE_CHECKING, List, Union, cast
+from typing import TYPE_CHECKING, List, Union, cast, final
 
 from ..cterm import CSubst, CTerm
 from ..kast.manip import (
@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
+    @final
     @dataclass(frozen=True, order=True)
     class Node:
         cterm: CTerm
@@ -65,6 +66,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def targets(self) -> tuple[KCFG.Node, ...]:
             return (self.target,)
 
+    @final
     @dataclass(frozen=True)
     class Edge(EdgeLike):
         source: KCFG.Node
@@ -78,6 +80,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 'depth': self.depth,
             }
 
+    @final
     @dataclass(frozen=True)
     class Cover(EdgeLike):
         source: KCFG.Node
@@ -91,6 +94,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 'csubst': self.csubst.to_dict(),
             }
 
+    @final
     @dataclass(frozen=True)
     class Split(Successor):
         source: KCFG.Node
