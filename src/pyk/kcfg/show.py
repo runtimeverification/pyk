@@ -175,7 +175,6 @@ class KCFGShow:
                         indent + '   ┃ ', ret_edge_lines[1:]
                     )
                 elif type(successor) is KCFG.NDBranch:
-                    target = successor.targets[-1]
                     ret_edge_lines = [indent + '┗━━┓ ']
                 else:
                     raise AssertionError()
