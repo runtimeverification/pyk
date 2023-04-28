@@ -733,10 +733,11 @@ class KCFG(
             attrs.append('split')
         return attrs
 
-    def prune(self, node_id: str) -> None:
-        nodes = self.reachable_nodes(node_id)
+    def prune(self, node_id: str) -> list[str]:
+        nodes = self.reachable_nodes(node_id, traverse_covers=True)
         for node in nodes:
             self.remove_node(node.id)
+        return [node.id for node in nodes]
 
     def shortest_path_between(self, source_node_id: str, target_node_id: str) -> tuple[Successor, ...] | None:
         paths = self.paths_between(source_node_id, target_node_id)
