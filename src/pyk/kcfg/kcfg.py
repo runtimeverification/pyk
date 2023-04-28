@@ -117,12 +117,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             object.__setattr__(self, 'source', source)
             object.__setattr__(self, '_targets', tuple(_targets))
 
-        def to_dict(self) -> dict[str, Any]:
-            return {
-                'source': self.source.id,
-                'targets': {target.id: csubst for target, csubst in self._targets},
-            }
-
         @property
         def targets(self) -> tuple[KCFG.Node, ...]:
             return tuple(target for target, _ in self._targets)
@@ -133,6 +127,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
             return KCFG.Split(self.source, ((target, self.splits[target.id]),))
+
+        def to_dict(self) -> dict[str, Any]:
+            return {
+                'source': self.source.id,
+                'targets': {target.id: csubst for target, csubst in self._targets},
+            }
 
     @final
     @dataclass(frozen=True)
