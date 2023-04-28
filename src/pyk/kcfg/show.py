@@ -152,6 +152,7 @@ class KCFGShow:
             if isinstance(successor, KCFG.MultiEdge):
                 ret_lines.append(('unknown', [f'{indent}┃']))
                 multiedge_label = '1 step' if type(successor) is KCFG.NDBranch else 'branch'
+                multiedge_id = 'ndbranch' if type(successor) is KCFG.NDBranch else 'split'
                 ret_lines.append(('unknown', [f'{indent}┃ ({multiedge_label})']))
 
                 for target in successor.targets[:-1]:
@@ -165,7 +166,7 @@ class KCFGShow:
                     else:
                         raise AssertionError()
                     ret_edge_lines.append(indent + '┃  │')
-                    ret_lines.append((f'split_{curr_node.id}_{target.id}', ret_edge_lines))
+                    ret_lines.append((f'{multiedge_id}_{curr_node.id}_{target.id}', ret_edge_lines))
                     _print_subgraph(indent + '┃  ', target, prior_on_trace + [curr_node])
                 target = successor.targets[-1]
                 if type(successor) is KCFG.Split:
@@ -179,7 +180,7 @@ class KCFGShow:
                 else:
                     raise AssertionError()
                 ret_edge_lines.append(indent + '   │')
-                ret_lines.append((f'split_{curr_node.id}_{target.id}', ret_edge_lines))
+                ret_lines.append((f'{multiedge_id}_{curr_node.id}_{target.id}', ret_edge_lines))
                 _print_subgraph(indent + '   ', target, prior_on_trace + [curr_node])
 
             elif isinstance(successor, KCFG.EdgeLike):
