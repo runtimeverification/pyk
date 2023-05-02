@@ -49,9 +49,8 @@ class TestImpProof(KCFGExploreTest):
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
         proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
-        prover = APRProver(proof)
+        prover = APRProver(proof, kcfg_explore=kcfg_explore)
         kcfg = prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,
