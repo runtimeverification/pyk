@@ -191,10 +191,11 @@ class APRProver:
             self.main_module_name,
             self.some_circularities_module_name,
             [c for c in proof.circularities if c.att['UNIQUE_ID'] != self.proof.uuid],
+            priority=1,
         )
         self.all_circularities_module_name = 'ALL-CIRCULARITIES'
         self.kcfg_explore.add_circularities_module(
-            self.main_module_name, self.all_circularities_module_name, proof.circularities
+            self.main_module_name, self.all_circularities_module_name, proof.circularities, priority=1
         )
 
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
