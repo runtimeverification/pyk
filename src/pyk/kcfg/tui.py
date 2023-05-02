@@ -11,7 +11,7 @@ from textual.widgets import Footer, Static
 from ..cterm import CTerm
 from ..kast.inner import KApply, KRewrite
 from ..kast.manip import flatten_label, minimize_term, push_down_rewrites
-from ..kcfg import KCFG
+from ..kcfg import KCFG, KCFGShow
 from ..prelude.kbool import TRUE
 from ..utils import shorten_hashes, single
 
@@ -75,8 +75,9 @@ class BehaviorView(Widget):
         self._minimize = minimize
         self._node_printer = node_printer
         self._nodes = []
-        for lseg_id, node_lines in self._kcfg.pretty_segments(
-            self._kprint, minimize=self._minimize, node_printer=self._node_printer
+        kcfg_show = KCFGShow(kprint)
+        for lseg_id, node_lines in kcfg_show.pretty_segments(
+            self._kcfg, minimize=self._minimize, node_printer=self._node_printer
         ):
             self._nodes.append(GraphChunk(lseg_id, node_lines))
 
@@ -200,9 +201,9 @@ class NodeView(Widget):
 
             elif type(self._element) is KCFG.Split:
                 term_strs = [f'split: {shorten_hashes(self._element.source.id)}']
-                for target, csubst in self._element.targets:
+                for target_id, csubst in self._element.splits.items():
                     term_strs.append('')
-                    term_strs.append(f'  - {shorten_hashes(target.id)}')
+                    term_strs.append(f'  - {shorten_hashes(target_id)}')
                     if len(csubst.subst) > 0:
                         subst_equalities = map(_boolify, flatten_label('#And', csubst.subst.ml_pred))
                         term_strs.extend(f'    {self._kprint.pretty_print(cline)}' for cline in subst_equalities)
@@ -211,8 +212,20 @@ class NodeView(Widget):
                         term_strs.extend(f'    {self._kprint.pretty_print(cline)}' for cline in constraints)
                 term_str = '\n'.join(term_strs)
 
+            elif type(self._element) is KCFG.NDBranch:
+                term_strs = [f'ndbranch: {shorten_hashes(self._element.source.id)}']
+                for target in self._element.targets:
+                    term_strs.append('')
+                    term_strs.append(f'  - {shorten_hashes(target.id)}')
+                    term_strs.append('    (1 step)')
+                term_str = '\n'.join(term_strs)
+
             if self._custom_view is not None:
-                custom_str = '\n'.join(self._custom_view(self._element))
+                # To appease the type-checker
+                if type(self._element) is KCFG.Node:
+                    custom_str = '\n'.join(self._custom_view(self._element))
+                elif type(self._element) is KCFG.Successor:
+                    custom_str = '\n'.join(self._custom_view(self._element))
 
         self.query_one('#info', Static).update(self._info_text())
         self.query_one('#term', Static).update(term_str)
@@ -284,6 +297,12 @@ class KCFGViewer(App):
             node_source, node_target, *_ = message.chunk_id[6:].split('_')
             split = single(self._kcfg.splits(source_id=node_source, target_id=node_target))
             self.query_one('#node-view', NodeView).update(split)
+
+        elif message.chunk_id.startswith('ndbranch_'):
+            self._selected_chunk = None
+            node_source, node_target, *_ = message.chunk_id[8:].split('_')
+            ndbranch = single(self._kcfg.ndbranches(source_id=node_source, target_id=node_target))
+            self.query_one('#node-view', NodeView).update(ndbranch)
 
     BINDINGS = [
         ('h', 'keystroke("h")', 'Hide selected node.'),

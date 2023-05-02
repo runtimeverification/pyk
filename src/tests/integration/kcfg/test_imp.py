@@ -314,7 +314,7 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
         1,
         ['IMP-VERIFICATION.halt'],
         [],
-        '{ false #Equals _S:Int <=Int 123 }',
+        '{ true #Equals notBool _S:Int <=Int 123 }',
     ),
 )
 
@@ -685,6 +685,7 @@ class TestImpProof(KCFGExploreTest):
             kcfg_explore=kcfg_explore,
             main_module_name=main_module,
             is_terminal=TestImpProof._is_terminal,
+            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
 
         kcfg = prover.advance_proof(
