@@ -5,8 +5,12 @@ import logging
 from itertools import chain
 from typing import TYPE_CHECKING
 
+from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
-from ..utils import hash_str, shorten_hashes
+from ..prelude.kbool import BOOL, FALSE, TRUE, andBool
+from ..prelude.ml import mlEquals
+from ..utils import hash_str, shorten_hash, shorten_hashes, single
+from .equality import EqualityProof
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -85,6 +89,64 @@ class APRProof(Proof):
         ]
         for summary in subproofs_summaries:
             yield from summary
+
+    def refute_edge(self, edge: KCFG.Edge) -> str:
+        """Refute an edge by constructing a subproof of the edge target's path condition being equivalent to False"""
+        if not edge in self.kcfg.edges():
+            raise ValueError(f'No edge between {edge.source.id} and {edge.target.id}')
+
+        self.kcfg.add_expanded(edge.target.id)
+
+        target_condition = andBool([ml_pred_to_bool(expr) for expr in edge.target.cterm.constraints])
+        refutation = EqualityProof(
+            id=f'infeasible-{shorten_hash(edge.source.id)}-to-{shorten_hash(edge.target.id)}',
+            lhs_body=target_condition,
+            rhs_body=FALSE,
+            sort=BOOL,
+            proof_dir=self.proof_dir,
+        )
+        refutation.write_proof()
+        self.add_subproof(refutation.id)
+        return refutation.id
+
+    def refute_node(self, node: KCFG.Node, assuming: KInner | None = None) -> str:
+        """Refute a node by constructing a subproof of the node's path condition being False"""
+        if not node in self.kcfg.nodes:
+            raise ValueError(f'No such node {node.id}')
+
+        self.kcfg.add_expanded(node.id)
+
+        path = single(self.kcfg.paths_between(source_id=self.kcfg.get_unique_init().id, target_id=node.id))
+        closest_split = list(filter(lambda x: type(x) is KCFG.Split, reversed(path)))[0]
+
+        assert type(closest_split) is KCFG.Split
+        _, csubst = closest_split.targets[0]
+        # assert csubst.subst is empty
+        assert len(csubst.constraints) == 1
+        last_constraint = ml_pred_to_bool(csubst.constraints[0])
+
+        # constraints = closest_split.source.cterm.constraints
+        constraints = [
+            mlEquals(TRUE, ml_pred_to_bool(c), arg_sort=BOOL) for c in closest_split.source.cterm.constraints
+        ]
+
+        assert assuming
+        constraints.append(mlEquals(TRUE, assuming, arg_sort=BOOL))
+        # condition = andBool([ml_pred_to_bool(expr) for expr in node.cterm.constraints])
+        # if assuming is not None:
+        #     condition = andBool([assuming, condition])
+        refutation = EqualityProof(
+            id=f'infeasible-{shorten_hash(node.id)}',
+            lhs_body=last_constraint,
+            constraints=constraints,
+            rhs_body=FALSE,
+            sort=BOOL,
+            proof_dir=self.proof_dir,
+        )
+        refutation.write_proof()
+        self.add_subproof(refutation.id)
+        self.write_proof()
+        return refutation.id
 
 
 class APRBMCProof(APRProof):
