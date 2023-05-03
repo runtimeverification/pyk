@@ -125,18 +125,16 @@ class APRProof(Proof):
         assert len(csubst.constraints) == 1
         last_constraint = ml_pred_to_bool(csubst.constraints[0])
 
-        # constraints = closest_split.source.cterm.constraints
         constraints = [
             mlEquals(TRUE, ml_pred_to_bool(c), arg_sort=BOOL) for c in closest_split.source.cterm.constraints
         ]
 
         assert assuming
         constraints.append(mlEquals(TRUE, assuming, arg_sort=BOOL))
-        # condition = andBool([ml_pred_to_bool(expr) for expr in node.cterm.constraints])
-        # if assuming is not None:
-        #     condition = andBool([assuming, condition])
+        refutation_id = f'infeasible-{shorten_hash(node.id)}'
+        _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
         refutation = EqualityProof(
-            id=f'infeasible-{shorten_hash(node.id)}',
+            id=refutation_id,
             lhs_body=last_constraint,
             constraints=constraints,
             rhs_body=FALSE,
