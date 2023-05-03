@@ -185,15 +185,15 @@ class APRProver:
         self._extract_branches = extract_branches
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
-        self.some_dependencies_module_name = self.main_module_name + 'SOME-CIRCULARITIES'
-        self.kcfg_explore.add_circularities_module(
+        self.some_dependencies_module_name = self.main_module_name + 'DEPENDS-MODULE'
+        self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
             self.some_dependencies_module_name,
             [c for c in proof.dependencies if c.label != self.proof.claim_id],
             priority=1,
         )
-        self.all_dependencies_module_name = self.main_module_name + 'ALL-CIRCULARITIES'
-        self.kcfg_explore.add_circularities_module(
+        self.all_dependencies_module_name = self.main_module_name + 'CIRCULARITIES-MODULE'
+        self.kcfg_explore.add_dependencies_module(
             self.main_module_name, self.all_dependencies_module_name, proof.dependencies, priority=1
         )
 
