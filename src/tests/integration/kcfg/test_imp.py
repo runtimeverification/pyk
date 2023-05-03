@@ -285,6 +285,18 @@ APR_PROVE_TEST_DATA: Iterable[
         ProofStatus.PASSED,
         1,
     ),
+    (
+        'imp-failing-circularity',
+        'k-files/imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'failing-circularity',
+        None,
+        None,
+        ['IMP-VERIFICATION.halt'],
+        [],
+        ProofStatus.FAILED,
+        1,
+    ),
 )
 
 PATH_CONSTRAINTS_TEST_DATA: Iterable[

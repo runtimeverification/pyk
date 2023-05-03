@@ -93,4 +93,10 @@ module IMP-SIMPLE-SPEC
                     requires 0 <=Int N
                     [depends(sum-loop)]
 
+
+    claim [failing-circularity]: <k> $n = $n + 1; => . ... </k>
+                                 <state> $n |-> N => $n |-> N </state>
+                                 requires 0 <=Int N
+                                 [circularity]
+
 endmodule
