@@ -40,8 +40,8 @@ EXECUTE_TEST_DATA: Final[Iterable[tuple[str, int, State, int, State, Iterable[St
 )
 
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, str, int | None, int | None, Iterable[str]]] = (
-    ('cell-map-no-branch', 'k-files/cell-map-spec.k', 'CELL-MAP-SPEC', 'CELL-MAP', 'cell-map-no-branch', 2, 1, []),
+APR_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, int | None, int | None, Iterable[str]]] = (
+    ('cell-map-no-branch', 'k-files/cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 2, 1, []),
 )
 
 
@@ -109,7 +109,7 @@ class TestCellMapProof(KCFGExploreTest):
         assert actual_k == expected_k
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,main_module,claim_id,max_iterations,max_depth,terminal_rules',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -120,7 +120,6 @@ class TestCellMapProof(KCFGExploreTest):
         test_id: str,
         spec_file: str,
         spec_module: str,
-        main_module: str,
         claim_id: str,
         max_iterations: int,
         max_depth: int,
@@ -136,7 +135,7 @@ class TestCellMapProof(KCFGExploreTest):
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         kcfg.replace_node(init.id, new_init_term)
         proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
-        prover = APRProver(proof, kcfg_explore=kcfg_explore, main_module_name=main_module)
+        prover = APRProver(proof, kcfg_explore=kcfg_explore)
         kcfg = prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
