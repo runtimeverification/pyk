@@ -32,7 +32,7 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
-    circularities: list[KClaim]
+    dependencies: list[KClaim]
     uuid: str | None = None
 
     def __init__(
@@ -40,12 +40,12 @@ class APRProof(Proof):
         id: str,
         kcfg: KCFG,
         proof_dir: Path | None = None,
-        circularities: Iterable[KClaim] = (),
+        dependencies: Iterable[KClaim] = (),
         uuid: str | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
-        self.circularities = list(circularities)
+        self.dependencies = list(dependencies)
         self.uuid = uuid
 
     @staticmethod
@@ -70,8 +70,8 @@ class APRProof(Proof):
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
-        circularities = [KClaim.from_dict(c) for c in dct['circularities']]
-        return APRProof(id, cfg, proof_dir=proof_dir, circularities=circularities)
+        dependencies = [KClaim.from_dict(c) for c in dct['dependencies']]
+        return APRProof(id, cfg, proof_dir=proof_dir, dependencies=dependencies)
 
     @property
     def dict(self) -> dict[str, Any]:
@@ -79,7 +79,7 @@ class APRProof(Proof):
             'type': 'APRProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
-            'circularities': [c.to_dict() for c in self.circularities],
+            'dependencies': [c.to_dict() for c in self.dependencies],
         }
 
     @property
@@ -169,8 +169,8 @@ class APRProver:
     _extract_branches: Callable[[CTerm], Iterable[KInner]] | None
 
     main_module_name: str
-    some_circularities_module_name: str
-    all_circularities_module_name: str
+    some_dependencies_module_name: str
+    all_dependencies_module_name: str
 
     def __init__(
         self,
@@ -185,16 +185,16 @@ class APRProver:
         self._extract_branches = extract_branches
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
-        self.some_circularities_module_name = self.main_module_name + 'SOME-CIRCULARITIES'
+        self.some_dependencies_module_name = self.main_module_name + 'SOME-CIRCULARITIES'
         self.kcfg_explore.add_circularities_module(
             self.main_module_name,
-            self.some_circularities_module_name,
-            [c for c in proof.circularities if c.att['UNIQUE_ID'] != self.proof.uuid],
+            self.some_dependencies_module_name,
+            [c for c in proof.dependencies if c.att['UNIQUE_ID'] != self.proof.uuid],
             priority=1,
         )
-        self.all_circularities_module_name = self.main_module_name + 'ALL-CIRCULARITIES'
+        self.all_dependencies_module_name = self.main_module_name + 'ALL-CIRCULARITIES'
         self.kcfg_explore.add_circularities_module(
-            self.main_module_name, self.all_circularities_module_name, proof.circularities, priority=1
+            self.main_module_name, self.all_dependencies_module_name, proof.dependencies, priority=1
         )
 
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
@@ -248,9 +248,9 @@ class APRProver:
                     continue
 
             module_name = (
-                self.all_circularities_module_name
+                self.all_dependencies_module_name
                 if self.nonzero_depth(curr_node)
-                else self.some_circularities_module_name
+                else self.some_dependencies_module_name
             )
             self.kcfg_explore.extend(
                 self.proof.kcfg,
