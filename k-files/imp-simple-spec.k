@@ -5,6 +5,13 @@ module IMP-FUNCTIONAL-SPEC
 
     claim [concrete-addition]: 3 +Int 4 => 7
 
+    claim [concrete-addition-fail]: 3 +Int 4 => 0
+
+    claim [concrete-requires-false]: 0 => 1
+      requires False
+
+    claim [symbolic-addition-commutativity]: N +Int M => M +Int N
+
 endmodule
 
 module IMP-SIMPLE-SPEC

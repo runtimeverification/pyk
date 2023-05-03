@@ -397,6 +397,27 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (
         'concrete-addition',
         ProofStatus.PASSED,
     ),
+    (
+        'func-spec-concrete-fail',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-addition-fail',
+        ProofStatus.FAILED,
+    ),
+    (
+        'func-spec-concrete-requires-false-fail',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-requires-false',
+        ProofStatus.FAILED,
+    ),
+    (
+        'func-spec-symbolic-add-comm',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'symbolic-addition-commutativity',
+        ProofStatus.PASSED,
+    ),
 )
 
 
@@ -709,5 +730,7 @@ class TestImpProof(KCFGExploreTest):
         equality_proof = EqualityProof.from_claim(claim, kprove.definition)
         equality_prover = EqualityProver(equality_proof)
         equality_prover.advance_proof(kcfg_explore)
+
+        _LOGGER.warning(equality_prover.proof.pretty(kcfg_explore.kprint))
 
         assert equality_proof.status == proof_status

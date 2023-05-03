@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
+from itertools import chain
 from typing import TYPE_CHECKING
 
+from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
-from ..utils import hash_str, shorten_hashes
+from ..prelude.kbool import BOOL, FALSE, TRUE, andBool
+from ..prelude.ml import mlEquals
+from ..utils import hash_str, shorten_hash, shorten_hashes, single
+from .equality import EqualityProof
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -32,8 +37,8 @@ class APRProof(Proof):
 
     kcfg: KCFG
 
-    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None):
-        super().__init__(id, proof_dir=proof_dir)
+    def __init__(self, id: str, kcfg: KCFG, proof_dir: Path | None = None, subproof_ids: list[str] | None = None):
+        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
 
     @staticmethod
@@ -47,9 +52,9 @@ class APRProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
-        if len(self.kcfg.stuck) > 0:
+        if len(self.kcfg.stuck) > 0 or self.subproofs_status == ProofStatus.FAILED:
             return ProofStatus.FAILED
-        elif len(self.kcfg.frontier) > 0:
+        elif len(self.kcfg.frontier) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
@@ -58,21 +63,88 @@ class APRProof(Proof):
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
-        return APRProof(id, cfg, proof_dir=proof_dir)
+        subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
+        return APRProof(id, cfg, proof_dir=proof_dir, subproof_ids=subproof_ids)
 
     @property
     def dict(self) -> dict[str, Any]:
-        return {'type': 'APRProof', 'id': self.id, 'cfg': self.kcfg.to_dict()}
+        result: dict[str, Any] = {
+            'type': 'APRProof',
+            'id': self.id,
+            'cfg': self.kcfg.to_dict(),
+            'subproof_ids': self.subproof_ids,
+        }
+        return result
 
     @property
     def summary(self) -> Iterable[str]:
-        return [
+        subproofs_summaries = chain(subproof.summary for subproof in self.read_subproofs())
+        yield from [
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
+            'Subproofs' if len(self.subproof_ids) else '',
         ]
+        for summary in subproofs_summaries:
+            yield from summary
+
+    def refute_edge(self, edge: KCFG.Edge) -> str:
+        """Refute an edge by constructing a subproof of the edge target's path condition being equivalent to False"""
+        if not edge in self.kcfg.edges():
+            raise ValueError(f'No edge between {edge.source.id} and {edge.target.id}')
+
+        self.kcfg.add_expanded(edge.target.id)
+
+        target_condition = andBool([ml_pred_to_bool(expr) for expr in edge.target.cterm.constraints])
+        refutation = EqualityProof(
+            id=f'infeasible-{shorten_hash(edge.source.id)}-to-{shorten_hash(edge.target.id)}',
+            lhs_body=target_condition,
+            rhs_body=FALSE,
+            sort=BOOL,
+            proof_dir=self.proof_dir,
+        )
+        refutation.write_proof()
+        self.add_subproof(refutation.id)
+        return refutation.id
+
+    def refute_node(self, node: KCFG.Node, assuming: KInner | None = None) -> str:
+        """Refute a node by constructing a subproof of the node's path condition being False"""
+        if not node in self.kcfg.nodes:
+            raise ValueError(f'No such node {node.id}')
+
+        self.kcfg.add_expanded(node.id)
+
+        path = single(self.kcfg.paths_between(source_id=self.kcfg.get_unique_init().id, target_id=node.id))
+        closest_split = list(filter(lambda x: type(x) is KCFG.Split, reversed(path)))[0]
+
+        assert type(closest_split) is KCFG.Split
+        _, csubst = closest_split.targets[0]
+        # assert csubst.subst is empty
+        assert len(csubst.constraints) == 1
+        last_constraint = ml_pred_to_bool(csubst.constraints[0])
+
+        constraints = [
+            mlEquals(TRUE, ml_pred_to_bool(c), arg_sort=BOOL) for c in closest_split.source.cterm.constraints
+        ]
+
+        assert assuming
+        constraints.append(mlEquals(TRUE, assuming, arg_sort=BOOL))
+        refutation_id = f'infeasible-{shorten_hash(node.id)}'
+        _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
+        refutation = EqualityProof(
+            id=refutation_id,
+            lhs_body=last_constraint,
+            constraints=constraints,
+            rhs_body=FALSE,
+            sort=BOOL,
+            proof_dir=self.proof_dir,
+        )
+        refutation.write_proof()
+        self.add_subproof(refutation.id)
+        self.write_proof()
+        return refutation.id
 
 
 class APRBMCProof(APRProof):
@@ -88,8 +160,9 @@ class APRBMCProof(APRProof):
         bmc_depth: int,
         bounded_states: Iterable[str] | None = None,
         proof_dir: Path | None = None,
+        subproof_ids: list[str] | None = None,
     ):
-        super().__init__(id, kcfg, proof_dir=proof_dir)
+        super().__init__(id, kcfg, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.bmc_depth = bmc_depth
         self._bounded_states = list(bounded_states) if bounded_states is not None else []
 
@@ -104,9 +177,12 @@ class APRBMCProof(APRProof):
 
     @property
     def status(self) -> ProofStatus:
-        if any(nd.id not in self._bounded_states for nd in self.kcfg.stuck):
+        if (
+            any(nd.id not in self._bounded_states for nd in self.kcfg.stuck)
+            or self.subproofs_status == ProofStatus.FAILED
+        ):
             return ProofStatus.FAILED
-        elif len(self.kcfg.frontier) > 0:
+        elif len(self.kcfg.frontier) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
@@ -117,31 +193,40 @@ class APRBMCProof(APRProof):
         id = dct['id']
         bounded_states = dct['bounded_states']
         bmc_depth = dct['bmc_depth']
-        return APRBMCProof(id, cfg, bmc_depth, bounded_states=bounded_states, proof_dir=proof_dir)
+        subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
+        return APRBMCProof(
+            id, cfg, bmc_depth, bounded_states=bounded_states, proof_dir=proof_dir, subproof_ids=subproof_ids
+        )
 
     @property
     def dict(self) -> dict[str, Any]:
-        return {
+        result = {
             'type': 'APRBMCProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
             'bmc_depth': self.bmc_depth,
             'bounded_states': self._bounded_states,
+            'subproof_ids': self.subproof_ids,
         }
+        return result
 
     def bound_state(self, nid: str) -> None:
         self._bounded_states.append(nid)
 
     @property
     def summary(self) -> Iterable[str]:
-        return [
+        subproofs_summaries = chain(subproof.summary for subproof in self.read_subproofs())
+        yield from [
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_states])}',
             f'    bmc-depth-bounded: {len(self._bounded_states)}',
+            'Subproofs' if len(self.subproof_ids) else '',
         ]
+        for summary in subproofs_summaries:
+            yield from summary
 
 
 class APRProver:
