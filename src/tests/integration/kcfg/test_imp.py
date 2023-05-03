@@ -604,18 +604,18 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        deps = claim.get_dependencies()
+        deps = claim.dependencies
 
         deps_claims = kprove.get_claims(
             Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{dep_id}' for dep_id in deps]
         )
 
-        if claim.is_circularity():
+        if claim.is_circularity:
             deps_claims = deps_claims + [claim]
 
         _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(deps_claims)} dependencies")
         kcfg = KCFG.from_claim(kprove.definition, claim)
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, dependencies=deps_claims, uuid=claim.att['UNIQUE_ID'])
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, dependencies=deps_claims, claim_id=claim.label)
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,

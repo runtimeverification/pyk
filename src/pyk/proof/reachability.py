@@ -33,7 +33,7 @@ class APRProof(Proof):
 
     kcfg: KCFG
     dependencies: list[KClaim]
-    uuid: str | None = None
+    claim_id: str | None = None
 
     def __init__(
         self,
@@ -41,12 +41,12 @@ class APRProof(Proof):
         kcfg: KCFG,
         proof_dir: Path | None = None,
         dependencies: Iterable[KClaim] = (),
-        uuid: str | None = None,
+        claim_id: str | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
         self.dependencies = list(dependencies)
-        self.uuid = uuid
+        self.claim_id = claim_id
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -189,7 +189,7 @@ class APRProver:
         self.kcfg_explore.add_circularities_module(
             self.main_module_name,
             self.some_dependencies_module_name,
-            [c for c in proof.dependencies if c.att['UNIQUE_ID'] != self.proof.uuid],
+            [c for c in proof.dependencies if c.label != self.proof.claim_id],
             priority=1,
         )
         self.all_dependencies_module_name = self.main_module_name + 'ALL-CIRCULARITIES'

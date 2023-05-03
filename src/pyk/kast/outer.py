@@ -662,10 +662,12 @@ class KClaim(KRuleLike):
     def let_att(self, att: KAtt) -> KClaim:
         return self.let(att=att)
 
+    @property
     def is_circularity(self) -> bool:
         return 'circularity' in self.att.atts
 
-    def get_dependencies(self) -> list[str]:
+    @property
+    def dependencies(self) -> list[str]:
         deps = self.att.atts.get('depends', default=None)
         if deps is None:
             return []
