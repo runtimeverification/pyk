@@ -605,10 +605,7 @@ class TestImpProof(KCFGExploreTest):
         )
 
         deps = claim.get_dependencies()
-        #if claim.is_circularity():
-        #    deps = deps + [claim_id]
 
-        print(f'deps: {deps}')
         deps_claims = kprove.get_claims(
             Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{dep_id}' for dep_id in deps]
         )
