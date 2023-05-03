@@ -5,7 +5,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from ..kast.outer import KClaim
-from ..kcfg import KCFG
+from ..kcfg import KCFG, path_length
 from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus
 
@@ -211,12 +211,11 @@ class APRProver:
         return False
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
-        init = self.proof.kcfg.init[0]
-        ps = self.proof.kcfg.paths_between(init.id, node.id)
-        for p in ps:
-            if len([n for n in p if type(n) is KCFG.Edge]) >= 2:
-                return True
-        return False
+        init = self.proof.kcfg.get_unique_init()
+        p = self.proof.kcfg.shortest_path_between(init.id, node.id)
+        if p is None:
+            return False
+        return path_length(p) > 0
 
     def advance_proof(
         self,
