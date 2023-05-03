@@ -665,6 +665,12 @@ class KClaim(KRuleLike):
     def is_circularity(self) -> bool:
         return 'circularity' in self.att.atts
 
+    def get_dependencies(self) -> list[str]:
+        deps = self.att.atts.get('depends', default=None)
+        if deps is None:
+            return []
+        return [x.strip() for x in deps.split(',')]
+
 
 @final
 @dataclass(frozen=True)

@@ -90,5 +90,6 @@ module IMP-SIMPLE-SPEC
     claim [sum-N]: <k> int $s, $n, .Ids ; $n = N:Int ; while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; } ~> #FINISH => . ... </k>
                       <state> .Map => $s |-> ((N *Int (N +Int 1)) /Int 2) $n |-> -1 </state>
                     requires 0 <=Int N
+                    [depends(sum-loop)]
 
 endmodule
