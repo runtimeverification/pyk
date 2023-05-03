@@ -71,14 +71,15 @@ module IMP-SIMPLE-SPEC
                          <state> $n |-> (0 => 1) $s |-> _S:Int </state>
     
     claim [if-almost-same]:
-        <k> if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } ~> #FINISH => . ...</k>
+        <k> if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } => . ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N) $n |-> N) </state>
+        // The backend complains when we add a rule without a precondition
+        requires 0 <=Int 1
     
-    // The vision is that the proof of `use-if-almost-same` will re-use the proof of `if-almost-same`
-    // and then it will be without branching.
     claim [use-if-almost-same]:
         <k> $n = $n + 1; if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } $s = $s + 1; ~> #FINISH => . ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N +Int 2) $n |-> N:Int +Int 1) </state>
+        [depends(if-almost-same)]
 
 
 

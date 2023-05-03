@@ -259,7 +259,7 @@ APR_PROVE_TEST_DATA: Iterable[
         ['IMP-VERIFICATION.halt'],
         [],
         ProofStatus.PASSED,
-        2,  # Change this to 1 once we can reuse subproofs
+        1,  # We can reuse subproofs.
     ),
     (
         'imp-simple-sum-loop',
