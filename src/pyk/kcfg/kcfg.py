@@ -817,7 +817,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def shortest_path_between(self, source_node_id: str, target_node_id: str) -> tuple[Successor, ...] | None:
         paths = self.paths_between(source_node_id, target_node_id)
-        return sorted(paths, key=(lambda path: len(path)))[0]
+        if len(paths) == 0:
+            return None
+        return sorted(paths, key=(lambda path: path_length(path)))[0]
 
     def path_constraints(self, final_node_id: str) -> KInner:
         path = self.shortest_path_between(self.get_unique_init().id, final_node_id)
@@ -917,3 +919,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 worklist.extend(succ.source for succ in self.predecessors(target_id=node.id, covers=traverse_covers))
 
         return visited
+
+
+def path_length(_path: Iterable[KCFG.Successor]) -> int:
+    _path = list(_path)
+    if len(_path) == 0:
+        return 0
+    if type(_path[0]) is KCFG.Split or type(_path[0]) is KCFG.Cover:
+        return path_length(_path[1:])
+    elif type(_path[0]) is KCFG.NDBranch:
+        return 1 + path_length(_path[1:])
+    elif type(_path[0]) is KCFG.Edge:
+        return _path[0].depth + path_length(_path[1:])
+    raise ValueError(f'Cannot handle Successor type: {type(_path[0])}')
