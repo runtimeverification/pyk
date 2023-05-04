@@ -52,8 +52,13 @@ class APRProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
-        if len(self.kcfg.stuck) > 0 or self.subproofs_status == ProofStatus.FAILED:
-            return ProofStatus.FAILED
+        if len(self.kcfg.stuck) > 0:
+            if self.subproofs_status == ProofStatus.PASSED:
+                return ProofStatus.FAILED
+            elif self.subproofs_status == ProofStatus.PENDING:
+                return ProofStatus.PENDING
+            else:
+                return ProofStatus.PENDING
         elif len(self.kcfg.frontier) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
