@@ -48,13 +48,12 @@ class TestSimpleProof(KCFGExploreTest):
             if constraint is None
             else mlEqualsTrue(kprint.parse_token(KToken(constraint, 'Bool'), as_rule=True))
         )
-        # TODO: Why does kompile put <generatedCounter> before <state>?
         return CTerm(
             KApply(
                 '<generatedTop>',
                 KApply('<k>', KSequence(_k_parsed)),
-                KVariable('GENERATED_COUNTER_CELL'),
                 KApply('<state>', _state_parsed),
+                KVariable('GENERATED_COUNTER_CELL'),
             ),
             (_constraint,),
         )
@@ -114,7 +113,7 @@ class TestSimpleProof(KCFGExploreTest):
         expected_k, expected_state, *_ = expected_post
 
         # When
-        actual_post = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, *pre))
+        actual_post, _logs = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, *pre))
         actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post, 'K_CELL'))
         actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post, 'STATE_CELL'))
 

@@ -9,7 +9,8 @@ from ..kast.manip import flatten_label, free_vars
 from ..kore.rpc import KoreClient, KoreServer, StopReason
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude.k import GENERATED_TOP_CELL
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
+from ..prelude.kbool import notBool
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
 
@@ -39,6 +40,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _kore_server: KoreServer | None
     _kore_client: KoreClient | None
     _rpc_closed: bool
+    _trace_rewrites: bool
 
     def __init__(
         self,
@@ -53,6 +55,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
+        trace_rewrites: bool = False,
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
@@ -67,6 +70,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._kore_server = None
         self._kore_client = None
         self._rpc_closed = False
+        self._trace_rewrites = trace_rewrites
 
     def __enter__(self) -> KCFGExplore:
         return self
@@ -114,7 +118,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
-        er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+        er = kore_client.execute(
+            kore,
+            max_depth=depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            log_successful_rewrites=self._trace_rewrites,
+            log_failed_rewrites=self._trace_rewrites,
+            log_successful_simplifications=self._trace_rewrites,
+            log_failed_simplifications=self._trace_rewrites,
+        )
         depth = er.depth
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None else []
@@ -128,13 +141,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 next_states = []
         return depth, next_state, next_states, er.logs
 
-    def cterm_simplify(self, cterm: CTerm) -> KInner:
+    def cterm_simplify(self, cterm: CTerm) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
-        kore_simplified = kore_client.simplify(kore)
+        kore_simplified, logs = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
-        return kast_simplified
+        return kast_simplified, logs
 
     def cterm_implies(
         self, antecedent: CTerm, consequent: CTerm, bind_consequent_variables: bool = True
@@ -183,7 +196,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
-        kore_simplified = kore_client.simplify(kore)
+        kore_simplified, _logs = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
@@ -197,13 +210,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def simplify(self, cfg: KCFG) -> None:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
-            new_term = self.cterm_simplify(node.cterm)
+            new_term, logs = self.cterm_simplify(node.cterm)
             if is_top(new_term):
                 raise ValueError(f'Node simplified to #Top {self.id}: {shorten_hashes(node.id)}')
             if is_bottom(new_term):
                 raise ValueError(f'Node simplified to #Bottom {self.id}: {shorten_hashes(node.id)}')
             if new_term != node.cterm.kast:
-                cfg.replace_node(node.id, CTerm.from_kast(new_term))
+                cfg.replace_node(node.id, CTerm.from_kast(new_term), logs)
 
     def step(self, cfg: KCFG, node_id: str, depth: int = 1) -> str:
         if depth <= 0:
@@ -307,10 +320,30 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         # Branch
         elif len(next_cterms) > 1:
             branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
-            kcfg.split_on_constraints(node.id, branches)
-            _LOGGER.info(
-                f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
-            )
+            branch_and = mlAnd(branches)
+            branch_patterns = [
+                mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsTrue(notBool(KVariable('B')))]),
+                mlAnd([mlEqualsTrue(notBool(KVariable('B'))), mlEqualsTrue(KVariable('B'))]),
+                mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsFalse(KVariable('B'))]),
+                mlAnd([mlEqualsFalse(KVariable('B')), mlEqualsTrue(KVariable('B'))]),
+                mlAnd([mlNot(KVariable('B')), KVariable('B')]),
+                mlAnd([KVariable('B'), mlNot(KVariable('B'))]),
+            ]
+
+            # Split on branch patterns
+            if any(branch_pattern.match(branch_and) for branch_pattern in branch_patterns):
+                kcfg.split_on_constraints(node.id, branches)
+                _LOGGER.info(
+                    f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+                )
+
+            # NDBranch on successor nodes
+            else:
+                next_ids = [kcfg.get_or_create_node(ct).id for ct in next_cterms]
+                kcfg.create_ndbranch(node.id, next_ids)
+                _LOGGER.info(
+                    f'Found {len(next_ids)} non-deterministic branches for node {self.id}: {shorten_hashes(node.id)}'
+                )
 
         else:
             raise ValueError('Unhandled case.')

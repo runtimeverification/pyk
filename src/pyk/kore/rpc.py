@@ -25,7 +25,6 @@ if TYPE_CHECKING:
     from typing import Any, ClassVar, Final, TextIO, TypeVar
 
     from ..cli_utils import BugReport
-    from ..kast.inner import KInner
     from .syntax import Module
 
     ER = TypeVar('ER', bound='ExecuteResult')
@@ -234,17 +233,18 @@ class RewriteResult(ABC):
 @dataclass(frozen=True)
 class RewriteSuccess(RewriteResult):
     rule_id: str
-    rewritten_term: KInner | None
+    rewritten_term: Pattern | None
 
     @classmethod
     def from_dict(cls: type[RewriteSuccess], dct: Mapping[str, Any]) -> RewriteSuccess:
         return RewriteSuccess(
             rule_id=dct['rule-id'],
-            rewritten_term=None,  # TODO fixme
+            rewritten_term=kore_term(dct['rewritten-term'], Pattern) if 'rewritten-term' in dct else None,  # type: ignore
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {'rule-id': self.rule_id}  # TODO fixme
+        rewritten_term = {'rewritten-term': KoreClient._state(self.rewritten_term)} if self.rewritten_term else {}
+        return {'tag': 'success', 'rule-id': self.rule_id} | rewritten_term
 
 
 @final
@@ -261,7 +261,7 @@ class RewriteFailure(RewriteResult):
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {'rule-id': self.rule_id, 'reason': self.reason}
+        return {'tag': 'failure', 'rule-id': self.rule_id, 'reason': self.reason}
 
 
 class LogOrigin(str, Enum):
@@ -302,7 +302,7 @@ class LogRewrite(LogEntry):
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {'tag': 'rewrite', 'origin': self.origin.encode(), 'result': self.result.to_dict()}
+        return {'tag': 'rewrite', 'origin': self.origin.value, 'result': self.result.to_dict()}
 
 
 @final
@@ -310,7 +310,7 @@ class LogRewrite(LogEntry):
 class LogSimplification(LogEntry):
     origin: LogOrigin
     result: RewriteResult
-    original_term: KInner | None
+    original_term: Pattern | None
     original_term_index: tuple[int, ...] | None
 
     @classmethod
@@ -318,12 +318,13 @@ class LogSimplification(LogEntry):
         return LogSimplification(
             origin=LogOrigin(dct['origin']),
             result=RewriteResult.from_dict(dct['result']),
-            original_term=None,  # TODO fixme
+            original_term=kore_term(dct['original-term'], Pattern) if 'original-term' in dct else None,  # type: ignore
             original_term_index=None,  # TODO fixme
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {'tag': 'simplification', 'origin': self.origin.encode(), 'result': self.result.to_dict()}  # TODO fixme
+        original_term = {'original-term': KoreClient._state(self.original_term)} if self.original_term else {}
+        return {'tag': 'simplification', 'origin': self.origin.value, 'result': self.result.to_dict()} | original_term
 
 
 class ExecuteResult(ABC):  # noqa: B024
@@ -472,17 +473,20 @@ class ImpliesResult:
     implication: Pattern
     substitution: Pattern | None
     predicate: Pattern | None
+    logs: tuple[LogEntry, ...]
 
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> ImpliesResult:
         substitution = dct.get('condition', {}).get('substitution')
         predicate = dct.get('condition', {}).get('predicate')
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
         return ImpliesResult(
             satisfiable=dct['satisfiable'],
             # https://github.com/python/mypy/issues/4717
             implication=kore_term(dct['implication'], Pattern),  # type: ignore
             substitution=kore_term(substitution, Pattern) if substitution is not None else None,  # type: ignore
             predicate=kore_term(predicate, Pattern) if predicate is not None else None,  # type: ignore
+            logs=logs,
         )
 
 
@@ -546,22 +550,42 @@ class KoreClient(ContextManager['KoreClient']):
         result = self._request('execute', **params)
         return ExecuteResult.from_dict(result)
 
-    def implies(self, ant: Pattern, con: Pattern) -> ImpliesResult:
-        params = {
-            'antecedent': self._state(ant),
-            'consequent': self._state(con),
-        }
+    def implies(
+        self,
+        ant: Pattern,
+        con: Pattern,
+        log_successful_simplifications: bool | None = None,
+        log_failed_simplifications: bool | None = None,
+    ) -> ImpliesResult:
+        params = filter_none(
+            {
+                'antecedent': self._state(ant),
+                'consequent': self._state(con),
+                'log-successful-simplifications': log_successful_simplifications,
+                'log-failed-simplifications': log_failed_simplifications,
+            }
+        )
 
         result = self._request('implies', **params)
         return ImpliesResult.from_dict(result)
 
-    def simplify(self, pattern: Pattern) -> Pattern:
-        params = {
-            'state': self._state(pattern),
-        }
+    def simplify(
+        self,
+        pattern: Pattern,
+        log_successful_simplifications: bool | None = None,
+        log_failed_simplifications: bool | None = None,
+    ) -> tuple[Pattern, tuple[LogEntry, ...]]:
+        params = filter_none(
+            {
+                'state': self._state(pattern),
+                'log-successful-simplifications': log_successful_simplifications,
+                'log-failed-simplifications': log_failed_simplifications,
+            }
+        )
 
         result = self._request('simplify', **params)
-        return kore_term(result['state'], Pattern)  # type: ignore # https://github.com/python/mypy/issues/4717
+        logs = tuple(LogEntry.from_dict(l) for l in result['logs']) if 'logs' in result else ()
+        return kore_term(result['state'], Pattern), logs  # type: ignore # https://github.com/python/mypy/issues/4717
 
     def add_module(self, module: Module) -> None:
         result = self._request('add-module', module=module.text)
