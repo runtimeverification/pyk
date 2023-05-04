@@ -109,33 +109,49 @@ class APRProof(Proof):
         self.add_subproof(refutation.id)
         return refutation.id
 
-    def refute_node(self, node: KCFG.Node, assuming: KInner | None = None) -> str:
-        """Refute a node by constructing a subproof of the node's path condition being False"""
+    def refute_node(self, node: KCFG.Node, assuming: KInner | None = None) -> str | None:
+        """Refute a node by constructing a subproof of the node's path condition implying False"""
         if not node in self.kcfg.nodes:
             raise ValueError(f'No such node {node.id}')
 
         self.kcfg.add_expanded(node.id)
 
+        # construct the path from the KCFG root to the node to refute
         path = single(self.kcfg.paths_between(source_id=self.kcfg.get_unique_init().id, target_id=node.id))
-        closest_split = list(filter(lambda x: type(x) is KCFG.Split, reversed(path)))[0]
-
+        # traverse the path back from the node-to-refute and filter-out split nodes
+        splits_on_path = list(filter(lambda x: type(x) is KCFG.Split, reversed(path)))
+        if len(splits_on_path) == 0:
+            _LOGGER.error(f'Cannot refute node {shorten_hash(node.id)} in linear KCFG')
+            return None
+        closest_split = splits_on_path[0]
         assert type(closest_split) is KCFG.Split
+
         csubst = closest_split.splits[closest_split.targets[0].id]
-        assert len(csubst.constraints) == 1
+        if len(csubst.subst) > 0:
+            raise ValueError(
+                f'Unexpected non-empty substitution {csubst.subst} in Split from {shorten_hash(closest_split.source.id)}'
+            )
+        if len(csubst.constraints) > 1:
+            raise ValueError(
+                f'Unexpected non-singleton constraints {csubst.constraints} in Split from {shorten_hash(closest_split.source.id)}'
+            )
+
+        # extract the constriant added by the Split that leads to the node to refute
         last_constraint = ml_pred_to_bool(csubst.constraints[0])
 
-        constraints = [
+        # extract the path consition prior the Split that leads to the node-to-refute
+        pre_split_constraints = [
             mlEquals(TRUE, ml_pred_to_bool(c), arg_sort=BOOL) for c in closest_split.source.cterm.constraints
         ]
 
-        assert assuming
-        constraints.append(mlEquals(TRUE, assuming, arg_sort=BOOL))
+        if assuming is not None:
+            pre_split_constraints.append(mlEquals(TRUE, assuming, arg_sort=BOOL))
         refutation_id = f'infeasible-{shorten_hash(node.id)}'
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
         refutation = EqualityProof(
             id=refutation_id,
             lhs_body=last_constraint,
-            constraints=constraints,
+            constraints=pre_split_constraints,
             rhs_body=FALSE,
             sort=BOOL,
             proof_dir=self.proof_dir,
