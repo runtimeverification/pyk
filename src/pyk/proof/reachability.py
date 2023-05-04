@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
-from ..prelude.kbool import BOOL, FALSE, TRUE, andBool
+from ..prelude.kbool import BOOL, FALSE, TRUE
 from ..prelude.ml import mlEquals
 from ..utils import hash_str, shorten_hash, shorten_hashes, single
 from .equality import EqualityProof
@@ -90,16 +90,17 @@ class APRProof(Proof):
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
-            'Subproofs' if len(self.subproof_ids) else '',
+            'Subproofs:' if len(self.subproof_ids) else '',
         ]
         for summary in subproofs_summaries:
             yield from summary
 
     def refute_node(self, node: KCFG.Node, assuming: KInner | None = None) -> str | None:
-        """Refute a node by constructing a subproof of the node's path condition implying False"""
+        """Refute a node by constructing an EqualityProof stating that the node's path condition is unsatisfiable"""
         if not node in self.kcfg.nodes:
             raise ValueError(f'No such node {node.id}')
 
+        # mark the node-to-refute as expanded to prevent further exploration
         self.kcfg.add_expanded(node.id)
 
         # construct the path from the KCFG root to the node to refute
@@ -132,7 +133,7 @@ class APRProof(Proof):
 
         if assuming is not None:
             pre_split_constraints.append(mlEquals(TRUE, assuming, arg_sort=BOOL))
-        refutation_id = f'infeasible-{shorten_hash(node.id)}'
+        refutation_id = f'{self.id}.node-infeasible-{shorten_hash(node.id)}'
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
         refutation = EqualityProof(
             id=refutation_id,

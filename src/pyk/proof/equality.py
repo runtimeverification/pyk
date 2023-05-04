@@ -205,7 +205,7 @@ class EqualityProver:
                 for uc in unbound_consequent:
                     _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
 
-        _LOGGER.warning(f'Checking proof: {self.proof.pretty(kcfg_explore.kprint)}')
+        _LOGGER.info(f'Attempting EqualityProof {self.proof.id}')
         result = kore_client.implies(
             kcfg_explore.kprint.kast_to_kore(antecedent_with_config, GENERATED_TOP_CELL),
             kcfg_explore.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL),
