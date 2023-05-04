@@ -120,8 +120,7 @@ class APRProof(Proof):
         closest_split = list(filter(lambda x: type(x) is KCFG.Split, reversed(path)))[0]
 
         assert type(closest_split) is KCFG.Split
-        _, csubst = closest_split.targets[0]
-        # assert csubst.subst is empty
+        csubst = closest_split.splits[closest_split.targets[0].id]
         assert len(csubst.constraints) == 1
         last_constraint = ml_pred_to_bool(csubst.constraints[0])
 
