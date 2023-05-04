@@ -138,9 +138,13 @@ class APRProof(Proof):
             proof_dir=self.proof_dir,
         )
         refutation.write_proof()
-        self.add_subproof(refutation.id)
-        self.write_proof()
-        return refutation.id
+        if refutation.id in self.subproof_ids:
+            _LOGGER.warning(f'{refutation_id} is already a subproof of {self.id}, skipping')
+            return refutation.id
+        else:
+            self.add_subproof(refutation.id)
+            self.write_proof()
+            return refutation.id
 
 
 class APRBMCProof(APRProof):
