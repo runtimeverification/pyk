@@ -216,7 +216,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if is_bottom(new_term):
                 raise ValueError(f'Node simplified to #Bottom {self.id}: {shorten_hashes(node.id)}')
             if new_term != node.cterm.kast:
-                cfg.replace_node(node.id, CTerm.from_kast(new_term), logs)
+                cfg.replace_node(node.id, CTerm.from_kast(new_term), append_logs=logs)
 
     def step(self, cfg: KCFG, node_id: str, depth: int = 1) -> str:
         if depth <= 0:
