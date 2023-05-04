@@ -90,25 +90,6 @@ class APRProof(Proof):
         for summary in subproofs_summaries:
             yield from summary
 
-    def refute_edge(self, edge: KCFG.Edge) -> str:
-        """Refute an edge by constructing a subproof of the edge target's path condition being equivalent to False"""
-        if not edge in self.kcfg.edges():
-            raise ValueError(f'No edge between {edge.source.id} and {edge.target.id}')
-
-        self.kcfg.add_expanded(edge.target.id)
-
-        target_condition = andBool([ml_pred_to_bool(expr) for expr in edge.target.cterm.constraints])
-        refutation = EqualityProof(
-            id=f'infeasible-{shorten_hash(edge.source.id)}-to-{shorten_hash(edge.target.id)}',
-            lhs_body=target_condition,
-            rhs_body=FALSE,
-            sort=BOOL,
-            proof_dir=self.proof_dir,
-        )
-        refutation.write_proof()
-        self.add_subproof(refutation.id)
-        return refutation.id
-
     def refute_node(self, node: KCFG.Node, assuming: KInner | None = None) -> str | None:
         """Refute a node by constructing a subproof of the node's path condition implying False"""
         if not node in self.kcfg.nodes:
