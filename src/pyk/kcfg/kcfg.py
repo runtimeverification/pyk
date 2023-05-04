@@ -16,6 +16,7 @@ from ..kast.manip import (
     remove_source_attributes,
     rename_generated_vars,
 )
+from ..kore.rpc import LogEntry
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import compare_short_hashes, shorten_hash
 
@@ -33,13 +34,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @dataclass(frozen=True, order=True)
     class Node:
         cterm: CTerm
+        logs: tuple[LogEntry, ...]
 
         @property
         def id(self) -> str:
             return self.cterm.hash
 
         def to_dict(self) -> dict[str, Any]:
-            return {'id': self.id, 'cterm': self.cterm.to_dict()}
+            return {'id': self.id, 'cterm': self.cterm.to_dict()} | (
+                {'logs': [l.to_dict() for l in self.logs]} if self.logs else {}
+            )
 
     class Successor(ABC):
         source: KCFG.Node
@@ -252,11 +256,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         claim_body = rename_generated_vars(claim_body)
 
         claim_lhs = CTerm.from_kast(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
-        init_state = cfg.create_node(claim_lhs)
+        init_state = cfg.create_node(claim_lhs, logs=())
         cfg.add_init(init_state.id)
 
         claim_rhs = CTerm.from_kast(extract_rhs(claim_body)).add_constraint(bool_to_ml_pred(claim.ensures))
-        target_state = cfg.create_node(claim_rhs)
+        target_state = cfg.create_node(claim_rhs, logs=())
         cfg.add_target(target_state.id)
 
         return cfg
@@ -299,7 +303,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         for node_dict in dct.get('nodes') or []:
             cterm = CTerm.from_dict(node_dict['cterm'])
-            node = cfg.create_node(cterm)
+            logs = tuple(LogEntry.from_dict(l) for l in node_dict['logs']) if 'logs' in node_dict else ()
+            node = cfg.create_node(cterm, logs)
 
             node_key = node_dict['id']
             if node_key in nodes:
@@ -421,17 +426,17 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return self._nodes.get(id)
 
     def get_node_by_cterm(self, cterm: CTerm) -> Node | None:
-        node = KCFG.Node(cterm)
+        node = KCFG.Node(cterm, logs=())
         return self.get_node(node.id)
 
     def contains_node(self, node: Node) -> bool:
         return bool(self.get_node(node.id))
 
-    def create_node(self, cterm: CTerm) -> Node:
+    def create_node(self, cterm: CTerm, logs: tuple[LogEntry, ...] | None = None) -> Node:
         term = cterm.kast
         term = remove_source_attributes(term)
         cterm = CTerm.from_kast(term)
-        node = KCFG.Node(cterm)
+        node = KCFG.Node(cterm, logs=logs if logs else ())
 
         if node.id in self._nodes:
             raise ValueError(f'Node already exists: {node.id}')
@@ -439,8 +444,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._nodes[node.id] = node
         return node
 
-    def get_or_create_node(self, cterm: CTerm) -> Node:
-        return self.get_node_by_cterm(cterm) or self.create_node(cterm)
+    def get_or_create_node(self, cterm: CTerm, logs: tuple[LogEntry, ...] | None = None) -> Node:
+        return self.get_node_by_cterm(cterm) or self.create_node(cterm, logs)
 
     def remove_node(self, node_id: str) -> None:
         node_id = self._resolve(node_id)
@@ -472,7 +477,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for alias in [alias for alias, id in self._aliases.items() if id == node_id]:
             self.remove_alias(alias)
 
-    def replace_node(self, node_id: str, new_cterm: CTerm) -> str:
+    def replace_node(self, node_id: str, new_cterm: CTerm, append_logs: tuple[LogEntry, ...] | None = None) -> str:
         # Remove old node, record data
         node = self.node(node_id)
         in_edges = self.edges(target_id=node.id)
@@ -485,8 +490,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         in_expanded = {edge.source.id: self.is_expanded(edge.source.id) for edge in in_edges}
         self.remove_node(node.id)
 
+        new_logs = node.logs + append_logs if append_logs else node.logs
         # Add the new, update data
-        new_node = self.get_or_create_node(new_cterm)
+        new_node = self.get_or_create_node(new_cterm, logs=new_logs)
         for in_edge in in_edges:
             self.create_edge(in_edge.source.id, new_node.id, in_edge.depth)
         for out_edge in out_edges:
@@ -696,7 +702,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def split_on_constraints(self, source_id: str, constraints: Iterable[KInner]) -> list[str]:
         source = self.node(source_id)
-        branch_node_ids = [self.get_or_create_node(source.cterm.add_constraint(c)).id for c in constraints]
+        branch_node_ids = [
+            self.get_or_create_node(source.cterm.add_constraint(c), logs=source.logs).id for c in constraints
+        ]
         csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
         self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids

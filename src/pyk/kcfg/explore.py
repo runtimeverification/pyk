@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
     from ..cli_utils import BugReport
     from ..kast import KInner
+    from ..kore.rpc import LogEntry
     from ..ktool.kprint import KPrint
 
 
@@ -39,6 +40,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _kore_server: KoreServer | None
     _kore_client: KoreClient | None
     _rpc_closed: bool
+    _trace_rewrites: bool
 
     def __init__(
         self,
@@ -53,6 +55,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
+        trace_rewrites: bool = False,
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
@@ -67,6 +70,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._kore_server = None
         self._kore_client = None
         self._rpc_closed = False
+        self._trace_rewrites = trace_rewrites
 
     def __enter__(self) -> KCFGExplore:
         return self
@@ -110,31 +114,40 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
-    ) -> tuple[int, CTerm, list[CTerm]]:
+    ) -> tuple[int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
-        er = kore_client.execute(kore, max_depth=depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules)
+        er = kore_client.execute(
+            kore,
+            max_depth=depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            log_successful_rewrites=self._trace_rewrites,
+            log_failed_rewrites=self._trace_rewrites,
+            log_successful_simplifications=self._trace_rewrites,
+            log_failed_simplifications=self._trace_rewrites,
+        )
         depth = er.depth
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None else []
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
         if len(next_states) == 1 and len(next_states) < len(_next_states):
-            return depth + 1, next_states[0], []
+            return depth + 1, next_states[0], [], er.logs
         elif len(next_states) == 1:
             if er.reason == StopReason.CUT_POINT_RULE:
-                return depth, next_state, next_states
+                return depth, next_state, next_states, er.logs
             else:
                 next_states = []
-        return depth, next_state, next_states
+        return depth, next_state, next_states, er.logs
 
-    def cterm_simplify(self, cterm: CTerm) -> KInner:
+    def cterm_simplify(self, cterm: CTerm) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
-        kore_simplified = kore_client.simplify(kore)
+        kore_simplified, logs = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
-        return kast_simplified
+        return kast_simplified, logs
 
     def cterm_implies(
         self, antecedent: CTerm, consequent: CTerm, bind_consequent_variables: bool = True
@@ -183,7 +196,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
-        kore_simplified = kore_client.simplify(kore)
+        kore_simplified, _logs = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
@@ -197,13 +210,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def simplify(self, cfg: KCFG) -> None:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
-            new_term = self.cterm_simplify(node.cterm)
+            new_term, logs = self.cterm_simplify(node.cterm)
             if is_top(new_term):
                 raise ValueError(f'Node simplified to #Top {self.id}: {shorten_hashes(node.id)}')
             if is_bottom(new_term):
                 raise ValueError(f'Node simplified to #Bottom {self.id}: {shorten_hashes(node.id)}')
             if new_term != node.cterm.kast:
-                cfg.replace_node(node.id, CTerm.from_kast(new_term))
+                cfg.replace_node(node.id, CTerm.from_kast(new_term), logs)
 
     def step(self, cfg: KCFG, node_id: str, depth: int = 1) -> str:
         if depth <= 0:
@@ -213,12 +226,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        actual_depth, cterm, next_cterms = self.cterm_execute(node.cterm, depth=depth)
+        actual_depth, cterm, next_cterms, logs = self.cterm_execute(node.cterm, depth=depth)
         if actual_depth != depth:
             raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
         if len(next_cterms) > 0:
             raise ValueError(f'Found branch within {depth} steps {self.id}: {node.id}')
-        new_node = cfg.get_or_create_node(cterm)
+        new_node = cfg.get_or_create_node(cterm, logs)
         _LOGGER.info(f'Found new node at depth {depth} {self.id}: {shorten_hashes((node.id, new_node.id))}')
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) == 0:
@@ -280,13 +293,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         kcfg.add_expanded(node.id)
 
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
-        depth, cterm, next_cterms = self.cterm_execute(
+        depth, cterm, next_cterms, logs = self.cterm_execute(
             node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
         )
 
         # Basic block
         if depth > 0:
-            next_node = kcfg.get_or_create_node(cterm)
+            next_node = kcfg.get_or_create_node(cterm, logs)
             kcfg.create_edge(node.id, next_node.id, depth)
             _LOGGER.info(
                 f'Found basic block at depth {depth} for {self.id}: {shorten_hashes((node.id, next_node.id))}.'
@@ -298,7 +311,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         # Cut Rule
         elif len(next_cterms) == 1:
-            next_node = kcfg.get_or_create_node(next_cterms[0])
+            next_node = kcfg.get_or_create_node(next_cterms[0], logs)
             kcfg.create_edge(node.id, next_node.id, 1)
             _LOGGER.info(
                 f'Inserted cut-rule basic block at depth 1 for {self.id}: {shorten_hashes((node.id, next_node.id))}'
