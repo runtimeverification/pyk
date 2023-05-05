@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from ..kast.inner import KApply, KInner, KLabel, KSort, KVariable
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label, free_vars
 from ..prelude.k import GENERATED_TOP_CELL
-from ..prelude.kbool import BOOL, TRUE
+from ..prelude.kbool import BOOL, FALSE, TRUE
 from ..prelude.ml import is_bottom, mlAnd, mlEquals, mlImplies
 from ..utils import hash_str
 from .proof import Proof, ProofStatus
@@ -83,6 +83,9 @@ class EqualityProof(Proof):
         consequent_kast = mlEquals(TRUE, self.equality, arg_sort=BOOL, sort=GENERATED_TOP_CELL)
         return antecedent_kast, consequent_kast
 
+    def add_constraint(self, new_constraint: KInner) -> None:
+        self.constraints = (*self.constraints, new_constraint)
+
     def set_satisfiable(self, satisfiable: bool) -> None:
         self.satisfiable = satisfiable
 
@@ -118,14 +121,18 @@ class EqualityProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
-        if self.simplified_constraints is not None and is_bottom(self.simplified_constraints):
-            return ProofStatus.FAILED
-        if self.satisfiable is None or self.predicate is None:
+        if self.inhabited == ProofInhabitation.Unknown:
             return ProofStatus.PENDING
-        elif self.satisfiable is False or is_bottom(self.predicate):
-            return ProofStatus.FAILED
+        elif self.inhabited == ProofInhabitation.Inhabited:
+            if self.rhs_body == FALSE:
+                return ProofStatus.FAILED
+            else:
+                return ProofStatus.PASSED
         else:
-            return ProofStatus.PASSED
+            if self.rhs_body == FALSE:
+                return ProofStatus.PASSED
+            else:
+                return ProofStatus.FAILED
 
     @classmethod
     def from_dict(cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> EqualityProof:
@@ -175,7 +182,6 @@ class EqualityProof(Proof):
                if self.satisfiable is not None else [])
             + ([f'Implication predicate: {self.predicate}']
                if self.predicate is not None else [])
-            + [f'Status: {self.status}']
         )
         # fmt: on
 
@@ -183,7 +189,8 @@ class EqualityProof(Proof):
     def summary(self) -> Iterable[str]:
         return [
             f'EqualityProof: {self.id}',
-            f'    status: {self.status}',
+            f'    satisfiable: {self.satisfiable}',
+            f'    inhabited: {self.inhabited}',
         ]
 
 
@@ -194,7 +201,7 @@ class EqualityProver:
         self.proof = proof
 
     def advance_proof(self, kcfg_explore: KCFGExplore, bind_consequent_variables: bool = True) -> None:
-        if not self.proof.status == ProofStatus.PENDING:
+        if self.proof.satisfiable is not None:
             return
 
         dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
