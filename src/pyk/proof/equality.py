@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from ..kast.inner import KApply, KInner, KLabel, KSort, KVariable
@@ -25,6 +26,12 @@ if TYPE_CHECKING:
     T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class ProofInhabitation(Enum):
+    Inhabited = 'inhabited'
+    Uninhabited = 'uninhabited'
+    Unknown = 'unknown'
 
 
 class EqualityProof(Proof):
@@ -93,6 +100,21 @@ class EqualityProof(Proof):
             _LOGGER.info(f'Reading EqualityProof from file {id}: {proof_path}')
             return EqualityProof.from_dict(proof_dict, proof_dir=proof_dir)
         raise ValueError(f'Could not load EqualityProof from file {id}: {proof_path}')
+
+    @property
+    def inhabited(self) -> ProofInhabitation:
+        """An EqualityProof is inhabited of the inderlying implication is satisfiable"""
+        match self.satisfiable:
+            case None:
+                return ProofInhabitation.Unknown
+            case False:
+                return ProofInhabitation.Uninhabited
+            case True:
+                return ProofInhabitation.Inhabited
+
+    @property
+    def is_inhabited(self) -> bool:
+        return self.inhabited == ProofInhabitation.Inhabited
 
     @property
     def status(self) -> ProofStatus:
