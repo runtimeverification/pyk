@@ -7,7 +7,7 @@ import pytest
 if TYPE_CHECKING:
     from typing import Final
 
-from pyk.dequote import dequote_str, enquote_str
+from pyk.dequote import dequote_string, enquote_string
 
 TEST_DATA: Final = (
     # enquoted, dequoted
@@ -47,22 +47,22 @@ DEQUOTE_TEST_DATA: Final = TEST_DATA + (
 
 
 @pytest.mark.parametrize(
-    'enquoted_str,expected',
+    'enquoted,expected',
     DEQUOTE_TEST_DATA,
-    ids=[enquoted_str for enquoted_str, *_ in DEQUOTE_TEST_DATA],
+    ids=[enquoted for enquoted, *_ in DEQUOTE_TEST_DATA],
 )
-def test_dequote_str(enquoted_str: str, expected: str) -> None:
+def test_dequote_string(enquoted: str, expected: str) -> None:
     # When
-    actual = dequote_str(enquoted_str)
+    actual = dequote_string(enquoted)
 
     # Then
     assert actual == expected
 
 
-@pytest.mark.parametrize('expected,dequoted_str', TEST_DATA, ids=[expected for expected, *_ in TEST_DATA])
-def test_enquote_str(expected: str, dequoted_str: str) -> None:
+@pytest.mark.parametrize('expected,dequoted', TEST_DATA, ids=[expected for expected, *_ in TEST_DATA])
+def test_enquote_string(expected: str, dequoted: str) -> None:
     # When
-    actual = enquote_str(dequoted_str)
+    actual = enquote_string(dequoted)
 
     # Then
     assert actual == expected
