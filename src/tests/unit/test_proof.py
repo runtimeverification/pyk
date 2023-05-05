@@ -60,7 +60,13 @@ def test_apr_proof_add_subproof(proof_dir: Path) -> None:
 
 def test_apr_proof_from_dict_no_subproofs() -> None:
     # Given
-    d = {'type': 'APRProof', 'id': 'apr_proof_1', 'cfg': {'nodes': node_dicts(1)}, 'subproof_ids': []}
+    d = {
+        'type': 'APRProof',
+        'id': 'apr_proof_1',
+        'cfg': {'nodes': node_dicts(1)},
+        'subproof_ids': [],
+        'node_refutations': {},
+    }
 
     # When
     proof = APRProof.from_dict(d)
@@ -76,6 +82,7 @@ def test_apr_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
         'id': 'apr_proof_1',
         'cfg': {'nodes': node_dicts(1)},
         'subproof_ids': [equality_proof(1, proof_dir).id],
+        'node_refutations': {},
     }
 
     # When
@@ -92,6 +99,7 @@ def test_apr_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None:
         'id': 'apr_proof_1',
         'cfg': {'nodes': node_dicts(1)},
         'subproof_ids': [equality_proof(1, proof_dir).id, apr_proof(2, proof_dir).id, aprbmc_proof(3, proof_dir).id],
+        'node_refutations': {},
     }
 
     # When
@@ -128,6 +136,7 @@ def test_aprbmc_proof_from_dict_no_subproofs() -> None:
         'bounded_states': [],
         'bmc_depth': 1,
         'cfg': {'nodes': node_dicts(1)},
+        'node_refutations': {},
     }
 
     # When
@@ -146,6 +155,7 @@ def test_aprbmc_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
         'bmc_depth': 1,
         'cfg': {'nodes': node_dicts(1)},
         'subproof_ids': [equality_proof(1, proof_dir).id],
+        'node_refutations': {},
     }
 
     # When
@@ -164,6 +174,7 @@ def test_aprbmc_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None
         'bmc_depth': 1,
         'cfg': {'nodes': node_dicts(1)},
         'subproof_ids': [equality_proof(1, proof_dir).id, aprbmc_proof(2, proof_dir).id, aprbmc_proof(3, proof_dir).id],
+        'node_refutations': {},
     }
 
     # When
