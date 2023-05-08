@@ -671,13 +671,26 @@ def match_with_constraint(constrained_term_1: KInner, constrained_term_2: KInner
 
 
 def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
-    aliases = (rule for module in definition for rule in module.rules if 'alias' in rule.att)
-    for rule in aliases:
+    aliases = []
+    for rule in definition.alias_rules:
         rewrite = rule.body
         if type(rewrite) is not KRewrite:
             raise ValueError(f'Expected KRewrite as alias body, found: {rewrite}')
-        kast = rewrite(kast)
-    return kast
+        if rule.requires is not None and rule.requires != TRUE:
+            raise ValueError(f'Expended empty requires clause on alias, found: {rule.requires}')
+        if rule.ensures is not None and rule.ensures != TRUE:
+            raise ValueError(f'Expended empty ensures clause on alias, found: {rule.ensures}')
+        aliases.append(KRewrite(rewrite.rhs, rewrite.lhs))
+    orig_kast: KInner = kast
+    new_kast: KInner | None = None
+    while orig_kast != new_kast:
+        if new_kast is None:
+            new_kast = orig_kast
+        else:
+            orig_kast = new_kast
+        for alias in aliases:
+            new_kast = alias(new_kast)
+    return new_kast
 
 
 def rename_generated_vars(term: KInner) -> KInner:
