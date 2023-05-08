@@ -14,7 +14,8 @@ from pyk.prelude.kint import INT, intToken, leInt, ltInt
 from .utils import KPrintTest
 
 if TYPE_CHECKING:
-    from typing import Final, Iterable
+    from typing import Final
+    from collections.abc import Iterable
 
     from pyk.kast import KInner
     from pyk.ktool.kprint import KPrint, SymbolTable
