@@ -14,8 +14,8 @@ from pyk.prelude.kint import INT, intToken, leInt, ltInt
 from .utils import KPrintTest
 
 if TYPE_CHECKING:
-    from typing import Final
     from collections.abc import Iterable
+    from typing import Final
 
     from pyk.kast import KInner
     from pyk.ktool.kprint import KPrint, SymbolTable
@@ -238,6 +238,7 @@ PRETTY_PRINT_ALIAS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
         andBool(
             [leInt(intToken(0), KVariable('X')), ltInt(intToken(3), intToken(4)), ltInt(KVariable('X'), intToken(100))]
         ),
+        # TODO: Actually want 'rangeHundred ( X ) andBool 3 <Int 4'
         '0 <=Int X andBool 3 <Int 4 andBool X <Int hundred',
     ),
 )
