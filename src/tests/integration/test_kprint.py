@@ -8,7 +8,8 @@ from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable
 from pyk.kast.manip import remove_attrs
 from pyk.ktool.kprint import assoc_with_unit
 from pyk.prelude.k import GENERATED_TOP_CELL
-from pyk.prelude.kint import INT, intToken
+from pyk.prelude.kbool import andBool
+from pyk.prelude.kint import INT, intToken, leInt, ltInt
 
 from .utils import KPrintTest
 
@@ -182,7 +183,7 @@ PRETTY_PRINT_IMP_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
 )
 
 
-class TestDefn(KPrintTest):
+class TestImpDefn(KPrintTest):
     KOMPILE_MAIN_FILE = 'k-files/imp.k'
 
     @staticmethod
@@ -217,4 +218,38 @@ class TestDefn(KPrintTest):
         actual = kprint.pretty_print(init_config)
 
         # Then
+        assert actual == expected
+
+
+PRETTY_PRINT_ALIAS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
+    (
+        'simple-int',
+        KToken('100', 'Int'),
+        'hundred',
+    ),
+    (
+        'ac-bool-pred-simple',
+        andBool([leInt(intToken(0), KVariable('X')), ltInt(KVariable('X'), intToken(100))]),
+        'rangeHundred ( X )',
+    ),
+    (
+        'ac-bool-pred-separated',
+        andBool(
+            [leInt(intToken(0), KVariable('X')), ltInt(intToken(3), intToken(4)), ltInt(KVariable('X'), intToken(100))]
+        ),
+        '0 <=Int X andBool 3 <Int 4 andBool X <Int hundred',
+    ),
+)
+
+
+class TestAliasDefn(KPrintTest):
+    KOMPILE_MAIN_FILE = 'k-files/aliases.k'
+
+    @pytest.mark.parametrize(
+        'test_id,kast,expected',
+        PRETTY_PRINT_ALIAS_TEST_DATA,
+        ids=[test_id for test_id, *_ in PRETTY_PRINT_ALIAS_TEST_DATA],
+    )
+    def test_pretty_print(self, kprint: KPrint, test_id: str, kast: KInner, expected: str) -> None:
+        actual = kprint.pretty_print(kast)
         assert actual == expected
