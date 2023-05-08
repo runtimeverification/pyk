@@ -620,6 +620,45 @@ def apply_existential_substitutions(constrained_term: KInner) -> KInner:
     return Subst(subst)(mlAnd([state] + new_constraints))
 
 
+def indexed_rewrite(rewrites: Iterable[KRewrite], kast: KInner) -> KInner:
+    token_rewrites: list[KRewrite] = []
+    apply_rewrites: dict[str, list[KRewrite]] = {}
+    other_rewrites: list[KRewrite] = []
+    for r in rewrites:
+        if type(r.lhs) is KToken:
+            token_rewrites.append(r)
+        elif type(r.lhs) is KApply:
+            if r.lhs.label.name in token_rewrites:
+                apply_rewrites[r.lhs.label.name].append(r)
+            else:
+                apply_rewrites[r.lhs.label.name] = [r]
+        else:
+            other_rewrites.append(r)
+
+    def _apply_rewrites(_kast: KInner) -> KInner:
+        if type(_kast) is KToken:
+            for tr in token_rewrites:
+                _kast = tr.apply_top(_kast)
+        elif type(_kast) is KApply:
+            if _kast.label.name in apply_rewrites:
+                for ar in apply_rewrites[_kast.label.name]:
+                    _kast = ar.apply_top(_kast)
+        else:
+            for _or in other_rewrites:
+                _kast = _or.apply_top(_kast)
+        return _kast
+
+    orig_kast: KInner = kast
+    new_kast: KInner | None = None
+    while orig_kast != new_kast:
+        if new_kast is None:
+            new_kast = orig_kast
+        else:
+            orig_kast = new_kast
+        new_kast = bottom_up(_apply_rewrites, new_kast)
+    return new_kast
+
+
 def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
     aliases = []
     for rule in definition.alias_rules:
@@ -631,16 +670,7 @@ def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
         if rule.ensures is not None and rule.ensures != TRUE:
             raise ValueError(f'Expended empty ensures clause on alias, found: {rule.ensures}')
         aliases.append(KRewrite(rewrite.rhs, rewrite.lhs))
-    orig_kast: KInner = kast
-    new_kast: KInner | None = None
-    while orig_kast != new_kast:
-        if new_kast is None:
-            new_kast = orig_kast
-        else:
-            orig_kast = new_kast
-        for alias in aliases:
-            new_kast = alias(new_kast)
-    return new_kast
+    return indexed_rewrite(aliases, kast)
 
 
 def rename_generated_vars(term: KInner) -> KInner:
