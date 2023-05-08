@@ -185,7 +185,6 @@ class EqualityProver:
         if self.proof.satisfiable is not None:
             return
 
-        dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
         antecedent, consequent = self.proof.implication
 
         _, kore_client = kcfg_explore._kore_rpc
@@ -203,6 +202,7 @@ class EqualityProver:
             return None
 
         # second, check implication from antecedent to consequent
+        dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
         antecedent_with_config = mlAnd([dummy_config, antecedent])
         consequent_with_config = mlAnd([dummy_config, consequent])
         _consequent = consequent_with_config
