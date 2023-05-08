@@ -13,7 +13,7 @@ from pyk.prelude.kint import INT, intToken
 from .utils import KPrintTest
 
 if TYPE_CHECKING:
-    from typing import Final
+    from typing import Final, Iterable
 
     from pyk.kast import KInner
     from pyk.ktool.kprint import KPrint, SymbolTable
@@ -155,17 +155,10 @@ INIT_CONFIG_TEST_DATA: Final = (
 )
 
 
-class TestDefn(KPrintTest):
-    KOMPILE_MAIN_FILE = 'k-files/imp.k'
-
-    @staticmethod
-    def _update_symbol_table(symbol_table: SymbolTable) -> None:
-        symbol_table['_,_'] = assoc_with_unit(' , ', '')
-        symbol_table['.List{"_,_"}'] = lambda: ''
-
-    def test_pretty_print(self, kprint: KPrint) -> None:
-        # Given
-        config = KApply(
+PRETTY_PRINT_IMP_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
+    (
+        'imp-config',
+        KApply(
             '<T>',
             KApply(
                 '<k>',
@@ -183,25 +176,25 @@ class TestDefn(KPrintTest):
                 ),
             ),
             KApply('<state>', KApply('.Map')),
-        )
+        ),
+        ('<T>\n  <k>\n    int x , y ;\n  </k>\n  <state>\n    .Map\n  </state>\n</T>'),
+    ),
+)
 
-        # fmt: off
-        expected = (
-            '<T>\n'
-            '  <k>\n'
-            '    int x , y ;\n'
-            '  </k>\n'
-            '  <state>\n'
-            '    .Map\n'
-            '  </state>\n'
-            '</T>'
-        )
-        # fmt: on
 
-        # When
-        actual = kprint.pretty_print(config)
+class TestDefn(KPrintTest):
+    KOMPILE_MAIN_FILE = 'k-files/imp.k'
 
-        # Then
+    @staticmethod
+    def _update_symbol_table(symbol_table: SymbolTable) -> None:
+        symbol_table['_,_'] = assoc_with_unit(' , ', '')
+        symbol_table['.List{"_,_"}'] = lambda: ''
+
+    @pytest.mark.parametrize(
+        'test_id,kast,expected', PRETTY_PRINT_IMP_TEST_DATA, ids=[test_id for test_id, *_ in PRETTY_PRINT_IMP_TEST_DATA]
+    )
+    def test_pretty_print(self, kprint: KPrint, test_id: str, kast: KInner, expected: str) -> None:
+        actual = kprint.pretty_print(kast)
         assert actual == expected
 
     @pytest.mark.parametrize(
