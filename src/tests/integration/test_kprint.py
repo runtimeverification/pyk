@@ -234,6 +234,12 @@ PRETTY_PRINT_ALIAS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
         'rangeHundred ( X )',
     ),
     (
+        'ac-bool-pred-reversed',
+        andBool([ltInt(KVariable('X'), intToken(100)), leInt(intToken(0), KVariable('X'))]),
+        # TODO: Actually want 'rangeHundred ( X )'
+        'X <Int hundred andBool 0 <=Int X',
+    ),
+    (
         'ac-bool-pred-separated',
         andBool(
             [leInt(intToken(0), KVariable('X')), ltInt(intToken(3), intToken(4)), ltInt(KVariable('X'), intToken(100))]
