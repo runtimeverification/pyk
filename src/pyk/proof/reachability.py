@@ -81,7 +81,7 @@ class APRProof(Proof):
     def stuck_nodes_refuted(self) -> bool:
         stuck_nodes = self.kcfg.stuck
         refutations = dict(self.read_refutations())
-        return all(n.id in self.node_refutations.keys() and not refutations[n.id].is_inhabited for n in stuck_nodes)
+        return all(n.id in self.node_refutations.keys() and not refutations[n.id].is_sastisfiable for n in stuck_nodes)
 
     @property
     def status(self) -> ProofStatus:
@@ -368,7 +368,7 @@ class APRProver:
         eq_prover = EqualityProver(refutation)
         eq_prover.advance_proof(kcfg_explore)
 
-        if not eq_prover.proof.is_inhabited:
+        if not eq_prover.proof.is_sastisfiable:
             _LOGGER.info(f'Successfully refuted node {shorten_hash(node.id)} by EqualityProof {eq_prover.proof.id}')
         else:
             _LOGGER.error(f'Failed to refute node {shorten_hash(node.id)} by EqualityProof {eq_prover.proof.id}')

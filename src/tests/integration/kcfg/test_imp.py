@@ -13,16 +13,7 @@ from pyk.kcfg import KCFG
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
-from pyk.proof import (
-    APRBMCProof,
-    APRBMCProver,
-    APRProof,
-    APRProver,
-    EqualityProof,
-    EqualityProver,
-    ProofInhabitation,
-    ProofStatus,
-)
+from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
 from pyk.utils import single
 
 from ..utils import KCFGExploreTest
@@ -398,13 +389,13 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
-FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofInhabitation, ProofStatus]] = (
+FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, bool, ProofStatus]] = (
     (
         'func-spec-concrete',
         'k-files/imp-simple-spec.k',
         'IMP-FUNCTIONAL-SPEC',
         'concrete-addition',
-        ProofInhabitation.Inhabited,
+        True,
         ProofStatus.PASSED,
     ),
     (
@@ -412,7 +403,7 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofInhabitation, Proo
         'k-files/imp-simple-spec.k',
         'IMP-FUNCTIONAL-SPEC',
         'concrete-addition-fail',
-        ProofInhabitation.Uninhabited,
+        False,
         ProofStatus.FAILED,
     ),
     (
@@ -420,7 +411,7 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofInhabitation, Proo
         'k-files/imp-simple-spec.k',
         'IMP-FUNCTIONAL-SPEC',
         'concrete-requires-false',
-        ProofInhabitation.Uninhabited,
+        False,
         ProofStatus.FAILED,
     ),
     (
@@ -428,7 +419,7 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofInhabitation, Proo
         'k-files/imp-simple-spec.k',
         'IMP-FUNCTIONAL-SPEC',
         'symbolic-addition-commutativity',
-        ProofInhabitation.Inhabited,
+        True,
         ProofStatus.PASSED,
     ),
 )
@@ -722,7 +713,7 @@ class TestImpProof(KCFGExploreTest):
         assert leaf_number(kcfg) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,proof_inhabited, proof_status',
+        'test_id,spec_file,spec_module,claim_id,proof_satisfiable, proof_status',
         FUNC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in FUNC_PROVE_TEST_DATA],
     )
@@ -734,7 +725,7 @@ class TestImpProof(KCFGExploreTest):
         spec_file: str,
         spec_module: str,
         claim_id: str,
-        proof_inhabited: ProofInhabitation,
+        proof_satisfiable: bool,
         proof_status: ProofStatus,
     ) -> None:
         claim = single(
@@ -745,5 +736,5 @@ class TestImpProof(KCFGExploreTest):
         equality_prover = EqualityProver(equality_proof)
         equality_prover.advance_proof(kcfg_explore)
 
-        assert equality_proof.inhabited == proof_inhabited
+        assert equality_proof.is_sastisfiable == proof_satisfiable
         assert equality_proof.status == proof_status
