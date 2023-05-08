@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING
 
 from ..prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
-from ..prelude.ml import is_top, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlOr
+from ..prelude.ml import mlAnd, mlEqualsTrue, mlImplies, mlOr
 from ..utils import find_common_items, hash_str
 from .inner import KApply, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
 from .kast import EMPTY_ATT, KAtt, WithKAtt
 from .outer import KDefinition, KFlatModule, KRuleLike
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection, Iterable, Sequence
+    from collections.abc import Callable, Collection, Iterable
     from typing import Any, Final, TypeVar
 
     from .inner import KInner
@@ -605,25 +605,6 @@ def anti_unify_with_constraints(
     return mlAnd([state] + constraints)
 
 
-# TODO Iterable[KInner]
-def disjunct_constrained_terms(constrained_terms: Sequence[KInner], concave: bool = False) -> KInner:
-    if len(constrained_terms) == 0:
-        return mlBottom()
-    new_constrained_term = constrained_terms[0]
-    for constrained_term in constrained_terms[1:]:
-        new_constrained_term = anti_unify_with_constraints(
-            new_constrained_term, constrained_term, implications=concave, disjunct=concave
-        )
-    return new_constrained_term
-
-
-def remove_disjuncts(constrained_term: KInner) -> KInner:
-    clauses = flatten_label('#And', constrained_term)
-    clauses = [c for c in clauses if not (type(c) is KApply and c.label.name == '#Or')]
-    constrained_term = mlAnd(clauses)
-    return constrained_term
-
-
 def apply_existential_substitutions(constrained_term: KInner) -> KInner:
     state, constraint = split_config_and_constraints(constrained_term)
     constraints = flatten_label('#And', constraint)
@@ -637,37 +618,6 @@ def apply_existential_substitutions(constrained_term: KInner) -> KInner:
         else:
             new_constraints.append(c)
     return Subst(subst)(mlAnd([state] + new_constraints))
-
-
-def constraint_subsume(constraint1: KInner, constraint2: KInner) -> bool:
-    if is_top(constraint1) or constraint1 == constraint2:
-        return True
-    elif type(constraint1) is KApply and constraint1.label.name == '#And':
-        constraints1 = flatten_label('#And', constraint1)
-        if all([constraint_subsume(c, constraint2) for c in constraints1]):
-            return True
-    elif type(constraint1) is KApply and constraint1.label.name == '#Or':
-        constraints1 = flatten_label('#Or', constraint1)
-        if any([constraint_subsume(c, constraint2) for c in constraints1]):
-            return True
-    elif type(constraint2) is KApply and constraint2.label.name == '#And':
-        constraints2 = flatten_label('#And', constraint2)
-        if any([constraint_subsume(constraint1, c) for c in constraints2]):
-            return True
-    elif type(constraint2) is KApply and constraint2.label.name == '#Or':
-        constraints2 = flatten_label('#Or', constraint2)
-        if all([constraint_subsume(constraint1, c) for c in constraints2]):
-            return True
-    return False
-
-
-def match_with_constraint(constrained_term_1: KInner, constrained_term_2: KInner) -> Subst | None:
-    state1, constraint1 = split_config_and_constraints(constrained_term_1)
-    state2, constraint2 = split_config_and_constraints(constrained_term_2)
-    subst = state1.match(state2)
-    if subst is not None and constraint_subsume(Subst(subst)(constraint1), constraint2):
-        return subst
-    return None
 
 
 def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
