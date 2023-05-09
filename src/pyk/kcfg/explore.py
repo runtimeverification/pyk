@@ -225,10 +225,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             for cell in concrete.cells:
                 concrete_cell = concrete.cell(cell)
                 abstract_cell = abstract.cell(cell)
-                _LOGGER.info(f'concrete_cell: {concrete_cell}')
-                _LOGGER.info(f'abstract_cell: {abstract_cell}')
                 cell_match = abstract_cell.match(concrete_cell)
-                _LOGGER.info(f'cell_match: {cell_match}')
                 if cell_match is None:
                     failing_cell = push_down_rewrites(KRewrite(concrete_cell, abstract_cell))
                     failing_cell = no_cell_rewrite_to_dots(failing_cell)
