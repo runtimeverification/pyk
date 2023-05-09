@@ -76,7 +76,10 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         'different-cell',
         ('int $n ; $n = 0 ;', '.Map'),
         ('int $n ; $n = 1 ;', '.Map'),
-        'Structural matching failed, the following cells failed individually (abstract => concrete):\nK_CELL: ( int $n , .Ids ; $n = 0 ; => int $n , .Ids ; $n = 1 ; )',
+        (
+            'Structural matching failed, the following cells failed individually (abstract => concrete):\n'
+            'K_CELL: ( int $n , .Ids ; $n = 0 ; => int $n , .Ids ; $n = 1 ; )'
+        ),
     ),
     (
         'different-cell',
