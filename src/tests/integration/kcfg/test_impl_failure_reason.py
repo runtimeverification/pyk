@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyk.kast.inner import KApply, KToken
+from pyk.kast.inner import KApply, KToken, KVariable
+from pyk.cterm import CTerm
+from pyk.prelude.ml import mlAnd, mlEqualsTrue
 
 from ..utils import KCFGExploreTest
 
@@ -25,10 +27,28 @@ class TestImpProof(KCFGExploreTest):
         lhs = CTerm(lhs_config, ())
         rhs = CTerm(rhs_config, ())
 
-        result = kcfg_explore.implication_failure_reason(lhs, rhs)
-        
-        for b,s in result:
-            print(b)
-            print(s)
+        (b,s) = kcfg_explore.implication_failure_reason(lhs, rhs)
 
-        assert 1 == 2
+        assert b == False
+        assert s == 'Structural matching failed, the following cells failed individually (abstract => concrete):\nK_CELL: ( 1 => 2 )'
+        
+        lhs_config = KApply('<T>', [KApply('<k>', [KVariable('VAR', 'Int')]), KApply('<state>', [KApply('_|->_', [KToken('1', 'Int'), KVariable('A', 'Int')])])])
+        rhs_config = KApply('<T>', [KApply('<k>', [KVariable('VAR', 'Int')]), KApply('<state>', [KApply('_|->_', [KToken('1', 'Int'), KVariable('A', 'Int')])])])
+        
+        lhs_constraint = [
+            mlEqualsTrue(KApply('_<Int_', [KVariable('VAR', 'Int'), KToken('1', 'Int')])),
+            mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')]))
+        ]
+        
+        rhs_constraint = [
+            mlEqualsTrue(KApply('_<Int_', [KVariable('VAR', 'Int'), KToken('1', 'Int')])),
+            mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('2', 'Int')]))
+        ]
+
+        lhs = CTerm(lhs_config, lhs_constraint)
+        rhs = CTerm(rhs_config, rhs_constraint)
+
+        (b,s) = kcfg_explore.implication_failure_reason(lhs, rhs)
+        
+        assert b == False
+        assert s == 'Implication check failed, the following is the remaining implication:\n{ true #Equals A:Int <Int 1 }\n#And { true #Equals VAR:Int <Int 1 } #Implies { true #Equals A:Int <Int 2 }'
