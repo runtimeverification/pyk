@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from itertools import chain
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
@@ -75,7 +75,7 @@ class APRProof(Proof):
             if self.proof_dir is None:
                 raise ValueError(f'Cannot read refutations proof {self.id} with no proof_dir')
             for node_id, proof_id in self.node_refutations.items():
-                yield (node_id, EqualityProof.read_proof(proof_id, proof_dir=self.proof_dir))
+                yield node_id, cast('EqualityProof', self.fetch_subproof(proof_id))
 
     @property
     def stuck_nodes_refuted(self) -> bool:
@@ -116,7 +116,7 @@ class APRProof(Proof):
 
     @property
     def summary(self) -> Iterable[str]:
-        subproofs_summaries = chain(subproof.summary for subproof in self.read_subproofs())
+        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
         yield from [
             f'APRProof: {self.id}',
             f'    status: {self.status}',
@@ -261,7 +261,7 @@ class APRBMCProof(APRProof):
 
     @property
     def summary(self) -> Iterable[str]:
-        subproofs_summaries = chain(subproof.summary for subproof in self.read_subproofs())
+        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
         yield from [
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',

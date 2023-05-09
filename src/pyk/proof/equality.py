@@ -164,6 +164,7 @@ class EqualityProof(Proof):
             lines.append(f'Implication satisfiable: {self.satisfiable}')
         if self.predicate is not None:
             lines.append(f'Implication predicate: {self.predicate}')
+        lines.append(f'Status: {self.status}')
         return lines
 
     @property

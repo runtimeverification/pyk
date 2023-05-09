@@ -54,8 +54,8 @@ def test_apr_proof_add_subproof(proof_dir: Path) -> None:
 
     # Then
     assert len(proof.subproof_ids) == 1
-    assert len(list(proof.read_subproofs())) == 1
-    assert list(proof.read_subproofs())[0].id == 'equality_proof_1'
+    assert len(list(proof.subproofs)) == 1
+    assert list(proof.subproofs)[0].id == 'equality_proof_1'
 
 
 def test_apr_proof_from_dict_no_subproofs() -> None:
@@ -124,7 +124,7 @@ def test_aprbmc_proof_add_subproof(proof_dir: Path) -> None:
 
     # Then
     assert len(proof.subproof_ids) == 1
-    assert list(proof.read_subproofs())[0].id == 'equality_proof_1'
+    assert list(proof.subproofs)[0].id == 'equality_proof_1'
 
 
 def test_aprbmc_proof_from_dict_no_subproofs() -> None:
