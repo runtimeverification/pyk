@@ -77,19 +77,19 @@ IMPLIES_TEST_DATA: Final = (
         'constant-subst',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        CSubst(Subst({'X': intToken(3)})),
+        (True, CSubst(Subst({'X': intToken(3)}))),
     ),
     (
         'variable-subst',
         ('int $n , $s ; $n = Y ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        CSubst(Subst({'X': KVariable('Y', sort=KSort('AExp'))})),
+        (True, CSubst(Subst({'X': KVariable('Y', sort=KSort('AExp'))}))),
     ),
     (
         'trivial',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = 3 ;', '.Map'),
-        CSubst(Subst({})),
+        (True, CSubst(Subst({}))),
     ),
     (
         'consequent-constraint',
@@ -110,7 +110,7 @@ IMPLIES_TEST_DATA: Final = (
             ),
         ),
         ('int $n , $s ; $n = Y ;', '.Map'),
-        CSubst(Subst({}), [mlBottom()]),
+        (True, CSubst(Subst({}), [mlBottom()])),
     ),
 )
 
@@ -389,12 +389,37 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
-FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (
+FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, bool, ProofStatus]] = (
     (
         'func-spec-concrete',
         'k-files/imp-simple-spec.k',
         'IMP-FUNCTIONAL-SPEC',
         'concrete-addition',
+        True,
+        ProofStatus.PASSED,
+    ),
+    (
+        'func-spec-concrete-fail',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-addition-fail',
+        False,
+        ProofStatus.FAILED,
+    ),
+    (
+        'func-spec-concrete-requires-false-fail',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-requires-false',
+        False,
+        ProofStatus.FAILED,
+    ),
+    (
+        'func-spec-symbolic-add-comm',
+        'k-files/imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'symbolic-addition-commutativity',
+        True,
         ProofStatus.PASSED,
     ),
 )
@@ -688,7 +713,7 @@ class TestImpProof(KCFGExploreTest):
         assert leaf_number(kcfg) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,proof_status',
+        'test_id,spec_file,spec_module,claim_id,proof_satisfiable, proof_status',
         FUNC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in FUNC_PROVE_TEST_DATA],
     )
@@ -700,6 +725,7 @@ class TestImpProof(KCFGExploreTest):
         spec_file: str,
         spec_module: str,
         claim_id: str,
+        proof_satisfiable: bool,
         proof_status: ProofStatus,
     ) -> None:
         claim = single(
@@ -710,4 +736,5 @@ class TestImpProof(KCFGExploreTest):
         equality_prover = EqualityProver(equality_proof)
         equality_prover.advance_proof(kcfg_explore)
 
+        assert equality_proof.is_sastisfiable == proof_satisfiable
         assert equality_proof.status == proof_status
