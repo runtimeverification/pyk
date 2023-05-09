@@ -761,7 +761,7 @@ class TestImpProof(KCFGExploreTest):
         antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
         consequent_term = self.config(kcfg_explore.kprint, *consequent)
 
-        (b, s) = kcfg_explore.implication_failure_reason(antecedent_term, consequent_term)
+        failed, actual = kcfg_explore.implication_failure_reason(antecedent_term, consequent_term)
 
-        assert b == False
-        assert s == expected
+        assert failed == False
+        assert actual == expected
