@@ -219,8 +219,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                         return True
             return False
 
-        concrete_config, *concrete_constraints = concrete
-        abstract_config, *abstract_constraints = abstract
         config_match = self.cterm_implies(CTerm.from_kast(abstract.config), CTerm.from_kast(concrete.config))
         if config_match is None:
             failing_cells = []
@@ -235,8 +233,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     failing_cell = push_down_rewrites(KRewrite(concrete_cell, abstract_cell))
                     failing_cell = no_cell_rewrite_to_dots(failing_cell)
                     failing_cells.append((cell, failing_cell))
-                else:
-                    abstract_config = cell_match.apply(abstract_config)
             failing_cells_str = '\n'.join(
                 f'{cell}: {self.kprint.pretty_print(minimize_term(rew))}' for cell, rew in failing_cells
             )
@@ -245,19 +241,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 f'Structural matching failed, the following cells failed individually (abstract => concrete):\n{failing_cells_str}',
             )
         else:
-            abstract_constraints = [
-                config_match.subst.apply(abstract_constraint) for abstract_constraint in abstract_constraints
-            ]
             abstract_constraints = list(
                 filter(
                     lambda x: not CTerm._is_spurious_constraint(x),
-                    [config_match.subst.apply(abstract_constraint) for abstract_constraint in abstract_constraints],
+                    [config_match.subst.apply(abstract_constraint) for abstract_constraint in abstract.constraints],
                 )
             )
-            impl = CTerm._ml_impl(concrete_constraints, abstract_constraints)
+            impl = CTerm._ml_impl(concrete.constraints, abstract_constraints)
             if impl != mlTop(k.GENERATED_TOP_CELL):
                 fail_str = self.kprint.pretty_print(impl)
-                negative_cell_constraints = list(filter(_is_negative_cell_subst, concrete_constraints))
+                negative_cell_constraints = list(filter(_is_negative_cell_subst, concrete.constraints))
                 if len(negative_cell_constraints) > 0:
                     fail_str = (
                         f'{fail_str}\n\nNegated cell substitutions found (consider using _ => ?_):\n'
