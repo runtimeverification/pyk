@@ -4,8 +4,9 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from ..kast.inner import KApply, KInner, KLabel, KSort, KVariable
-from ..kast.manip import extract_lhs, extract_rhs, flatten_label, free_vars
+from ..cterm import CSubst, CTerm
+from ..kast.inner import KApply, KInner, KSort
+from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, FALSE, TRUE
 from ..prelude.ml import is_bottom, mlAnd, mlEquals, mlImplies
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    from ..cterm import CSubst
     from ..kast.outer import KClaim, KDefinition
     from ..kcfg import KCFGExplore
     from ..ktool.kprint import KPrint
@@ -34,7 +34,7 @@ class EqualityProof(Proof):
     constraints: tuple[KInner, ...]
     implication_check_result: CSubst | None
     satisfiable: bool | None
-    predicate: KInner | None
+    csubst: CSubst | None
 
     def __init__(
         self,
@@ -44,7 +44,7 @@ class EqualityProof(Proof):
         sort: KSort,
         constraints: Iterable[KInner] = (),
         satisfiable: bool | None = None,
-        predicate: KInner | None = None,
+        csubst: CSubst | None = None,
         simplified_constraints: KInner | None = None,
         proof_dir: Path | None = None,
     ):
@@ -54,7 +54,7 @@ class EqualityProof(Proof):
         self.sort = sort
         self.constraints = tuple(constraints)
         self.satisfiable = satisfiable
-        self.predicate = predicate
+        self.csubst = csubst
         self.simplified_constraints = simplified_constraints
 
     @staticmethod
@@ -82,8 +82,8 @@ class EqualityProof(Proof):
     def set_satisfiable(self, satisfiable: bool) -> None:
         self.satisfiable = satisfiable
 
-    def set_predicate(self, predicate: KInner) -> None:
-        self.predicate = predicate
+    def set_csubst(self, csubst: CSubst) -> None:
+        self.csubst = csubst
 
     def set_simplified_constraints(self, simplified: KInner) -> None:
         self.simplified_constraints = simplified
@@ -124,7 +124,7 @@ class EqualityProof(Proof):
         sort = KSort.from_dict(dct['sort'])
         constraints = [KInner.from_dict(c) for c in dct['constraints']]
         satisfiable = dct['satisfiable'] if 'satisfiable' in dct else None
-        predicate = KInner.from_dict(dct['predicate']) if 'predicate' in dct else None
+        csubst = CSubst.from_dict(dct['csubst']) if 'csubst' in dct else None
         return EqualityProof(
             id,
             lhs_body,
@@ -132,7 +132,7 @@ class EqualityProof(Proof):
             sort,
             constraints=constraints,
             satisfiable=satisfiable,
-            predicate=predicate,
+            csubst=csubst,
             proof_dir=proof_dir,
         )
 
@@ -148,8 +148,8 @@ class EqualityProof(Proof):
         }
         if self.satisfiable is not None:
             dct['satisfiable'] = self.satisfiable  # type: ignore
-        if self.predicate is not None:
-            dct['predicate'] = self.predicate.to_dict()
+        if self.csubst is not None:
+            dct['csubst'] = self.csubst.to_dict()
         return dct
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
@@ -162,8 +162,8 @@ class EqualityProof(Proof):
             lines.append(f'Simplified constraints: {kprint.pretty_print(self.simplified_constraints)}')
         if self.satisfiable is not None:
             lines.append(f'Implication satisfiable: {self.satisfiable}')
-        if self.predicate is not None:
-            lines.append(f'Implication predicate: {self.predicate}')
+        if self.csubst is not None:
+            lines.append(f'Implication csubst: {self.csubst}')
         lines.append(f'Status: {self.status}')
         return lines
 
@@ -189,6 +189,7 @@ class EqualityProver:
 
         _, kore_client = kcfg_explore._kore_rpc
 
+        _LOGGER.info(f'Attempting EqualityProof {self.proof.id}')
         # first simplify the antecedent to make sure it makes sense
         antecedent_simplified_kore = kore_client.simplify(kcfg_explore.kprint.kast_to_kore(antecedent))
         antecedent_simplified_kast = kcfg_explore.kprint.kore_to_kast(antecedent_simplified_kore)
@@ -203,33 +204,15 @@ class EqualityProver:
 
         # second, check implication from antecedent to consequent
         dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-        antecedent_with_config = mlAnd([dummy_config, antecedent])
-        consequent_with_config = mlAnd([dummy_config, consequent])
-        _consequent = consequent_with_config
-        if bind_consequent_variables:
-            _consequent = consequent_with_config
-            fv_antecedent = free_vars(antecedent_with_config)
-            unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
-            if len(unbound_consequent) > 0:
-                _LOGGER.debug(f'Binding variables in consequent: {unbound_consequent}')
-                for uc in unbound_consequent:
-                    _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
-
-        _LOGGER.info(f'Attempting EqualityProof {self.proof.id}')
-        result = kore_client.implies(
-            kcfg_explore.kprint.kast_to_kore(antecedent_with_config, GENERATED_TOP_CELL),
-            kcfg_explore.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL),
+        result = kcfg_explore.cterm_implies(
+            antecedent=CTerm(config=dummy_config, constraints=[antecedent]),
+            consequent=CTerm(config=dummy_config, constraints=[consequent]),
         )
-        if not result.satisfiable:
-            if result.substitution is not None:
-                _LOGGER.debug(f'Received a non-empty substitution for unsatisfiable implication: {result.substitution}')
-            if result.predicate is not None:
-                _LOGGER.debug(f'Received a non-empty predicate for unsatisfiable implication: {result.predicate}')
-        if result.substitution is None:
-            raise ValueError('Received empty substutition for satisfiable implication.')
-        if result.predicate is None:
-            raise ValueError('Received empty predicate for satisfiable implication.')
-
-        self.proof.set_satisfiable(result.satisfiable)
-        self.proof.set_predicate(kcfg_explore.kprint.kore_to_kast(result.predicate))
+        if result is None:
+            _LOGGER.warning('cterm_implies returned None')
+            satisfiable, csubst = False, CSubst()
+        else:
+            satisfiable, csubst = result
+        self.proof.set_satisfiable(satisfiable)
+        self.proof.set_csubst(csubst)
         self.proof.write_proof()
