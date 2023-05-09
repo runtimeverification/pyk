@@ -39,7 +39,7 @@ def node_short_info(ct: CTerm) -> Iterable[str]:
 
 
 def node(i: int, with_cond: bool = False) -> KCFG.Node:
-    return KCFG.Node(term(i, with_cond), logs=())
+    return KCFG.Node(term(i, with_cond))
 
 
 def edge(i: int, j: int) -> KCFG.Edge:
