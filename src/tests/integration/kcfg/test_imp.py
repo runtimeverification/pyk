@@ -16,7 +16,7 @@ from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
 from pyk.utils import single
 
-from ..utils import KCFGExploreTest
+from ..utils import K_FILES, KCFGExploreTest
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -147,11 +147,11 @@ IMPLIES_TEST_DATA: Final = (
 )
 
 APR_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
+    tuple[str, Path, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'imp-simple-addition-1',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-1',
         2,
@@ -163,7 +163,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-addition-2',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-2',
         2,
@@ -175,7 +175,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-addition-var',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-var',
         2,
@@ -187,7 +187,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'pre-branch-proved',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'pre-branch-proved',
         2,
@@ -199,7 +199,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'while-cut-rule',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'while-cut-rule',
         2,
@@ -211,7 +211,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'while-cut-rule-delayed',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'while-cut-rule-delayed',
         4,
@@ -223,7 +223,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'failing-if',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'failing-if',
         10,
@@ -235,7 +235,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-sum-10',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-10',
         None,
@@ -247,7 +247,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-sum-100',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-100',
         None,
@@ -259,7 +259,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-sum-1000',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-1000',
         None,
@@ -271,7 +271,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-if-almost-same',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'if-almost-same',
         None,
@@ -283,7 +283,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-use-if-almost-same',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'use-if-almost-same',
         None,
@@ -296,11 +296,11 @@ APR_PROVE_TEST_DATA: Iterable[
 )
 
 PATH_CONSTRAINTS_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
+    tuple[str, Path, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
 ] = (
     (
         'imp-simple-fail-branch',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'fail-branch',
         None,
@@ -313,11 +313,11 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
 
 
 APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
+    tuple[str, Path, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'bmc-loop-concrete-1',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-concrete',
         20,
@@ -330,7 +330,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-concrete-2',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-concrete',
         20,
@@ -343,7 +343,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-concrete-3',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-concrete',
         20,
@@ -356,7 +356,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-symbolic-1',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-symbolic',
         20,
@@ -369,7 +369,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-symbolic-2',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-symbolic',
         20,
@@ -382,7 +382,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-symbolic-3',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-symbolic',
         20,
@@ -395,7 +395,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-two-loops-symbolic-1',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-two-loops-symbolic',
         20,
@@ -408,7 +408,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-two-loops-symbolic-2',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-two-loops-symbolic',
         50,
@@ -421,10 +421,10 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
-FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (
+FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
     (
         'func-spec-concrete',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-FUNCTIONAL-SPEC',
         'concrete-addition',
         ProofStatus.PASSED,
@@ -445,7 +445,7 @@ def leaf_number(kcfg: KCFG) -> int:
 
 
 class TestImpProof(KCFGExploreTest):
-    KOMPILE_MAIN_FILE = 'k-files/imp-verification.k'
+    KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
