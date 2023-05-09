@@ -30,7 +30,7 @@ class Proof(ABC):
     proof_dir: Path | None
     subproof_ids: list[str]
     _subproofs: dict[str, Proof]
-    _last_modified: int
+    _last_modified: int | None
 
     def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: list[str] | None = None) -> None:
         self.id = id
