@@ -12,11 +12,9 @@ from ..kast.manip import (
     extract_rhs,
     flatten_label,
     free_vars,
-    get_cell,
     minimize_term,
     ml_pred_to_bool,
     push_down_rewrites,
-    split_config_from,
 )
 from ..kore.rpc import KoreClient, KoreServer, StopReason
 from ..ktool.kprove import KoreExecLogFormat
@@ -223,14 +221,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         concrete_config, *concrete_constraints = concrete
         abstract_config, *abstract_constraints = abstract
-        config_match = abstract_config.match(concrete_config)
+        config_match = self.cterm_implies(CTerm.from_kast(abstract.config), CTerm.from_kast(concrete.config))
         if config_match is None:
-            _, concrete_subst = split_config_from(concrete_config)
-            cell_names = concrete_subst.keys()
             failing_cells = []
-            for cell in cell_names:
-                concrete_cell = get_cell(concrete_config, cell)
-                abstract_cell = get_cell(abstract_config, cell)
+            for cell in concrete.cells:
+                concrete_cell = concrete.cell(cell)
+                abstract_cell = abstract.cell(cell)
                 _LOGGER.info(f'concrete_cell: {concrete_cell}')
                 _LOGGER.info(f'abstract_cell: {abstract_cell}')
                 cell_match = abstract_cell.match(concrete_cell)
@@ -250,12 +246,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             )
         else:
             abstract_constraints = [
-                config_match.apply(abstract_constraint) for abstract_constraint in abstract_constraints
+                config_match.subst.apply(abstract_constraint) for abstract_constraint in abstract_constraints
             ]
             abstract_constraints = list(
                 filter(
                     lambda x: not CTerm._is_spurious_constraint(x),
-                    [config_match.apply(abstract_constraint) for abstract_constraint in abstract_constraints],
+                    [config_match.subst.apply(abstract_constraint) for abstract_constraint in abstract_constraints],
                 )
             )
             impl = CTerm._ml_impl(concrete_constraints, abstract_constraints)
