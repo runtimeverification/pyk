@@ -238,11 +238,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 f'Structural matching failed, the following cells failed individually (abstract => concrete):\n{failing_cells_str}',
             )
         else:
+            #              abstract_constraints = list(
+            #                  filter(
+            #                      lambda x: not CTerm._is_spurious_constraint(x),
+            #                      [config_match.subst.apply(abstract_constraint) for abstract_constraint in abstract.constraints],
+            #                  )
+            #              )
             abstract_constraints = list(
-                filter(
-                    lambda x: not CTerm._is_spurious_constraint(x),
-                    [config_match.subst.apply(abstract_constraint) for abstract_constraint in abstract.constraints],
-                )
+                filter(lambda x: not CTerm._is_spurious_constraint(x), map(config_match.subst, abstract.constraints))
             )
             impl = CTerm._ml_impl(concrete.constraints, abstract_constraints)
             if impl != mlTop(k.GENERATED_TOP_CELL):
