@@ -140,7 +140,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self,
         antecedent: CTerm,
         consequent: CTerm,
-    ) -> CSubst | None:
+    ) -> tuple[bool, CSubst] | None:
         _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
         _consequent = consequent.kast
         fv_antecedent = free_vars(antecedent.kast)
@@ -167,7 +167,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         ml_pred = self.kprint.kore_to_kast(result.predicate) if result.predicate is not None else mlTop()
         ml_preds = flatten_label('#And', ml_pred)
         if is_top(ml_subst):
-            return CSubst(subst=Subst({}), constraints=ml_preds)
+            return (result.satisfiable, CSubst(subst=Subst({}), constraints=ml_preds))
         subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
         _subst: dict[str, KInner] = {}
         for subst_pred in flatten_label('#And', ml_subst):
@@ -176,7 +176,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
-        return CSubst(subst=Subst(_subst), constraints=ml_preds)
+        return (result.satisfiable, CSubst(subst=Subst(_subst), constraints=ml_preds))
 
     def cterm_assume_defined(self, cterm: CTerm) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
@@ -259,8 +259,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     ) -> bool:
         target_node = kcfg.get_unique_target()
         _LOGGER.info(f'Checking subsumption into target state {self.id}: {shorten_hashes((node.id, target_node.id))}')
-        csubst = self.cterm_implies(node.cterm, target_node.cterm)
-        if csubst is not None:
+        implies_result = self.cterm_implies(node.cterm, target_node.cterm)
+        if implies_result is not None:
+            csubst = implies_result[1]
             kcfg.create_cover(node.id, target_node.id, csubst=csubst)
             _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((node.id, target_node.id))}')
             return True
