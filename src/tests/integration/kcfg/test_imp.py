@@ -77,19 +77,19 @@ IMPLIES_TEST_DATA: Final = (
         'constant-subst',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        CSubst(Subst({'X': intToken(3)})),
+        (True, CSubst(Subst({'X': intToken(3)}))),
     ),
     (
         'variable-subst',
         ('int $n , $s ; $n = Y ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map'),
-        CSubst(Subst({'X': KVariable('Y', sort=KSort('AExp'))})),
+        (True, CSubst(Subst({'X': KVariable('Y', sort=KSort('AExp'))}))),
     ),
     (
         'trivial',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = 3 ;', '.Map'),
-        CSubst(Subst({})),
+        (True, CSubst(Subst({}))),
     ),
     (
         'consequent-constraint',
@@ -110,7 +110,7 @@ IMPLIES_TEST_DATA: Final = (
             ),
         ),
         ('int $n , $s ; $n = Y ;', '.Map'),
-        CSubst(Subst({}), [mlBottom()]),
+        (True, CSubst(Subst({}), [mlBottom()])),
     ),
 )
 
