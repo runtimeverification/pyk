@@ -153,19 +153,18 @@ class EqualityProof(Proof):
         return dct
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
-        # fmt: off
-        return (
-            [ f'LHS: {kprint.pretty_print(self.lhs_body)}',
-              f'RHS: {kprint.pretty_print(self.rhs_body)}',
-              f'Implication: {kprint.pretty_print(mlImplies(self.implication[0], self.implication[1]))}',]
-            + ([f'Simplified constraints: {kprint.pretty_print(self.simplified_constraints)}']
-               if self.simplified_constraints is not None else [])
-            + ([f'Implication satisfiable: {self.satisfiable}']
-               if self.satisfiable is not None else [])
-            + ([f'Implication predicate: {self.predicate}']
-               if self.predicate is not None else [])
-        )
-        # fmt: on
+        lines = [
+            f'LHS: {kprint.pretty_print(self.lhs_body)}',
+            f'RHS: {kprint.pretty_print(self.rhs_body)}',
+            f'Implication: {kprint.pretty_print(mlImplies(self.implication[0], self.implication[1]))}',
+        ]
+        if self.simplified_constraints:
+            lines.append(f'Simplified constraints: {kprint.pretty_print(self.simplified_constraints)}')
+        if self.satisfiable is not None:
+            lines.append(f'Implication satisfiable: {self.satisfiable}')
+        if self.predicate is not None:
+            lines.append(f'Implication predicate: {self.predicate}')
+        return lines
 
     @property
     def summary(self) -> Iterable[str]:
