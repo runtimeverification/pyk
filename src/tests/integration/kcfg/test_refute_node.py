@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.inner import KApply, KSequence, KVariable
-from pyk.kcfg import KCFG, KCFGShow
+from pyk.kcfg import KCFG
 from pyk.prelude.kbool import andBool
 from pyk.prelude.kint import eqInt, gtInt, intToken, leInt
 from pyk.prelude.ml import mlEqualsTrue
@@ -81,10 +81,6 @@ class TestAPRProof(KCFGExploreTest):
         kcfg_pre = KCFG.from_claim(kprove.definition, claim)
         proof = APRProof(f'{spec_module}.{claim_id}', kcfg_pre, proof_dir=proof_dir)
         prover = APRProver(proof, extract_branches=TestAPRProof._extract_branches)
-        shower = KCFGShow(kcfg_explore.kprint)
-
-        def _node_printer(cterm: CTerm) -> Iterable[str]:
-            return kprove.pretty_print(cterm.cell('K_CELL')).split('\n')
 
         # When
         kcfg_post = prover.advance_proof(
@@ -94,66 +90,6 @@ class TestAPRProof(KCFGExploreTest):
 
         stuck_node = single(kcfg_post.stuck)
         prover.refute_node(kcfg_explore, stuck_node, extra_constraint=extra_constraint)
-        print('\n'.join(shower.show('dummy', kcfg_post, node_printer=_node_printer)))
-        print('\n'.join(prover.proof.summary))
-        print('\n'.join(list(dict(prover.proof.read_refutations()).values())[0].pretty(kprove)))
-        # stuck_node_refutation = single(prover.proof.read_subproofs())
-        # assert type(stuck_node_refutation) is EqualityProof
-
-        # eq_prover = EqualityProver(stuck_node_refutation)
-        # eq_prover.advance_proof(kcfg_explore)
-        # print('\n'.join(stuck_node_refutation.pretty(kprove)))
 
         # Then
         assert prover.proof.status == expected_status
-
-
-# class TestSimpleProof(KCFGExploreTest):
-#     KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
-
-#     # @pytest.mark.parametrize(
-#     #     'test_id,pre,expected_post',
-#     #     SIMPLIFY_TEST_DATA,
-#     #     ids=[test_id for test_id, *_ in SIMPLIFY_TEST_DATA],
-#     # )
-#     def test_apr_proof(
-#         self,
-#         kprove: KProve,
-#         kcfg_explore: KCFGExplore,
-#         # test_id: str,
-#         # pre: tuple[str, str],
-#         # expected_post: tuple[str, str],
-#     ) -> None:
-#         # Given
-#         spec_file = 'k-files/simple-proofs-spec.k'
-#         spec_module = 'SIMPLE-PROOFS-SPEC'
-#         claim_id = 'test-foo-to-bar'
-
-#         claim = single(
-#             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
-#         )
-#         kcfg_pre = KCFG.from_claim(kprove.definition, claim)
-#         proof = APRProof(f'{spec_module}.{claim_id}', kcfg_pre)
-#         prover = APRProver(
-#             proof,
-#         )
-#         shower = KCFGShow(kcfg_explore.kprint)
-
-#         def _node_printer(cterm: CTerm) -> Iterable[str]:
-#             return kprove.pretty_print(cterm.kast).split('\n')
-
-#         # When
-#         kcfg_post = prover.advance_proof(
-#             kcfg_explore,
-#         )
-#         print('\n'.join(shower.show('dummy', kcfg_post, node_printer=_node_printer)))
-#         for stuck_node in kcfg_post.stuck:
-#             prover.proof.refute_node(stuck_node)
-#             # print('\n'.join(_node_printer(stuck_node.cterm)))
-#             # print('\n'.join(_node_printer(stuck_node.cterm)))
-#         print('\n'.join(prover.proof.summary))
-
-#         assert False
-#         # Then
-#         assert actual_k == expected_k
-#         assert actual_state == expected_state
