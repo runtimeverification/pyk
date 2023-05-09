@@ -620,7 +620,7 @@ def apply_existential_substitutions(constrained_term: KInner) -> KInner:
     return Subst(subst)(mlAnd([state] + new_constraints))
 
 
-def indexed_rewrite(rewrites: Iterable[KRewrite], kast: KInner) -> KInner:
+def indexed_rewrite(kast: KInner, rewrites: Iterable[KRewrite]) -> KInner:
     token_rewrites: list[KRewrite] = []
     apply_rewrites: dict[str, list[KRewrite]] = {}
     other_rewrites: list[KRewrite] = []
@@ -670,7 +670,7 @@ def undo_aliases(definition: KDefinition, kast: KInner) -> KInner:
         if rule.ensures is not None and rule.ensures != TRUE:
             raise ValueError(f'Expended empty ensures clause on alias, found: {rule.ensures}')
         aliases.append(KRewrite(rewrite.rhs, rewrite.lhs))
-    return indexed_rewrite(aliases, kast)
+    return indexed_rewrite(kast, aliases)
 
 
 def rename_generated_vars(term: KInner) -> KInner:

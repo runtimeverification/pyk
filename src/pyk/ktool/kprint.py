@@ -303,7 +303,7 @@ class KPrint:
             )
         return App('inj', [SortApp('Sort' + isort.name), SortApp('Sort' + osort.name)], [pat])
 
-    def pretty_print(self, kast: KAst, unalias: bool = True) -> str:
+    def pretty_print(self, kast: KAst, *, unalias: bool = True) -> str:
         if unalias and isinstance(kast, KInner):
             kast = undo_aliases(self.definition, kast)
         return pretty_print_kast(kast, self.symbol_table)
