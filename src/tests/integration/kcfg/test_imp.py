@@ -100,7 +100,11 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
                 ]
             ),
         ),
-        'Implication check failed, the following is the remaining implication:\n{ true #Equals A:Int <Int 1 }\n#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }',
+        (
+            'Implication check failed, the following is the remaining implication:\n'
+            '{ true #Equals A:Int <Int 1 }\n'
+            '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+        ),
     ),
 )
 
