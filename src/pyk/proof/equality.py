@@ -8,8 +8,8 @@ from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KInner, KSort
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
-from ..prelude.kbool import BOOL, FALSE, TRUE
-from ..prelude.ml import is_bottom, mlAnd, mlEquals, mlImplies
+from ..prelude.kbool import BOOL, TRUE
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals
 from ..utils import hash_str
 from .proof import Proof, ProofStatus
 
@@ -32,8 +32,6 @@ class EqualityProof(Proof):
     rhs_body: KInner
     sort: KSort
     constraints: tuple[KInner, ...]
-    implication_check_result: CSubst | None
-    satisfiable: bool | None
     csubst: CSubst | None
 
     def __init__(
@@ -43,7 +41,6 @@ class EqualityProof(Proof):
         rhs_body: KInner,
         sort: KSort,
         constraints: Iterable[KInner] = (),
-        satisfiable: bool | None = None,
         csubst: CSubst | None = None,
         simplified_constraints: KInner | None = None,
         proof_dir: Path | None = None,
@@ -53,7 +50,6 @@ class EqualityProof(Proof):
         self.rhs_body = rhs_body
         self.sort = sort
         self.constraints = tuple(constraints)
-        self.satisfiable = satisfiable
         self.csubst = csubst
         self.simplified_constraints = simplified_constraints
 
@@ -69,12 +65,6 @@ class EqualityProof(Proof):
     @property
     def equality(self) -> KInner:
         return KApply('_==K_', [self.lhs_body, self.rhs_body])
-
-    @property
-    def implication(self) -> tuple[KInner, KInner]:
-        antecedent_kast = mlAnd(self.constraints)
-        consequent_kast = mlEquals(TRUE, self.equality, arg_sort=BOOL, sort=GENERATED_TOP_CELL)
-        return antecedent_kast, consequent_kast
 
     def add_constraint(self, new_constraint: KInner) -> None:
         self.constraints = (*self.constraints, new_constraint)
@@ -98,20 +88,11 @@ class EqualityProof(Proof):
         raise ValueError(f'Could not load EqualityProof from file {id}: {proof_path}')
 
     @property
-    def is_sastisfiable(self) -> bool:
-        return self.satisfiable is not None and self.satisfiable
-
-    @property
     def status(self) -> ProofStatus:
-        if self.satisfiable is None:
+        if self.simplified_constraints is None:
             return ProofStatus.PENDING
-        elif self.satisfiable:
-            if self.rhs_body == FALSE:
-                return ProofStatus.FAILED
-            else:
-                return ProofStatus.PASSED
         else:
-            if self.rhs_body == FALSE:
+            if self.csubst is not None and is_top(self.csubst.constraint):
                 return ProofStatus.PASSED
             else:
                 return ProofStatus.FAILED
@@ -123,7 +104,6 @@ class EqualityProof(Proof):
         rhs_body = KInner.from_dict(dct['rhs_body'])
         sort = KSort.from_dict(dct['sort'])
         constraints = [KInner.from_dict(c) for c in dct['constraints']]
-        satisfiable = dct['satisfiable'] if 'satisfiable' in dct else None
         csubst = CSubst.from_dict(dct['csubst']) if 'csubst' in dct else None
         return EqualityProof(
             id,
@@ -131,7 +111,6 @@ class EqualityProof(Proof):
             rhs_body,
             sort,
             constraints=constraints,
-            satisfiable=satisfiable,
             csubst=csubst,
             proof_dir=proof_dir,
         )
@@ -146,8 +125,6 @@ class EqualityProof(Proof):
             'sort': self.sort.to_dict(),
             'constraints': [c.to_dict() for c in self.constraints],
         }
-        if self.satisfiable is not None:
-            dct['satisfiable'] = self.satisfiable  # type: ignore
         if self.csubst is not None:
             dct['csubst'] = self.csubst.to_dict()
         return dct
@@ -156,7 +133,7 @@ class EqualityProof(Proof):
         lines = [
             f'LHS: {kprint.pretty_print(self.lhs_body)}',
             f'RHS: {kprint.pretty_print(self.rhs_body)}',
-            f'Implication: {kprint.pretty_print(mlImplies(self.implication[0], self.implication[1]))}',
+            f'Constraints: {kprint.pretty_print(mlAnd(self.constraints))}',
         ]
         if self.simplified_constraints:
             lines.append(f'Simplified constraints: {kprint.pretty_print(self.simplified_constraints)}')
@@ -181,17 +158,20 @@ class EqualityProver:
     def __init__(self, proof: EqualityProof) -> None:
         self.proof = proof
 
-    def advance_proof(self, kcfg_explore: KCFGExplore, bind_consequent_variables: bool = True) -> None:
-        if self.proof.satisfiable is not None:
+    def advance_proof(self, kcfg_explore: KCFGExplore) -> None:
+        if self.proof.csubst is not None:
             return
 
-        antecedent, consequent = self.proof.implication
+        # to prove the equality, we check the implication of the form `constraints -> LHS ==K RHS`, i.e.
+        # "LHS equals RHS under these constraints"
+        antecedent_kast = mlAnd(self.proof.constraints)
+        consequent_kast = mlEquals(TRUE, self.proof.equality, arg_sort=BOOL, sort=GENERATED_TOP_CELL)
 
         _, kore_client = kcfg_explore._kore_rpc
 
         _LOGGER.info(f'Attempting EqualityProof {self.proof.id}')
         # first simplify the antecedent to make sure it makes sense
-        antecedent_simplified_kore = kore_client.simplify(kcfg_explore.kprint.kast_to_kore(antecedent))
+        antecedent_simplified_kore = kore_client.simplify(kcfg_explore.kprint.kast_to_kore(antecedent_kast))
         antecedent_simplified_kast = kcfg_explore.kprint.kore_to_kast(antecedent_simplified_kore)
         _LOGGER.info(f'Simplified antecedent: {kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
         self.proof.set_simplified_constraints(antecedent_simplified_kast)
@@ -205,14 +185,11 @@ class EqualityProver:
         # second, check implication from antecedent to consequent
         dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
         result = kcfg_explore.cterm_implies(
-            antecedent=CTerm(config=dummy_config, constraints=[antecedent]),
-            consequent=CTerm(config=dummy_config, constraints=[consequent]),
+            antecedent=CTerm(config=dummy_config, constraints=[antecedent_kast]),
+            consequent=CTerm(config=dummy_config, constraints=[consequent_kast]),
         )
         if result is None:
-            _LOGGER.warning('cterm_implies returned None')
-            satisfiable, csubst = False, CSubst()
+            _LOGGER.warning('cterm_implies returned None, the implication is unsatisfiable')
         else:
-            satisfiable, csubst = result
-        self.proof.set_satisfiable(satisfiable)
-        self.proof.set_csubst(csubst)
+            self.proof.set_csubst(result)
         self.proof.write_proof()
