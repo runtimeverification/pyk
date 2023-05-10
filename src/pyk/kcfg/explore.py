@@ -232,7 +232,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     if _curr_cell_match is not None:
                         curr_cell_match = _curr_cell_match
                         continue
-                failing_cell = push_down_rewrites(KRewrite(concrete_cell, abstract_cell))
+                failing_cell = push_down_rewrites(KRewrite(abstract_cell, concrete_cell))
                 failing_cell = no_cell_rewrite_to_dots(failing_cell)
                 failing_cells.append((cell, failing_cell))
             failing_cells_str = '\n'.join(
