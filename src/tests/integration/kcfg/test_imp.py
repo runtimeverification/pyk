@@ -16,7 +16,7 @@ from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
 from pyk.utils import single
 
-from ..utils import KCFGExploreTest
+from ..utils import K_FILES, KCFGExploreTest
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -71,6 +71,91 @@ EXECUTE_TEST_DATA: Final = (
     ),
 )
 
+IMPLICATION_FAILURE_TEST_DATA: Final = (
+    (
+        'different-cell',
+        ('int $n ; $n = 0 ;', '.Map'),
+        ('int $n ; $n = 1 ;', '.Map'),
+        (
+            'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
+            'K_CELL: int $n , .Ids ; $n = 0 ; #Implies int $n , .Ids ; $n = 1 ;'
+        ),
+    ),
+    (
+        'different-cell-2',
+        ('int $n ; $n = X:Int ;', '.Map'),
+        ('int $n ; $n = 1 ;', '.Map'),
+        (
+            'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
+            'K_CELL: int $n , .Ids ; $n = X:Int ; #Implies int $n , .Ids ; $n = 1 ;'
+        ),
+    ),
+    (
+        'different-constraint',
+        (
+            'int $n ; $n = 0 ;',
+            '1 |-> A:Int 2 |-> B:Int',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
+                ]
+            ),
+        ),
+        (
+            'int $n ; $n = 0 ;',
+            '1 |-> A:Int 2 |-> B:Int',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
+                ]
+            ),
+        ),
+        (
+            'Implication check failed, the following is the remaining implication:\n'
+            '{ true #Equals A:Int <Int 1 }\n'
+            '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+        ),
+    ),
+    (
+        'different-constraint-with-match',
+        (
+            'int $n ; $n = 0 ;',
+            '1 |-> A:Int 2 |-> B:Int',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
+                ]
+            ),
+        ),
+        (
+            'int $n ; $n = X:Int ;',
+            '1 |-> A:Int 2 |-> B:Int',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
+                ]
+            ),
+        ),
+        (
+            'Implication check failed, the following is the remaining implication:\n'
+            '{ true #Equals A:Int <Int 1 }\n'
+            '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+        ),
+    ),
+    (
+        'substitution',
+        ('int $n ; $n = 5 ;', '3 |-> 6'),
+        ('int $n ; $n = X:Int ;', '3 |-> X:Int'),
+        (
+            'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
+            'STATE_CELL: 3 |-> 6 #Implies X:Int'
+        ),
+    ),
+)
 
 IMPLIES_TEST_DATA: Final = (
     (
@@ -115,11 +200,11 @@ IMPLIES_TEST_DATA: Final = (
 )
 
 APR_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
+    tuple[str, Path, str, str, int | None, int | None, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'imp-simple-addition-1',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-1',
         2,
@@ -131,7 +216,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-addition-2',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-2',
         2,
@@ -143,7 +228,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-addition-var',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-var',
         2,
@@ -155,7 +240,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'pre-branch-proved',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'pre-branch-proved',
         2,
@@ -167,7 +252,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'while-cut-rule',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'while-cut-rule',
         2,
@@ -179,7 +264,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'while-cut-rule-delayed',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'while-cut-rule-delayed',
         4,
@@ -191,7 +276,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'failing-if',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'failing-if',
         10,
@@ -203,7 +288,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-sum-10',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-10',
         None,
@@ -215,7 +300,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-sum-100',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-100',
         None,
@@ -227,7 +312,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-sum-1000',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-1000',
         None,
@@ -239,7 +324,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-if-almost-same',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'if-almost-same',
         None,
@@ -251,7 +336,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-use-if-almost-same',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'use-if-almost-same',
         None,
@@ -300,11 +385,11 @@ APR_PROVE_TEST_DATA: Iterable[
 )
 
 PATH_CONSTRAINTS_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
+    tuple[str, Path, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
 ] = (
     (
         'imp-simple-fail-branch',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'fail-branch',
         None,
@@ -317,11 +402,11 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
 
 
 APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, str, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
+    tuple[str, Path, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'bmc-loop-concrete-1',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-concrete',
         20,
@@ -334,7 +419,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-concrete-2',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-concrete',
         20,
@@ -347,7 +432,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-concrete-3',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-concrete',
         20,
@@ -360,7 +445,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-symbolic-1',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-symbolic',
         20,
@@ -373,7 +458,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-symbolic-2',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-symbolic',
         20,
@@ -386,7 +471,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-loop-symbolic-3',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-loop-symbolic',
         20,
@@ -399,7 +484,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-two-loops-symbolic-1',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-two-loops-symbolic',
         20,
@@ -412,7 +497,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
     (
         'bmc-two-loops-symbolic-2',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'bmc-two-loops-symbolic',
         50,
@@ -425,10 +510,10 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
-FUNC_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, ProofStatus]] = (
+FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
     (
         'func-spec-concrete',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-FUNCTIONAL-SPEC',
         'concrete-addition',
         ProofStatus.PASSED,
@@ -449,7 +534,7 @@ def leaf_number(kcfg: KCFG) -> int:
 
 
 class TestImpProof(KCFGExploreTest):
-    KOMPILE_MAIN_FILE = 'k-files/imp-verification.k'
+    KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
@@ -530,7 +615,7 @@ class TestImpProof(KCFGExploreTest):
         expected_k, expected_state = expected_post
 
         # When
-        actual_depth, actual_post_term, actual_next_terms = kcfg_explore.cterm_execute(
+        actual_depth, actual_post_term, actual_next_terms, _logs = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, k, state), depth=depth
         )
         actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
@@ -627,7 +712,7 @@ class TestImpProof(KCFGExploreTest):
 
         _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(deps_claims)} dependencies")
         kcfg = KCFG.from_claim(kprove.definition, claim)
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, dependencies=deps_claims, claim_id=claim.label)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, dependencies=deps_claims, claim_id=claim.label, logs={})
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -673,7 +758,7 @@ class TestImpProof(KCFGExploreTest):
         assert len(claims) == 1
 
         kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -719,8 +804,8 @@ class TestImpProof(KCFGExploreTest):
         )
 
         kcfg = KCFG.from_claim(kprove.definition, claim)
-        kcfg_explore.simplify(kcfg)
-        proof = APRBMCProof(f'{spec_module}.{claim_id}', kcfg, bmc_depth)
+        kcfg_explore.simplify(kcfg, {})
+        proof = APRBMCProof(f'{spec_module}.{claim_id}', kcfg, logs={}, bmc_depth=bmc_depth)
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -761,3 +846,27 @@ class TestImpProof(KCFGExploreTest):
         equality_prover.advance_proof(kcfg_explore)
 
         assert equality_proof.status == proof_status
+
+    @pytest.mark.parametrize(
+        'test_id,antecedent,consequent,expected',
+        IMPLICATION_FAILURE_TEST_DATA,
+        ids=[test_id for test_id, *_ in IMPLICATION_FAILURE_TEST_DATA],
+    )
+    def test_implication_failure_reason(
+        self,
+        kcfg_explore: KCFGExplore,
+        kprove: KProve,
+        test_id: str,
+        antecedent: tuple[str, str] | tuple[str, str, KInner],
+        consequent: tuple[str, str] | tuple[str, str, KInner],
+        expected: str,
+    ) -> None:
+        antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
+        consequent_term = self.config(kcfg_explore.kprint, *consequent)
+
+        failed, actual = kcfg_explore.implication_failure_reason(antecedent_term, consequent_term)
+
+        print(actual)
+
+        assert failed == False
+        assert actual == expected

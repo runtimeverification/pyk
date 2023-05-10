@@ -9,7 +9,7 @@ from pyk.kast.inner import KApply, KSequence, KToken, KVariable
 from pyk.kast.manip import get_cell
 from pyk.prelude.ml import mlEqualsTrue, mlTop
 
-from ..utils import KCFGExploreTest
+from ..utils import K_FILES, KCFGExploreTest
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -37,7 +37,7 @@ SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90
 
 
 class TestSimpleProof(KCFGExploreTest):
-    KOMPILE_MAIN_FILE = 'k-files/simple-proofs.k'
+    KOMPILE_MAIN_FILE = K_FILES / 'simple-proofs.k'
 
     @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: str | None = None) -> CTerm:
@@ -77,7 +77,7 @@ class TestSimpleProof(KCFGExploreTest):
         expected_k, expected_state, *_ = expected_post
 
         # When
-        actual_depth, actual_post_term, actual_next_terms = kcfg_explore.cterm_execute(
+        actual_depth, actual_post_term, actual_next_terms, _logs = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, *pre), depth=depth
         )
         actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
@@ -113,7 +113,7 @@ class TestSimpleProof(KCFGExploreTest):
         expected_k, expected_state, *_ = expected_post
 
         # When
-        actual_post = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, *pre))
+        actual_post, _logs = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, *pre))
         actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post, 'K_CELL'))
         actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post, 'STATE_CELL'))
 

@@ -10,7 +10,7 @@ from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
 from pyk.kcfg import KCFG
 from pyk.proof import APRProof, APRProver, ProofStatus
 
-from ..utils import KCFGExploreTest
+from ..utils import K_FILES, KCFGExploreTest
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -40,13 +40,13 @@ EXECUTE_TEST_DATA: Final[Iterable[tuple[str, int, State, int, State, Iterable[St
 )
 
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, str, str, str, int | None, int | None, Iterable[str]]] = (
-    ('cell-map-no-branch', 'k-files/cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 2, 1, []),
+APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str]]] = (
+    ('cell-map-no-branch', K_FILES / 'cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 2, 1, []),
 )
 
 
 class TestCellMapProof(KCFGExploreTest):
-    KOMPILE_MAIN_FILE = 'k-files/cell-map.k'
+    KOMPILE_MAIN_FILE = K_FILES / 'cell-map.k'
 
     @staticmethod
     def config(kprint: KPrint, k: str, active_accounts: str, accounts: Iterable[tuple[str, str]]) -> CTerm:
@@ -99,7 +99,7 @@ class TestCellMapProof(KCFGExploreTest):
         expected_k, _, _ = expected_post
 
         # When
-        actual_depth, actual_post_term, _ = kcfg_explore.cterm_execute(
+        actual_depth, actual_post_term, _, _logs = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, k, aacounts, accounts), depth=depth
         )
         actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
@@ -134,7 +134,7 @@ class TestCellMapProof(KCFGExploreTest):
         init = kcfg.get_unique_init()
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         kcfg.replace_node(init.id, new_init_term)
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, logs={})
         prover = APRProver(proof, kcfg_explore=kcfg_explore)
         kcfg = prover.advance_proof(
             max_iterations=max_iterations,

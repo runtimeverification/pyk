@@ -10,12 +10,12 @@ from pyk.kllvm.compiler import compile_runtime
 from pyk.kllvm.importer import import_runtime
 from pyk.konvert import _kast_to_kore, _kore_to_kast
 from pyk.kore.parser import KoreParser
-from pyk.kore.prelude import SORT_K_ITEM, STRING, generated_counter, generated_top, inj, int_dv, k, kseq, string_dv
+from pyk.kore.prelude import BYTES, SORT_K_ITEM, bytes_dv, generated_counter, generated_top, inj, int_dv, k, kseq
 from pyk.kore.rpc import KoreClient, KoreServer, StuckResult
 from pyk.kore.syntax import App
 from pyk.ktool.kprint import _kast, pretty_print_kast
 from pyk.ktool.krun import KRun
-from pyk.prelude.string import stringToken
+from pyk.prelude.bytes import bytesToken
 
 from .utils import K_FILES
 
@@ -31,17 +31,20 @@ if TYPE_CHECKING:
     from .utils import Kompiler
 
 TEST_DATA: Final = (
-    'hello',
-    '\n',
-    '\x01',
-    '£',
-    '𐍈',
-    '武天老師',
-    '🙂',
+    b'hello',
+    b'\"' b'\\' b'\f',
+    b'\r',
+    b'\n',
+    b'\t',
+    b'\x00',
+    b'\x01',
+    b'\x80',
+    b'\xc2\x80',
 )
 
-KOMPILE_MAIN_FILE = K_FILES / 'string-rewrite.k'
-KOMPILE_MAIN_MODULE = 'STRING-REWRITE'
+
+KOMPILE_MAIN_FILE = K_FILES / 'bytes-rewrite.k'
+KOMPILE_MAIN_MODULE = 'BYTES-REWRITE'
 
 
 @pytest.fixture(scope='module')
@@ -80,48 +83,48 @@ def runtime(llvm_dir: Path) -> ModuleType:
     return import_runtime(llvm_dir)
 
 
-def kore_config(kval: str | None, sval: str) -> Pattern:
-    def s(pattern: Pattern) -> App:
-        return App("Lbl'-LT-'s'-GT-'", (), (pattern,))
+def kore_config(kval: bytes | None, bval: bytes) -> Pattern:
+    def b(pattern: Pattern) -> App:
+        return App("Lbl'-LT-'b'-GT-'", (), (pattern,))
 
-    kitems = (inj(STRING, SORT_K_ITEM, string_dv(kval)),) if kval is not None else ()
+    kitems = (inj(BYTES, SORT_K_ITEM, bytes_dv(kval)),) if kval is not None else ()
     return generated_top(
         (
             k(kseq(kitems)),
-            s(string_dv(sval)),
+            b(bytes_dv(bval)),
             generated_counter(int_dv(0)),
         )
     )
 
 
-@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_kast_to_kore(text: str) -> None:  # TODO turn into unit test
+@pytest.mark.parametrize('value', TEST_DATA)
+def test_kast_to_kore(value: bytes) -> None:  # TODO turn into unit test
     # Given
-    kast = stringToken(text)
+    kast = bytesToken(value)
 
     # When
     kore = _kast_to_kore(kast)
 
     # Then
-    assert kore == string_dv(text)
+    assert kore == bytes_dv(value)
 
 
-@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_kore_to_kast(text: str) -> None:  # TODO turn into unit test
+@pytest.mark.parametrize('value', TEST_DATA)
+def test_kore_to_kast(value: bytes) -> None:  # TODO turn into unit test
     # Given
-    kore = string_dv(text)
+    kore = bytes_dv(value)
 
     # When
     kast = _kore_to_kast(kore)
 
     # Then
-    assert kast == stringToken(text)
+    assert kast == bytesToken(value)
 
 
-@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_cli_kast_to_kore(llvm_dir: Path, text: str) -> None:
+@pytest.mark.parametrize('value', TEST_DATA)
+def test_cli_kast_to_kore(llvm_dir: Path, value: bytes) -> None:
     # Given
-    kast = stringToken(text)
+    kast = bytesToken(value)
     kast_dict = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}  # TODO extract function
     kast_json = json.dumps(kast_dict)
 
@@ -136,13 +139,13 @@ def test_cli_kast_to_kore(llvm_dir: Path, text: str) -> None:
     kore = KoreParser(kore_text).dv()
 
     # Then
-    assert kore == string_dv(text)
+    assert kore == bytes_dv(value)
 
 
-@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_cli_kore_to_kast(llvm_dir: Path, text: str) -> None:
+@pytest.mark.parametrize('value', TEST_DATA)
+def test_cli_kore_to_kast(llvm_dir: Path, value: bytes) -> None:
     # Given
-    kore = string_dv(text)
+    kore = bytes_dv(value)
     kore_text = kore.text
 
     # When
@@ -156,13 +159,13 @@ def test_cli_kore_to_kast(llvm_dir: Path, text: str) -> None:
     kast = kast_term(json.loads(kast_json), KInner)  # type: ignore
 
     # Then
-    assert kast == stringToken(text)
+    assert kast == bytesToken(value)
 
 
-@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_cli_rule_to_kast(llvm_dir: Path, text: str) -> None:
+@pytest.mark.parametrize('value', TEST_DATA)
+def test_cli_rule_to_kast(llvm_dir: Path, value: bytes) -> None:
     # Given
-    input_kast = stringToken(text)
+    input_kast = bytesToken(value)
     rule_text = pretty_print_kast(input_kast, {})
 
     # When
@@ -179,18 +182,11 @@ def test_cli_rule_to_kast(llvm_dir: Path, text: str) -> None:
     assert input_kast == output_kast
 
 
-@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_krun(backend: str, definition_dir: Path, text: str) -> None:
-    if backend == 'llvm':
-        try:
-            text.encode('latin-1')
-        except ValueError:
-            # https://github.com/runtimeverification/k/issues/3344
-            pytest.skip()
-
+@pytest.mark.parametrize('value', TEST_DATA)
+def test_krun(backend: str, definition_dir: Path, value: bytes) -> None:
     # Given
-    kore = kore_config(text, '')
-    expected = kore_config(None, text)
+    kore = kore_config(value, b'')
+    expected = kore_config(None, value)
     krun = KRun(definition_dir)
 
     # When
@@ -200,13 +196,13 @@ def test_krun(backend: str, definition_dir: Path, text: str) -> None:
     assert actual == expected
 
 
-@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_bindings(runtime: ModuleType, text: str) -> None:
+@pytest.mark.parametrize('value', TEST_DATA)
+def test_bindings(runtime: ModuleType, value: bytes) -> None:
     from pyk.kllvm.convert import kore_to_llvm, llvm_to_kore
 
     # Given
-    kore = kore_config(text, '')
-    expected = kore_config(None, text)
+    kore = kore_config(value, b'')
+    expected = kore_config(None, value)
 
     # When
     kore_llvm = runtime.interpret(kore_to_llvm(kore))
@@ -216,17 +212,11 @@ def test_bindings(runtime: ModuleType, text: str) -> None:
     assert actual == expected
 
 
-@pytest.mark.parametrize('text', TEST_DATA, ids=TEST_DATA)
-def test_kore_rpc(haskell_dir: Path, text: str) -> None:
-    try:
-        text.encode('latin-1')
-    except ValueError:
-        # https://github.com/runtimeverification/pyk/issues/348
-        pytest.skip()
-
+@pytest.mark.parametrize('value', TEST_DATA)
+def test_kore_rpc(haskell_dir: Path, value: bytes) -> None:
     # Given
-    kore = kore_config(text, '')
-    expected = kore_config(None, text)
+    kore = kore_config(value, b'')
+    expected = kore_config(None, value)
 
     # When
     with KoreServer(haskell_dir, KOMPILE_MAIN_MODULE) as server:
