@@ -78,7 +78,7 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ('int $n ; $n = 1 ;', '.Map'),
         (
             'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
-            'K_CELL: ( int $n , .Ids ; $n = 0 ; => int $n , .Ids ; $n = 1 ; )'
+            'K_CELL: int $n , .Ids ; $n = 0 ; #Implies int $n , .Ids ; $n = 1 ;'
         ),
     ),
     (
@@ -87,7 +87,7 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ('int $n ; $n = 1 ;', '.Map'),
         (
             'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
-            'K_CELL: ( int $n , .Ids ; $n = X:Int ; => int $n , .Ids ; $n = 1 ; )'
+            'K_CELL: int $n , .Ids ; $n = X:Int ; #Implies int $n , .Ids ; $n = 1 ;'
         ),
     ),
     (
@@ -152,7 +152,7 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ('int $n ; $n = X:Int ;', '3 |-> X:Int'),
         (
             'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
-            'STATE_CELL: 3 |-> ( 6 => X:Int )'
+            'STATE_CELL: 3 |-> 6 #Implies X:Int'
         ),
     ),
 )

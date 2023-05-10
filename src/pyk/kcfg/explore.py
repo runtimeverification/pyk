@@ -21,7 +21,7 @@ from ..ktool.kprove import KoreExecLogFormat
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import notBool
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlNot, mlTop
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
 
@@ -232,6 +232,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                         return True
             return False
 
+        def replace_rewrites_with_implies(kast: KInner) -> KInner:
+            def _replace_rewrites_with_implies(_kast: KInner) -> KInner:
+                if type(_kast) is KRewrite:
+                    return mlImplies(_kast.lhs, _kast.rhs)
+                return _kast
+
+            return bottom_up(_replace_rewrites_with_implies, kast)
+
         config_match = self.cterm_implies(CTerm.from_kast(antecedent.config), CTerm.from_kast(consequent.config))
         if config_match is None:
             failing_cells = []
@@ -247,6 +255,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                         continue
                 failing_cell = push_down_rewrites(KRewrite(antecedent_cell, consequent_cell))
                 failing_cell = no_cell_rewrite_to_dots(failing_cell)
+                failing_cell = replace_rewrites_with_implies(failing_cell)
                 failing_cells.append((cell, failing_cell))
             failing_cells_str = '\n'.join(
                 f'{cell}: {self.kprint.pretty_print(minimize_term(rew))}' for cell, rew in failing_cells
