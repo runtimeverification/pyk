@@ -5,6 +5,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
+
 from ..kast.outer import KClaim
 from ..kcfg import KCFG, path_length
 from ..utils import hash_str, shorten_hashes
@@ -84,7 +85,13 @@ class APRProof(Proof):
     @property
     def dict(self) -> dict[str, Any]:
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        return {'type': 'APRProof', 'id': self.id, 'cfg': self.kcfg.to_dict(), 'dependencies': [c.to_dict() for c in self.dependencies], 'logs': logs}
+        return {
+            'type': 'APRProof',
+            'id': self.id,
+            'cfg': self.kcfg.to_dict(),
+            'dependencies': [c.to_dict() for c in self.dependencies],
+            'logs': logs,
+        }
 
     @property
     def summary(self) -> Iterable[str]:

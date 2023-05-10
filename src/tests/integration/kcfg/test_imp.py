@@ -348,7 +348,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-sum-loop',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-loop',
         None,
@@ -360,7 +360,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-simple-sum-N',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-N',
         None,
@@ -372,7 +372,7 @@ APR_PROVE_TEST_DATA: Iterable[
     ),
     (
         'imp-failing-circularity',
-        'k-files/imp-simple-spec.k',
+        K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'failing-circularity',
         None,

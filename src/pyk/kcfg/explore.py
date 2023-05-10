@@ -4,12 +4,6 @@ import logging
 from typing import TYPE_CHECKING, ContextManager
 
 from ..cterm import CSubst, CTerm
-<<<<<<< HEAD
-from ..kast.inner import KApply, KLabel, KVariable, Subst
-from ..kast.manip import flatten_label, free_vars
-from ..kast.outer import KRule
-from ..konvert import krule_to_kore
-=======
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
 from ..kast.manip import (
     abstract_term_safely,
@@ -22,7 +16,8 @@ from ..kast.manip import (
     ml_pred_to_bool,
     push_down_rewrites,
 )
->>>>>>> master
+from ..kast.outer import KRule
+from ..konvert import krule_to_kore
 from ..kore.rpc import KoreClient, KoreServer, StopReason
 from ..kore.syntax import Import, Module
 from ..ktool.kprove import KoreExecLogFormat
@@ -40,12 +35,9 @@ if TYPE_CHECKING:
 
     from ..cli_utils import BugReport
     from ..kast import KInner
-<<<<<<< HEAD
     from ..kast.outer import KClaim
-    from ..kore.syntax import Sentence
-=======
     from ..kore.rpc import LogEntry
->>>>>>> master
+    from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
 
 
@@ -138,12 +130,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
-<<<<<<< HEAD
         module_name: str | None = None,
-    ) -> tuple[int, CTerm, list[CTerm]]:
-=======
     ) -> tuple[int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
->>>>>>> master
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         _, kore_client = self._kore_rpc
@@ -152,14 +140,11 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             max_depth=depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
-<<<<<<< HEAD
             module_name=module_name,
-=======
             log_successful_rewrites=self._trace_rewrites,
             log_failed_rewrites=self._trace_rewrites,
             log_successful_simplifications=self._trace_rewrites,
             log_failed_simplifications=self._trace_rewrites,
->>>>>>> master
         )
         depth = er.depth
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
@@ -333,7 +318,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 else:
                     logs[node.id] = next_node_logs
 
-    def step(self, cfg: KCFG, node_id: str, logs: dict[str, tuple[LogEntry, ...]], depth: int = 1, module_name: str | None = None) -> str:
+    def step(
+        self,
+        cfg: KCFG,
+        node_id: str,
+        logs: dict[str, tuple[LogEntry, ...]],
+        depth: int = 1,
+        module_name: str | None = None,
+    ) -> str:
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
@@ -341,7 +333,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(node.cterm, depth=depth, module_name=module_name)
+        actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+            node.cterm, depth=depth, module_name=module_name
+        )
         if actual_depth != depth:
             raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
         if len(next_cterms) > 0:
@@ -414,7 +408,11 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
         depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
-            node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules, module_name=module_name,
+            node.cterm,
+            depth=execute_depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
         )
 
         # Basic block
