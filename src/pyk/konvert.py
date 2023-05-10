@@ -109,7 +109,7 @@ def krule_to_kore(kompiled_kore: KompiledKore, krule: KRule) -> Axiom:
         )
 
     kore_rhs0: Pattern = _kast_to_kore(krule_rhs.kast)
-    
+
     kore_lhs = kompiled_kore.add_injections(kore_lhs0, sort=SortApp(name='SortGeneratedTopCell', sorts=()))
     kore_rhs = kompiled_kore.add_injections(kore_rhs0, sort=SortApp(name='SortGeneratedTopCell', sorts=()))
     prio = krule.priority
