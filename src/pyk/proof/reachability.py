@@ -35,7 +35,6 @@ class APRProof(Proof):
 
     kcfg: KCFG
     dependencies: list[KClaim]
-    claim_id: str | None = None
     logs: dict[str, tuple[LogEntry, ...]]
 
     def __init__(
@@ -45,13 +44,11 @@ class APRProof(Proof):
         logs: dict[str, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         dependencies: Iterable[KClaim] = (),
-        claim_id: str | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
         self.logs = logs
         self.dependencies = list(dependencies)
-        self.claim_id = claim_id
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -207,7 +204,7 @@ class APRProver:
         self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
             self.some_dependencies_module_name,
-            [c for c in proof.dependencies if c.label != self.proof.claim_id],
+            [c for c in proof.dependencies if c.label != self.proof.id],
             priority=1,
         )
         self.all_dependencies_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'

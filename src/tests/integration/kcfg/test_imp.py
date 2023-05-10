@@ -712,7 +712,7 @@ class TestImpProof(KCFGExploreTest):
 
         _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(deps_claims)} dependencies")
         kcfg = KCFG.from_claim(kprove.definition, claim)
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, dependencies=deps_claims, claim_id=claim.label, logs={})
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, dependencies=deps_claims, logs={})
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
