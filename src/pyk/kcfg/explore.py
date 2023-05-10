@@ -202,7 +202,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         return CSubst(subst=Subst(_subst), constraints=ml_preds)
 
-    def implication_failure_reason(self, concrete: CTerm, abstract: CTerm) -> tuple[bool, str]:
+    def implication_failure_reason(self, antecedent: CTerm, consequent: CTerm) -> tuple[bool, str]:
         def no_cell_rewrite_to_dots(term: KInner) -> KInner:
             def _no_cell_rewrite_to_dots(_term: KInner) -> KInner:
                 if type(_term) is KApply and _term.is_cell:
@@ -232,20 +232,20 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                         return True
             return False
 
-        config_match = self.cterm_implies(CTerm.from_kast(concrete.config), CTerm.from_kast(abstract.config))
+        config_match = self.cterm_implies(CTerm.from_kast(antecedent.config), CTerm.from_kast(consequent.config))
         if config_match is None:
             failing_cells = []
             curr_cell_match = Subst({})
-            for cell in concrete.cells:
-                concrete_cell = concrete.cell(cell)
-                abstract_cell = abstract.cell(cell)
-                cell_match = abstract_cell.match(concrete_cell)
+            for cell in antecedent.cells:
+                antecedent_cell = antecedent.cell(cell)
+                consequent_cell = consequent.cell(cell)
+                cell_match = consequent_cell.match(antecedent_cell)
                 if cell_match is not None:
                     _curr_cell_match = curr_cell_match.union(cell_match)
                     if _curr_cell_match is not None:
                         curr_cell_match = _curr_cell_match
                         continue
-                failing_cell = push_down_rewrites(KRewrite(abstract_cell, concrete_cell))
+                failing_cell = push_down_rewrites(KRewrite(antecedent_cell, consequent_cell))
                 failing_cell = no_cell_rewrite_to_dots(failing_cell)
                 failing_cells.append((cell, failing_cell))
             failing_cells_str = '\n'.join(
@@ -253,16 +253,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             )
             return (
                 False,
-                f'Structural matching failed, the following cells failed individually (abstract => concrete):\n{failing_cells_str}',
+                f'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n{failing_cells_str}',
             )
         else:
-            abstract_constraints = list(
-                filter(lambda x: not CTerm._is_spurious_constraint(x), map(config_match.subst, abstract.constraints))
+            consequent_constraints = list(
+                filter(lambda x: not CTerm._is_spurious_constraint(x), map(config_match.subst, consequent.constraints))
             )
-            impl = CTerm._ml_impl(concrete.constraints, abstract_constraints)
+            impl = CTerm._ml_impl(antecedent.constraints, consequent_constraints)
             if impl != mlTop(k.GENERATED_TOP_CELL):
                 fail_str = self.kprint.pretty_print(impl)
-                negative_cell_constraints = list(filter(_is_negative_cell_subst, concrete.constraints))
+                negative_cell_constraints = list(filter(_is_negative_cell_subst, antecedent.constraints))
                 if len(negative_cell_constraints) > 0:
                     fail_str = (
                         f'{fail_str}\n\nNegated cell substitutions found (consider using _ => ?_):\n'
