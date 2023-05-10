@@ -819,7 +819,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         paths = self.paths_between(source_node_id, target_node_id)
         if len(paths) == 0:
             return None
-        return sorted(paths, key=(lambda path: len(path)))[0]
+        return sorted(paths, key=(lambda path: path_length(path)))[0]
 
     def path_constraints(self, final_node_id: str) -> KInner:
         path = self.shortest_path_between(self.get_unique_init().id, final_node_id)
