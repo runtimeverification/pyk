@@ -182,6 +182,7 @@ class EqualityProver:
             )
 
         # second, check implication from antecedent to consequent
+        # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
         dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
         result = kcfg_explore.cterm_implies(
             antecedent=CTerm(config=dummy_config, constraints=[antecedent_kast]),
