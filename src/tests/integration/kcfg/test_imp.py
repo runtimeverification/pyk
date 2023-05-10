@@ -82,6 +82,15 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ),
     ),
     (
+        'different-cell-2',
+        ('int $n ; $n = X:Int ;', '.Map'),
+        ('int $n ; $n = 1 ;', '.Map'),
+        (
+            'Structural matching failed, the following cells failed individually (abstract => concrete):\n'
+            'K_CELL: ( int $n , .Ids ; $n = X:Int ; => int $n , .Ids ; $n = 1 ; )'
+        ),
+    ),
+    (
         'different-constraint',
         (
             'int $n ; $n = 0 ;',
@@ -95,6 +104,34 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ),
         (
             'int $n ; $n = 0 ;',
+            '1 |-> A:Int 2 |-> B:Int',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
+                ]
+            ),
+        ),
+        (
+            'Implication check failed, the following is the remaining implication:\n'
+            '{ true #Equals A:Int <Int 1 }\n'
+            '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+        ),
+    ),
+    (
+        'different-constraint-with-match',
+        (
+            'int $n ; $n = 0 ;',
+            '1 |-> A:Int 2 |-> B:Int',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
+                ]
+            ),
+        ),
+        (
+            'int $n ; $n = X:Int ;',
             '1 |-> A:Int 2 |-> B:Int',
             mlAnd(
                 [

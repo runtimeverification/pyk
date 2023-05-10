@@ -219,7 +219,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                         return True
             return False
 
-        config_match = self.cterm_implies(CTerm.from_kast(abstract.config), CTerm.from_kast(concrete.config))
+        config_match = self.cterm_implies(CTerm.from_kast(concrete.config), CTerm.from_kast(abstract.config))
         if config_match is None:
             failing_cells = []
             curr_cell_match = Subst({})
