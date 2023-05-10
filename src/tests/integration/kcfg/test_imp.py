@@ -82,7 +82,7 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ),
     ),
     (
-        'different-cell',
+        'different-constraint',
         (
             'int $n ; $n = 0 ;',
             '1 |-> A:Int 2 |-> B:Int',
@@ -107,6 +107,15 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             'Implication check failed, the following is the remaining implication:\n'
             '{ true #Equals A:Int <Int 1 }\n'
             '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+        ),
+    ),
+    (
+        'substitution',
+        ('int $n ; $n = 5 ;', '3 |-> 6'),
+        ('int $n ; $n = X:Int ;', '3 |-> X:Int'),
+        (
+            'Structural matching failed, the following cells failed individually (abstract => concrete):\n'
+            'STATE_CELL: 3 |-> ( 6 => X:Int )'
         ),
     ),
 )
@@ -769,6 +778,8 @@ class TestImpProof(KCFGExploreTest):
         consequent_term = self.config(kcfg_explore.kprint, *consequent)
 
         failed, actual = kcfg_explore.implication_failure_reason(antecedent_term, consequent_term)
+
+        print(actual)
 
         assert failed == False
         assert actual == expected

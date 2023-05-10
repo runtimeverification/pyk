@@ -222,14 +222,19 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         config_match = self.cterm_implies(CTerm.from_kast(abstract.config), CTerm.from_kast(concrete.config))
         if config_match is None:
             failing_cells = []
+            curr_cell_match = Subst({})
             for cell in concrete.cells:
                 concrete_cell = concrete.cell(cell)
                 abstract_cell = abstract.cell(cell)
                 cell_match = abstract_cell.match(concrete_cell)
-                if cell_match is None:
-                    failing_cell = push_down_rewrites(KRewrite(concrete_cell, abstract_cell))
-                    failing_cell = no_cell_rewrite_to_dots(failing_cell)
-                    failing_cells.append((cell, failing_cell))
+                if cell_match is not None:
+                    _curr_cell_match = curr_cell_match.union(cell_match)
+                    if _curr_cell_match is not None:
+                        curr_cell_match = _curr_cell_match
+                        continue
+                failing_cell = push_down_rewrites(KRewrite(concrete_cell, abstract_cell))
+                failing_cell = no_cell_rewrite_to_dots(failing_cell)
+                failing_cells.append((cell, failing_cell))
             failing_cells_str = '\n'.join(
                 f'{cell}: {self.kprint.pretty_print(minimize_term(rew))}' for cell, rew in failing_cells
             )
@@ -238,12 +243,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 f'Structural matching failed, the following cells failed individually (abstract => concrete):\n{failing_cells_str}',
             )
         else:
-            #              abstract_constraints = list(
-            #                  filter(
-            #                      lambda x: not CTerm._is_spurious_constraint(x),
-            #                      [config_match.subst.apply(abstract_constraint) for abstract_constraint in abstract.constraints],
-            #                  )
-            #              )
             abstract_constraints = list(
                 filter(lambda x: not CTerm._is_spurious_constraint(x), map(config_match.subst, abstract.constraints))
             )
