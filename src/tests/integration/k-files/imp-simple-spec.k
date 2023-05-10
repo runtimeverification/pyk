@@ -73,8 +73,6 @@ module IMP-SIMPLE-SPEC
     claim [if-almost-same]:
         <k> if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } => . ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N) $n |-> N) </state>
-        // The backend complains when we add a rule without a precondition
-        requires 0 <=Int 1
     
     claim [use-if-almost-same]:
         <k> $n = $n + 1; if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } $s = $s + 1; ~> #FINISH => . ...</k>
