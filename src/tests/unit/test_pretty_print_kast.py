@@ -7,7 +7,7 @@ import pytest
 from pyk.kast import KAtt
 from pyk.kast.inner import KApply, KLabel, KSort, KVariable
 from pyk.kast.outer import KNonTerminal, KProduction, KRule, KTerminal
-from pyk.ktool.kprint import pretty_print_kast, unparser_for_production
+from pyk.ktool.kprint import PrettyPrinter, unparser_for_production
 from pyk.prelude.kbool import TRUE
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ def test_pretty_print(test_id: str, kast: KAst, expected: str) -> None:
     expected_tokens = expected.split('\n')
 
     # When
-    actual = pretty_print_kast(kast, {})
+    actual = PrettyPrinter({}).print(kast)
     actual_tokens = actual.split('\n')
 
     # Then
