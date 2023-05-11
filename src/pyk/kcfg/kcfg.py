@@ -529,6 +529,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         if len(list(self.successors(source_id))) > 0:
             raise ValueError(f'Node already has successors: {source_id} -> {self.successors(source_id)}')
 
+    def _check_no_zero_loops(self, source_id: str, target_ids: Iterable[str]) -> None:
+        for target_id in target_ids:
+            if path := self.shortest_path_between(target_id, source_id):
+                if path_length(path) == 0:
+                    raise ValueError(
+                        f'Adding successor would create zero-length loop with backedge: {source_id} -> {target_id}'
+                    )
+
     def edge(self, source_id: str, target_id: str) -> Edge | None:
         source_id = self._resolve(source_id)
         target_id = self._resolve(target_id)
@@ -553,6 +561,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def create_edge(self, source_id: str, target_id: str, depth: int) -> Edge:
         self._check_no_successors(source_id)
+        self._check_no_zero_loops(source_id, [target_id])
 
         if depth <= 0:
             raise ValueError(f'Cannot build KCFG Edge with non-positive depth: {depth}')
@@ -603,6 +612,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def create_cover(self, source_id: str, target_id: str, csubst: CSubst | None = None) -> Cover:
         self._check_no_successors(source_id)
+        self._check_no_zero_loops(source_id, [target_id])
 
         source = self.node(source_id)
         target = self.node(target_id)
@@ -660,6 +670,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def create_split(self, source_id: str, splits: Iterable[tuple[str, CSubst]]) -> None:
         self._check_no_successors(source_id)
+        self._check_no_zero_loops(source_id, [id for id, _ in splits])
 
         splits = list(splits)
 
@@ -682,6 +693,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def create_ndbranch(self, source_id: str, ndbranches: Iterable[str]) -> None:
         self._check_no_successors(source_id)
+        self._check_no_zero_loops(source_id, ndbranches)
 
         ndbranches = list(ndbranches)
 
