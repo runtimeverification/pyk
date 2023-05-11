@@ -391,10 +391,6 @@ def paren(printer: Callable[..., str]) -> Callable[..., str]:
     return lambda *args: '( ' + printer(*args) + ' )'
 
 
-def applied_label_str(symbol: str) -> Callable[..., str]:
-    return lambda *args: symbol + ' ( ' + ' , '.join(args) + ' )'
-
-
 def indent(text: str, size: int = 2) -> str:
     return '\n'.join([(' ' * size) + line for line in text.split('\n')])
 
@@ -487,7 +483,7 @@ class PrettyPrinter:
             cell_contents = '\n'.join(unparsed_args).rstrip()
             cell_str = label + '\n' + indent(cell_contents) + '\n</' + label[1:]
             return cell_str.rstrip()
-        unparser = applied_label_str(label) if label not in self.symbol_table else self.symbol_table[label]
+        unparser = self._applied_label_str(label) if label not in self.symbol_table else self.symbol_table[label]
         return unparser(*unparsed_args)
 
     def _print_kas(self, kas: KAs) -> str:
@@ -653,3 +649,6 @@ class PrettyPrinter:
             return '\n'.join(clauses)
         else:
             return self.print(kast)
+
+    def _applied_label_str(self, symbol: str) -> Callable[..., str]:
+        return lambda *args: symbol + ' ( ' + ' , '.join(args) + ' )'
