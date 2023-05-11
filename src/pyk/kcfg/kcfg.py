@@ -531,11 +531,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def _check_no_zero_loops(self, source_id: str, target_ids: Iterable[str]) -> None:
         for target_id in target_ids:
-            if path := self.shortest_path_between(target_id, source_id):
-                if path_length(path) == 0:
-                    raise ValueError(
-                        f'Adding successor would create zero-length loop with backedge: {source_id} -> {target_id}'
-                    )
+            path = self.shortest_path_between(target_id, source_id)
+            if path is not None and path_length(path) == 0:
+                raise ValueError(
+                    f'Adding successor would create zero-length loop with backedge: {source_id} -> {target_id}'
+                )
 
     def edge(self, source_id: str, target_id: str) -> Edge | None:
         source_id = self._resolve(source_id)
