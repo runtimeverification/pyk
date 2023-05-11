@@ -74,6 +74,20 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
     #     ProofStatus.PASSED,
     # ),
     (
+        'func-spec-concrete-requires-trivial-false-nonsense-undecided',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-requires-trivial-false-nonsense-undecided',
+        ProofStatus.PASSED,
+    ),
+    (
+        'func-spec-concrete-requires-nontrivial-false-nonsense-undecided',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-requires-trivial-false-nonsense-undecided',
+        ProofStatus.PASSED,
+    ),
+    (
         'func-spec-concrete-requires-nontrivial-false-nonsense',
         K_FILES / 'imp-simple-spec.k',
         'IMP-FUNCTIONAL-SPEC',

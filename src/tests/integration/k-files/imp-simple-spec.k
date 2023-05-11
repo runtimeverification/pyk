@@ -21,7 +21,13 @@ module IMP-FUNCTIONAL-SPEC
 //   claim [concrete-requires-trivial-false-nonsense]: 0 => 1
 //     requires False
 
-    claim [concrete-requires-nontrivial-false-nonsense]: 0 => 1
+   claim [concrete-requires-nontrivial-false-nonsense]: 0 => 1
+     requires 0 ==Int 1
+
+   claim [concrete-requires-trivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
+     requires False
+
+   claim [concrete-requires-nontrivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
       requires 0 ==Int 1
 
     claim [symbolic-addition-commutativity]: N +Int M => M +Int N
