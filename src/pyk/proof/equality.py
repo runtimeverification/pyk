@@ -68,7 +68,7 @@ class EqualityProof(Proof):
 
     @property
     def equality(self) -> KInner:
-        return KApply('_==K_', [self.lhs_body, self.rhs_body])
+        return mlEquals(self.lhs_body, self.rhs_body, arg_sort=self.sort, sort=GENERATED_TOP_CELL)
 
     def add_constraint(self, new_constraint: KInner) -> None:
         self.constraints = (*self.constraints, new_constraint)
@@ -179,10 +179,10 @@ class EqualityProver:
         if self.proof.status is not ProofStatus.PENDING:
             return
 
-        # to prove the equality, we check the implication of the form `constraints -> LHS ==K RHS`, i.e.
+        # to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.
         # "LHS equals RHS under these constraints"
         antecedent_kast = mlAnd(self.proof.constraints)
-        consequent_kast = mlEquals(TRUE, self.proof.equality, arg_sort=BOOL, sort=GENERATED_TOP_CELL)
+        consequent_kast = self.proof.equality
 
         _, kore_client = kcfg_explore._kore_rpc
 
