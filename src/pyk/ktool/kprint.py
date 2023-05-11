@@ -345,6 +345,10 @@ class KPrint:
         )
 
 
+def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
+    return PrettyPrinter(symbol_table).print(kast)
+
+
 def unparser_for_production(prod: KProduction) -> Callable[..., str]:
     def _unparser(*args: Any) -> str:
         index = 0
@@ -409,6 +413,11 @@ class PrettyPrinter:
         self.symbol_table = symbol_table
 
     def print(self, kast: KAst) -> str:
+        """Print out KAST terms/outer syntax.
+        -   Input: KAST term.
+        -   Output: Best-effort string representation of KAST term.
+        """
+        _LOGGER.debug(f'pretty_print_kast: {kast}')
         match kast:
             case KVariable():
                 return self._print_kvariable(kast)

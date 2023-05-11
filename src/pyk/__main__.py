@@ -13,7 +13,7 @@ from .kast.manip import flatten_label, minimize_rule, minimize_term, propagate_u
 from .kast.outer import read_kast_definition
 from .kore.parser import KoreParser
 from .kore.syntax import Pattern
-from .ktool.kprint import KPrint, PrettyPrinter, build_symbol_table
+from .ktool.kprint import KPrint, build_symbol_table, pretty_print_kast
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
@@ -101,7 +101,7 @@ def main() -> None:
             args['output'].write('\n\n')
             args['output'].write('Rule: ' + rid.strip())
             args['output'].write('\nUnparsed:\n')
-            args['output'].write(PrettyPrinter(symbol_table).print(rule))
+            args['output'].write(pretty_print_kast(rule, symbol_table))
         _LOGGER.info(f'Wrote file: {args["output"].name}')
 
     elif args['command'] == 'kore-to-json':

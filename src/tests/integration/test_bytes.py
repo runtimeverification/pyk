@@ -13,7 +13,7 @@ from pyk.kore.parser import KoreParser
 from pyk.kore.prelude import BYTES, SORT_K_ITEM, bytes_dv, generated_counter, generated_top, inj, int_dv, k, kseq
 from pyk.kore.rpc import KoreClient, KoreServer, StuckResult
 from pyk.kore.syntax import App
-from pyk.ktool.kprint import PrettyPrinter, _kast
+from pyk.ktool.kprint import _kast, pretty_print_kast
 from pyk.ktool.krun import KRun
 from pyk.prelude.bytes import bytesToken
 
@@ -166,7 +166,7 @@ def test_cli_kore_to_kast(llvm_dir: Path, value: bytes) -> None:
 def test_cli_rule_to_kast(llvm_dir: Path, value: bytes) -> None:
     # Given
     input_kast = bytesToken(value)
-    rule_text = PrettyPrinter({}).print(input_kast)
+    rule_text = pretty_print_kast(input_kast, {})
 
     # When
     proc_res = _kast(
