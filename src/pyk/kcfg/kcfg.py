@@ -669,10 +669,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return split in self._splits
 
     def create_split(self, source_id: str, splits: Iterable[tuple[str, CSubst]]) -> None:
+        splits = list(splits)
         self._check_no_successors(source_id)
         self._check_no_zero_loops(source_id, [id for id, _ in splits])
-
-        splits = list(splits)
 
         if len(splits) <= 1:
             raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
@@ -692,10 +691,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return ndbranch in self._ndbranches
 
     def create_ndbranch(self, source_id: str, ndbranches: Iterable[str]) -> None:
+        ndbranches = list(ndbranches)
         self._check_no_successors(source_id)
         self._check_no_zero_loops(source_id, ndbranches)
-
-        ndbranches = list(ndbranches)
 
         if len(ndbranches) <= 1:
             raise ValueError(
