@@ -93,13 +93,10 @@ class EqualityProof(Proof):
     def status(self) -> ProofStatus:
         if self.simplified_constraints is None:
             return ProofStatus.PENDING
+        elif self.csubst is None:
+            return ProofStatus.FAILED
         else:
-            if is_bottom(self.simplified_constraints):  # the proof passes trivially
-                return ProofStatus.PASSED
-            elif self.csubst is not None and is_top(self.csubst.constraint):
-                return ProofStatus.PASSED
-            else:
-                return ProofStatus.FAILED
+            return ProofStatus.PASSED
 
     @classmethod
     def from_dict(cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> EqualityProof:
@@ -150,7 +147,7 @@ class EqualityProof(Proof):
     def summary(self) -> Iterable[str]:
         return [
             f'EqualityProof: {self.id}',
-            f'    satisfiable: {self.satisfiable}',
+            f'  status: {self.status}',
         ]
 
 
@@ -161,7 +158,7 @@ class EqualityProver:
         self.proof = proof
 
     def advance_proof(self, kcfg_explore: KCFGExplore) -> None:
-        if self.proof.csubst is not None:
+        if self.proof.status is not ProofStatus.PENDING:
             return
 
         # to prove the equality, we check the implication of the form `constraints -> LHS ==K RHS`, i.e.
