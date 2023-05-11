@@ -13,7 +13,7 @@ from pyk.kore.parser import KoreParser
 from pyk.kore.prelude import SORT_K_ITEM, STRING, generated_counter, generated_top, inj, int_dv, k, kseq, string_dv
 from pyk.kore.rpc import KoreClient, KoreServer, StuckResult
 from pyk.kore.syntax import App
-from pyk.ktool.kprint import _kast, pretty_print_kast
+from pyk.ktool.kprint import PrettyPrinter, _kast
 from pyk.ktool.krun import KRun
 from pyk.prelude.string import stringToken
 
@@ -163,7 +163,7 @@ def test_cli_kore_to_kast(llvm_dir: Path, text: str) -> None:
 def test_cli_rule_to_kast(llvm_dir: Path, text: str) -> None:
     # Given
     input_kast = stringToken(text)
-    rule_text = pretty_print_kast(input_kast, {})
+    rule_text = PrettyPrinter({}).print(input_kast)
 
     # When
     proc_res = _kast(
