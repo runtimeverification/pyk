@@ -68,9 +68,6 @@ class EqualityProof(Proof):
     def equality(self) -> KInner:
         return mlEquals(self.lhs_body, self.rhs_body, arg_sort=self.sort, sort=GENERATED_TOP_CELL)
 
-    def add_constraint(self, new_constraint: KInner) -> None:
-        self.constraints = (*self.constraints, new_constraint)
-
     def set_satisfiable(self, satisfiable: bool) -> None:
         self.satisfiable = satisfiable
 
@@ -158,6 +155,89 @@ class EqualityProof(Proof):
         ]
 
 
+class RefutationProof(Proof):
+    def __init__(
+        self,
+        id: str,
+        sort: KSort,
+        constraints: Iterable[KInner] = (),
+        csubst: CSubst | None = None,
+        simplified_constraints: KInner | None = None,
+        proof_dir: Path | None = None,
+    ):
+        super().__init__(id, proof_dir=proof_dir)
+        self.sort = sort
+        self.constraints = tuple(constraints)
+        self.csubst = csubst
+        self.simplified_constraints = simplified_constraints
+
+    def add_constraint(self, new_constraint: KInner) -> None:
+        self.constraints = (*self.constraints, new_constraint)
+
+    def set_simplified_constraints(self, simplified: KInner) -> None:
+        self.simplified_constraints = simplified
+
+    def set_csubst(self, csubst: CSubst) -> None:
+        self.csubst = csubst
+
+    @property
+    def status(self) -> ProofStatus:
+        if self.simplified_constraints is None:
+            return ProofStatus.PENDING
+        elif self.csubst is not None:
+            return ProofStatus.FAILED
+        else:
+            return ProofStatus.PASSED
+
+    @property
+    def dict(self) -> dict[str, Any]:
+        dct = {
+            'type': 'RefutationProof',
+            'id': self.id,
+            'sort': self.sort.to_dict(),
+            'constraints': [c.to_dict() for c in self.constraints],
+        }
+        if self.simplified_constraints is not None:
+            dct['simplified_constraints'] = self.simplified_constraints.to_dict()
+        if self.csubst is not None:
+            dct['csubst'] = self.csubst.to_dict()
+        return dct
+
+    @classmethod
+    def from_dict(cls: type[RefutationProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> RefutationProof:
+        id = dct['id']
+        sort = KSort.from_dict(dct['sort'])
+        constraints = [KInner.from_dict(c) for c in dct['constraints']]
+        simplified_constraints = (
+            KInner.from_dict(dct['simplified_constraints']) if 'simplified_constraints' in dct else None
+        )
+        csubst = CSubst.from_dict(dct['csubst']) if 'csubst' in dct else None
+        return RefutationProof(
+            id=id,
+            sort=sort,
+            constraints=constraints,
+            csubst=csubst,
+            simplified_constraints=simplified_constraints,
+            proof_dir=proof_dir,
+        )
+
+    @property
+    def summary(self) -> Iterable[str]:
+        return [
+            f'RefutationProof: {self.id}',
+            f'  status: {self.status}',
+        ]
+
+    def pretty(self, kprint: KPrint) -> Iterable[str]:
+        lines = [
+            f'Constraints: {kprint.pretty_print(mlAnd(self.constraints))}',
+        ]
+        if self.csubst is not None:
+            lines.append(f'Implication csubst: {self.csubst}')
+        lines.append(f'Status: {self.status}')
+        return lines
+
+
 class EqualityProver:
     proof: EqualityProof
 
@@ -208,6 +288,49 @@ class EqualityProver:
             dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
             result = kcfg_explore.cterm_implies(
                 antecedent=CTerm(config=dummy_config, constraints=[antecedent_kast]),
+                consequent=CTerm(config=dummy_config, constraints=[consequent_kast]),
+            )
+            if result is None:
+                _LOGGER.warning('cterm_implies returned None, the implication is unsatisfiable')
+            else:
+                self.proof.set_csubst(result)
+        self.proof.write_proof()
+
+
+class RefutationProver:
+    proof: RefutationProof
+
+    def __init__(self, proof: RefutationProof) -> None:
+        self.proof = proof
+
+    def advance_proof(self, kcfg_explore: KCFGExplore) -> None:
+        if self.proof.status is not ProofStatus.PENDING:
+            return
+
+        consequent_kast = mlAnd(self.proof.constraints)
+
+        _, kore_client = kcfg_explore._kore_rpc
+
+        _LOGGER.info(f'Attempting RefutationProof {self.proof.id}')
+
+        proof_failed_trivially = False
+        consequent_simplified_kore, _ = kore_client.simplify(kcfg_explore.kprint.kast_to_kore(consequent_kast))
+        consequent_simplified_kast = kcfg_explore.kprint.kore_to_kast(consequent_simplified_kore)
+        _LOGGER.info(f'Simplified consequent: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
+        self.proof.set_simplified_constraints(consequent_simplified_kast)
+        if is_top(consequent_simplified_kast):
+            _LOGGER.warning(
+                'Consequent of implication (proof equality) simplifies to #Top. The constraitns are satisfiable, the implication will not be checked.'
+            )
+            proof_failed_trivially = True
+            self.proof.set_csubst(CSubst(Subst({}), ()))
+
+        if not proof_failed_trivially:
+            # third, check implication from antecedent to consequent
+            # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
+            dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
+            result = kcfg_explore.cterm_implies(
+                antecedent=CTerm(config=dummy_config, constraints=[]),
                 consequent=CTerm(config=dummy_config, constraints=[consequent_kast]),
             )
             if result is None:

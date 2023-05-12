@@ -11,7 +11,7 @@ from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, FALSE, TRUE
 from ..prelude.ml import mlEquals
 from ..utils import shorten_hash, shorten_hashes, single
-from .equality import EqualityProof, EqualityProver
+from .equality import RefutationProof, RefutationProver
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -63,14 +63,14 @@ class APRProof(Proof):
                 )
         self.node_refutations = node_refutations if node_refutations is not None else {}
 
-    def read_refutations(self) -> Iterable[tuple[str, EqualityProof]]:
+    def read_refutations(self) -> Iterable[tuple[str, RefutationProof]]:
         if len(self.node_refutations) == 0:
             return
         else:
             if self.proof_dir is None:
                 raise ValueError(f'Cannot read refutations proof {self.id} with no proof_dir')
             for node_id, proof_id in self.node_refutations.items():
-                yield node_id, cast('EqualityProof', self.fetch_subproof(proof_id))
+                yield node_id, cast('RefutationProof', self.fetch_subproof(proof_id))
 
     @property
     def stuck_nodes_refuted(self) -> bool:
@@ -87,8 +87,10 @@ class APRProof(Proof):
         elif len(self.kcfg.frontier) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
-            assert self.subproofs_status == ProofStatus.PASSED
-            return ProofStatus.PASSED
+            if self.subproofs_status == ProofStatus.PASSED:
+                return ProofStatus.PASSED
+            else:
+                return ProofStatus.FAILED
 
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
@@ -134,7 +136,7 @@ class APRProof(Proof):
         for summary in subproofs_summaries:
             yield from summary
 
-    def construct_node_refutation(self, node: KCFG.Node) -> EqualityProof | None:
+    def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:
         """Construct an EqualityProof stating that the node's path condition is unsatisfiable"""
         if not node in self.kcfg.nodes:
             raise ValueError(f'No such node {node.id}')
@@ -168,22 +170,20 @@ class APRProof(Proof):
             )
             return None
 
-        # extract the constriant added by the Split that leads to the node-to-refute
-        last_constraint = ml_pred_to_bool(csubst.constraints[0])
-
         # extract the path condition prior to the Split that leads to the node-to-refute
         pre_split_constraints = [
             mlEquals(TRUE, ml_pred_to_bool(c), arg_sort=BOOL) for c in closest_branch.source.cterm.constraints
         ]
 
+        # extract the constriant added by the Split that leads to the node-to-refute and negate it
+        last_constraint = mlEquals(FALSE, ml_pred_to_bool(csubst.constraints[0]), arg_sort=BOOL)
+
         refutation_id = f'{self.id}.node-infeasible-{shorten_hash(node.id)}'
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
-        refutation = EqualityProof(
+        refutation = RefutationProof(
             id=refutation_id,
-            constraints=pre_split_constraints,
-            lhs_body=last_constraint,
-            rhs_body=FALSE,
             sort=BOOL,
+            constraints=[*pre_split_constraints, last_constraint],
             proof_dir=self.proof_dir,
         )
         return refutation
@@ -373,13 +373,13 @@ class APRProver:
             self.proof.add_subproof(refutation.id)
         self.proof.write_proof()
 
-        eq_prover = EqualityProver(refutation)
+        eq_prover = RefutationProver(refutation)
         eq_prover.advance_proof(kcfg_explore)
 
         if eq_prover.proof.csubst is None:
-            _LOGGER.info(f'Successfully refuted node {shorten_hash(node.id)} by EqualityProof {eq_prover.proof.id}')
+            _LOGGER.info(f'Successfully refuted node {shorten_hash(node.id)} by proof {eq_prover.proof.id}')
         else:
-            _LOGGER.error(f'Failed to refute node {shorten_hash(node.id)} by EqualityProof {eq_prover.proof.id}')
+            _LOGGER.error(f'Failed to refute node {shorten_hash(node.id)} by proof {eq_prover.proof.id}')
         self.proof.node_refutations[node.id] = eq_prover.proof.id
 
 

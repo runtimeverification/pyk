@@ -13,7 +13,7 @@ from pyk.prelude.ml import mlEqualsTrue
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.utils import single
 
-from ..utils import KCFGExploreTest
+from ..utils import K_FILES, KCFGExploreTest
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -40,7 +40,7 @@ REFUTE_NODE_TEST_DATA: Iterable[tuple[str, KInner | None, ProofStatus]] = (
 
 
 class TestAPRProof(KCFGExploreTest):
-    KOMPILE_MAIN_FILE = 'k-files/refute-node.k'
+    KOMPILE_MAIN_FILE = K_FILES / 'refute-node.k'
 
     @pytest.fixture(scope='function')
     def proof_dir(self, tmp_path_factory: TempPathFactory) -> Path:
@@ -71,7 +71,7 @@ class TestAPRProof(KCFGExploreTest):
         expected_status: ProofStatus,
     ) -> None:
         # Given
-        spec_file = 'k-files/refute-node-spec.k'
+        spec_file = K_FILES / 'refute-node-spec.k'
         spec_module = 'REFUTE-NODE-SPEC'
         claim_id = 'split-int-fail'
 
