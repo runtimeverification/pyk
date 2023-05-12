@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
 from ..kcfg import KCFG
-from ..utils import hash_str, shorten_hashes
+from ..utils import shorten_hashes
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -39,15 +38,6 @@ class APRProof(Proof):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
         self.logs = logs
-
-    @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> APRProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if APRProof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading APRProof from file {id}: {proof_path}')
-            return APRProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load APRProof from file {id}: {proof_path}')
 
     @property
     def status(self) -> ProofStatus:
@@ -103,15 +93,6 @@ class APRBMCProof(APRProof):
         super().__init__(id, kcfg, logs, proof_dir=proof_dir)
         self.bmc_depth = bmc_depth
         self._bounded_states = list(bounded_states) if bounded_states is not None else []
-
-    @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> APRBMCProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if APRBMCProof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading APRBMCProof from file {id}: {proof_path}')
-            return APRBMCProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load APRBMCProof from file {id}: {proof_path}')
 
     @property
     def status(self) -> ProofStatus:
