@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from itertools import chain
 from typing import TYPE_CHECKING, cast
@@ -13,6 +12,8 @@ from ..prelude.kbool import BOOL, FALSE, TRUE
 from ..prelude.ml import mlEquals
 from ..utils import hash_str, shorten_hash, shorten_hashes, single
 from .equality import EqualityProof, EqualityProver
+from ..utils import hash_str, shorten_hashes
+from ..utils import shorten_hashes
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -63,15 +64,6 @@ class APRProof(Proof):
                     f'All node refutations must be included in subproofs, violators are {refutations_not_in_subprroofs}'
                 )
         self.node_refutations = node_refutations if node_refutations is not None else {}
-
-    @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> APRProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if APRProof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading APRProof from file {id}: {proof_path}')
-            return APRProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load APRProof from file {id}: {proof_path}')
 
     def read_refutations(self) -> Iterable[tuple[str, EqualityProof]]:
         if len(self.node_refutations) == 0:
@@ -220,15 +212,6 @@ class APRBMCProof(APRProof):
         )
         self.bmc_depth = bmc_depth
         self._bounded_states = list(bounded_states) if bounded_states is not None else []
-
-    @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> APRBMCProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if APRBMCProof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading APRBMCProof from file {id}: {proof_path}')
-            return APRBMCProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load APRBMCProof from file {id}: {proof_path}')
 
     @property
     def status(self) -> ProofStatus:

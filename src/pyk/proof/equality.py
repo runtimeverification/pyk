@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING
 
@@ -10,7 +9,6 @@ from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals
-from ..utils import hash_str
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -84,15 +82,6 @@ class EqualityProof(Proof):
 
     def set_simplified_equality(self, simplified: KInner) -> None:
         self.simplified_equality = simplified
-
-    @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> EqualityProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if EqualityProof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading EqualityProof from file {id}: {proof_path}')
-            return EqualityProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load EqualityProof from file {id}: {proof_path}')
 
     @property
     def status(self) -> ProofStatus:
