@@ -24,12 +24,12 @@ def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
 
 
 def apr_proof(i: int, proof_dir: Path) -> APRProof:
-    return APRProof(id=f'apr_proof_{i}', kcfg=KCFG.from_dict({'nodes': node_dicts(i)}), proof_dir=proof_dir)
+    return APRProof(id=f'apr_proof_{i}', kcfg=KCFG.from_dict({'nodes': node_dicts(i)}), logs={}, proof_dir=proof_dir)
 
 
 def aprbmc_proof(i: int, proof_dir: Path) -> APRBMCProof:
     return APRBMCProof(
-        id=f'aprbmc_proof_{i}', bmc_depth=i, kcfg=KCFG.from_dict({'nodes': node_dicts(i)}), proof_dir=proof_dir
+        id=f'aprbmc_proof_{i}', bmc_depth=i, kcfg=KCFG.from_dict({'nodes': node_dicts(i)}), logs={}, proof_dir=proof_dir
     )
 
 

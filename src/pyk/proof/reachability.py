@@ -5,6 +5,8 @@ import logging
 from itertools import chain
 from typing import TYPE_CHECKING, cast
 
+from pyk.kore.rpc import LogEntry
+
 from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, FALSE, TRUE
@@ -37,17 +39,20 @@ class APRProof(Proof):
 
     kcfg: KCFG
     node_refutations: dict[str, str]
+    logs: dict[str, tuple[LogEntry, ...]]
 
     def __init__(
         self,
         id: str,
         kcfg: KCFG,
+        logs: dict[str, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         node_refutations: dict[str, str] | None = None,
         subproof_ids: list[str] | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
+        self.logs = logs
 
         if node_refutations is not None:
             refutations_not_in_subprroofs = set(node_refutations.values()).difference(
@@ -101,16 +106,25 @@ class APRProof(Proof):
         id = dct['id']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations = dct['node_refutations'] if 'node_refutations' in dct else {}
-        return APRProof(id, cfg, proof_dir=proof_dir, subproof_ids=subproof_ids, node_refutations=node_refutations)
+        if 'logs' in dct:
+            logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
+        else:
+            logs = {}
+
+        return APRProof(
+            id, cfg, logs, proof_dir=proof_dir, subproof_ids=subproof_ids, node_refutations=node_refutations
+        )
 
     @property
     def dict(self) -> dict[str, Any]:
+        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         result: dict[str, Any] = {
             'type': 'APRProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
             'subproof_ids': self.subproof_ids,
             'node_refutations': self.node_refutations,
+            'logs': logs,
         }
         return result
 
@@ -194,13 +208,16 @@ class APRBMCProof(APRProof):
         self,
         id: str,
         kcfg: KCFG,
+        logs: dict[str, tuple[LogEntry, ...]],
         bmc_depth: int,
         bounded_states: Iterable[str] | None = None,
         proof_dir: Path | None = None,
         subproof_ids: list[str] | None = None,
         node_refutations: dict[str, str] | None = None,
     ):
-        super().__init__(id, kcfg, proof_dir=proof_dir, subproof_ids=subproof_ids, node_refutations=node_refutations)
+        super().__init__(
+            id, kcfg, logs, proof_dir=proof_dir, subproof_ids=subproof_ids, node_refutations=node_refutations
+        )
         self.bmc_depth = bmc_depth
         self._bounded_states = list(bounded_states) if bounded_states is not None else []
 
@@ -233,9 +250,14 @@ class APRBMCProof(APRProof):
         bmc_depth = dct['bmc_depth']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations = dct['node_refutations'] if 'node_refutations' in dct else {}
+        if 'logs' in dct:
+            logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
+        else:
+            logs = {}
         return APRBMCProof(
             id,
             cfg,
+            logs,
             bmc_depth,
             bounded_states=bounded_states,
             proof_dir=proof_dir,
@@ -245,16 +267,18 @@ class APRBMCProof(APRProof):
 
     @property
     def dict(self) -> dict[str, Any]:
-        result = {
+        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
+        return {
             'type': 'APRBMCProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
+            'logs': logs,
             'bmc_depth': self.bmc_depth,
             'bounded_states': self._bounded_states,
             'subproof_ids': self.subproof_ids,
             'node_refutations': self.node_refutations,
+            'logs': logs,
         }
-        return result
 
     def bound_state(self, nid: str) -> None:
         self._bounded_states.append(nid)
@@ -337,6 +361,7 @@ class APRProver:
             kcfg_explore.extend(
                 self.proof.kcfg,
                 curr_node,
+                self.proof.logs,
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
