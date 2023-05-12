@@ -10,10 +10,8 @@ from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, FALSE, TRUE
 from ..prelude.ml import mlEquals
-from ..utils import hash_str, shorten_hash, shorten_hashes, single
+from ..utils import shorten_hash, shorten_hashes, single
 from .equality import EqualityProof, EqualityProver
-from ..utils import hash_str, shorten_hashes
-from ..utils import shorten_hashes
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -109,15 +107,16 @@ class APRProof(Proof):
 
     @property
     def dict(self) -> dict[str, Any]:
-        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        result: dict[str, Any] = {
+        result = {
             'type': 'APRProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
             'subproof_ids': self.subproof_ids,
             'node_refutations': self.node_refutations,
-            'logs': logs,
         }
+        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
+        if logs:
+            result['logs'] = logs
         return result
 
     @property
@@ -250,18 +249,19 @@ class APRBMCProof(APRProof):
 
     @property
     def dict(self) -> dict[str, Any]:
-        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        return {
+        result = {
             'type': 'APRBMCProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
-            'logs': logs,
             'bmc_depth': self.bmc_depth,
             'bounded_states': self._bounded_states,
             'subproof_ids': self.subproof_ids,
             'node_refutations': self.node_refutations,
-            'logs': logs,
         }
+        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
+        if logs:
+            result['logs'] = logs
+        return result
 
     def bound_state(self, nid: str) -> None:
         self._bounded_states.append(nid)

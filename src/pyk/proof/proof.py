@@ -42,7 +42,7 @@ class Proof(ABC):
         if len(self.subproof_ids) > 0:
             assert self.proof_dir
             for proof_id in self.subproof_ids:
-                self.fetch_subproof(proof_id)
+                self.fetch_subproof(proof_id, force_reread=True)
 
     def write_proof(self) -> None:
         if not self.proof_dir:
