@@ -8,7 +8,6 @@ from enum import Enum
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError
-from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
 from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
@@ -303,7 +302,7 @@ class KProve(KPrint):
         claim_labels: Iterable[str] | None = None,
         exclude_claim_labels: Iterable[str] | None = None,
     ) -> list[KClaim]:
-        with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
+        with self._temp_file() as ntf:
             self.prove(
                 spec_file,
                 spec_module_name=spec_module_name,
@@ -333,9 +332,9 @@ class KProve(KPrint):
         claim_id: str,
         lemmas: Iterable[KRule] = (),
     ) -> Iterator[tuple[Path, str]]:
-        with NamedTemporaryFile('w', suffix='-spec.k', dir=self.use_directory) as ntf:
+        with self._temp_file(suffix='-spec.k') as ntf:
             tmp_claim_file = Path(ntf.name)
-            tmp_module_name = 'SPEC-' + tmp_claim_file.stem.upper()
+            tmp_module_name = tmp_claim_file.stem.removesuffix('-spec').rstrip('_').replace('_', '-').upper() + '-SPEC'
 
             sentences: list[KRuleLike] = []
             sentences += lemmas

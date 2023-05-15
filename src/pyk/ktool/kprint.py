@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
+from contextlib import contextmanager
 from enum import Enum
 from functools import cached_property
 from pathlib import Path
@@ -42,8 +43,9 @@ from ..prelude.k import DOTS, EMPTY_K
 from ..prelude.kbool import TRUE
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
     from subprocess import CompletedProcess
+    from tempfile import _TemporaryFileWrapper
     from typing import Any, Final
 
     from ..cli_utils import BugReport
@@ -215,6 +217,11 @@ class KPrint:
         if self._bug_report:
             self._bug_report.add_definition(self.definition_dir)
 
+    @contextmanager
+    def _temp_file(self, suffix: str | None = None) -> Iterator[_TemporaryFileWrapper]:
+        with NamedTemporaryFile('w', dir=self.use_directory, suffix=suffix) as ntf:
+            yield ntf
+
     @cached_property
     def definition(self) -> KDefinition:
         return read_kast_definition(self.definition_dir / 'compiled.json')
@@ -325,7 +332,7 @@ class KPrint:
                 check=check,
             )
 
-        with NamedTemporaryFile('w', dir=self.use_directory) as ntf:
+        with self._temp_file() as ntf:
             ntf.write(expression)
             ntf.flush()
 
