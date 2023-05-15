@@ -7,7 +7,6 @@ import pytest
 
 from pyk.kast.inner import KApply, KSequence, KVariable
 from pyk.kcfg import KCFG
-from pyk.prelude.kbool import andBool
 from pyk.prelude.kint import eqInt, gtInt, intToken, leInt
 from pyk.prelude.ml import mlEqualsTrue
 from pyk.proof import APRProof, APRProver, ProofStatus
@@ -30,10 +29,10 @@ if TYPE_CHECKING:
 
 REFUTE_NODE_TEST_DATA: Iterable[tuple[str, KInner | None, ProofStatus]] = (
     ('refute-node-fail', None, ProofStatus.FAILED),
-    ('refute-node-success-concrete-N', mlEqualsTrue(eqInt(KVariable('N'), intToken(-1))), ProofStatus.PASSED),
+    ('refute-node-success-concrete-N', mlEqualsTrue(eqInt(KVariable('N'), intToken(1))), ProofStatus.PASSED),
     (
         'refute-node-success-range-N',
-        mlEqualsTrue(andBool([gtInt(KVariable('N'), intToken(-100)), leInt(KVariable('N'), intToken(-10))])),
+        mlEqualsTrue(gtInt(KVariable('N'), intToken(10))),
         ProofStatus.PASSED,
     ),
 )

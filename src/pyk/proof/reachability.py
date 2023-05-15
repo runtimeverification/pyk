@@ -8,7 +8,7 @@ from pyk.kore.rpc import LogEntry
 
 from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
-from ..prelude.kbool import BOOL, FALSE, TRUE
+from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlEquals
 from ..utils import shorten_hash, shorten_hashes, single
 from .equality import RefutationProof, RefutationProver
@@ -175,8 +175,8 @@ class APRProof(Proof):
             mlEquals(TRUE, ml_pred_to_bool(c), arg_sort=BOOL) for c in closest_branch.source.cterm.constraints
         ]
 
-        # extract the constriant added by the Split that leads to the node-to-refute and negate it
-        last_constraint = mlEquals(FALSE, ml_pred_to_bool(csubst.constraints[0]), arg_sort=BOOL)
+        # extract the constriant added by the Split that leads to the node-to-refute
+        last_constraint = mlEquals(TRUE, ml_pred_to_bool(csubst.constraints[0]), arg_sort=BOOL)
 
         refutation_id = f'{self.id}.node-infeasible-{shorten_hash(node.id)}'
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
