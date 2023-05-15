@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -8,8 +8,8 @@ from pyk.kcfg.kcfg import KCFG
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import intToken
 from pyk.proof.equality import EqualityProof
+from pyk.proof.proof import Proof
 from pyk.proof.reachability import APRBMCProof, APRProof
-from pyk.proof.utils import read_proof
 
 from .test_kcfg import node_dicts
 
@@ -40,6 +40,69 @@ def equality_proof(i: int, proof_dir: Path) -> EqualityProof:
     )
 
 
+PROOF_TEST_DATA: list[dict[str, Any]] = [
+    {
+        'proof_type': 'APRProof',
+        'proof_param': 1,
+    },
+    {
+        'proof_type': 'APRBMCProof',
+        'proof_param': 1,
+    },
+    {
+        'proof_type': 'EqualityProof',
+        'proof_param': 1,
+    },
+]
+
+
+@pytest.fixture(scope='function', params=PROOF_TEST_DATA)
+def sample_proof(
+    request: pytest.FixtureRequest,
+    proof_dir: Path,
+) -> Proof:
+    proof_type = request.param['proof_type']
+    proof_param = request.param['proof_param']
+    match proof_type:
+        case 'APRProof':
+            return APRProof(
+                id=f'apr_proof_{proof_param}',
+                kcfg=KCFG.from_dict({'nodes': node_dicts(proof_param)}),
+                logs={},
+                proof_dir=proof_dir,
+            )
+        case 'APRBMCProof':
+            return APRBMCProof(
+                id=f'aprbmc_proof_{proof_param}',
+                bmc_depth=proof_param,
+                kcfg=KCFG.from_dict({'nodes': node_dicts(proof_param)}),
+                logs={},
+                proof_dir=proof_dir,
+            )
+        case _:  # EqualityProof
+            return EqualityProof(
+                id=f'equality_proof_{proof_param}',
+                lhs_body=intToken(proof_param),
+                rhs_body=intToken(proof_param),
+                sort=BOOL,
+                proof_dir=proof_dir,
+            )
+
+
+class TestProof:
+    def test_read_proof(self, sample_proof: Proof) -> None:
+        # Given
+        assert sample_proof.proof_dir
+        sample_proof.write_proof()
+
+        # When
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+
+        # Then
+        assert type(proof_from_disk) is type(sample_proof)
+        assert proof_from_disk.dict == sample_proof.dict
+
+
 #### APRProof
 
 
@@ -50,7 +113,7 @@ def test_apr_proof_from_dict_no_subproofs(proof_dir: Path) -> None:
     # When
     proof.write_proof()
     assert proof.proof_dir
-    proof_from_disk = read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -66,7 +129,7 @@ def test_apr_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
     proof.add_subproof(eq_proof.id)
     proof.write_proof()
     assert proof.proof_dir
-    proof_from_disk = read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -85,7 +148,7 @@ def test_apr_proof_from_dict_nested_subproofs(proof_dir: Path) -> None:
     proof.add_subproof(subproof.id)
     proof.write_proof()
     assert proof.proof_dir
-    proof_from_disk = read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -107,7 +170,7 @@ def test_apr_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None:
     proof.add_subproof(sub_proof_3.id)
     proof.write_proof()
     assert proof.proof_dir
-    proof_from_disk = read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -123,7 +186,7 @@ def test_aprbmc_proof_from_dict_no_subproofs(proof_dir: Path) -> None:
     # When
     proof.write_proof()
     assert proof.proof_dir
-    proof_from_disk = read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -139,7 +202,7 @@ def test_aprbmc_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
     proof.add_subproof(eq_proof.id)
     proof.write_proof()
     assert proof.proof_dir
-    proof_from_disk = read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -158,7 +221,7 @@ def test_aprbmc_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None
     proof.add_subproof(subproof.id)
     proof.write_proof()
     assert proof.proof_dir
-    proof_from_disk = read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
     # Then
     assert proof.dict == proof_from_disk.dict

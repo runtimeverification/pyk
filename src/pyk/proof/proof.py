@@ -26,6 +26,8 @@ class ProofStatus(Enum):
 
 
 class Proof(ABC):
+    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof', 'RefutationProof'}
+
     id: str
     proof_dir: Path | None
     subproof_ids: list[str]
@@ -96,12 +98,11 @@ class Proof(ABC):
         self, proof_id: str, force_reread: bool = False, uptodate_check_method: str = 'timestamp'
     ) -> Proof:
         """Get a subproof, re-reading from disk if it's not up-to-date"""
-        from .utils import read_proof
 
         if self.proof_dir is not None and (
             force_reread or not self._subproofs[proof_id].is_uptodate(check_method=uptodate_check_method)
         ):
-            updated_subproof = read_proof(proof_id, self.proof_dir)
+            updated_subproof = Proof.read_proof(proof_id, self.proof_dir)
             self._subproofs[proof_id] = updated_subproof
             return updated_subproof
         else:
@@ -138,6 +139,22 @@ class Proof(ABC):
     @abstractmethod
     def from_dict(cls: type[Proof], dct: Mapping[str, Any]) -> Proof:
         ...
+
+    @classmethod
+    def read_proof(cls: type[Proof], id: str, proof_dir: Path) -> Proof:
+        # these local imports allow us to call .to_dict() based on the proof type we read from JSON
+        from .equality import EqualityProof, RefutationProof  # noqa
+        from .reachability import APRBMCProof, APRProof  # noqa
+
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if Proof.proof_exists(id, proof_dir):
+            proof_dict = json.loads(proof_path.read_text())
+            proof_type = proof_dict['type']
+            _LOGGER.info(f'Reading {proof_type} from file {id}: {proof_path}')
+            if proof_type in Proof._PROOF_TYPES:
+                return locals()[proof_type].from_dict(proof_dict, proof_dir)
+
+        raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
 
     @property
     def summary(self) -> Iterable[str]:
