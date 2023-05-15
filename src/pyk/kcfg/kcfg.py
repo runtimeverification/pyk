@@ -932,7 +932,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
 
 def path_length(_path: Iterable[KCFG.Successor]) -> int:
-    _path = list(_path)
+    _path = tuple(_path)
     if len(_path) == 0:
         return 0
     if type(_path[0]) is KCFG.Split or type(_path[0]) is KCFG.Cover:
