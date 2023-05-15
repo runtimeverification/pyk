@@ -25,6 +25,8 @@ class ProofStatus(Enum):
 
 
 class Proof(ABC):
+    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof'}
+
     id: str
     proof_dir: Path | None
 
@@ -58,6 +60,22 @@ class Proof(ABC):
     @abstractmethod
     def from_dict(cls: type[Proof], dct: Mapping[str, Any]) -> Proof:
         ...
+
+    @classmethod
+    def read_proof(cls: type[Proof], id: str, proof_dir: Path) -> Proof:
+        # these local imports allow us to call .to_dict() based on the proof type we read from JSON
+        from .equality import EqualityProof  # noqa
+        from .reachability import APRBMCProof, APRProof  # noqa
+
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if Proof.proof_exists(id, proof_dir):
+            proof_dict = json.loads(proof_path.read_text())
+            proof_type = proof_dict['type']
+            _LOGGER.info(f'Reading {proof_type} from file {id}: {proof_path}')
+            if proof_type in Proof._PROOF_TYPES:
+                return locals()[proof_type].from_dict(proof_dict, proof_dir)
+
+        raise ValueError(f'Could not load APRBMCProof from file {id}: {proof_path}')
 
     @property
     def summary(self) -> Iterable[str]:

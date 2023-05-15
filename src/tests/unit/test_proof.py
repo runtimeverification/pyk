@@ -8,8 +8,8 @@ from pyk.kcfg.kcfg import KCFG
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import intToken
 from pyk.proof.equality import EqualityProof
+from pyk.proof.proof import Proof
 from pyk.proof.reachability import APRBMCProof, APRProof
-from pyk.proof.utils import read_proof
 
 from .test_kcfg import node_dicts
 
@@ -44,7 +44,7 @@ PROOF_TEST_DATA: list[dict[str, Any]] = [
 def sample_proof(
     request: pytest.FixtureRequest,
     proof_dir: Path,
-) -> APRProof | APRBMCProof | EqualityProof:
+) -> Proof:
     proof_type = request.param['proof_type']
     proof_param = request.param['proof_param']
     match proof_type:
@@ -74,13 +74,14 @@ def sample_proof(
 
 
 class TestProof:
-    def test_read_proof(self, sample_proof: APRProof | APRBMCProof | EqualityProof) -> None:
+    def test_read_proof(self, sample_proof: Proof) -> None:
         # Given
         assert sample_proof.proof_dir
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
 
         # Then
+        assert type(proof_from_disk) is type(sample_proof)
         assert proof_from_disk.dict == sample_proof.dict
