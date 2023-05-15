@@ -168,7 +168,6 @@ class KProve(KPrint):
             extra_unparsing_modules=extra_unparsing_modules,
         )
         # TODO: we should not have to supply main_file, it should be read
-        # TODO: setting use_directory manually should set temp files to not be deleted and a log message
         self.main_file = main_file
         self.prover = [command]
         self.prover_args = []

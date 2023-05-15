@@ -219,7 +219,13 @@ class KPrint:
 
     @contextmanager
     def _temp_file(self, suffix: str | None = None) -> Iterator[_TemporaryFileWrapper]:
-        with NamedTemporaryFile('w', dir=self.use_directory, suffix=suffix) as ntf:
+        with NamedTemporaryFile(
+            'w',
+            dir=self.use_directory,
+            delete=not self.use_directory,
+            suffix=suffix,
+        ) as ntf:
+            _LOGGER.info(f'Created temporary file: {ntf.name}')
             yield ntf
 
     @cached_property
