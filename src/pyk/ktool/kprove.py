@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from contextlib import contextmanager
 from enum import Enum
 from itertools import chain
 from pathlib import Path
@@ -21,13 +22,13 @@ from ..utils import unique
 from .kprint import KPrint
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable, Iterator, Mapping
     from subprocess import CompletedProcess
     from typing import Final
 
     from ..cli_utils import BugReport
     from ..cterm import CTerm
-    from ..kast.outer import KClaim, KRule, KSentence
+    from ..kast.outer import KClaim, KRule, KRuleLike
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -249,18 +250,18 @@ class KProve(KPrint):
         dry_run: bool = False,
         depth: int | None = None,
     ) -> KInner:
-        claim_path, claim_module_name = self._write_claim_definition(claim, claim_id, lemmas=lemmas)
-        return self.prove(
-            claim_path,
-            spec_module_name=claim_module_name,
-            args=args,
-            haskell_args=haskell_args,
-            haskell_log_entries=haskell_log_entries,
-            log_axioms_file=log_axioms_file,
-            allow_zero_step=allow_zero_step,
-            dry_run=dry_run,
-            depth=depth,
-        )
+        with self._tmp_claim_definition(claim, claim_id, lemmas=lemmas) as (claim_path, claim_module_name):
+            return self.prove(
+                claim_path,
+                spec_module_name=claim_module_name,
+                args=args,
+                haskell_args=haskell_args,
+                haskell_log_entries=haskell_log_entries,
+                log_axioms_file=log_axioms_file,
+                allow_zero_step=allow_zero_step,
+                dry_run=dry_run,
+                depth=depth,
+            )
 
     # TODO: This should return the empty disjunction `[]` instead of `#Top`.
     # The prover should never return #Bottom, so we can ignore that case.
@@ -325,24 +326,31 @@ class KProve(KPrint):
 
         return [all_claims[cl] for cl in all_claims if cl in claim_labels and cl not in exclude_claim_labels]
 
-    def _write_claim_definition(self, claim: KClaim, claim_id: str, lemmas: Iterable[KRule] = ()) -> tuple[Path, str]:
-        tmp_claim = self.use_directory / (claim_id.lower() + '-spec')
-        tmp_module_name = claim_id.upper() + '-SPEC'
-        tmp_claim = tmp_claim.with_suffix('.k')
-        sentences: list[KSentence] = []
-        sentences.extend(lemmas)
-        sentences.append(claim)
-        with open(tmp_claim, 'w') as tc:
+    @contextmanager
+    def _tmp_claim_definition(
+        self,
+        claim: KClaim,
+        claim_id: str,
+        lemmas: Iterable[KRule] = (),
+    ) -> Iterator[tuple[Path, str]]:
+        with NamedTemporaryFile('w', suffix='-spec.k', dir=self.use_directory) as ntf:
+            tmp_claim_file = Path(ntf.name)
+            tmp_module_name = 'SPEC-' + tmp_claim_file.stem.upper()
+
+            sentences: list[KRuleLike] = []
+            sentences += lemmas
+            sentences += [claim]
+
             claim_module = KFlatModule(tmp_module_name, sentences, imports=[KImport(self.main_module, True)])
-            requires = []
-            if self.main_file is not None:
-                requires += [KRequire(str(self.main_file))]
+            requires = [KRequire(str(self.main_file))] if self.main_file is not None else []
             claim_definition = KDefinition(tmp_module_name, [claim_module], requires=requires)
-            tc.write(gen_file_timestamp() + '\n')
-            tc.write(self.pretty_print(claim_definition) + '\n\n')
-            tc.flush()
-        _LOGGER.info(f'Wrote claim file: {tmp_claim}.')
-        return tmp_claim, tmp_module_name
+
+            ntf.write(gen_file_timestamp() + '\n')
+            ntf.write(self.pretty_print(claim_definition) + '\n\n')
+            ntf.flush()
+
+            _LOGGER.info(f'Wrote claim file: {tmp_claim_file}')
+            yield tmp_claim_file, tmp_module_name
 
 
 def _get_rule_log(debug_log_file: Path) -> list[list[tuple[str, bool, int]]]:
