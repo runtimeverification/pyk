@@ -79,11 +79,12 @@ class APRProof(Proof):
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
         dependencies = [APRProof.from_dict(c) for c in dct['dependencies']]
+        circularity = dct['circularity']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        return APRProof(id, cfg, logs=logs, proof_dir=proof_dir, dependencies=dependencies)
+        return APRProof(id, cfg, logs=logs, proof_dir=proof_dir, dependencies=dependencies, circularity=circularity)
 
     @property
     def dict(self) -> dict[str, Any]:
@@ -94,6 +95,7 @@ class APRProof(Proof):
             'cfg': self.kcfg.to_dict(),
             'dependencies': [c.dict for c in self.dependencies],
             'logs': logs,
+            'circularity': self.circularity,
         }
 
     @property
