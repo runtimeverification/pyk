@@ -6,9 +6,12 @@ from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
+from ..kast.inner import KRewrite, KSort
+from ..kast.manip import ml_pred_to_bool
 from ..kast.outer import KClaim
 from ..kcfg import KCFG, path_length
-from ..utils import hash_str, shorten_hashes
+from ..prelude.ml import mlAnd
+from ..utils import hash_str, shorten_hashes, single
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -34,7 +37,8 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
-    dependencies: list[KClaim]
+    dependencies: list[APRProof]  # list of dependencies other than self
+    circularity: bool
     logs: dict[str, tuple[LogEntry, ...]]
 
     def __init__(
@@ -43,12 +47,14 @@ class APRProof(Proof):
         kcfg: KCFG,
         logs: dict[str, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
-        dependencies: Iterable[KClaim] = (),
+        dependencies: Iterable[APRProof] = (),
+        circularity: bool = False,
     ):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
         self.logs = logs
         self.dependencies = list(dependencies)
+        self.circularity = circularity
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -72,7 +78,7 @@ class APRProof(Proof):
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
-        dependencies = [KClaim.from_dict(c) for c in dct['dependencies']]
+        dependencies = [APRProof.from_dict(c) for c in dct['dependencies']]
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
@@ -86,7 +92,7 @@ class APRProof(Proof):
             'type': 'APRProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
-            'dependencies': [c.to_dict() for c in self.dependencies],
+            'dependencies': [c.dict for c in self.dependencies],
             'logs': logs,
         }
 
@@ -200,16 +206,32 @@ class APRProver:
         self._extract_branches = extract_branches
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
+        def build_claim(pf: APRProof) -> KClaim:
+            fr: CTerm = single(pf.kcfg.init).cterm
+            to: CTerm = single(pf.kcfg.target).cterm
+            fr_config_sorted = self.kcfg_explore.kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
+            to_config_sorted = self.kcfg_explore.kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
+            kc = KClaim(
+                body=KRewrite(fr_config_sorted, to_config_sorted),
+                requires=ml_pred_to_bool(mlAnd(fr.constraints)),
+                ensures=ml_pred_to_bool(mlAnd(to.constraints)),
+            )
+            return kc
+
+        dependencies_as_claims: list[KClaim] = [build_claim(d) for d in proof.dependencies]
         self.some_dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
         self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
             self.some_dependencies_module_name,
-            [c for c in proof.dependencies if c.label != self.proof.id],
+            dependencies_as_claims,
             priority=1,
         )
         self.all_dependencies_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'
         self.kcfg_explore.add_dependencies_module(
-            self.main_module_name, self.all_dependencies_module_name, proof.dependencies, priority=1
+            self.main_module_name,
+            self.all_dependencies_module_name,
+            dependencies_as_claims + ([build_claim(proof)] if proof.circularity else []),
+            priority=1,
         )
 
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
