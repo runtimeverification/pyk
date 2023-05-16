@@ -298,7 +298,7 @@ class KProve(KPrint):
         spec_module_name: str | None = None,
         include_dirs: Iterable[Path] = (),
         md_selector: str | None = None,
-    ) -> list[KClaim]:
+    ) -> Mapping[str, KClaim]:
         with self._temp_file() as ntf:
             self.prove(
                 spec_file,
