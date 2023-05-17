@@ -680,7 +680,9 @@ class TestImpProof(KCFGExploreTest):
             return f'{module}.{label}'
 
         deps_claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[qualify(spec_module, dep_id) for dep_id in deps]
+            Path(spec_file),
+            spec_module_name=spec_module,
+            claim_labels=[qualify(spec_module, dep_id) for dep_id in deps],
         )
 
         deps_proofs = [
