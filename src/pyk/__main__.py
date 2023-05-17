@@ -36,35 +36,21 @@ def main() -> None:
     sys.setrecursionlimit(10**7)
 
     cli_parser = create_argument_parser()
-    args = vars(cli_parser.parse_args())
+    args = cli_parser.parse_args()
 
-    if not args['verbose']:
+    if not args.verbose:
         logging.basicConfig(level=logging.WARNING, format=_LOG_FORMAT)
-    elif args['verbose'] == 1:
+    elif args.verbose == 1:
         logging.basicConfig(level=logging.INFO, format=_LOG_FORMAT)
-    elif args['verbose'] > 1:
+    elif args.verbose > 1:
         logging.basicConfig(level=logging.DEBUG, format=_LOG_FORMAT)
 
-    if args['command'] == 'print':
-        exec_print(args)
+    executor_name = 'exec_' + args.command.lower().replace('-', '_')
+    if executor_name not in globals():
+        raise AssertionError(f'Unimplemented command: {args.command}')
 
-    elif args['command'] == 'prove':
-        exec_prove(args)
-
-    elif args['command'] == 'graph-imports':
-        exec_graph_imports(args)
-
-    elif args['command'] == 'coverage':
-        exec_coverage(args)
-
-    elif args['command'] == 'kore-to-json':
-        exec_kore_to_json()
-
-    elif args['command'] == 'json-to-kore':
-        exec_json_to_kore()
-
-    else:
-        raise ValueError(f'Unknown command: {args["command"]}')
+    execute = globals()[executor_name]
+    execute(vars(args))
 
 
 def exec_print(args: dict[str, Any]) -> None:
@@ -137,13 +123,13 @@ def exec_coverage(args: dict[str, Any]) -> None:
     _LOGGER.info(f'Wrote file: {args["output"].name}')
 
 
-def exec_kore_to_json() -> None:
+def exec_kore_to_json(args: dict[str, Any]) -> None:
     text = sys.stdin.read()
     kore = KoreParser(text).pattern()
     print(kore.json)
 
 
-def exec_json_to_kore() -> None:
+def exec_json_to_kore(args: dict[str, Any]) -> None:
     text = sys.stdin.read()
     kore = Pattern.from_json(text)
     kore.write(sys.stdout)
@@ -160,7 +146,7 @@ def create_argument_parser() -> ArgumentParser:
     definition_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
 
     pyk_args = ArgumentParser()
-    pyk_args_command = pyk_args.add_subparsers(dest='command')
+    pyk_args_command = pyk_args.add_subparsers(dest='command', required=True)
 
     print_args = pyk_args_command.add_parser(
         'print', help='Pretty print a term.', parents=[logging_args, definition_args]
