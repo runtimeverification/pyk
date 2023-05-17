@@ -26,11 +26,13 @@ def kore_print(pattern: str | Pattern, definition_dir: str | Path, output: str |
     output = PrintOutput(output)
 
     with NamedTemporaryFile(mode='w') as f:
-        if type(pattern) is Pattern:
+        if isinstance(pattern, Pattern):
             pattern.write(f)
+            f.write('\n')
         elif type(pattern) is str:
             f.write(pattern)
-        f.write('\n')
+        else:
+            raise TypeError(f'Unexpected type, expected [str | Pattern], got: {type(pattern)}')
         f.flush()
 
         run_res = run_process(['kore-print', f.name, '--definition', str(definition_dir), '--output', output.value])
