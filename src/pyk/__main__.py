@@ -22,6 +22,7 @@ from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
 
 if TYPE_CHECKING:
+    from argparse import Namespace
     from typing import Any, Final
 
 
@@ -50,24 +51,24 @@ def main() -> None:
         raise AssertionError(f'Unimplemented command: {args.command}')
 
     execute = globals()[executor_name]
-    execute(vars(args))
+    execute(args)
 
 
-def exec_print(args: dict[str, Any]) -> None:
-    kompiled_dir: Path = args['definition_dir']
+def exec_print(args: Namespace) -> None:
+    kompiled_dir: Path = args.definition_dir
     printer = KPrint(kompiled_dir)
-    _LOGGER.info(f'Reading Kast from file: {args["term"].name}')
-    term = KInner.from_json(args['term'].read())
+    _LOGGER.info(f'Reading Kast from file: {args.term.name}')
+    term = KInner.from_json(args.term.read())
     if is_top(term):
-        args['output_file'].write(printer.pretty_print(term))
-        _LOGGER.info(f'Wrote file: {args["output_file"].name}')
+        args.output_file.write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {args.output_file.name}')
     else:
-        if args['minimize']:
-            if args['omit_labels'] != '' and args['keep_cells'] != '':
+        if args.minimize:
+            if args.omit_labels != '' and args.keep_cells != '':
                 raise ValueError('You cannot use both --omit-labels and --keep-cells.')
 
-            abstract_labels = args['omit_labels'].split(',') if args['omit_labels'] != '' else []
-            keep_cells = args['keep_cells'].split(',') if args['keep_cells'] != '' else []
+            abstract_labels = args.omit_labels.split(',') if args.omit_labels != '' else []
+            keep_cells = args.keep_cells.split(',') if args.keep_cells != '' else []
             minimized_disjuncts = []
 
             for disjunct in flatten_label('#Or', term):
@@ -83,20 +84,20 @@ def exec_print(args: dict[str, Any]) -> None:
                     minimized_disjuncts.append(config)
             term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
 
-        args['output_file'].write(printer.pretty_print(term))
-        _LOGGER.info(f'Wrote file: {args["output_file"].name}')
+        args.output_file.write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {args.output_file.name}')
 
 
-def exec_prove(args: dict[str, Any]) -> None:
-    kompiled_dir: Path = args['definition_dir']
-    kprover = KProve(kompiled_dir, args['main-file'])
-    final_state = kprover.prove(Path(args['spec-file']), spec_module_name=args['spec-module'], args=args['kArgs'])
-    args['output_file'].write(final_state.to_json())
-    _LOGGER.info(f'Wrote file: {args["output_file"].name}')
+def exec_prove(args: Namespace) -> None:
+    kompiled_dir: Path = args.definition_dir
+    kprover = KProve(kompiled_dir, args.main_file)
+    final_state = kprover.prove(Path(args.spec_file), spec_module_name=args.spec_module, args=args.kArgs)
+    args.output_file.write(final_state.to_json())
+    _LOGGER.info(f'Wrote file: {args.output_file.name}')
 
 
-def exec_graph_imports(args: dict[str, Any]) -> None:
-    kompiled_dir: Path = args['definition_dir']
+def exec_graph_imports(args: Namespace) -> None:
+    kompiled_dir: Path = args.definition_dir
     kprinter = KPrint(kompiled_dir)
     definition = kprinter.definition
     import_graph = Digraph()
@@ -110,20 +111,20 @@ def exec_graph_imports(args: dict[str, Any]) -> None:
     _LOGGER.info(f'Wrote file: {graph_file}')
 
 
-def exec_coverage(args: dict[str, Any]) -> None:
-    kompiled_dir: Path = args['definition_dir']
+def exec_coverage(args: Namespace) -> None:
+    kompiled_dir: Path = args.definition_dir
     json_definition = remove_source_map(read_kast_definition(kompiled_dir / 'compiled.json'))
     symbol_table = build_symbol_table(json_definition)
-    for rid in args['coverage-file']:
+    for rid in args.coverage_file:
         rule = minimize_rule(strip_coverage_logger(get_rule_by_id(json_definition, rid.strip())))
-        args['output'].write('\n\n')
-        args['output'].write('Rule: ' + rid.strip())
-        args['output'].write('\nUnparsed:\n')
-        args['output'].write(pretty_print_kast(rule, symbol_table))
-    _LOGGER.info(f'Wrote file: {args["output"].name}')
+        args.output.write('\n\n')
+        args.output.write('Rule: ' + rid.strip())
+        args.output.write('\nUnparsed:\n')
+        args.output.write(pretty_print_kast(rule, symbol_table))
+    _LOGGER.info(f'Wrote file: {args.output.name}')
 
 
-def exec_kore_to_json(args: dict[str, Any]) -> None:
+def exec_kore_to_json(args: Namespace) -> None:
     text = sys.stdin.read()
     kore = KoreParser(text).pattern()
     print(kore.json)
@@ -174,9 +175,9 @@ def create_argument_parser() -> ArgumentParser:
     prove_args = pyk_args_command.add_parser(
         'prove', help='Prove an input specification (using kprovex).', parents=[logging_args, definition_args]
     )
-    prove_args.add_argument('main-file', type=str, help='Main file used for kompilation.')
-    prove_args.add_argument('spec-file', type=str, help='File with the specification module.')
-    prove_args.add_argument('spec-module', type=str, help='Module with claims to be proven.')
+    prove_args.add_argument('main_file', type=str, help='Main file used for kompilation.')
+    prove_args.add_argument('spec_file', type=str, help='File with the specification module.')
+    prove_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
     prove_args.add_argument('--output-file', type=FileType('w'), default='-')
     prove_args.add_argument('kArgs', nargs='*', help='Arguments to pass through to K invocation.')
 
@@ -187,7 +188,7 @@ def create_argument_parser() -> ArgumentParser:
     coverage_args = pyk_args_command.add_parser(
         'coverage', help='Convert coverage file to human readable log.', parents=[logging_args, definition_args]
     )
-    coverage_args.add_argument('coverage-file', type=FileType('r'), help='Coverage file to build log for.')
+    coverage_args.add_argument('coverage_file', type=FileType('r'), help='Coverage file to build log for.')
     coverage_args.add_argument('-o', '--output', type=FileType('w'), default='-')
 
     pyk_args_command.add_parser('kore-to-json', help='Convert textual KORE to JSON', parents=[logging_args])
