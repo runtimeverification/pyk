@@ -20,7 +20,7 @@ module IMP-SYNTAX
                  | Id "=" AExp ";"            [klabel(_=_;), symbol, strict(2), color(pink), format(%1 %2 %3%4)]
                  | "if" "(" BExp ")"
                    Block "else" Block         [klabel(if(_)_else_), symbol, strict(1), colors(yellow, white, white, yellow), format(%1 %2%3%4 %5 %6 %7)]
-                 | "while" "(" BExp ")" Block [klabel(while(_)_), symbol, colors(yellow,white,white), format(%1 %2%3%4 %5)]
+                 | "while" "(" cond:BExp ")" Block [klabel(while(_)_), symbol, colors(yellow,white,white), format(%1 %2%3%4 %5)]
                  > Stmt Stmt                  [klabel(__), symbol, left, format(%1%n%2)]
 
   syntax Pgm ::= "int" Ids ";" Stmt           [klabel(int_;_), symbol, format(%1 %2%3%n%4), colors(yellow,pink)]

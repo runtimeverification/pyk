@@ -190,6 +190,7 @@ class KPrint:
     main_module: str
     backend: str
     _extra_unparsing_modules: Iterable[KFlatModule]
+    nonterm_labels: bool
 
     _bug_report: BugReport | None
 
@@ -199,6 +200,7 @@ class KPrint:
         use_directory: Path | None = None,
         bug_report: BugReport | None = None,
         extra_unparsing_modules: Iterable[KFlatModule] = (),
+        nonterm_labels: bool = False,
     ) -> None:
         self.definition_dir = definition_dir
 
@@ -208,6 +210,7 @@ class KPrint:
         self.use_directory = use_directory
         self._definition = None
         self._symbol_table = None
+        self.nonterm_labels = nonterm_labels
         with open(self.definition_dir / 'mainModule.txt') as mm:
             self.main_module = mm.read()
         with open(self.definition_dir / 'backend.txt') as ba:
@@ -242,7 +245,7 @@ class KPrint:
 
     @cached_property
     def symbol_table(self) -> SymbolTable:
-        symb_table = build_symbol_table(self.definition, extra_modules=self._extra_unparsing_modules, opinionated=True)
+        symb_table = build_symbol_table(self.definition, extra_modules=self._extra_unparsing_modules, opinionated=True, nonterm_labels=self.nonterm_labels)
         self._patch_symbol_table(symb_table)
         return symb_table
 
@@ -358,7 +361,7 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
     return PrettyPrinter(symbol_table).print(kast)
 
 
-def unparser_for_production(prod: KProduction) -> Callable[..., str]:
+def unparser_for_production(prod: KProduction, nonterm_labels: bool = False) -> Callable[..., str]:
     def _unparser(*args: Any) -> str:
         index = 0
         result = []
@@ -366,6 +369,8 @@ def unparser_for_production(prod: KProduction) -> Callable[..., str]:
             if type(item) is KTerminal:
                 result.append(item.value)
             elif type(item) is KNonTerminal and index < len(args):
+                if item.name != None and nonterm_labels:
+                    result.append(f'{item.name}:')
                 result.append(args[index])
                 index += 1
         return ' '.join(result)
@@ -374,7 +379,8 @@ def unparser_for_production(prod: KProduction) -> Callable[..., str]:
 
 
 def build_symbol_table(
-    definition: KDefinition, extra_modules: Iterable[KFlatModule] = (), opinionated: bool = False
+    definition: KDefinition, extra_modules: Iterable[KFlatModule] = (), opinionated: bool = False,
+    nonterm_labels: bool = False
 ) -> SymbolTable:
     """Build the unparsing symbol table given a JSON encoded definition.
 
@@ -387,7 +393,7 @@ def build_symbol_table(
         for prod in module.syntax_productions:
             assert prod.klabel
             label = prod.klabel.name
-            unparser = unparser_for_production(prod)
+            unparser = unparser_for_production(prod, nonterm_labels=nonterm_labels)
 
             symbol_table[label] = unparser
             if 'symbol' in prod.att and 'klabel' in prod.att:
