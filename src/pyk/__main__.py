@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
+from .cli_utils import dir_path
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import split_config_and_constraints
 from .kast.inner import KInner
@@ -67,7 +68,7 @@ def main() -> None:
 
 
 def exec_print(args: dict[str, Any]) -> None:
-    kompiled_dir = Path(args['definition'])
+    kompiled_dir: Path = args['definition_dir']
     printer = KPrint(kompiled_dir)
     _LOGGER.info(f'Reading Kast from file: {args["term"].name}')
     term = KInner.from_json(args['term'].read())
@@ -101,7 +102,7 @@ def exec_print(args: dict[str, Any]) -> None:
 
 
 def exec_prove(args: dict[str, Any]) -> None:
-    kompiled_dir = Path(args['definition'])
+    kompiled_dir: Path = args['definition_dir']
     kprover = KProve(kompiled_dir, args['main-file'])
     final_state = kprover.prove(Path(args['spec-file']), spec_module_name=args['spec-module'], args=args['kArgs'])
     args['output_file'].write(final_state.to_json())
@@ -109,7 +110,7 @@ def exec_prove(args: dict[str, Any]) -> None:
 
 
 def exec_graph_imports(args: dict[str, Any]) -> None:
-    kompiled_dir = Path(args['definition'])
+    kompiled_dir: Path = args['definition_dir']
     kprinter = KPrint(kompiled_dir)
     definition = kprinter.definition
     import_graph = Digraph()
@@ -124,7 +125,7 @@ def exec_graph_imports(args: dict[str, Any]) -> None:
 
 
 def exec_coverage(args: dict[str, Any]) -> None:
-    kompiled_dir = Path(args['definition'])
+    kompiled_dir: Path = args['definition_dir']
     json_definition = remove_source_map(read_kast_definition(kompiled_dir / 'compiled.json'))
     symbol_table = build_symbol_table(json_definition)
     for rid in args['coverage-file']:
@@ -156,7 +157,7 @@ def create_argument_parser() -> ArgumentParser:
     )
 
     definition_args = ArgumentParser(add_help=False)
-    definition_args.add_argument('definition', type=str, help='Kompiled directory for definition.')
+    definition_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
 
     pyk_args = ArgumentParser()
     pyk_args_command = pyk_args.add_subparsers(dest='command')
