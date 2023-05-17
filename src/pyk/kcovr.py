@@ -1,17 +1,25 @@
-#!/usr/bin/python3
+from __future__ import annotations
+
 import glob
 import os
 import sys
 import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
 
 if len(sys.argv) < 4:
     print('usage: ' + sys.argv[0] + ' <kompiled-dir>... -- <files>...')
     exit(1)
-all_rules = set()
-cover_map = {}
 
 
-def add_cover(rule):
+all_rules: set[str] = set()
+cover_map: dict[str, int] = {}
+
+
+def add_cover(rule: str) -> None:
     rule = rule.strip()
     if not rule in cover_map:
         cover_map[rule] = 0
@@ -36,7 +44,7 @@ for idx, dir in enumerate(sys.argv[1:], start=1):
 
 sources = [os.path.abspath(path) for path in sys.argv[file_idx:]]
 
-rule_map = {}
+rule_map: dict[str, tuple[str, str, str]] = {}
 
 for line in all_rules:
     parts = line.split(' ')
@@ -45,13 +53,12 @@ for line in all_rules:
     parts = location.split(':')
     rule_map[id] = (os.path.abspath(':'.join(parts[:-2])), parts[-2], parts[-1])
 
-all_lines = set()
-
+all_lines: set[tuple[str, str]] = set()
 for _, value in rule_map.items():
     all_lines.add((value[0], value[1]))
 
 
-def lines_covered(coverage_of_component):
+def lines_covered(coverage_of_component: Mapping[str, int]) -> int:
     covered_lines = set()
     for rule_id in coverage_of_component:
         rule = rule_map[rule_id]
@@ -59,7 +66,7 @@ def lines_covered(coverage_of_component):
     return len(covered_lines)
 
 
-def rules_covered(coverage_of_component):
+def rules_covered(coverage_of_component: Mapping[str, int]) -> int:
     return len(coverage_of_component)
 
 
@@ -70,12 +77,12 @@ rule_rate_global = float(rules_covered(cover_map)) / num_rules_global
 timestamp = int(time.time())
 
 template = """
-<coverage line-rate="{line_rate}" branch-rate="{ruleRate}" version="1.9" timestamp="{timestamp}">
+<coverage line-rate="{line_rate}" branch-rate="{rule_rate}" version="1.9" timestamp="{timestamp}">
   <sources>
     <source>{source}</source>
   </sources>
   <packages>
-    <package name="" line-rate="{line_rate}" branch-rate="{ruleRate}" complexity="{numRules}.0">
+    <package name="" line-rate="{line_rate}" branch-rate="{rule_rate}" complexity="{num_rules}.0">
       <classes>
         {classes_elem}
       </classes>
@@ -87,7 +94,7 @@ template = """
 source = os.path.dirname(os.path.commonprefix(sources))
 
 class_template = """
-<class name="{filename}" filename="{filename}" line-rate="{line_rate}" branch-rate="{ruleRate}" complexity="{numRules}.0">
+<class name="{filename}" filename="{filename}" line-rate="{line_rate}" branch-rate="{rule_rate}" complexity="{num_rules}.0">
   <lines>
     {lines_elem}
   </lines>
@@ -99,14 +106,14 @@ line_template_no_branch = """
 """
 
 line_template_branch = """
-<line number="{line_num}" hits="{hits}" branch="true" condition-coverage="{ruleRate}% ({rules_covered}/{numRules})">
+<line number="{line_num}" hits="{hits}" branch="true" condition-coverage="{rule_rate}% ({rules_covered}/{num_rules})">
   <conditions>
-    <condition number="0" type="jump" coverage="{ruleRate}%"/>
+    <condition number="0" type="jump" coverage="{rule_rate}%"/>
   </conditions>
 </line>
 """
 
-rule_map_by_file = {}
+rule_map_by_file: dict[str, dict[str, tuple[str, str]]] = {}
 
 for id, loc in rule_map.items():
     if not loc[0] in rule_map_by_file:
@@ -123,18 +130,18 @@ for filename in sources:
     relative_file = os.path.relpath(filename, source)
     all_lines = set()
 
-    all_rules = rule_map_by_file[filename]
+    all_rules_2 = rule_map_by_file[filename]  # TODO naming
     rule_map_by_line = {}
-    for key, value in all_rules.items():
-        all_lines.add((value[0], value[1]))
-        if not value[0] in rule_map_by_line:
-            rule_map_by_line[value[0]] = [key]
+    for key, value_2 in all_rules_2.items():  # TODO naming
+        all_lines.add((value_2[0], value_2[1]))
+        if not value_2[0] in rule_map_by_line:
+            rule_map_by_line[value_2[0]] = [key]
         else:
-            rule_map_by_line[value[0]].append(key)
+            rule_map_by_line[value_2[0]].append(key)
 
-    file_coverage = {rule: num for rule, num in cover_map.items() if rule in all_rules}
+    file_coverage = {rule: num for rule, num in cover_map.items() if rule in all_rules_2}
 
-    num_rules_file = len(all_rules)
+    num_rules_file = len(all_rules_2)
     num_lines = len(all_lines)
     line_rate_file = float(lines_covered(file_coverage)) / num_lines
     rule_rate_file = float(rules_covered(file_coverage)) / num_rules_file
@@ -154,9 +161,9 @@ for filename in sources:
                 line_template_branch.format(
                     line_num=line_num,
                     hits=hits,
-                    ruleRate=int(rule_rate_line * 100),
+                    rule_rate=int(rule_rate_line * 100),
                     rules_covered=num_covered,
-                    numRules=num_rules_line,
+                    num_rules=num_rules_line,
                 )
             )
     lines_elem = ''.join(lines)
@@ -164,8 +171,8 @@ for filename in sources:
         class_template.format(
             filename=relative_file,
             line_rate=line_rate_file,
-            ruleRate=rule_rate_file,
-            numRules=num_rules_file,
+            rule_rate=rule_rate_file,
+            num_rules=num_rules_file,
             lines_elem=lines_elem,
         )
     )
@@ -173,9 +180,9 @@ for filename in sources:
 classes_elem = ''.join(classes)
 xml = template.format(
     line_rate=line_rate_global,
-    ruleRate=rule_rate_global,
+    rule_rate=rule_rate_global,
     timestamp=timestamp,
-    numRules=num_rules_global,
+    num_rules=num_rules_global,
     source=source,
     classes_elem=classes_elem,
 )
