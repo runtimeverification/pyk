@@ -123,8 +123,10 @@ class APRBMCProof(APRProof):
         bmc_depth: int,
         bounded_states: Iterable[str] | None = None,
         proof_dir: Path | None = None,
+        dependencies: Iterable[APRProof] = (),
+        circularity: bool = False,
     ):
-        super().__init__(id, kcfg, logs, proof_dir=proof_dir)
+        super().__init__(id, kcfg, logs, proof_dir=proof_dir, dependencies=dependencies, circularity=circularity)
         self.bmc_depth = bmc_depth
         self._bounded_states = list(bounded_states) if bounded_states is not None else []
 
@@ -150,13 +152,24 @@ class APRBMCProof(APRProof):
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
+        dependencies = [APRProof.from_dict(c) for c in dct['dependencies']]
+        circularity = dct['circularity']
         bounded_states = dct['bounded_states']
         bmc_depth = dct['bmc_depth']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        return APRBMCProof(id, cfg, logs, bmc_depth, bounded_states=bounded_states, proof_dir=proof_dir)
+        return APRBMCProof(
+            id,
+            cfg,
+            logs,
+            bmc_depth,
+            bounded_states=bounded_states,
+            proof_dir=proof_dir,
+            dependencies=dependencies,
+            circularity=circularity,
+        )
 
     @property
     def dict(self) -> dict[str, Any]:
@@ -165,6 +178,8 @@ class APRBMCProof(APRProof):
             'type': 'APRBMCProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
+            'dependencies': [c.dict for c in self.dependencies],
+            'circularity': self.circularity,
             'logs': logs,
             'bmc_depth': self.bmc_depth,
             'bounded_states': self._bounded_states,
