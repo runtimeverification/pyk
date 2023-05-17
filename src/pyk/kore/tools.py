@@ -25,6 +25,9 @@ def kore_print(pattern: str | Pattern, definition_dir: str | Path, output: str |
 
     output = PrintOutput(output)
 
+    if type(pattern) is str and output == PrintOutput.KORE:
+        return pattern
+
     with NamedTemporaryFile(mode='w') as f:
         if isinstance(pattern, Pattern):
             pattern.write(f)
