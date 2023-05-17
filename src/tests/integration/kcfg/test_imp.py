@@ -312,7 +312,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
     (
         'imp-if-almost-same',
         K_FILES / 'imp-simple-spec.k',
-        'IMP-SIMPLE-SPEC',
+        'IMP-SIMPLE-SPEC-DEPENDENCIES',
         'if-almost-same',
         None,
         None,
@@ -674,8 +674,13 @@ class TestImpProof(KCFGExploreTest):
 
         deps = claim.dependencies
 
+        def qualify(module: str, label: str) -> str:
+            if '.' in label:
+                return label
+            return f'{module}.{label}'
+
         deps_claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{dep_id}' for dep_id in deps]
+            Path(spec_file), spec_module_name=spec_module, claim_labels=[qualify(spec_module, dep_id) for dep_id in deps]
         )
 
         deps_proofs = [
