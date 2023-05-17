@@ -113,6 +113,19 @@ module IMP-SIMPLE-SPEC
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N +Int 2) $n |-> N:Int +Int 1) </state>
         [depends(IMP-SIMPLE-SPEC-DEPENDENCIES.if-almost-same)]
 
+    claim [if-almost-same-2]:
+        <k> if (_B:Bool) {$s = $n * $s; } else {$s = $s * $n; } => . ...</k>
+        <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S *Int N) $n |-> N) </state>
+
+    claim [use-if-almost-same-twice]:
+        <k> $n = $n + 1;
+            if (_B1:Bool) {$s = $n + $s; } else {$s = $s + $n; }
+            if (_B2:Bool) {$s = $n * $s; } else {$s = $s * $n; }
+            $s = $s + 1; => .
+        ...</k>
+        <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (((S +Int N +Int 1) *Int (N:Int +Int 1)) +Int 1) $n |-> N:Int +Int 1) </state>
+        [depends(IMP-SIMPLE-SPEC-DEPENDENCIES.if-almost-same,if-almost-same-2)]
+
 
 
     claim [sum-loop]: <k> while (0 <= $n) { $s = $s + $n ; $n = $n + -1 ; }  => . ... </k>
