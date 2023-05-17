@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import logging
 import sys
 from argparse import ArgumentParser, FileType
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
@@ -17,6 +19,10 @@ from .ktool.kprint import KPrint, build_symbol_table, pretty_print_kast
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
+
+if TYPE_CHECKING:
+    from typing import Any, Final
+
 
 _LOG_FORMAT: Final = '%(levelname)s %(asctime)s %(name)s - %(message)s'
 _LOGGER: Final = logging.getLogger(__name__)
@@ -39,88 +45,104 @@ def main() -> None:
         logging.basicConfig(level=logging.DEBUG, format=_LOG_FORMAT)
 
     if args['command'] == 'print':
-        kompiled_dir = Path(args['definition'])
-        printer = KPrint(kompiled_dir)
-        _LOGGER.info(f'Reading Kast from file: {args["term"].name}')
-        term = KInner.from_json(args['term'].read())
-        if is_top(term):
-            args['output_file'].write(printer.pretty_print(term))
-            _LOGGER.info(f'Wrote file: {args["output_file"].name}')
-        else:
-            if args['minimize']:
-                if args['omit_labels'] != '' and args['keep_cells'] != '':
-                    raise ValueError('You cannot use both --omit-labels and --keep-cells.')
-
-                abstract_labels = args['omit_labels'].split(',') if args['omit_labels'] != '' else []
-                keep_cells = args['keep_cells'].split(',') if args['keep_cells'] != '' else []
-                minimized_disjuncts = []
-
-                for disjunct in flatten_label('#Or', term):
-                    try:
-                        minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
-                        config, constraint = split_config_and_constraints(minimized)
-                    except ValueError as err:
-                        raise ValueError('The minified term does not contain a config cell.') from err
-
-                    if not is_top(constraint):
-                        minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
-                    else:
-                        minimized_disjuncts.append(config)
-                term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
-
-            args['output_file'].write(printer.pretty_print(term))
-            _LOGGER.info(f'Wrote file: {args["output_file"].name}')
+        exec_print(args)
 
     elif args['command'] == 'prove':
-        kompiled_dir = Path(args['definition'])
-        kprover = KProve(kompiled_dir, args['main-file'])
-        final_state = kprover.prove(Path(args['spec-file']), spec_module_name=args['spec-module'], args=args['kArgs'])
-        args['output_file'].write(final_state.to_json())
-        _LOGGER.info(f'Wrote file: {args["output_file"].name}')
+        exec_prove(args)
 
     elif args['command'] == 'graph-imports':
-        kompiled_dir = Path(args['definition'])
-        kprinter = KPrint(kompiled_dir)
-        definition = kprinter.definition
-        import_graph = Digraph()
-        graph_file = kompiled_dir / 'import-graph'
-        for module in definition.modules:
-            module_name = module.name
-            import_graph.node(module_name)
-            for module_import in module.imports:
-                import_graph.edge(module_name, module_import.name)
-        import_graph.render(graph_file)
-        _LOGGER.info(f'Wrote file: {graph_file}')
+        exec_graph_imports(args)
 
     elif args['command'] == 'coverage':
-        kompiled_dir = Path(args['definition'])
-        json_definition = remove_source_map(read_kast_definition(kompiled_dir / 'compiled.json'))
-        symbol_table = build_symbol_table(json_definition)
-        for rid in args['coverage-file']:
-            rule = minimize_rule(strip_coverage_logger(get_rule_by_id(json_definition, rid.strip())))
-            args['output'].write('\n\n')
-            args['output'].write('Rule: ' + rid.strip())
-            args['output'].write('\nUnparsed:\n')
-            args['output'].write(pretty_print_kast(rule, symbol_table))
-        _LOGGER.info(f'Wrote file: {args["output"].name}')
+        exec_coverage(args)
 
     elif args['command'] == 'kore-to-json':
-        kore_to_json()
+        exec_kore_to_json()
 
     elif args['command'] == 'json-to-kore':
-        json_to_kore()
+        exec_json_to_kore()
 
     else:
         raise ValueError(f'Unknown command: {args["command"]}')
 
 
-def kore_to_json() -> None:
+def exec_print(args: dict[str, Any]) -> None:
+    kompiled_dir = Path(args['definition'])
+    printer = KPrint(kompiled_dir)
+    _LOGGER.info(f'Reading Kast from file: {args["term"].name}')
+    term = KInner.from_json(args['term'].read())
+    if is_top(term):
+        args['output_file'].write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {args["output_file"].name}')
+    else:
+        if args['minimize']:
+            if args['omit_labels'] != '' and args['keep_cells'] != '':
+                raise ValueError('You cannot use both --omit-labels and --keep-cells.')
+
+            abstract_labels = args['omit_labels'].split(',') if args['omit_labels'] != '' else []
+            keep_cells = args['keep_cells'].split(',') if args['keep_cells'] != '' else []
+            minimized_disjuncts = []
+
+            for disjunct in flatten_label('#Or', term):
+                try:
+                    minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
+                    config, constraint = split_config_and_constraints(minimized)
+                except ValueError as err:
+                    raise ValueError('The minified term does not contain a config cell.') from err
+
+                if not is_top(constraint):
+                    minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
+                else:
+                    minimized_disjuncts.append(config)
+            term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
+
+        args['output_file'].write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {args["output_file"].name}')
+
+
+def exec_prove(args: dict[str, Any]) -> None:
+    kompiled_dir = Path(args['definition'])
+    kprover = KProve(kompiled_dir, args['main-file'])
+    final_state = kprover.prove(Path(args['spec-file']), spec_module_name=args['spec-module'], args=args['kArgs'])
+    args['output_file'].write(final_state.to_json())
+    _LOGGER.info(f'Wrote file: {args["output_file"].name}')
+
+
+def exec_graph_imports(args: dict[str, Any]) -> None:
+    kompiled_dir = Path(args['definition'])
+    kprinter = KPrint(kompiled_dir)
+    definition = kprinter.definition
+    import_graph = Digraph()
+    graph_file = kompiled_dir / 'import-graph'
+    for module in definition.modules:
+        module_name = module.name
+        import_graph.node(module_name)
+        for module_import in module.imports:
+            import_graph.edge(module_name, module_import.name)
+    import_graph.render(graph_file)
+    _LOGGER.info(f'Wrote file: {graph_file}')
+
+
+def exec_coverage(args: dict[str, Any]) -> None:
+    kompiled_dir = Path(args['definition'])
+    json_definition = remove_source_map(read_kast_definition(kompiled_dir / 'compiled.json'))
+    symbol_table = build_symbol_table(json_definition)
+    for rid in args['coverage-file']:
+        rule = minimize_rule(strip_coverage_logger(get_rule_by_id(json_definition, rid.strip())))
+        args['output'].write('\n\n')
+        args['output'].write('Rule: ' + rid.strip())
+        args['output'].write('\nUnparsed:\n')
+        args['output'].write(pretty_print_kast(rule, symbol_table))
+    _LOGGER.info(f'Wrote file: {args["output"].name}')
+
+
+def exec_kore_to_json() -> None:
     text = sys.stdin.read()
     kore = KoreParser(text).pattern()
     print(kore.json)
 
 
-def json_to_kore() -> None:
+def exec_json_to_kore() -> None:
     text = sys.stdin.read()
     kore = Pattern.from_json(text)
     kore.write(sys.stdout)
