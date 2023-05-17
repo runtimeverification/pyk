@@ -6,7 +6,7 @@ import pytest
 
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable
 from pyk.kast.manip import remove_attrs
-from pyk.ktool.kprint import assoc_with_unit, KPrint
+from pyk.ktool.kprint import assoc_with_unit
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kbool import andBool
 from pyk.prelude.kint import INT, intToken, leInt, ltInt
@@ -202,14 +202,8 @@ NONTERM_LABELS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
                                 KApply('.List{"_,_"}'),
                             ),
                         ),
-                        KApply(
-                            'while(_)_',
-                            [
-                                KToken('true', 'Bool'),
-                                KToken('{}', 'Block')
-                            ]
-                        )
-                    ]
+                        KApply('while(_)_', [KToken('true', 'Bool'), KToken('{}', 'Block')]),
+                    ],
                 ),
             ),
             KApply('<state>', KApply('.Map')),
@@ -257,8 +251,7 @@ class TestImpDefn(KPrintTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,kast,expected', NONTERM_LABELS_TEST_DATA, ids=[test_id for test_id, *_ in
-            NONTERM_LABELS_TEST_DATA]
+        'test_id,kast,expected', NONTERM_LABELS_TEST_DATA, ids=[test_id for test_id, *_ in NONTERM_LABELS_TEST_DATA]
     )
     def test_nonterm_labels(self, kprint_with_labels: KPrint, test_id: str, kast: KInner, expected: str) -> None:
         actual = kprint_with_labels.pretty_print(kast)

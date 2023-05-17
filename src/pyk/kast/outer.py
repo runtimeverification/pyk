@@ -186,14 +186,14 @@ class KNonTerminal(KProductionItem):
     sort: KSort
     name: str | None
 
-    def __init__(self, sort: KSort, name: str = None):
+    def __init__(self, sort: KSort, name: str | None = None):
         object.__setattr__(self, 'sort', sort)
         object.__setattr__(self, 'name', name)
 
     @classmethod
     def from_dict(cls: type[KNonTerminal], d: Mapping[str, Any]) -> KNonTerminal:
         cls._check_node(d)
-        name = (d['name'] if 'name' in d else None)
+        name = d['name'] if 'name' in d else None
         return KNonTerminal(sort=KSort.from_dict(d['sort']), name=name)
 
     def to_dict(self) -> dict[str, Any]:

@@ -245,7 +245,12 @@ class KPrint:
 
     @cached_property
     def symbol_table(self) -> SymbolTable:
-        symb_table = build_symbol_table(self.definition, extra_modules=self._extra_unparsing_modules, opinionated=True, nonterm_labels=self.nonterm_labels)
+        symb_table = build_symbol_table(
+            self.definition,
+            extra_modules=self._extra_unparsing_modules,
+            opinionated=True,
+            nonterm_labels=self.nonterm_labels,
+        )
         self._patch_symbol_table(symb_table)
         return symb_table
 
@@ -379,8 +384,10 @@ def unparser_for_production(prod: KProduction, nonterm_labels: bool = False) -> 
 
 
 def build_symbol_table(
-    definition: KDefinition, extra_modules: Iterable[KFlatModule] = (), opinionated: bool = False,
-    nonterm_labels: bool = False
+    definition: KDefinition,
+    extra_modules: Iterable[KFlatModule] = (),
+    opinionated: bool = False,
+    nonterm_labels: bool = False,
 ) -> SymbolTable:
     """Build the unparsing symbol table given a JSON encoded definition.
 
