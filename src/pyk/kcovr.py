@@ -5,7 +5,7 @@ import sys
 import time
 
 if len(sys.argv) < 4:
-  print("usage: " + sys.argv[0] + " <kompiled-dir>... -- <files>...")
+  print('usage: ' + sys.argv[0] + ' <kompiled-dir>... -- <files>...')
   exit(1)
 allRules = set()
 coverMap = {}
@@ -17,17 +17,17 @@ def addCover(rule):
   coverMap[rule] += 1
 
 for idx, dir in enumerate(sys.argv[1:], start=1):
-  if dir == "--":
+  if dir == '--':
     fileIdx = idx + 1
     break
-  filename = dir + "/allRules.txt"
+  filename = dir + '/allRules.txt'
   with open(filename) as f:
     allRules.update(f.readlines())
-  filename = dir + "/coverage.txt"
+  filename = dir + '/coverage.txt'
   with open(filename) as f:
     for line in f:
       addCover(line)
-  for filename in glob.glob(dir + "/*_coverage.txt"):
+  for filename in glob.glob(dir + '/*_coverage.txt'):
     with open(filename) as f:
       for line in f:
         addCover(line)
@@ -37,15 +37,15 @@ sources = [os.path.abspath(path) for path in  sys.argv[fileIdx:]]
 ruleMap = {}
 
 for line in allRules:
-  parts = line.split(" ")
+  parts = line.split(' ')
   id = parts[0].strip()
-  location = " ".join(parts[1:])
-  parts = location.split(":")
-  ruleMap[id] = (os.path.abspath(":".join(parts[:-2])), parts[-2], parts[-1])
+  location = ' '.join(parts[1:])
+  parts = location.split(':')
+  ruleMap[id] = (os.path.abspath(':'.join(parts[:-2])), parts[-2], parts[-1])
 
 allLines = set()
 
-for key, value in ruleMap.items():
+for _, value in ruleMap.items():
   allLines.add((value[0], value[1]))
 
 def linesCovered(coverageOfComponent):
@@ -146,9 +146,9 @@ for filename in sources:
       lines.append(lineTemplateNoBranch.format(lineNum=lineNum,hits=hits))
     else:
       lines.append(lineTemplateBranch.format(lineNum=lineNum,hits=hits,ruleRate=int(ruleRateLine*100),rulesCovered=numCovered,numRules=numRulesLine))
-  linesElem = "".join(lines)
+  linesElem = ''.join(lines)
   classes.append(classTemplate.format(filename=relativeFile,lineRate=lineRateFile,ruleRate=ruleRateFile,numRules=numRulesFile,linesElem=linesElem))
 
-classesElem = "".join(classes)
+classesElem = ''.join(classes)
 xml = template.format(lineRate=lineRateGlobal,ruleRate=ruleRateGlobal,timestamp=timestamp,numRules=numRulesGlobal,source=source,classesElem=classesElem)
 print(xml)
