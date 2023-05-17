@@ -38,7 +38,7 @@ endmodule
 module IMP-SIMPLE-SPEC-DEPENDENCIES
     imports IMP-VERIFICATION
 
-    claim [if-almost-same]:
+    claim [if-almost-same-plus]:
         <k> if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } => . ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N) $n |-> N) </state>
 
@@ -111,9 +111,9 @@ module IMP-SIMPLE-SPEC
     claim [use-if-almost-same]:
         <k> $n = $n + 1; if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } $s = $s + 1; => . ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N +Int 2) $n |-> N:Int +Int 1) </state>
-        [depends(IMP-SIMPLE-SPEC-DEPENDENCIES.if-almost-same)]
+        [depends(IMP-SIMPLE-SPEC-DEPENDENCIES.if-almost-same-plus)]
 
-    claim [if-almost-same-2]:
+    claim [if-almost-same-times]:
         <k> if (_B:Bool) {$s = $n * $s; } else {$s = $s * $n; } => . ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S *Int N) $n |-> N) </state>
 
@@ -124,7 +124,7 @@ module IMP-SIMPLE-SPEC
             $s = $s + 1; => .
         ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (((S +Int N +Int 1) *Int (N:Int +Int 1)) +Int 1) $n |-> N:Int +Int 1) </state>
-        [depends(IMP-SIMPLE-SPEC-DEPENDENCIES.if-almost-same,if-almost-same-2)]
+        [depends(IMP-SIMPLE-SPEC-DEPENDENCIES.if-almost-same-plus,if-almost-same-times)]
 
 
 
