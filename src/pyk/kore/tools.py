@@ -3,14 +3,9 @@ from __future__ import annotations
 from enum import Enum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING
 
 from ..cli_utils import check_dir_path, run_process
-
-if TYPE_CHECKING:
-    pass
-
-    from .syntax import Pattern
+from .syntax import Pattern
 
 
 class PrintOutput(Enum):
@@ -24,14 +19,17 @@ class PrintOutput(Enum):
     NONE = 'none'
 
 
-def kore_print(pattern: Pattern, definition_dir: str | Path, output: str | PrintOutput) -> str:
+def kore_print(pattern: str | Pattern, definition_dir: str | Path, output: str | PrintOutput) -> str:
     definition_dir = Path(definition_dir)
     check_dir_path(definition_dir)
 
     output = PrintOutput(output)
 
     with NamedTemporaryFile(mode='w') as f:
-        pattern.write(f)
+        if type(pattern) is Pattern:
+            pattern.write(f)
+        elif type(pattern) is str:
+            f.write(pattern)
         f.write('\n')
         f.flush()
 
