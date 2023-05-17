@@ -138,7 +138,7 @@ class Target:
         object.__setattr__(self, 'llvm_kompile_type', llvm_kompile_type)
         object.__setattr__(self, 'llvm_kompile_output', llvm_kompile_output)
         object.__setattr__(self, 'concrete_rules', tuple(concrete_rules) if concrete_rules is not None else None)
-        object.__setattr__(self, 'haskell_binary', tuple(haskell_binary) if haskell_binary is not None else None)
+        object.__setattr__(self, 'haskell_binary', haskell_binary if haskell_binary is not None else None)
 
     @staticmethod
     def from_dict(name: str, dct: Mapping[str, Any]) -> Target:
