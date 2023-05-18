@@ -283,11 +283,6 @@ PRETTY_PRINT_NONTERM_LABEL_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
 class TestAliasDefn(KPrintTest):
     KOMPILE_MAIN_FILE = K_FILES / 'aliases.k'
 
-    @staticmethod
-    def _update_symbol_table(symbol_table: SymbolTable) -> None:
-        symbol_table['_,_'] = assoc_with_unit(' , ', '')
-        symbol_table['.List{"_,_"}'] = lambda: ''
-
     @pytest.mark.parametrize(
         'test_id,kast,expected',
         PRETTY_PRINT_ALIAS_TEST_DATA,
