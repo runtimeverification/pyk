@@ -155,21 +155,21 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
     return xml
 
 
-def create_rule_map(kompiled_dirs: Iterable[str]) -> dict[str, tuple[str, str, str]]:
+def create_rule_map(kompiled_dirs: Iterable[str]) -> dict[str, tuple[str, int, int]]:
     all_rules: set[str] = set()
 
     for kompiled_dir in kompiled_dirs:
         filename = kompiled_dir + '/allRules.txt'
         with open(filename) as f:
-            all_rules.update(f.readlines())
+            all_rules.update(line.strip() for line in f.readlines())
 
-    rule_map: dict[str, tuple[str, str, str]] = {}
+    rule_map: dict[str, tuple[str, int, int]] = {}
     for line in all_rules:
         parts = line.split(' ')
-        id = parts[0].strip()
+        rule_id = parts[0]
         location = ' '.join(parts[1:])
         parts = location.split(':')
-        rule_map[id] = (os.path.abspath(':'.join(parts[:-2])), parts[-2], parts[-1])
+        rule_map[rule_id] = (os.path.abspath(':'.join(parts[:-2])), int(parts[-2]), int(parts[-1]))
 
     assert len(all_rules) == len(rule_map)
     return rule_map
@@ -197,8 +197,8 @@ def create_cover_map(kompiled_dirs: Iterable[str]) -> dict[str, int]:
     return cover_map
 
 
-def create_rule_map_by_file(rule_map: dict[str, tuple[str, str, str]]) -> dict[str, dict[str, tuple[str, str]]]:
-    rule_map_by_file: dict[str, dict[str, tuple[str, str]]] = {}
+def create_rule_map_by_file(rule_map: Mapping[str, tuple[str, int, int]]) -> dict[str, dict[str, tuple[int, int]]]:
+    rule_map_by_file: dict[str, dict[str, tuple[int, int]]] = {}
 
     for rule_id, loc in rule_map.items():
         if not loc[0] in rule_map_by_file:
@@ -208,11 +208,11 @@ def create_rule_map_by_file(rule_map: dict[str, tuple[str, str, str]]) -> dict[s
     return rule_map_by_file
 
 
-def count_lines_global(rule_map: dict[str, tuple[str, str, str]]) -> int:
+def count_lines_global(rule_map: dict[str, tuple[str, int, int]]) -> int:
     return len({(src, line) for src, line, _pos in rule_map.values()})
 
 
-def count_lines_covered(rule_map: Mapping[str, tuple[str, str, str]], cover_map: Mapping[str, int]) -> int:
+def count_lines_covered(rule_map: Mapping[str, tuple[str, int, int]], cover_map: Mapping[str, int]) -> int:
     covered_lines = set()
     for rule_id in cover_map:
         rule = rule_map[rule_id]
