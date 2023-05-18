@@ -28,7 +28,6 @@ def main() -> None:
 
 
 def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> str:
-    all_rules: set[str] = set()
     cover_map: dict[str, int] = {}
 
     def add_cover(rule: str) -> None:
@@ -38,9 +37,6 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
         cover_map[rule] += 1
 
     for dir in kompiled_dirs:
-        filename = dir + '/allRules.txt'
-        with open(filename) as f:
-            all_rules.update(f.readlines())
         filename = dir + '/coverage.txt'
         with open(filename) as f:
             for line in f:
@@ -52,14 +48,7 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
 
     sources = [os.path.abspath(path) for path in files]
 
-    rule_map: dict[str, tuple[str, str, str]] = {}
-
-    for line in all_rules:
-        parts = line.split(' ')
-        id = parts[0].strip()
-        location = ' '.join(parts[1:])
-        parts = location.split(':')
-        rule_map[id] = (os.path.abspath(':'.join(parts[:-2])), parts[-2], parts[-1])
+    rule_map = create_rule_map(kompiled_dirs)
 
     all_lines: set[tuple[str, str]] = set()
     for _, value in rule_map.items():
@@ -75,7 +64,7 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
     def rules_covered(coverage_of_component: Mapping[str, int]) -> int:
         return len(coverage_of_component)
 
-    num_rules_global = len(all_rules)
+    num_rules_global = len(rule_map)  # should be the same as len(all_rules)
     num_lines = len(all_lines)
     line_rate_global = float(lines_covered(cover_map)) / num_lines
     rule_rate_global = float(rules_covered(cover_map)) / num_rules_global
@@ -193,6 +182,26 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
     )
 
     return xml
+
+
+def create_rule_map(kompiled_dirs: Iterable[str]) -> dict[str, tuple[str, str, str]]:
+    all_rules: set[str] = set()
+
+    for kompiled_dir in kompiled_dirs:
+        filename = kompiled_dir + '/allRules.txt'
+        with open(filename) as f:
+            all_rules.update(f.readlines())
+
+    rule_map: dict[str, tuple[str, str, str]] = {}
+    for line in all_rules:
+        parts = line.split(' ')
+        id = parts[0].strip()
+        location = ' '.join(parts[1:])
+        parts = location.split(':')
+        rule_map[id] = (os.path.abspath(':'.join(parts[:-2])), parts[-2], parts[-1])
+
+    assert len(all_rules) == len(rule_map)
+    return rule_map
 
 
 if __name__ == '__main__':
