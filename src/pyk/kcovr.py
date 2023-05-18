@@ -47,13 +47,12 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
             covered_lines.add((rule[0], rule[1]))
         return len(covered_lines)
 
-    def rules_covered(coverage_of_component: Mapping[str, int]) -> int:
-        return len(coverage_of_component)
+    num_rules_covered_global = count_rules_covered(cover_map)
+    num_rules_global = len(rule_map)
+    rule_rate_global = float(num_rules_covered_global) / num_rules_global
 
-    num_rules_global = len(rule_map)  # should be the same as len(all_rules)
     num_lines = len(all_lines)
     line_rate_global = float(lines_covered(cover_map)) / num_lines
-    rule_rate_global = float(rules_covered(cover_map)) / num_rules_global
     timestamp = int(time.time())
 
     template = """
@@ -111,10 +110,12 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
 
         file_coverage = {rule: num for rule, num in cover_map.items() if rule in all_rules_2}
 
+        num_rules_covered_file = count_rules_covered(file_coverage)
         num_rules_file = len(all_rules_2)
+        rule_rate_file = float(num_rules_covered_file) / num_rules_file
+
         num_lines = len(all_lines)
         line_rate_file = float(lines_covered(file_coverage)) / num_lines
-        rule_rate_file = float(rules_covered(file_coverage)) / num_rules_file
 
         lines = []
 
@@ -211,6 +212,10 @@ def create_rule_map_by_file(rule_map: dict[str, tuple[str, str, str]]) -> dict[s
         rule_map_by_file[loc[0]][rule_id] = (loc[1], loc[2])
 
     return rule_map_by_file
+
+
+def count_rules_covered(cover_map: Mapping[str, int]) -> int:
+    return len(cover_map)
 
 
 if __name__ == '__main__':
