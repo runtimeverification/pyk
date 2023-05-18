@@ -36,16 +36,12 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
 
     cover_map = create_cover_map(kompiled_dirs)
 
-    all_lines: set[tuple[str, str]] = set()
-    for _, value in rule_map.items():
-        all_lines.add((value[0], value[1]))
-
     num_rules_covered_global = count_rules_covered(cover_map)
     num_rules_global = len(rule_map)
     rule_rate_global = float(num_rules_covered_global) / num_rules_global
 
     lines_covered_global = count_lines_covered(rule_map, cover_map)
-    num_lines_global = len(all_lines)
+    num_lines_global = count_lines_global(rule_map)
     line_rate_global = float(lines_covered_global) / num_lines_global
 
     timestamp = int(time.time())
@@ -208,6 +204,10 @@ def create_rule_map_by_file(rule_map: dict[str, tuple[str, str, str]]) -> dict[s
         rule_map_by_file[loc[0]][rule_id] = (loc[1], loc[2])
 
     return rule_map_by_file
+
+
+def count_lines_global(rule_map: dict[str, tuple[str, str, str]]) -> int:
+    return len({(src, line) for src, line, _pos in rule_map.values()})
 
 
 def count_lines_covered(rule_map: Mapping[str, tuple[str, str, str]], cover_map: Mapping[str, int]) -> int:
