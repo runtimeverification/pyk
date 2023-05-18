@@ -929,19 +929,23 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     #     return unvisited
 
     """Returns all nodes that are calling a specific address from a test"""
-    def calling_nodes(self, to: str) -> set[Node]:
+    def calling_nodes(self):
         test = "0x7fa9385be102ac3eac297483dd6233d62b3e1496"
-        all_nodes: set[KCFG.Node] = set([self.node('#init')]) # get the root node
-        matching_nodes: set[KCFG.Node] = set()
+        # all_nodes: set[KCFG.Node] = set([self.node('#init')]) # get the root node
+        all_nodes: list[KCFG.Node] = self.nodes
+        matching_nodes: dict[str, list[KCFG.Node]] = {}
 
         for node in all_nodes:
             # matching_nodes.add(node)
             cons = node.cterm.constraints
             klabel = KLabel("to", ["*"])
+            # print(cons)
 
             if klabel in cons:
                 print("Yes!")
 
             # sub = node.match(klabel)
 
-        return all_nodes
+        matching_nodes[test] = all_nodes
+
+        return matching_nodes
