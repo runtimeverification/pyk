@@ -372,9 +372,9 @@ def unparser_for_production(prod: KProduction) -> Callable[..., str]:
             if type(item) is KTerminal:
                 result.append(item.value)
             elif type(item) is KNonTerminal and index < len(args):
-                if index == 0 and num_nonterm == num_named_nonterm and num_nonterm > 0:
-                    result.append('...')
-                if num_nonterm == num_named_nonterm and num_nonterm > 0:
+                if num_nonterm == num_named_nonterm:
+                    if index == 0:
+                        result.append('...')
                     result.append(f'{item.name}:')
                 result.append(args[index])
                 index += 1
