@@ -197,11 +197,15 @@ class KNonTerminal(KProductionItem):
         return KNonTerminal(sort=KSort.from_dict(d['sort']), name=name)
 
     def to_dict(self) -> dict[str, Any]:
-        return {'node': 'KNonTerminal', 'sort': self.sort.to_dict()}
+        d = {'node': 'KNonTerminal', 'sort': self.sort.to_dict()}
+        if self.name is not None:
+            d['name'] = self.name
+        return d
 
-    def let(self, *, sort: KSort | None = None) -> KNonTerminal:
+    def let(self, *, sort: KSort | None = None, name: str | None = None) -> KNonTerminal:
         sort = sort or self.sort
-        return KNonTerminal(sort=sort)
+        name = name or self.name
+        return KNonTerminal(sort=sort, name=name)
 
 
 @final
