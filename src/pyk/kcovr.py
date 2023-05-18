@@ -69,22 +69,11 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
     source = os.path.dirname(os.path.commonprefix(sources))
 
     rule_map = create_rule_map(kompiled_dirs)
-    rule_map_by_file = create_rule_map_by_file(rule_map)
-
     cover_map = create_cover_map(kompiled_dirs)
-
-    num_rules_covered_global = count_rules_covered(cover_map)
-    num_rules_global = len(rule_map)
-    rule_rate_global = float(num_rules_covered_global) / num_rules_global
-
-    lines_covered_global = count_lines_covered(rule_map, cover_map)
-    num_lines_global = count_lines_global(rule_map)
-    line_rate_global = float(lines_covered_global) / num_lines_global
-
-    timestamp = int(time.time())
 
     classes = []
 
+    rule_map_by_file = create_rule_map_by_file(rule_map)
     for filename in sources:
         if not filename in rule_map_by_file:
             continue
@@ -143,6 +132,17 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
         )
 
     classes_elem = ''.join(classes)
+
+    num_rules_covered_global = count_rules_covered(cover_map)
+    num_rules_global = len(rule_map)
+    rule_rate_global = float(num_rules_covered_global) / num_rules_global
+
+    lines_covered_global = count_lines_covered(rule_map, cover_map)
+    num_lines_global = count_lines_global(rule_map)
+    line_rate_global = float(lines_covered_global) / num_lines_global
+
+    timestamp = int(time.time())
+
     xml = TEMPLATE.format(
         line_rate=line_rate_global,
         rule_rate=rule_rate_global,
