@@ -29,6 +29,8 @@ def main() -> None:
 
 def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> str:
     sources = [os.path.abspath(path) for path in files]
+    source = os.path.dirname(os.path.commonprefix(sources))
+
     rule_map = create_rule_map(kompiled_dirs)
     cover_map = create_cover_map(kompiled_dirs)
 
@@ -66,8 +68,6 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
       </packages>
     </coverage>
     """
-
-    source = os.path.dirname(os.path.commonprefix(sources))
 
     class_template = """
     <class name="{filename}" filename="{filename}" line-rate="{line_rate}" branch-rate="{rule_rate}" complexity="{num_rules}.0">
