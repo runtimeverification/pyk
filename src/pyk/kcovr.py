@@ -90,19 +90,19 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
         relative_file = os.path.relpath(filename, source)
         all_lines = set()
 
-        all_rules_2 = rule_map_by_file[filename]  # TODO naming
+        all_rules = rule_map_by_file[filename]
         rule_map_by_line = {}
-        for key, value_2 in all_rules_2.items():  # TODO naming
-            all_lines.add((value_2[0], value_2[1]))
-            if not value_2[0] in rule_map_by_line:
-                rule_map_by_line[value_2[0]] = [key]
+        for key, value in all_rules.items():
+            all_lines.add((value[0], value[1]))
+            if not value[0] in rule_map_by_line:
+                rule_map_by_line[value[0]] = [key]
             else:
-                rule_map_by_line[value_2[0]].append(key)
+                rule_map_by_line[value[0]].append(key)
 
-        cover_map_file = {rule: cnt for rule, cnt in cover_map.items() if rule in all_rules_2}
+        cover_map_file = {rule: cnt for rule, cnt in cover_map.items() if rule in all_rules}
 
         num_rules_covered_file = count_rules_covered(cover_map_file)
-        num_rules_file = len(all_rules_2)
+        num_rules_file = len(all_rules)
         rule_rate_file = float(num_rules_covered_file) / num_rules_file
 
         num_lines_covered_file = count_lines_covered(rule_map, cover_map_file)
