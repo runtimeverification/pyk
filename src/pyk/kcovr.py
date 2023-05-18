@@ -119,30 +119,10 @@ def render_classes(
         num_lines_file = count_lines_file(rule_map_file)
         line_rate_file = float(num_lines_covered_file) / num_lines_file
 
-        lines = []
-
-        rule_map_by_line = create_rule_map_by_line(rule_map_file)
-        for line_num, rules in rule_map_by_line.items():
-            line_coverage = {rule: cnt for rule, cnt in cover_map_file.items() if rule in rules}
-            hits = sum(line_coverage.values())
-            num_covered = len(line_coverage)
-            num_rules_line = len(rules)
-            rule_rate_line = float(num_covered) / num_rules_line
-            if num_rules_line == 1:
-                lines.append(LINE_TEMPLATE_NO_BRANCH.format(line_num=line_num, hits=hits))
-            else:
-                lines.append(
-                    LINE_TEMPLATE_BRANCH.format(
-                        line_num=line_num,
-                        hits=hits,
-                        rule_rate=int(rule_rate_line * 100),
-                        rules_covered=num_covered,
-                        num_rules=num_rules_line,
-                    )
-                )
+        lines = render_lines(rule_map_file, cover_map_file)
+        lines_elem = ''.join(lines)
 
         relative_file = os.path.relpath(filename, source)
-        lines_elem = ''.join(lines)
 
         classes.append(
             CLASS_TEMPLATE.format(
@@ -155,6 +135,35 @@ def render_classes(
         )
 
     return classes
+
+
+def render_lines(
+    rule_map_file: Mapping[str, tuple[int, int]],
+    cover_map_file: Mapping[str, int],
+) -> list[str]:
+    lines = []
+
+    rule_map_by_line = create_rule_map_by_line(rule_map_file)
+    for line_num, rules in rule_map_by_line.items():
+        line_coverage = {rule: cnt for rule, cnt in cover_map_file.items() if rule in rules}
+        hits = sum(line_coverage.values())
+        num_covered = len(line_coverage)
+        num_rules_line = len(rules)
+        rule_rate_line = float(num_covered) / num_rules_line
+        if num_rules_line == 1:
+            lines.append(LINE_TEMPLATE_NO_BRANCH.format(line_num=line_num, hits=hits))
+        else:
+            lines.append(
+                LINE_TEMPLATE_BRANCH.format(
+                    line_num=line_num,
+                    hits=hits,
+                    rule_rate=int(rule_rate_line * 100),
+                    rules_covered=num_covered,
+                    num_rules=num_rules_line,
+                )
+            )
+
+    return lines
 
 
 def create_rule_map(kompiled_dirs: Iterable[str]) -> dict[str, tuple[str, int, int]]:
