@@ -20,6 +20,14 @@ def render_coverage_xml() -> str:
         print('usage: ' + sys.argv[0] + ' <kompiled-dir>... -- <files>...')
         exit(1)
 
+    def split_at_dashes(xs: list[str]) -> tuple[list[str], list[str]]:
+        for i, x in enumerate(xs):
+            if x == '--':
+                return xs[:i], xs[i + 1 :]
+        return xs, []
+
+    kompiled_dirs, files = split_at_dashes(sys.argv[1:])
+
     all_rules: set[str] = set()
     cover_map: dict[str, int] = {}
 
@@ -29,10 +37,7 @@ def render_coverage_xml() -> str:
             cover_map[rule] = 0
         cover_map[rule] += 1
 
-    for idx, dir in enumerate(sys.argv[1:], start=1):
-        if dir == '--':
-            file_idx = idx + 1
-            break
+    for dir in kompiled_dirs:
         filename = dir + '/allRules.txt'
         with open(filename) as f:
             all_rules.update(f.readlines())
@@ -45,7 +50,7 @@ def render_coverage_xml() -> str:
                 for line in f:
                     add_cover(line)
 
-    sources = [os.path.abspath(path) for path in sys.argv[file_idx:]]
+    sources = [os.path.abspath(path) for path in files]
 
     rule_map: dict[str, tuple[str, str, str]] = {}
 
