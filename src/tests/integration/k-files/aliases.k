@@ -13,7 +13,7 @@ module ALIASES
     rule rangeHundred(X) => 0 <=Int X andBool X <Int hundred
 
     syntax Int ::= labeled(label1: Int, label2: Int) [function, klabel(labeled), symbol]
-                 | someLabeled(label1: Int, Int)    [function, klabel(some-labeled), symbol]
-                 | noneLabeled(Int, Int)            [function, klabel(none-labeled), symbol]
+                 | someLabeled(label1: Int, Int)     [function, klabel(some-labeled), symbol]
+                 | noneLabeled(Int, Int)             [function, klabel(none-labeled), symbol]
 
 endmodule
