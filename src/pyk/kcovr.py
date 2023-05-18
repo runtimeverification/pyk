@@ -32,6 +32,8 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
     source = os.path.dirname(os.path.commonprefix(sources))
 
     rule_map = create_rule_map(kompiled_dirs)
+    rule_map_by_file = create_rule_map_by_file(rule_map)
+
     cover_map = create_cover_map(kompiled_dirs)
 
     all_lines: set[tuple[str, str]] = set()
@@ -88,14 +90,6 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
       </conditions>
     </line>
     """
-
-    rule_map_by_file: dict[str, dict[str, tuple[str, str]]] = {}
-
-    for id, loc in rule_map.items():
-        if not loc[0] in rule_map_by_file:
-            rule_map_by_file[loc[0]] = {}
-        file_map = rule_map_by_file[loc[0]]
-        file_map[id] = (loc[1], loc[2])
 
     classes = []
 
@@ -206,6 +200,17 @@ def create_cover_map(kompiled_dirs: Iterable[str]) -> dict[str, int]:
                     add_cover(line)
 
     return cover_map
+
+
+def create_rule_map_by_file(rule_map: dict[str, tuple[str, str, str]]) -> dict[str, dict[str, tuple[str, str]]]:
+    rule_map_by_file: dict[str, dict[str, tuple[str, str]]] = {}
+
+    for rule_id, loc in rule_map.items():
+        if not loc[0] in rule_map_by_file:
+            rule_map_by_file[loc[0]] = {}
+        rule_map_by_file[loc[0]][rule_id] = (loc[1], loc[2])
+
+    return rule_map_by_file
 
 
 if __name__ == '__main__':
