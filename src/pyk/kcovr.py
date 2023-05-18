@@ -8,6 +8,43 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from typing import Final
+
+
+TEMPLATE: Final = """
+<coverage line-rate="{line_rate}" branch-rate="{rule_rate}" version="1.9" timestamp="{timestamp}">
+  <sources>
+    <source>{source}</source>
+  </sources>
+  <packages>
+    <package name="" line-rate="{line_rate}" branch-rate="{rule_rate}" complexity="{num_rules}.0">
+      <classes>
+        {classes_elem}
+      </classes>
+    </package>
+  </packages>
+</coverage>
+"""
+
+CLASS_TEMPLATE: Final = """
+<class name="{filename}" filename="{filename}" line-rate="{line_rate}" branch-rate="{rule_rate}" complexity="{num_rules}.0">
+  <lines>
+    {lines_elem}
+  </lines>
+</class>
+"""
+
+LINE_TEMPLATE_NO_BRANCH: Final = """
+<line number="{line_num}" hits="{hits}" branch="false"/>
+"""
+
+LINE_TEMPLATE_BRANCH: Final = """
+<line number="{line_num}" hits="{hits}" branch="true" condition-coverage="{rule_rate}% ({rules_covered}/{num_rules})">
+  <conditions>
+    <condition number="0" type="jump" coverage="{rule_rate}%"/>
+  </conditions>
+</line>
+"""
 
 
 def main() -> None:
@@ -46,41 +83,6 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
 
     timestamp = int(time.time())
 
-    template = """
-    <coverage line-rate="{line_rate}" branch-rate="{rule_rate}" version="1.9" timestamp="{timestamp}">
-      <sources>
-        <source>{source}</source>
-      </sources>
-      <packages>
-        <package name="" line-rate="{line_rate}" branch-rate="{rule_rate}" complexity="{num_rules}.0">
-          <classes>
-            {classes_elem}
-          </classes>
-        </package>
-      </packages>
-    </coverage>
-    """
-
-    class_template = """
-    <class name="{filename}" filename="{filename}" line-rate="{line_rate}" branch-rate="{rule_rate}" complexity="{num_rules}.0">
-      <lines>
-        {lines_elem}
-      </lines>
-    </class>
-    """
-
-    line_template_no_branch = """
-    <line number="{line_num}" hits="{hits}" branch="false"/>
-    """
-
-    line_template_branch = """
-    <line number="{line_num}" hits="{hits}" branch="true" condition-coverage="{rule_rate}% ({rules_covered}/{num_rules})">
-      <conditions>
-        <condition number="0" type="jump" coverage="{rule_rate}%"/>
-      </conditions>
-    </line>
-    """
-
     classes = []
 
     for filename in sources:
@@ -118,10 +120,10 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
             num_rules_line = len(rules)
             rule_rate_line = float(num_covered) / num_rules_line
             if num_rules_line == 1:
-                lines.append(line_template_no_branch.format(line_num=line_num, hits=hits))
+                lines.append(LINE_TEMPLATE_NO_BRANCH.format(line_num=line_num, hits=hits))
             else:
                 lines.append(
-                    line_template_branch.format(
+                    LINE_TEMPLATE_BRANCH.format(
                         line_num=line_num,
                         hits=hits,
                         rule_rate=int(rule_rate_line * 100),
@@ -131,7 +133,7 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
                 )
         lines_elem = ''.join(lines)
         classes.append(
-            class_template.format(
+            CLASS_TEMPLATE.format(
                 filename=relative_file,
                 line_rate=line_rate_file,
                 rule_rate=rule_rate_file,
@@ -141,7 +143,7 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
         )
 
     classes_elem = ''.join(classes)
-    xml = template.format(
+    xml = TEMPLATE.format(
         line_rate=line_rate_global,
         rule_rate=rule_rate_global,
         timestamp=timestamp,
