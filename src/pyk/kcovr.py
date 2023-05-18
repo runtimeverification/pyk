@@ -40,19 +40,14 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
     for _, value in rule_map.items():
         all_lines.add((value[0], value[1]))
 
-    def lines_covered(coverage_of_component: Mapping[str, int]) -> int:
-        covered_lines = set()
-        for rule_id in coverage_of_component:
-            rule = rule_map[rule_id]
-            covered_lines.add((rule[0], rule[1]))
-        return len(covered_lines)
-
     num_rules_covered_global = count_rules_covered(cover_map)
     num_rules_global = len(rule_map)
     rule_rate_global = float(num_rules_covered_global) / num_rules_global
 
-    num_lines = len(all_lines)
-    line_rate_global = float(lines_covered(cover_map)) / num_lines
+    lines_covered_global = count_lines_covered(rule_map, cover_map)
+    num_lines_global = len(all_lines)
+    line_rate_global = float(lines_covered_global) / num_lines_global
+
     timestamp = int(time.time())
 
     template = """
@@ -108,19 +103,20 @@ def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> s
             else:
                 rule_map_by_line[value_2[0]].append(key)
 
-        file_coverage = {rule: num for rule, num in cover_map.items() if rule in all_rules_2}
+        cover_map_file = {rule: cnt for rule, cnt in cover_map.items() if rule in all_rules_2}
 
-        num_rules_covered_file = count_rules_covered(file_coverage)
+        num_rules_covered_file = count_rules_covered(cover_map_file)
         num_rules_file = len(all_rules_2)
         rule_rate_file = float(num_rules_covered_file) / num_rules_file
 
-        num_lines = len(all_lines)
-        line_rate_file = float(lines_covered(file_coverage)) / num_lines
+        num_lines_covered_file = count_lines_covered(rule_map, cover_map_file)
+        num_lines_file = len(all_lines)
+        line_rate_file = float(num_lines_covered_file) / num_lines_file
 
         lines = []
 
         for line_num, rules in rule_map_by_line.items():
-            line_coverage = {rule: num for rule, num in file_coverage.items() if rule in rules}
+            line_coverage = {rule: cnt for rule, cnt in cover_map_file.items() if rule in rules}
             hits = sum(line_coverage.values())
             num_covered = len(line_coverage)
             num_rules_line = len(rules)
@@ -212,6 +208,14 @@ def create_rule_map_by_file(rule_map: dict[str, tuple[str, str, str]]) -> dict[s
         rule_map_by_file[loc[0]][rule_id] = (loc[1], loc[2])
 
     return rule_map_by_file
+
+
+def count_lines_covered(rule_map: Mapping[str, tuple[str, str, str]], cover_map: Mapping[str, int]) -> int:
+    covered_lines = set()
+    for rule_id in cover_map:
+        rule = rule_map[rule_id]
+        covered_lines.add((rule[0], rule[1]))
+    return len(covered_lines)
 
 
 def count_rules_covered(cover_map: Mapping[str, int]) -> int:
