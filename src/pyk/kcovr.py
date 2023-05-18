@@ -111,19 +111,19 @@ def render_classes(
         relative_file = os.path.relpath(filename, source)
         all_lines = set()
 
-        all_rules = rule_map_by_file[filename]
-        rule_map_by_line = {}
-        for key, value in all_rules.items():
-            all_lines.add((value[0], value[1]))
-            if not value[0] in rule_map_by_line:
-                rule_map_by_line[value[0]] = [key]
-            else:
-                rule_map_by_line[value[0]].append(key)
+        rule_map_file = rule_map_by_file[filename]
+        cover_map_file = {rule: cnt for rule, cnt in cover_map.items() if rule in rule_map_file}
 
-        cover_map_file = {rule: cnt for rule, cnt in cover_map.items() if rule in all_rules}
+        rule_map_by_line = {}
+        for rule_id, (line, pos) in rule_map_file.items():
+            all_lines.add((line, pos))
+            if not line in rule_map_by_line:
+                rule_map_by_line[line] = [rule_id]
+            else:
+                rule_map_by_line[line].append(rule_id)
 
         num_rules_covered_file = count_rules_covered(cover_map_file)
-        num_rules_file = len(all_rules)
+        num_rules_file = len(rule_map_file)
         rule_rate_file = float(num_rules_covered_file) / num_rules_file
 
         num_lines_covered_file = count_lines_covered(rule_map, cover_map_file)
@@ -187,21 +187,22 @@ def create_rule_map(kompiled_dirs: Iterable[str]) -> dict[str, tuple[str, int, i
 def create_cover_map(kompiled_dirs: Iterable[str]) -> dict[str, int]:
     cover_map: dict[str, int] = {}
 
-    def add_cover(rule: str) -> None:
-        rule = rule.strip()
-        if not rule in cover_map:
-            cover_map[rule] = 0
-        cover_map[rule] += 1
+    def add_cover(rule_id: str) -> None:
+        if not rule_id in cover_map:
+            cover_map[rule_id] = 0
+        cover_map[rule_id] += 1
 
     for kompiled_dir in kompiled_dirs:
         filename = kompiled_dir + '/coverage.txt'
         with open(filename) as f:
             for line in f:
-                add_cover(line)
+                rule_id = line.strip()
+                add_cover(rule_id)
         for filename in glob.glob(kompiled_dir + '/*_coverage.txt'):
             with open(filename) as f:
                 for line in f:
-                    add_cover(line)
+                    rule_id = line.strip()
+                    add_cover(rule_id)
 
     return cover_map
 
@@ -209,10 +210,10 @@ def create_cover_map(kompiled_dirs: Iterable[str]) -> dict[str, int]:
 def create_rule_map_by_file(rule_map: Mapping[str, tuple[str, int, int]]) -> dict[str, dict[str, tuple[int, int]]]:
     rule_map_by_file: dict[str, dict[str, tuple[int, int]]] = {}
 
-    for rule_id, loc in rule_map.items():
-        if not loc[0] in rule_map_by_file:
-            rule_map_by_file[loc[0]] = {}
-        rule_map_by_file[loc[0]][rule_id] = (loc[1], loc[2])
+    for rule_id, (path, line, pos) in rule_map.items():
+        if not path in rule_map_by_file:
+            rule_map_by_file[path] = {}
+        rule_map_by_file[path][rule_id] = (line, pos)
 
     return rule_map_by_file
 
