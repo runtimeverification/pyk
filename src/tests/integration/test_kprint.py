@@ -279,10 +279,7 @@ PRETTY_PRINT_NONTERM_LABEL_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
     ),
     (
         'no-nonterms',
-        KApply(
-            'no-nonterms',
-            []
-        ),
+        KApply('no-nonterms', []),
         ('nonNonTerms ( )'),
     ),
 )
