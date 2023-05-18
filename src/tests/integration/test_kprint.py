@@ -249,9 +249,44 @@ PRETTY_PRINT_ALIAS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
     ),
 )
 
+PRETTY_PRINT_NONTERM_LABEL_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
+    (
+        'all-labeled',
+        KApply(
+            'labeled',
+            KToken('1', 'Int'),
+            KToken('2', 'Int'),
+        ),
+        ('labeled ( ... label1: 1 , label2: 2 )'),
+    ),
+    (
+        'some-labeled',
+        KApply(
+            'some-labeled',
+            KToken('1', 'Int'),
+            KToken('2', 'Int'),
+        ),
+        ('someLabeled ( 1 , 2 )'),
+    ),
+    (
+        'none-labeled',
+        KApply(
+            'none-labeled',
+            KToken('1', 'Int'),
+            KToken('2', 'Int'),
+        ),
+        ('noneLabeled ( 1 , 2 )'),
+    ),
+)
+
 
 class TestAliasDefn(KPrintTest):
     KOMPILE_MAIN_FILE = K_FILES / 'aliases.k'
+
+    @staticmethod
+    def _update_symbol_table(symbol_table: SymbolTable) -> None:
+        symbol_table['_,_'] = assoc_with_unit(' , ', '')
+        symbol_table['.List{"_,_"}'] = lambda: ''
 
     @pytest.mark.parametrize(
         'test_id,kast,expected',
@@ -259,5 +294,14 @@ class TestAliasDefn(KPrintTest):
         ids=[test_id for test_id, *_ in PRETTY_PRINT_ALIAS_TEST_DATA],
     )
     def test_pretty_print(self, kprint: KPrint, test_id: str, kast: KInner, expected: str) -> None:
+        actual = kprint.pretty_print(kast)
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        'test_id,kast,expected',
+        PRETTY_PRINT_NONTERM_LABEL_TEST_DATA,
+        ids=[test_id for test_id, *_ in PRETTY_PRINT_NONTERM_LABEL_TEST_DATA],
+    )
+    def test_nonterm_labels(self, kprint: KPrint, test_id: str, kast: KInner, expected: str) -> None:
         actual = kprint.pretty_print(kast)
         assert actual == expected
