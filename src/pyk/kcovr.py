@@ -108,19 +108,12 @@ def render_classes(
         if not filename in rule_map_by_file:
             continue
 
-        relative_file = os.path.relpath(filename, source)
-        all_lines = set()
-
         rule_map_file = rule_map_by_file[filename]
         cover_map_file = {rule: cnt for rule, cnt in cover_map.items() if rule in rule_map_file}
 
-        rule_map_by_line = {}
-        for rule_id, (line, pos) in rule_map_file.items():
+        all_lines = set()
+        for _, (line, pos) in rule_map_file.items():
             all_lines.add((line, pos))
-            if not line in rule_map_by_line:
-                rule_map_by_line[line] = [rule_id]
-            else:
-                rule_map_by_line[line].append(rule_id)
 
         num_rules_covered_file = count_rules_covered(cover_map_file)
         num_rules_file = len(rule_map_file)
@@ -132,6 +125,7 @@ def render_classes(
 
         lines = []
 
+        rule_map_by_line = create_rule_map_by_line(rule_map_file)
         for line_num, rules in rule_map_by_line.items():
             line_coverage = {rule: cnt for rule, cnt in cover_map_file.items() if rule in rules}
             hits = sum(line_coverage.values())
@@ -150,7 +144,10 @@ def render_classes(
                         num_rules=num_rules_line,
                     )
                 )
+
+        relative_file = os.path.relpath(filename, source)
         lines_elem = ''.join(lines)
+
         classes.append(
             CLASS_TEMPLATE.format(
                 filename=relative_file,
@@ -216,6 +213,18 @@ def create_rule_map_by_file(rule_map: Mapping[str, tuple[str, int, int]]) -> dic
         rule_map_by_file[path][rule_id] = (line, pos)
 
     return rule_map_by_file
+
+
+def create_rule_map_by_line(rule_map_file: Mapping[str, tuple[int, int]]) -> dict[int, list[str]]:
+    rule_map_by_line: dict[int, list[str]] = {}
+
+    for rule_id, (line, _pos) in rule_map_file.items():
+        if not line in rule_map_by_line:
+            rule_map_by_line[line] = [rule_id]
+        else:
+            rule_map_by_line[line].append(rule_id)
+
+    return rule_map_by_line
 
 
 def count_lines_global(rule_map: dict[str, tuple[str, int, int]]) -> int:
