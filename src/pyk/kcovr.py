@@ -7,15 +7,10 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterable, Mapping
 
 
 def main() -> None:
-    xml = render_coverage_xml()
-    print(xml)
-
-
-def render_coverage_xml() -> str:
     if len(sys.argv) < 4:
         print('usage: ' + sys.argv[0] + ' <kompiled-dir>... -- <files>...')
         exit(1)
@@ -28,6 +23,11 @@ def render_coverage_xml() -> str:
 
     kompiled_dirs, files = split_at_dashes(sys.argv[1:])
 
+    xml = render_coverage_xml(kompiled_dirs, files)
+    print(xml)
+
+
+def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> str:
     all_rules: set[str] = set()
     cover_map: dict[str, int] = {}
 
