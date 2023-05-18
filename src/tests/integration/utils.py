@@ -77,12 +77,6 @@ class KPrintTest(KompiledTest):
         self._update_symbol_table(kprint.symbol_table)
         return kprint
 
-    @pytest.fixture
-    def kprint_with_labels(self, definition_dir: Path, tmp_path_factory: TempPathFactory) -> KPrint:
-        kprint = KPrint(definition_dir, use_directory=tmp_path_factory.mktemp('kprint'), nonterm_labels=True)
-        self._update_symbol_table(kprint.symbol_table)
-        return kprint
-
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         pass

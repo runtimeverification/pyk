@@ -200,7 +200,7 @@ class KPrint:
         use_directory: Path | None = None,
         bug_report: BugReport | None = None,
         extra_unparsing_modules: Iterable[KFlatModule] = (),
-        nonterm_labels: bool = False,
+        nonterm_labels: bool = True,
     ) -> None:
         self.definition_dir = definition_dir
 
@@ -366,15 +366,19 @@ def pretty_print_kast(kast: KAst, symbol_table: SymbolTable) -> str:
     return PrettyPrinter(symbol_table).print(kast)
 
 
-def unparser_for_production(prod: KProduction, nonterm_labels: bool = False) -> Callable[..., str]:
+def unparser_for_production(prod: KProduction, nonterm_labels: bool = True) -> Callable[..., str]:
     def _unparser(*args: Any) -> str:
         index = 0
         result = []
+        num_nonterm = len([item for item in prod.items if type(item) is KNonTerminal])
+        num_named_nonterm = len([item for item in prod.items if type(item) is KNonTerminal and item.name != None])
         for item in prod.items:
             if type(item) is KTerminal:
                 result.append(item.value)
             elif type(item) is KNonTerminal and index < len(args):
-                if item.name != None and nonterm_labels:
+                if index == 0 and num_nonterm == num_named_nonterm and num_nonterm > 0:
+                    result.append('...')
+                if num_nonterm == num_named_nonterm and num_nonterm > 0:
                     result.append(f'{item.name}:')
                 result.append(args[index])
                 index += 1
@@ -387,7 +391,7 @@ def build_symbol_table(
     definition: KDefinition,
     extra_modules: Iterable[KFlatModule] = (),
     opinionated: bool = False,
-    nonterm_labels: bool = False,
+    nonterm_labels: bool = True,
 ) -> SymbolTable:
     """Build the unparsing symbol table given a JSON encoded definition.
 
