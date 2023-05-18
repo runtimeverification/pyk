@@ -1,4 +1,4 @@
-module ALIASES
+module UNPARSING
     imports BOOL
     imports INT
 
@@ -15,5 +15,6 @@ module ALIASES
     syntax Int ::= labeled(label1: Int, label2: Int) [function, klabel(labeled), symbol]
                  | someLabeled(label1: Int, Int)     [function, klabel(some-labeled), symbol]
                  | noneLabeled(Int, Int)             [function, klabel(none-labeled), symbol]
+                 | nonNonTerms()                     [function, klabel(no-nonterms), symbol]
 
 endmodule
