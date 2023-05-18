@@ -28,27 +28,9 @@ def main() -> None:
 
 
 def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> str:
-    cover_map: dict[str, int] = {}
-
-    def add_cover(rule: str) -> None:
-        rule = rule.strip()
-        if not rule in cover_map:
-            cover_map[rule] = 0
-        cover_map[rule] += 1
-
-    for dir in kompiled_dirs:
-        filename = dir + '/coverage.txt'
-        with open(filename) as f:
-            for line in f:
-                add_cover(line)
-        for filename in glob.glob(dir + '/*_coverage.txt'):
-            with open(filename) as f:
-                for line in f:
-                    add_cover(line)
-
     sources = [os.path.abspath(path) for path in files]
-
     rule_map = create_rule_map(kompiled_dirs)
+    cover_map = create_cover_map(kompiled_dirs)
 
     all_lines: set[tuple[str, str]] = set()
     for _, value in rule_map.items():
@@ -202,6 +184,28 @@ def create_rule_map(kompiled_dirs: Iterable[str]) -> dict[str, tuple[str, str, s
 
     assert len(all_rules) == len(rule_map)
     return rule_map
+
+
+def create_cover_map(kompiled_dirs: Iterable[str]) -> dict[str, int]:
+    cover_map: dict[str, int] = {}
+
+    def add_cover(rule: str) -> None:
+        rule = rule.strip()
+        if not rule in cover_map:
+            cover_map[rule] = 0
+        cover_map[rule] += 1
+
+    for kompiled_dir in kompiled_dirs:
+        filename = kompiled_dir + '/coverage.txt'
+        with open(filename) as f:
+            for line in f:
+                add_cover(line)
+        for filename in glob.glob(kompiled_dir + '/*_coverage.txt'):
+            with open(filename) as f:
+                for line in f:
+                    add_cover(line)
+
+    return cover_map
 
 
 if __name__ == '__main__':
