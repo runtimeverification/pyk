@@ -111,16 +111,12 @@ def render_classes(
         rule_map_file = rule_map_by_file[filename]
         cover_map_file = {rule: cnt for rule, cnt in cover_map.items() if rule in rule_map_file}
 
-        all_lines = set()
-        for _, (line, pos) in rule_map_file.items():
-            all_lines.add((line, pos))
-
         num_rules_covered_file = count_rules_covered(cover_map_file)
         num_rules_file = len(rule_map_file)
         rule_rate_file = float(num_rules_covered_file) / num_rules_file
 
         num_lines_covered_file = count_lines_covered(rule_map, cover_map_file)
-        num_lines_file = len(all_lines)
+        num_lines_file = count_lines_file(rule_map_file)
         line_rate_file = float(num_lines_covered_file) / num_lines_file
 
         lines = []
@@ -227,7 +223,11 @@ def create_rule_map_by_line(rule_map_file: Mapping[str, tuple[int, int]]) -> dic
     return rule_map_by_line
 
 
-def count_lines_global(rule_map: dict[str, tuple[str, int, int]]) -> int:
+def count_lines_file(rule_map_file: Mapping[str, tuple[int, int]]) -> int:
+    return len({(line, pos) for _, (line, pos) in rule_map_file.items()})
+
+
+def count_lines_global(rule_map: Mapping[str, tuple[str, int, int]]) -> int:
     return len({(src, line) for src, line, _pos in rule_map.values()})
 
 
