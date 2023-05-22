@@ -343,7 +343,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         return new_node.id
 
     def section_edge(
-        self, cfg: KCFG, source_id: NodeIdLike, target_id: NodeIdLike, logs: dict[int, tuple[LogEntry, ...]], sections: int = 2
+        self,
+        cfg: KCFG,
+        source_id: NodeIdLike,
+        target_id: NodeIdLike,
+        logs: dict[int, tuple[LogEntry, ...]],
+        sections: int = 2,
     ) -> tuple[int, ...]:
         if sections <= 1:
             raise ValueError(f'Cannot section an edge less than twice {self.id}: {sections}')

@@ -254,7 +254,9 @@ class KCFGShow:
         return (
             line
             for _, seg_lines in self.pretty_segments(
-                kcfg, minimize=minimize, node_printer=node_printer,
+                kcfg,
+                minimize=minimize,
+                node_printer=node_printer,
             )
             for line in seg_lines
         )

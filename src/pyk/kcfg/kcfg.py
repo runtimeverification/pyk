@@ -328,9 +328,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         for split_dict in dct.get('splits', {}).values():
             source_id = split_dict['source']
-            targets = [
-                (target_id, CSubst.from_dict(csubst)) for target_id, csubst in split_dict['targets'].items()
-            ]
+            targets = [(target_id, CSubst.from_dict(csubst)) for target_id, csubst in split_dict['targets'].items()]
             cfg.create_split(source_id, targets)
 
         for ndbranch_dict in dct.get('ndbranches', {}).values():
@@ -498,7 +496,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return new_node.id
 
     def successors(
-        self, source_id: NodeIdLike, edges: bool = True, covers: bool = True, splits: bool = True, ndbranches: bool = True
+        self,
+        source_id: NodeIdLike,
+        edges: bool = True,
+        covers: bool = True,
+        splits: bool = True,
+        ndbranches: bool = True,
     ) -> list[Successor]:
         out_edges: Iterable[KCFG.Successor] = self.edges(source_id=source_id) if edges else []
         out_covers: Iterable[KCFG.Successor] = self.covers(source_id=source_id) if covers else []
@@ -507,7 +510,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return list(out_edges) + list(out_covers) + list(out_splits) + list(out_ndbranches)
 
     def predecessors(
-        self, target_id: NodeIdLike, edges: bool = True, covers: bool = True, splits: bool = True, ndbranches: bool = True
+        self,
+        target_id: NodeIdLike,
+        edges: bool = True,
+        covers: bool = True,
+        splits: bool = True,
+        ndbranches: bool = True,
     ) -> list[Successor]:
         in_edges: Iterable[KCFG.Successor] = self.edges(target_id=target_id) if edges else []
         in_covers: Iterable[KCFG.Successor] = self.covers(target_id=target_id) if covers else []
@@ -819,7 +827,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             self.remove_node(node.id)
         return [node.id for node in nodes]
 
-    def shortest_path_between(self, source_node_id: NodeIdLike, target_node_id: NodeIdLike) -> tuple[Successor, ...] | None:
+    def shortest_path_between(
+        self, source_node_id: NodeIdLike, target_node_id: NodeIdLike
+    ) -> tuple[Successor, ...] | None:
         paths = self.paths_between(source_node_id, target_node_id)
         if len(paths) == 0:
             return None
@@ -901,7 +911,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         return paths
 
-    def reachable_nodes(self, source_id: NodeIdLike, *, reverse: bool = False, traverse_covers: bool = False) -> set[Node]:
+    def reachable_nodes(
+        self, source_id: NodeIdLike, *, reverse: bool = False, traverse_covers: bool = False
+    ) -> set[Node]:
         visited: set[KCFG.Node] = set()
         worklist: list[KCFG.Node] = [self.node(source_id)]
 
