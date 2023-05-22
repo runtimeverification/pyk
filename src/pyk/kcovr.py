@@ -48,14 +48,14 @@ LINE_TEMPLATE_BRANCH: Final = """
 
 
 def main() -> None:
-    definition_dirs, files = parse_args()
-    xml = render_coverage_xml(definition_dirs, files)
+    definition_dirs, source_files = parse_args()
+    xml = render_coverage_xml(definition_dirs, source_files)
     print(xml)
 
 
 def parse_args() -> tuple[list[str], list[str]]:
     if len(sys.argv) < 4:
-        print('usage: ' + sys.argv[0] + ' <definition-dir>... -- <files>...')
+        print('usage: ' + sys.argv[0] + ' <definition-dir>... -- <source-file>...')
         exit(1)
 
     def split_at_dashes(xs: list[str]) -> tuple[list[str], list[str]]:
@@ -64,14 +64,14 @@ def parse_args() -> tuple[list[str], list[str]]:
                 return xs[:i], xs[i + 1 :]
         return xs, []
 
-    definition_dirs, files = split_at_dashes(sys.argv[1:])
-    return definition_dirs, files
+    definition_dirs, source_files = split_at_dashes(sys.argv[1:])
+    return definition_dirs, source_files
 
 
-def render_coverage_xml(definition_dirs: Iterable[str], files: Iterable[str]) -> str:
+def render_coverage_xml(definition_dirs: Iterable[str], source_files: Iterable[str]) -> str:
     rule_map = create_rule_map(definition_dirs)
     cover_map = create_cover_map(definition_dirs)
-    sources = [os.path.abspath(path) for path in files]
+    sources = [os.path.abspath(path) for path in source_files]
     source = os.path.dirname(os.path.commonprefix(sources))
 
     classes = render_classes(rule_map, cover_map, sources, source)
