@@ -291,13 +291,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> KCFG:
         cfg = KCFG()
-        cfg._next_id = dct['next']
 
+        max_id = 0
         for node_dict in dct.get('nodes') or []:
             node_id = node_dict['id']
+            max_id = max(max_id, node_id)
             cterm = CTerm.from_dict(node_dict['cterm'])
             node = KCFG.Node(node_id, cterm)
             cfg.add_node(node)
+
+        cfg._next_id = dct.get('next', max_id + 1)
 
         for edge_dict in dct.get('edges') or []:
             source_id = edge_dict['source']
