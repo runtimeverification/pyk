@@ -48,6 +48,12 @@ LINE_TEMPLATE_BRANCH: Final = """
 
 
 def main() -> None:
+    kompiled_dirs, files = parse_args()
+    xml = render_coverage_xml(kompiled_dirs, files)
+    print(xml)
+
+
+def parse_args() -> tuple[list[str], list[str]]:
     if len(sys.argv) < 4:
         print('usage: ' + sys.argv[0] + ' <kompiled-dir>... -- <files>...')
         exit(1)
@@ -59,9 +65,7 @@ def main() -> None:
         return xs, []
 
     kompiled_dirs, files = split_at_dashes(sys.argv[1:])
-
-    xml = render_coverage_xml(kompiled_dirs, files)
-    print(xml)
+    return kompiled_dirs, files
 
 
 def render_coverage_xml(kompiled_dirs: Iterable[str], files: Iterable[str]) -> str:
