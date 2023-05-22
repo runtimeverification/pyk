@@ -60,13 +60,13 @@ def parse_args() -> tuple[tuple[Path, ...], tuple[Path, ...]]:
         print('usage: ' + sys.argv[0] + ' <definition-dir>... -- <source-file>...')
         exit(1)
 
-    def split_at_dashes(xs: list[str]) -> tuple[list[str], list[str]]:
+    def split_at_sep(xs: list[str]) -> tuple[list[str], list[str]]:
         for i, x in enumerate(xs):
-            if x == '--':
+            if x == '++':
                 return xs[:i], xs[i + 1 :]
         return xs, []
 
-    definition_strs, source_strs = split_at_dashes(sys.argv[1:])
+    definition_strs, source_strs = split_at_sep(sys.argv[1:])
     definition_dirs = tuple(dir_path(s).resolve() for s in definition_strs)
     source_files = tuple(file_path(s).resolve() for s in source_strs)
 
