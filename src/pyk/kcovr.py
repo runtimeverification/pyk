@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-import glob
 import os
 import sys
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from .cli_utils import dir_path, file_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 TEMPLATE: Final = """
 <coverage line-rate="{line_rate}" branch-rate="{rule_rate}" version="1.9" timestamp="{timestamp}">
   <sources>
-    <source>{source}</source>
+    <source>{source_dir}</source>
   </sources>
   <packages>
     <package name="" line-rate="{line_rate}" branch-rate="{rule_rate}" complexity="{num_rules}.0">
@@ -53,7 +55,7 @@ def main() -> None:
     print(xml)
 
 
-def parse_args() -> tuple[list[str], list[str]]:
+def parse_args() -> tuple[tuple[Path, ...], tuple[Path, ...]]:
     if len(sys.argv) < 4:
         print('usage: ' + sys.argv[0] + ' <definition-dir>... -- <source-file>...')
         exit(1)
@@ -64,17 +66,19 @@ def parse_args() -> tuple[list[str], list[str]]:
                 return xs[:i], xs[i + 1 :]
         return xs, []
 
-    definition_dirs, source_files = split_at_dashes(sys.argv[1:])
+    definition_strs, source_strs = split_at_dashes(sys.argv[1:])
+    definition_dirs = tuple(dir_path(s).resolve() for s in definition_strs)
+    source_files = tuple(file_path(s).resolve() for s in source_strs)
+
     return definition_dirs, source_files
 
 
-def render_coverage_xml(definition_dirs: Iterable[str], source_files: Iterable[str]) -> str:
+def render_coverage_xml(definition_dirs: Iterable[Path], source_files: Iterable[Path]) -> str:
     rule_map = create_rule_map(definition_dirs)
     cover_map = create_cover_map(definition_dirs)
-    sources = [os.path.abspath(path) for path in source_files]
-    source = os.path.dirname(os.path.commonprefix(sources))
+    source_dir = Path(os.path.commonprefix([str(source_file) for source_file in source_files]))
 
-    classes = render_classes(rule_map, cover_map, sources, source)
+    classes = render_classes(rule_map, cover_map, source_files, source_dir)
     classes_elem = ''.join(classes)
 
     num_rules_covered_global = count_rules_covered(cover_map)
@@ -92,7 +96,7 @@ def render_coverage_xml(definition_dirs: Iterable[str], source_files: Iterable[s
         rule_rate=rule_rate_global,
         timestamp=timestamp,
         num_rules=num_rules_global,
-        source=source,
+        source_dir=source_dir,
         classes_elem=classes_elem,
     )
 
@@ -102,17 +106,18 @@ def render_coverage_xml(definition_dirs: Iterable[str], source_files: Iterable[s
 def render_classes(
     rule_map: Mapping[str, tuple[str, int, int]],
     cover_map: Mapping[str, int],
-    sources: Iterable[str],
-    source: str,
+    source_files: Iterable[Path],
+    source_dir: Path,
 ) -> list[str]:
     classes = []
 
     rule_map_by_file = create_rule_map_by_file(rule_map)
-    for filename in sources:
-        if not filename in rule_map_by_file:
+    for source_file in source_files:
+        source_file_name = str(source_file)
+        if source_file_name not in rule_map_by_file:
             continue
 
-        rule_map_file = rule_map_by_file[filename]
+        rule_map_file = rule_map_by_file[source_file_name]
         cover_map_file = {rule: cnt for rule, cnt in cover_map.items() if rule in rule_map_file}
 
         num_rules_covered_file = count_rules_covered(cover_map_file)
@@ -126,7 +131,7 @@ def render_classes(
         lines = render_lines(rule_map_file, cover_map_file)
         lines_elem = ''.join(lines)
 
-        relative_file = os.path.relpath(filename, source)
+        relative_file = source_file.relative_to(source_dir)
 
         classes.append(
             CLASS_TEMPLATE.format(
@@ -170,12 +175,11 @@ def render_lines(
     return lines
 
 
-def create_rule_map(definition_dirs: Iterable[str]) -> dict[str, tuple[str, int, int]]:
+def create_rule_map(definition_dirs: Iterable[Path]) -> dict[str, tuple[str, int, int]]:
     all_rules: set[str] = set()
 
     for definition_dir in definition_dirs:
-        filename = definition_dir + '/allRules.txt'
-        with open(filename) as f:
+        with (definition_dir / 'allRules.txt').open() as f:
             all_rules.update(line.strip() for line in f.readlines())
 
     rule_map: dict[str, tuple[str, int, int]] = {}
@@ -190,7 +194,7 @@ def create_rule_map(definition_dirs: Iterable[str]) -> dict[str, tuple[str, int,
     return rule_map
 
 
-def create_cover_map(definition_dirs: Iterable[str]) -> dict[str, int]:
+def create_cover_map(definition_dirs: Iterable[Path]) -> dict[str, int]:
     cover_map: dict[str, int] = {}
 
     def add_cover(rule_id: str) -> None:
@@ -199,13 +203,13 @@ def create_cover_map(definition_dirs: Iterable[str]) -> dict[str, int]:
         cover_map[rule_id] += 1
 
     for definition_dir in definition_dirs:
-        filename = definition_dir + '/coverage.txt'
-        with open(filename) as f:
+        with (definition_dir / 'coverage.txt').open() as f:
             for line in f:
                 rule_id = line.strip()
                 add_cover(rule_id)
-        for filename in glob.glob(definition_dir + '/*_coverage.txt'):
-            with open(filename) as f:
+
+        for path in definition_dir.glob('*_coverage.txt'):
+            with path.open() as f:
                 for line in f:
                     rule_id = line.strip()
                     add_cover(rule_id)
