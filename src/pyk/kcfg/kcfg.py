@@ -275,6 +275,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         aliases = dict(sorted(self._aliases.items()))
 
         res = {
+            'next': self._next_id,
             'nodes': nodes,
             'edges': edges,
             'covers': covers,
@@ -290,57 +291,48 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> KCFG:
         cfg = KCFG()
-
-        nodes: dict[int, int] = {}
-
-        def resolve(node_id: int) -> int:
-            if node_id not in nodes:
-                raise ValueError(f'Undeclared node: {node_id}')
-            return nodes[node_id]
+        cfg._next_id = dct['next']
 
         for node_dict in dct.get('nodes') or []:
+            node_id = node_dict['id']
             cterm = CTerm.from_dict(node_dict['cterm'])
-            node = cfg.create_node(cterm)
-
-            node_key = node_dict['id']
-            if node_key in nodes:
-                raise ValueError(f'Multiple declarations of node: {node_key}')
-            nodes[node_key] = node.id
+            node = KCFG.Node(node_id, cterm)
+            cfg.add_node(node)
 
         for edge_dict in dct.get('edges') or []:
-            source_id = resolve(edge_dict['source'])
-            target_id = resolve(edge_dict['target'])
+            source_id = edge_dict['source']
+            target_id = edge_dict['target']
             depth = edge_dict['depth']
             cfg.create_edge(source_id, target_id, depth)
 
         for cover_dict in dct.get('covers') or []:
-            source_id = resolve(cover_dict['source'])
-            target_id = resolve(cover_dict['target'])
+            source_id = cover_dict['source']
+            target_id = cover_dict['target']
             csubst = CSubst.from_dict(cover_dict['csubst'])
             cfg.create_cover(source_id, target_id, csubst=csubst)
 
         for init_id in dct.get('init') or []:
-            cfg.add_init(resolve(init_id))
+            cfg.add_init(init_id)
 
         for target_id in dct.get('target') or []:
-            cfg.add_target(resolve(target_id))
+            cfg.add_target(target_id)
 
         for expanded_id in dct.get('expanded') or []:
-            cfg.add_expanded(resolve(expanded_id))
+            cfg.add_expanded(expanded_id)
 
-        for alias, id in dct.get('aliases', {}).items():
-            cfg.add_alias(alias=alias, node_id=resolve(id))
+        for alias, node_id in dct.get('aliases', {}).items():
+            cfg.add_alias(alias=alias, node_id=node_id)
 
         for split_dict in dct.get('splits', {}).values():
-            source_id = resolve(split_dict['source'])
+            source_id = split_dict['source']
             targets = [
-                (resolve(target_id), CSubst.from_dict(csubst)) for target_id, csubst in split_dict['targets'].items()
+                (target_id, CSubst.from_dict(csubst)) for target_id, csubst in split_dict['targets'].items()
             ]
             cfg.create_split(source_id, targets)
 
         for ndbranch_dict in dct.get('ndbranches', {}).values():
-            source_id = resolve(ndbranch_dict['source'])
-            nd_targets = [resolve(target_id) for target_id in ndbranch_dict['targets']]
+            source_id = ndbranch_dict['source']
+            nd_targets = ndbranch_dict['targets']
             cfg.create_ndbranch(source_id, nd_targets)
 
         return cfg
@@ -422,6 +414,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def contains_node(self, node: Node) -> bool:
         return bool(self.get_node(node.id))
+
+    def add_node(self, node: Node) -> None:
+        if node.id in self._nodes:
+            raise ValueError(f'Node with id already exists: {node.id}')
+        self._nodes[node.id] = node
 
     def create_node(self, cterm: CTerm) -> Node:
         term = cterm.kast
