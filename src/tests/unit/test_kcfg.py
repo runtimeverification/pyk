@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Any
 
+    from pyk.cterm import CSubst
     from pyk.kast import KInner
 
 
@@ -84,25 +85,36 @@ def cover_dicts(*edges: tuple[int, int]) -> list[dict[str, Any]]:
     return covers
 
 
-def split_dicts(*edges: tuple[int, Iterable[tuple[int, KInner]]]) -> dict[int, Any]:
-    splits = {}
-    for s, ts in edges:
-        targets = {}
-        for t, constraint in ts:
-            csubst = term(s).match_with_constraint(term(t))
-            assert csubst is not None
-            csubst = csubst.add_constraint(constraint)
-            targets[t] = csubst.to_dict()
-        splits[s] = {'source': s, 'targets': targets}
-    return splits
+def split_dicts(*edges: tuple[int, Iterable[tuple[int, KInner]]]) -> list[dict[str, Any]]:
+    def to_csubst(source_id: int, target_id: int, constraint: KInner) -> CSubst:
+        csubst = term(source_id).match_with_constraint(term(target_id))
+        assert csubst is not None
+        csubst = csubst.add_constraint(constraint)
+        return csubst
+
+    return [
+        {
+            'source': source_id,
+            'targets': [
+                {
+                    'target': target_id,
+                    'csubst': to_csubst(source_id, target_id, constraint).to_dict(),
+                }
+                for target_id, constraint in targets
+            ],
+        }
+        for source_id, targets in edges
+    ]
 
 
-def ndbranch_dicts(*edges: tuple[int, Iterable[tuple[int, bool]]]) -> dict[int, Any]:
-    ndbranches = {}
-    for s, ts in edges:
-        target_ids = [t for t, _ in ts]
-        ndbranches[s] = {'source': s, 'targets': target_ids}
-    return ndbranches
+def ndbranch_dicts(*edges: tuple[int, Iterable[tuple[int, bool]]]) -> list[dict[str, Any]]:
+    return [
+        {
+            'source': source_id,
+            'targets': [target_id for target_id, _ in target_ids],
+        }
+        for source_id, target_ids in edges
+    ]
 
 
 def test_from_dict_single_node() -> None:
@@ -260,6 +272,7 @@ def test_insert_simple_edge() -> None:
 
 def test_get_successors() -> None:
     d = {
+        'next': 19,
         'nodes': node_dicts(18),
         'edges': edge_dicts((11, 12)),
         'splits': split_dicts((12, [(13, mlTop()), (14, mlTop())])),
@@ -279,6 +292,7 @@ def test_get_successors() -> None:
     assert covers == {cover(14, 11)}
     assert splits == [split(12, [13, 14])]
     assert ndbranches == {ndbranch(13, [16, 17])}
+    assert cfg.to_dict() == d
 
 
 def test_get_predecessors() -> None:

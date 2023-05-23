@@ -127,7 +127,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def to_dict(self) -> dict[str, Any]:
             return {
                 'source': self.source.id,
-                'targets': {target.id: csubst.to_dict() for target, csubst in self._targets},
+                'targets': [
+                    {
+                        'target': target.id,
+                        'csubst': csubst.to_dict(),
+                    }
+                    for target, csubst in self._targets
+                ],
             }
 
         def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
@@ -266,8 +272,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         nodes = [node.to_dict() for node in self.nodes]
         edges = [edge.to_dict() for edge in self.edges()]
         covers = [cover.to_dict() for cover in self.covers()]
-        splits = dict(sorted((k, s.to_dict()) for k, s in self._splits.items()))
-        ndbranches = dict(sorted((k, b.to_dict()) for k, b in self._ndbranches.items()))
+        splits = [split.to_dict() for split in self.splits()]
+        ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
         init = sorted(self._init)
         target = sorted(self._target)
@@ -326,15 +332,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for alias, node_id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=node_id)
 
-        for split_dict in dct.get('splits', {}).values():
+        for split_dict in dct.get('splits') or []:
             source_id = split_dict['source']
-            targets = [(target_id, CSubst.from_dict(csubst)) for target_id, csubst in split_dict['targets'].items()]
+            targets = [
+                (target_dict['target'], CSubst.from_dict(target_dict['csubst']))
+                for target_dict in split_dict['targets']
+            ]
             cfg.create_split(source_id, targets)
 
-        for ndbranch_dict in dct.get('ndbranches', {}).values():
+        for ndbranch_dict in dct.get('ndbranches') or []:
             source_id = ndbranch_dict['source']
-            nd_targets = ndbranch_dict['targets']
-            cfg.create_ndbranch(source_id, nd_targets)
+            target_ids = ndbranch_dict['targets']
+            cfg.create_ndbranch(source_id, target_ids)
 
         return cfg
 
