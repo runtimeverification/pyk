@@ -17,6 +17,7 @@ from ..kast.manip import (
     rename_generated_vars,
 )
 from ..prelude.ml import mlAnd, mlTop
+from ..utils import single
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -368,14 +369,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return node_strs
 
     def get_unique_init(self) -> Node:
-        if len(self.init) > 1:
-            raise ValueError(f'Multiple init nodes found: {[n.id for n in self.init]}')
-        return self.init[0]
+        return single(self.init)
 
     def get_unique_target(self) -> Node:
-        if len(self.target) > 1:
-            raise ValueError(f'Multiple target nodes found: {[n.id for n in self.target]}')
-        return self.target[0]
+        return single(self.target)
 
     def get_first_frontier(self) -> Node:
         if len(self.frontier) == 0:
