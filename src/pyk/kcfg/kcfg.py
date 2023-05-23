@@ -4,6 +4,7 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
+from itertools import count
 from threading import RLock
 from typing import TYPE_CHECKING, List, Union, cast, final
 
@@ -20,7 +21,7 @@ from ..prelude.ml import mlAnd, mlTop
 from ..utils import single
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping
+    from collections.abc import Callable, Iterable, Iterator, Mapping
     from types import TracebackType
     from typing import Any
 
@@ -163,7 +164,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def with_single_target(self, target: KCFG.Node) -> KCFG.NDBranch:
             return KCFG.NDBranch(self.source, (target,))
 
-    _next_id: int
+    _node_id: Iterator[int]
     _nodes: dict[int, Node]
     _edges: dict[int, dict[int, Edge]]
     _covers: dict[int, dict[int, Cover]]
@@ -176,7 +177,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _lock: RLock
 
     def __init__(self) -> None:
-        self._next_id = 1
+        self._node_id = count(1)
         self._nodes = {}
         self._edges = {}
         self._covers = {}
@@ -282,7 +283,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         aliases = dict(sorted(self._aliases.items()))
 
         res = {
-            'next': self._next_id,
+            'next': next(self._node_id),
             'nodes': nodes,
             'edges': edges,
             'covers': covers,
@@ -307,7 +308,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             node = KCFG.Node(node_id, cterm)
             cfg.add_node(node)
 
-        cfg._next_id = dct.get('next', max_id + 1)
+        cfg._node_id = count(dct.get('next', max_id + 1))
 
         for edge_dict in dct.get('edges') or []:
             source_id = edge_dict['source']
@@ -431,8 +432,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         term = cterm.kast
         term = remove_source_attributes(term)
         cterm = CTerm.from_kast(term)
-        node = KCFG.Node(self._next_id, cterm)
-        self._next_id += 1
+        node = KCFG.Node(next(self._node_id), cterm)
         self._nodes[node.id] = node
         return node
 
