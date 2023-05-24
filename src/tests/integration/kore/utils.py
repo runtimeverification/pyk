@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kore.rpc import KoreClient, KoreServer
-
-from ..utils import KompiledTest
+from pyk.testing.ktool import KompiledTest
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

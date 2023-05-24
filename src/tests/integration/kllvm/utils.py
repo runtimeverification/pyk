@@ -6,8 +6,7 @@ import pytest
 
 from pyk.kllvm.compiler import compile_runtime
 from pyk.kllvm.importer import import_runtime
-
-from ..utils import KompiledTest
+from pyk.testing.ktool import KompiledTest
 
 if TYPE_CHECKING:
     from pathlib import Path
