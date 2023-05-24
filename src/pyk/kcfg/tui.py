@@ -247,6 +247,8 @@ class KCFGViewer(App):
     _hidden_chunks: list[str]
     _selected_chunk: str | None
 
+    _buffer: list[str]
+
     def __init__(
         self,
         kcfg: KCFG,
@@ -320,22 +322,42 @@ class KCFGViewer(App):
         ('c', 'keystroke("constraint")', 'Toggle constraint.'),
         ('v', 'keystroke("custom")', 'Toggle custom.'),
         ('m', 'keystroke("minimize")', 'Toggle minimization.'),
+        ('ctrl+w', 'keystroke("change-window")', 'Change window'),
+        ('j', 'keystroke("down")', 'Go down'),
+        ('k', 'keystroke("up")', 'Go up'),
+        ('l', 'keystroke("right")', 'Go right'),
     ]
 
-    def action_keystroke(self, key: str) -> None:
-        if key == 'h':
-            if self._selected_chunk is not None and self._selected_chunk.startswith('node_'):
-                node_id = self._selected_chunk[5:]
-                self._hidden_chunks.append(self._selected_chunk)
-                self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
-                self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
-        elif key == 'H':
-            for hc in self._hidden_chunks:
-                self.query_one(f'#{hc}', GraphChunk).remove_class('hidden')
-            node_ids = [nid[5:] for nid in self._hidden_chunks]
-            self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
-            self._hidden_chunks = []
-        elif key in ['term', 'constraint', 'custom']:
-            self.query_one('#node-view', NodeView).toggle_view(key)
-        elif key in ['minimize']:
-            self.query_one('#node-view', NodeView).toggle_option(key)
+    async def action_keystroke(self, key: str) -> None:
+        if key in ['h', 'j', 'k', 'l']:
+          if self._buffer and self._buffer[-1] == 'change-window':
+              # chunk_id = ''
+              match key:
+                  case 'h':
+                      await self.emit(GraphChunk.Selected(self, 'constraint-view'))
+                  case 'j':
+                      await self.emit(GraphChunk.Selected(self, 'custom-view'))
+                  case 'k':
+                      await self.emit(GraphChunk.Selected(self, 'term-view'))
+                  case 'l':
+                      await self.emit(GraphChunk.Selected(self, 'info-view'))
+          elif key == 'h' and self._selected_chunk is not None and self._selected_chunk.startswith('node_'):
+                  node_id = self._selected_chunk[5:]
+                  self._hidden_chunks.append(self._selected_chunk)
+                  self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
+                  self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
+          self._buffer = list()
+        else:
+            self._buffer = list()
+            if key == 'H':
+                for hc in self._hidden_chunks:
+                    self.query_one(f'#{hc}', GraphChunk).remove_class('hidden')
+                node_ids = [nid[5:] for nid in self._hidden_chunks]
+                self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
+                self._hidden_chunks = []
+            elif key in ['term', 'constraint', 'custom']:
+                self.query_one('#node-view', NodeView).toggle_view(key)
+            elif key in ['minimize']:
+                self.query_one('#node-view', NodeView).toggle_option(key)
+            elif key == 'change-window':
+                self._buffer.append(key)
