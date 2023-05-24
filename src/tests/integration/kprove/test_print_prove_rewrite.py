@@ -6,7 +6,7 @@ from pyk.kast.inner import KApply, KRewrite, KVariable
 from pyk.kast.manip import push_down_rewrites
 from pyk.kast.outer import KClaim
 from pyk.prelude.ml import is_top
-from pyk.testing.ktool import KProveTest
+from pyk.testing import KProveTest
 
 from ..utils import K_FILES
 

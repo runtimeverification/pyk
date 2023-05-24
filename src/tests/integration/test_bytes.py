@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from pytest import FixtureRequest
 
     from pyk.kore.syntax import Pattern
-    from pyk.testing.ktool import Kompiler
+    from pyk.testing import Kompiler
 
 TEST_DATA: Final = (
     b'hello',

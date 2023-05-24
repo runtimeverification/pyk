@@ -9,7 +9,7 @@ from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
 from pyk.kcfg import KCFG
 from pyk.proof import APRProof, APRProver, ProofStatus
-from pyk.testing.ktool import KCFGExploreTest
+from pyk.testing import KCFGExploreTest
 
 from ..utils import K_FILES
 

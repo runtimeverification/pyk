@@ -13,7 +13,7 @@ from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
-from pyk.testing.ktool import KompiledTest
+from pyk.testing import KompiledTest
 from pyk.utils import single
 
 from ..utils import K_FILES

@@ -9,7 +9,7 @@ from pyk.konvert import kast_to_kore, kore_to_kast
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
 from pyk.prelude.kint import INT, intToken
-from pyk.testing.ktool import KompiledTest
+from pyk.testing import KompiledTest
 
 from ..utils import K_FILES
 

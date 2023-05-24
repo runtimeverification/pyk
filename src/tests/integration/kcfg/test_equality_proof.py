@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.proof import EqualityProof, EqualityProver, ProofStatus
-from pyk.testing.ktool import KCFGExploreTest
+from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
 from ..utils import K_FILES

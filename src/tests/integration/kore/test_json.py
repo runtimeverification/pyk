@@ -26,7 +26,7 @@ from pyk.kore.prelude import (
     string2json,
     string_dv,
 )
-from pyk.testing.ktool import KRunTest
+from pyk.testing import KRunTest
 from pyk.utils import chain
 
 from ..utils import K_FILES

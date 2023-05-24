@@ -10,7 +10,7 @@ from pyk.ktool.kprint import assoc_with_unit
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kbool import andBool
 from pyk.prelude.kint import INT, intToken, leInt, ltInt
-from pyk.testing.ktool import KPrintTest
+from pyk.testing import KPrintTest
 
 from .utils import K_FILES
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pyk.kllvm.load  # noqa: F401
 from pyk.kllvm.parser import Parser
-from pyk.testing.ktool import RuntimeTest
+from pyk.testing import RuntimeTest
 
 from ..utils import K_FILES
 

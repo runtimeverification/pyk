@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from .ktool import Kompiler
-from .profiler import Profiler
+from ._kompiler import Kompiler
+from ._profiler import Profiler
 
 if TYPE_CHECKING:
     from pathlib import Path

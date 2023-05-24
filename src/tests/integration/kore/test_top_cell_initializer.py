@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from pyk.kore.syntax import Pattern
-    from pyk.testing.ktool import Kompiler
+    from pyk.testing import Kompiler
 
 
 @pytest.fixture(scope='module')

@@ -9,7 +9,7 @@ from pyk.kast.manip import flatten_label
 from pyk.kore.prelude import int_dv
 from pyk.kore.syntax import App
 from pyk.prelude.kint import intToken
-from pyk.testing.ktool import KRunTest
+from pyk.testing import KRunTest
 
 from .utils import K_FILES
 

@@ -18,7 +18,7 @@ from pyk.kore.rpc import (
     TerminalResult,
 )
 from pyk.kore.syntax import And, Equals, EVar, Implies, Module, Top
-from pyk.testing.ktool import KoreClientTest
+from pyk.testing import KoreClientTest
 
 from ..utils import K_FILES
 

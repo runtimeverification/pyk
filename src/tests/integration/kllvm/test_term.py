@@ -6,7 +6,7 @@ import pytest
 
 import pyk.kllvm.load  # noqa: F401
 from pyk.kllvm.ast import CompositePattern
-from pyk.testing.ktool import RuntimeTest
+from pyk.testing import RuntimeTest
 
 from ..utils import K_FILES
 

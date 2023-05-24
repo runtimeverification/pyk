@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.__main__ import main
-from pyk.testing.ktool import KompiledTest
+from pyk.testing import KompiledTest
 
 from .utils import K_FILES
 

@@ -6,7 +6,7 @@ from pyk.kast.inner import KAtt, KToken
 from pyk.kast.outer import KClaim, KRule
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.ml import is_top
-from pyk.testing.ktool import KProveTest
+from pyk.testing import KProveTest
 
 from ..utils import K_FILES
 

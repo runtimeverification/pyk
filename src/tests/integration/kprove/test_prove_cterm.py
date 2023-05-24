@@ -7,7 +7,7 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KToken
 from pyk.kast.manip import get_cell
-from pyk.testing.ktool import KProveTest
+from pyk.testing import KProveTest
 
 from ..utils import K_FILES
 
