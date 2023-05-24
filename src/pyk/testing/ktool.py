@@ -6,6 +6,9 @@ import pytest
 
 from ..kast.outer import read_kast_definition
 from ..kcfg import KCFGExplore
+from ..kllvm.compiler import compile_runtime
+from ..kllvm.importer import import_runtime
+from ..kore.rpc import KoreClient, KoreServer
 from ..ktool.kompile import Kompile
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
@@ -14,6 +17,7 @@ from ..ktool.krun import KRun
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
+    from types import ModuleType
     from typing import Any, ClassVar
 
     from pytest import TempPathFactory
@@ -113,3 +117,27 @@ class KCFGExploreTest(KProveTest):
             bug_report=kprove._bug_report,
         ) as kcfg_explore:
             yield kcfg_explore
+
+
+class KoreClientTest(KompiledTest):
+    KOMPILE_BACKEND = 'haskell'
+
+    KORE_MODULE_NAME: ClassVar[str]
+    KORE_CLIENT_TIMEOUT: ClassVar = 1000
+
+    @pytest.fixture
+    def kore_client(self, definition_dir: Path) -> Iterator[KoreClient]:
+        server = KoreServer(definition_dir, self.KORE_MODULE_NAME)
+        client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT)
+        yield client
+        client.close()
+        server.close()
+
+
+class RuntimeTest(KompiledTest):
+    KOMPILE_BACKEND = 'llvm'
+
+    @pytest.fixture(scope='class')
+    def runtime(self, definition_dir: Path) -> ModuleType:
+        compile_runtime(definition_dir)
+        return import_runtime(definition_dir)
