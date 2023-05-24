@@ -9,8 +9,7 @@ from .utils import TEST_DATA_DIR
 
 if TYPE_CHECKING:
     from pyk.kast import KAst
-
-    from .utils import Profiler
+    from pyk.testing.profiler import Profiler
 
 
 def test_kast_json(profile: Profiler) -> None:
