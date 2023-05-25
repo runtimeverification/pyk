@@ -43,14 +43,16 @@ class GraphChunk(Static):
         self._node_text = '\n'.join(node_text)
         super().__init__(self._node_text, id=id, classes='cfg-node')
 
-    def on_enter(self) -> None:
-        self.styles.border_left = ('double', 'red')  # type: ignore
+    # TODO: manage style when hovering but not selected
+    # def on_enter(self) -> None:
+    #     self.styles.border_left = ('double', 'red')  # type: ignore
 
-    def on_leave(self) -> None:
-        self.styles.border_left = None  # type: ignore
+    # def on_leave(self) -> None:
+    #     self.styles.border_left = None  # type: ignore
 
     async def on_click(self, click: Click) -> None:
         await self.emit(GraphChunk.Selected(self, self.id or ''))
+        self.styles.border_left = ('double', 'red')  # type: ignore
         click.stop()
 
 
@@ -163,6 +165,11 @@ class NodeView(Widget):
         self._element = element
         self._update()
 
+    def _focus_style(self, element) -> None:
+        self.query_one('#node-view', NodeView).set_styles('border-left: double, red')
+        # self.styles.border_left = None  # type: ignore
+        self.styles.border_left = ('double', 'red')  # type: ignore
+
     def _update(self) -> None:
         def _boolify(c: KInner) -> KInner:
             if type(c) is KApply and c.label.name == '#Equals' and c.args[0] == TRUE:
@@ -182,8 +189,11 @@ class NodeView(Widget):
         custom_str = 'Custom'
 
         if self._element is not None:
+            # TODO update the graph node style and remove any other existing style
+
             if type(self._element) is KCFG.Node:
                 term_str, constraint_str = _cterm_text(self._element.cterm)
+                # self._focus_style(self._element)
 
             elif type(self._element) is KCFG.Edge:
                 config_source, *constraints_source = self._element.source.cterm
@@ -248,6 +258,9 @@ class KCFGViewer(App):
     _selected_chunk: str | None
 
     _buffer: list[str]
+    _node_ids: list[int]
+    _node_idx: dict[int, int]
+    _last_idx: int
 
     def __init__(
         self,
@@ -264,7 +277,26 @@ class KCFGViewer(App):
         self._custom_view = custom_view
         self._minimize = minimize
         self._hidden_chunks = []
-        self._selected_chunk = None
+        self._buffer = []
+        self._last_node_idx = 0
+        self._node_ids = list(kcfg._nodes.keys())
+        self._node_idx = {} # TODO: one-liner for filling this
+
+        for i in range(len(self._node_ids)):
+            v = self._node_ids[i]
+            self._node_idx[v] = i
+
+        try:
+            node_id = self._node_ids[0]
+            self._selected_chunk = 'node_' + str(node_id)
+            self._last_idx = self._node_idx[node_id]
+        except:
+            node_id = 0
+            self._selected_chunk = None
+            self._last_idx = 0
+
+        # self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id))
+        # TODO: update the first node to default to this one
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -281,6 +313,7 @@ class KCFGViewer(App):
             self._selected_chunk = message.chunk_id
             node, *_ = message.chunk_id[5:].split('_')
             node_id = int(node)
+            self._last_idx = self._node_idx[node_id]
             self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id))
 
         elif message.chunk_id.startswith('edge_'):
@@ -326,35 +359,69 @@ class KCFGViewer(App):
         ('j', 'keystroke("down")', 'Go down'),
         ('k', 'keystroke("up")', 'Go up'),
         ('l', 'keystroke("right")', 'Go right'),
+        ('g', 'keystroke("start")', 'Go to start'),
+        ('G', 'keystroke("end")', 'Go to end'),
+        # TODO: q for "quit"
     ]
 
     async def action_keystroke(self, key: str) -> None:
-        if key in ['h', 'j', 'k', 'l']:
-          if self._buffer and self._buffer[-1] == 'change-window':
-              # chunk_id = ''
-              match key:
-                  case 'h':
-                      await self.emit(GraphChunk.Selected(self, 'constraint-view'))
-                  case 'j':
-                      await self.emit(GraphChunk.Selected(self, 'custom-view'))
-                  case 'k':
-                      await self.emit(GraphChunk.Selected(self, 'term-view'))
-                  case 'l':
-                      await self.emit(GraphChunk.Selected(self, 'info-view'))
-          elif key == 'h' and self._selected_chunk is not None and self._selected_chunk.startswith('node_'):
-                  node_id = self._selected_chunk[5:]
-                  self._hidden_chunks.append(self._selected_chunk)
-                  self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
-                  self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
-          self._buffer = list()
+        if key in ['h', 'down', 'up', 'right', 'start', 'end']:
+            if self._buffer and self._buffer[-1] == 'change-window':
+                match key:
+                    case 'h':
+                        self.query_one('#node-view', NodeView).toggle_view('constraint')
+                    case 'down':
+                        self.query_one('#node-view', NodeView).toggle_view('term')
+                    case 'up':
+                        self.query_one('#node-view', NodeView).toggle_view('custom')
+                    case 'right':
+                        self.query_one('#node-view', NodeView).toggle_view('term')
+
+            elif self._selected_chunk is not None and self._selected_chunk.startswith('node_'):
+                match key:
+                    case 'h':
+                        node_id = self._selected_chunk[5:]
+                        self._last_idx = self._node_idx[int(node_id)]
+                        self._hidden_chunks.append(self._selected_chunk)
+                        self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
+                        self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
+                    case 'down':
+                        if self._last_idx < len(self._node_ids):
+                            idx = self._last_idx + 1
+                            node_id = self._node_ids[idx]
+                            self._last_idx = idx
+                            self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id))
+                    case 'up':
+                        if self._last_idx != 0:
+                            idx = self._last_idx - 1 # TODO no less than 0
+                            node_id = self._node_ids[idx]
+                            self._last_idx = idx
+                            self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id))
+                    case 'start':
+                        try:
+                            node_id = self._node_ids[0]
+                            self._last_idx = 0
+                            self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id))
+                        except:
+                            pass
+                    case 'end':
+                        try:
+                            node_id = self._node_ids[-1]
+                            self._last_idx = self._node_idx[node_id]
+                            self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id))
+                        except:
+                            pass
+
+
+            self._buffer = list()
         else:
             self._buffer = list()
             if key == 'H':
                 for hc in self._hidden_chunks:
                     self.query_one(f'#{hc}', GraphChunk).remove_class('hidden')
-                node_ids = [nid[5:] for nid in self._hidden_chunks]
-                self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
-                self._hidden_chunks = []
+                    node_ids = [nid[5:] for nid in self._hidden_chunks]
+                    self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
+                    self._hidden_chunks = []
             elif key in ['term', 'constraint', 'custom']:
                 self.query_one('#node-view', NodeView).toggle_view(key)
             elif key in ['minimize']:
