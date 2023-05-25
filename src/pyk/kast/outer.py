@@ -1155,9 +1155,15 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                     sort_dict: dict[KSort, KSort] = {}
                     for psort, asort in zip(prod.argument_sorts, map(self.sort, _k.args), strict=True):
                         if asort is None:
+                            _LOGGER.warning(
+                                f'Failed to add sort parameter, unable to determine sort for argument in production: {(prod, psort, asort)}'
+                            )
                             return _k
                         if psort in prod.params:
                             if psort in sort_dict and sort_dict[psort] != asort:
+                                _LOGGER.warning(
+                                    f'Failed to add sort parameter, sort mismatch between different occurances of sort parameter: {(prod, psort, sort_dict[psort], asort)}'
+                                )
                                 return _k
                             elif psort not in sort_dict:
                                 sort_dict[psort] = asort
