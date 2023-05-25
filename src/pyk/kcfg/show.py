@@ -327,14 +327,18 @@ class KCFGShow:
 
             def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
                 sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
-                init_cterm = CTerm(hide_cells(edge.source.cterm.config), ())
+                init_term = hide_cells(edge.source.cterm.config)
+                init_term = sort_ac_collections(self.kprint.definition, init_term)
+                init_cterm = CTerm(init_term, ())
                 for c in edge.source.cterm.constraints:
                     assert type(c) is KApply
                     if c.label.name == '#Ceil':
                         _LOGGER.warning(f'Ignoring Ceil condition: {c}')
                     else:
                         init_cterm.add_constraint(c)
-                target_cterm = CTerm(hide_cells(edge.target.cterm.config), ())
+                target_term = hide_cells(edge.target.cterm.config)
+                target_term = sort_ac_collections(self.kprint.definition, target_term)
+                target_cterm = CTerm(target_term, ())
                 for c in edge.source.cterm.constraints:
                     assert type(c) is KApply
                     if c.label.name == '#Ceil':
