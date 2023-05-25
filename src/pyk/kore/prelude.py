@@ -140,7 +140,7 @@ LBL_LIST: Final = SymbolId("Lbl'Unds'List'Unds'")
 LBL_LIST_ITEM: Final = SymbolId('LblListItem')
 
 
-def kore_list(*args: Pattern) -> Pattern:
+def list_pattern(*args: Pattern) -> Pattern:
     if not args:
         return STOP_LIST
     return LeftAssoc(App(LBL_LIST, args=(App(LBL_LIST_ITEM, args=(arg,)) for arg in args)))

@@ -18,7 +18,7 @@ from pyk.kore.match import (
     kore_set_of,
     kore_str,
 )
-from pyk.kore.prelude import dv, kore_list, map_pattern, set_pattern
+from pyk.kore.prelude import dv, list_pattern, map_pattern, set_pattern
 from pyk.kore.syntax import App
 
 if TYPE_CHECKING:
@@ -65,8 +65,8 @@ EXTRACT_TEST_DATA = (
     (a(b(), c()), args('b', 'c', 'c'), (b(), c(), c())),
     (a(b(), c()), args('b', 'c', 'd'), None),
     (INJ(a()), inj, a()),
-    (kore_list(), kore_list_of(kore_int), ()),
-    (kore_list(dv(0), dv(1), dv(2)), kore_list_of(kore_int), (0, 1, 2)),
+    (list_pattern(), kore_list_of(kore_int), ()),
+    (list_pattern(dv(0), dv(1), dv(2)), kore_list_of(kore_int), (0, 1, 2)),
     (set_pattern(), kore_set_of(kore_int), ()),
     (set_pattern(dv(0), dv(1), dv(2)), kore_set_of(kore_int), (0, 1, 2)),
     (set_pattern(), kore_set_of(kore_int), ()),
