@@ -279,36 +279,32 @@ class KCFGViewer(App):
         self._hidden_chunks = []
         self._buffer = []
 
-        # TODO: only take cut nodes
-
         self._nodes = []
         kcfg_show = KCFGShow(kprint)
         i = 0
+        self._node_ids = []
+        self._node_idx = {}
         for lseg_id, node_lines in kcfg_show.pretty_segments(
             self._kcfg, minimize=self._minimize, node_printer=self._node_printer
         ):
             self._nodes.append(GraphChunk(lseg_id, node_lines))
             try:
-                as_id = int(lseg_id)
-                self._node_ids.append(as_id)
-                self._node_idx[as_id] = i
-                i += 1
+                split = lseg_id.rsplit('_', 1)
+                (name, count) = (split[0], split[1])
+                if name == 'node':
+                    as_id = int(count)
+                    self._node_ids.append(as_id)
+                    self._node_idx[as_id] = i
+                    i += 1
             except:
                 pass
-
-        self._last_node_idx = 0
-        self._node_ids = list(kcfg._nodes.keys())
-        self._node_idx = {} # TODO: one-liner for filling this
-
-        for i in range(len(self._node_ids)):
-            v = self._node_ids[i]
-            self._node_idx[v] = i
 
         try:
             node_id = self._node_ids[0]
             self._selected_chunk = 'node_' + str(node_id)
             self._last_idx = self._node_idx[node_id]
         except:
+            # TODO return an exception ?
             node_id = 0
             self._selected_chunk = None
             self._last_idx = 0
@@ -322,6 +318,9 @@ class KCFGViewer(App):
             Vertical(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
         )
         yield Footer()
+
+    def on_mount(self) -> None:
+        self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
         if message.chunk_id.startswith('node_'):
@@ -407,7 +406,7 @@ class KCFGViewer(App):
                             idx = self._last_idx + 1
                             node_id = self._node_ids[idx]
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-                            self._selected_chunk = "node_" + str(node_id)
+                            self._selected_chunk = 'node_' + str(node_id)
                             self._last_idx = idx
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
                             self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
@@ -416,7 +415,7 @@ class KCFGViewer(App):
                             idx = self._last_idx - 1
                             node_id = self._node_ids[idx]
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-                            self._selected_chunk = "node_" + str(node_id)
+                            self._selected_chunk = 'node_' + str(node_id)
                             self._last_idx = idx
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
                             self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
@@ -425,7 +424,7 @@ class KCFGViewer(App):
             try:
                 node_id = self._node_ids[0]
                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-                self._selected_chunk = "node_" + str(node_id)
+                self._selected_chunk = 'node_' + str(node_id)
                 self._last_idx = 0
                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
                 self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
@@ -435,7 +434,7 @@ class KCFGViewer(App):
             try:
                 node_id = self._node_ids[-1]
                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-                self._selected_chunk = "node_" + str(node_id)
+                self._selected_chunk = 'node_' + str(node_id)
                 self._last_idx = self._node_idx[node_id]
                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
                 self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
