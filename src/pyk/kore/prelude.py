@@ -151,7 +151,7 @@ LBL_SET: Final = SymbolId("Lbl'Unds'Set'Unds'")
 LBL_SET_ITEM: Final = SymbolId('LblSetItem')
 
 
-def kore_set(*args: Pattern) -> Pattern:
+def set_pattern(*args: Pattern) -> Pattern:
     if not args:
         return STOP_SET
     return LeftAssoc(App(LBL_SET, args=(App(LBL_SET_ITEM, args=(arg,)) for arg in args)))
