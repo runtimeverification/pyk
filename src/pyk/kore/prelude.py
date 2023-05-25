@@ -119,7 +119,7 @@ def k_config_var(var: str) -> DV:
 
 def top_cell_initializer(config: Mapping[str, Pattern]) -> App:
     return init_generated_top_cell(
-        kore_map(
+        map_pattern(
             *(
                 (
                     inj(SORT_K_CONFIG_VAR, SORT_K_ITEM, k_config_var(key)),
@@ -162,7 +162,7 @@ LBL_MAP: Final = SymbolId("Lbl'Unds'Map'Unds'")
 LBL_MAP_ITEM: Final = SymbolId("Lbl'UndsPipe'-'-GT-Unds'")
 
 
-def kore_map(*args: tuple[Pattern, Pattern], cell: str | None = None) -> Pattern:
+def map_pattern(*args: tuple[Pattern, Pattern], cell: str | None = None) -> Pattern:
     if not args:
         return App(f"Lbl'Stop'{cell}Map") if cell else STOP_MAP
 
