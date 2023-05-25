@@ -14,7 +14,7 @@ from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kbool import BOOL, andBool, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlOr, mlTop
-from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
+from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -473,19 +473,16 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
 
 PROGRAM_EQUIVALENCE_DATA = (
     (
-      'double-add-vs-mul',
-      (
-        'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
-        '.Map',
-        mlTop()
-      ),
-      (
-        'int $n; $n = N:Int ; $n = 2 * $n ;',
-        '.Map',
-        mlTop()
-      )
+        'double-add-vs-mul',
+        (
+            'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
+            '.Map',
+            mlTop(),
+        ),
+        ('int $n; $n = N:Int ; $n = 2 * $n ;', '.Map', mlTop()),
     ),
 )
+
 
 def leaf_number(kcfg: KCFG) -> int:
     target_id = kcfg.get_unique_target().id
@@ -836,124 +833,113 @@ class TestImpProof(KCFGExploreTest):
         config_1: tuple[str, str, KInner],
         config_2: tuple[str, str, KInner],
     ) -> None:
-
         _, kore_client = kcfg_explore._kore_rpc
 
         def unreachable_target() -> CTerm:
-          # Q: How to create a proper unreachable configuration, something like #Bottom?
-          return self.config(kcfg_explore.kprint, *('int X:Id ; { }', '.Map'))
+            # Q: How to create a proper unreachable configuration, something like #Bottom?
+            return self.config(kcfg_explore.kprint, *('int X:Id ; { }', '.Map'))
 
-        def execute_to_completion(config : tuple[str, str, KInner]) -> list[KCFG.Node]:
-          # Parse given configurations into a term
-          config = self.config(kcfg_explore.kprint, *config)
+        def execute_to_completion(config: tuple[str, str, KInner]) -> list[KCFG.Node]:
+            # Parse given configurations into a term
+            configuration = self.config(kcfg_explore.kprint, *config)
 
-          # Create KCFG with its initial and target state
-          kcfg = KCFG()
-          init_state = kcfg.create_node(config)
-          target_state = kcfg.create_node(unreachable_target()) # Q: How could we not care about the target node?
-          kcfg.add_init(init_state.id)
-          kcfg.add_target(target_state.id)
+            # Create KCFG with its initial and target state
+            kcfg = KCFG()
+            init_state = kcfg.create_node(configuration)
+            target_state = kcfg.create_node(unreachable_target())  # Q: How could we not care about the target node?
+            kcfg.add_init(init_state.id)
+            kcfg.add_target(target_state.id)
 
-          # Initialise prover
-          proof = APRProof(f'prog_eq.conf', kcfg, {})
-          prover = APRProver(
-              proof,
-              is_terminal=TestImpProof._is_terminal,
-              extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
-          )
+            # Initialise prover
+            proof = APRProof('prog_eq.conf', kcfg, {})
+            prover = APRProver(
+                proof,
+                is_terminal=TestImpProof._is_terminal,
+                extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+            )
 
-          # Q: What is the correct way of saying - go to completion, but maybe jump out in some scenarios?
-          #    Is this a good use case for BMC? Right now I'm just limiting the number of iterations.
-          kcfg = prover.advance_proof(
-              kcfg_explore,
-              max_iterations=10,
-              execute_depth=10000,
-          )
+            # Q: What is the correct way of saying - go to completion, but maybe jump out in some scenarios?
+            #    Is this a good use case for BMC? Right now I'm just limiting the number of iterations.
+            kcfg = prover.advance_proof(
+                kcfg_explore,
+                max_iterations=10,
+                execute_depth=10000,
+            )
 
-          # Q: If the target is unreachable, the terminal nodes (meaning, the ones that can't take more steps)
-          #    in the kcfg will be stuck. These are the ones we want. In addition, there are frontier nodes,
-          #    which I believe we don't want. Are there any other types of nodes that we might care for?
+            # Q: If the target is unreachable, the terminal nodes (meaning, the ones that can't take more steps)
+            #    in the kcfg will be stuck. These are the ones we want. In addition, there are frontier nodes,
+            #    which I believe we don't want. Are there any other types of nodes that we might care for?
 
-          frontier_nodes = kcfg.frontier
-          final_nodes = kcfg.stuck
+            frontier_nodes = kcfg.frontier
+            final_nodes = kcfg.stuck
 
-          assert (len(kcfg.leaves) == 1 + len(kcfg.frontier) + len(kcfg.stuck))
+            assert len(kcfg.leaves) == 1 + len(kcfg.frontier) + len(kcfg.stuck)
 
-          # Require that there are no frontier nodes
-          if (len(frontier_nodes) > 0):
-            print("Non-zero frontier nodes: %d", len(frontier_nodes))
-            frontier_nodes = [
+            # Require that there are no frontier nodes
+            if len(frontier_nodes) > 0:
+                print('Non-zero frontier nodes: %d', len(frontier_nodes))
+                frontier_nodes_print = [
+                    (
+                        kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
+                        kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
+                    )
+                    for s in frontier_nodes
+                ]
+                print(frontier_nodes_print)
+                raise AssertionError()
+
+            print('Program: Number of final nodes: ', len(final_nodes))
+
+            # Q: What is the correct way of printing this information?
+            final_nodes_print = [
                 (
                     kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
                     kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
+                    kcfg_explore.kprint.pretty_print(mlAnd(list(s.cterm.constraints))),
                 )
-                for s in frontier_nodes
+                for s in final_nodes
             ]
-            print(frontier_nodes)
-            assert False
+            print(final_nodes_print)
 
-          print("Program: Number of final nodes: ", len(final_nodes))
-
-          # Q: What is the correct way of printing this information?
-          final_nodes_print = [
-              (
-                  kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
-                  kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
-                  kcfg_explore.kprint.pretty_print(mlAnd(list(s.cterm.constraints)))
-              )
-              for s in final_nodes
-          ]
-          print(final_nodes_print)
-
-          return final_nodes
+            return final_nodes
 
         def equivalence_check_path_constraints(
-          nodes_1 : list[KCFG.Node],
-          nodes_2 : list[KCFG.Node],
+            nodes_1: list[KCFG.Node],
+            nodes_2: list[KCFG.Node],
         ) -> int:
+            # The collecting path constraint of a list of nodes
+            # is the disjunction of their individual path constraints
+            def collecting_path_constraint(nodes: list[KCFG.Node]) -> KInner:
+                cpc = ml_pred_to_bool(mlOr([mlAnd(list(node.cterm.constraints)) for node in nodes]))
 
-          # The collecting path constraint of a list of nodes
-          # is the disjunction of their individual path constraints
-          def collecting_path_constraint(
-              nodes : list[KCFG.Node]
-          ) -> KInner:
-              cpc = ml_pred_to_bool(
-                mlOr(
-                  [
-                      mlAnd(list(node.cterm.constraints))
-                      for node in nodes
-                  ]
-                )
-              )
+                print('Collecting path constraint:\n', kcfg_explore.kprint.pretty_print(cpc))
 
-              print("Collecting path constraint:\n", kcfg_explore.kprint.pretty_print(cpc))
+                return cpc
 
-              return cpc
+            cpc_1 = collecting_path_constraint(nodes_1)
+            cpc_2 = collecting_path_constraint(nodes_2)
 
-          cpc_1 = collecting_path_constraint(nodes_1)
-          cpc_2 = collecting_path_constraint(nodes_2)
+            unsat_implication_1_2 = bool_to_ml_pred(andBool([cpc_1, notBool(cpc_2)]))
+            unsat_implication_2_1 = bool_to_ml_pred(andBool([cpc_2, notBool(cpc_1)]))
 
-          unsat_implication_1_2 = bool_to_ml_pred(andBool([cpc_1, notBool(cpc_2)]))
-          unsat_implication_2_1 = bool_to_ml_pred(andBool([cpc_2, notBool(cpc_1)]))
+            dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
+            config_top = CTerm(config=dummy_config, constraints=[mlTop(GENERATED_TOP_CELL)])
+            config_1_2 = CTerm(config=dummy_config, constraints=[unsat_implication_1_2])
+            config_2_1 = CTerm(config=dummy_config, constraints=[unsat_implication_2_1])
 
-          dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-          config_top = CTerm(config=dummy_config, constraints=[mlTop(GENERATED_TOP_CELL)])
-          config_1_2 = CTerm(config=dummy_config, constraints=[unsat_implication_1_2])
-          config_2_1 = CTerm(config=dummy_config, constraints=[unsat_implication_2_1])
+            result_1_implies_2 = kcfg_explore.cterm_implies(config_top, config_1_2)
+            result_2_implies_1 = kcfg_explore.cterm_implies(config_top, config_2_1)
 
-          result_1_implies_2 = kcfg_explore.cterm_implies(config_top, config_1_2)
-          result_2_implies_1 = kcfg_explore.cterm_implies(config_top, config_2_1)
-
-          if (result_1_implies_2 == None):
-            if (result_2_implies_1 == None):
-              return 0
+            if result_1_implies_2 == None:
+                if result_2_implies_1 == None:
+                    return 0
+                else:
+                    return 1
             else:
-              return 1
-          else:
-            if (result_2_implies_1 == None):
-              return 2
-            else:
-              return -1
+                if result_2_implies_1 == None:
+                    return 2
+                else:
+                    return -1
 
         # Parse the given configurations
         final_nodes_1 = execute_to_completion(config_1)
