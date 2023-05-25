@@ -1078,6 +1078,24 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 _subsorts.extend([_subsort] + self.subsorts(prod.items[0].sort))
         return list(set(_subsorts))
 
+    def sort(self, kast: KInner) -> KSort | None:
+        if type(kast) is KToken:
+            return kast.sort
+        if type(kast) is KVariable:
+            return kast.sort
+        if type(kast) is KRewrite:
+            lhs_sort = self.sort(kast.lhs)
+            rhs_sort = self.sort(kast.rhs)
+            if lhs_sort == rhs_sort:
+                return lhs_sort
+        if type(kast) is KSequence:
+            return KSort('K')
+        if type(kast) is KApply:
+            prod = self.production_for_klabel(kast.label)
+            if prod.sort not in prod.params:
+                return prod.sort
+        return None
+
     def sort_vars_subst(self, kast: KInner) -> Subst:
         _var_sort_occurrences = var_occurrences(kast)
         subst = {}
@@ -1127,6 +1145,27 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         subst = self.sort_vars_subst(kast)
         return subst(kast)
+
+    # Best-effort addition of sort parameters to klabels, context insensitive
+    def add_sort_params(self, kast: KInner) -> KInner:
+        def _add_sort_params(_k: KInner) -> KInner:
+            if type(_k) is KApply:
+                prod = self.production_for_klabel(_k.label)
+                if len(_k.label.params) == 0 and len(prod.params) > 0:
+                    sort_dict: dict[KSort, KSort] = {}
+                    for psort, asort in zip(prod.argument_sorts, map(self.sort, _k.args), strict=True):
+                        if asort is None:
+                            return _k
+                        if psort in prod.params:
+                            if psort in sort_dict and sort_dict[psort] != asort:
+                                return _k
+                            elif psort not in sort_dict:
+                                sort_dict[psort] = asort
+                    if all(p in sort_dict for p in prod.params):
+                        return _k.let(label=KLabel(_k.label.name, [sort_dict[p] for p in prod.params]))
+            return _k
+
+        return bottom_up(_add_sort_params, kast)
 
     def add_cell_map_items(self, kast: KInner) -> KInner:
         # example:
