@@ -1096,18 +1096,18 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 return prod.sort
         return None
 
+    def greatest_common_subsort(self, sort1: KSort, sort2: KSort) -> KSort | None:
+        if sort1 == sort2:
+            return sort1
+        if sort1 in self.subsorts(sort2):
+            return sort1
+        if sort2 in self.subsorts(sort1):
+            return sort2
+        return None
+
     def sort_vars_subst(self, kast: KInner) -> Subst:
         _var_sort_occurrences = var_occurrences(kast)
         subst = {}
-
-        def _greatest_common_subsort(sort1: KSort, sort2: KSort) -> KSort | None:
-            if sort1 == sort2:
-                return sort1
-            if sort1 in self.subsorts(sort2):
-                return sort1
-            if sort2 in self.subsorts(sort1):
-                return sort2
-            return None
 
         def _sort_contexts(_kast: KInner) -> None:
             if type(_kast) is KApply:
@@ -1131,7 +1131,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             if len(vsorts) > 0:
                 vsort = vsorts[0]
                 for s in vsorts[1:]:
-                    _vsort = _greatest_common_subsort(vsort, s)
+                    _vsort = self.greatest_common_subsort(vsort, s)
                     if _vsort is None:
                         raise ValueError(f'Cannot compute greatest common subsort of {vname}: {(vsort, s)}')
                     vsort = _vsort
