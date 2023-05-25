@@ -43,16 +43,14 @@ class GraphChunk(Static):
         self._node_text = '\n'.join(node_text)
         super().__init__(self._node_text, id=id, classes='cfg-node')
 
-    # TODO: manage style when hovering but not selected
-    # def on_enter(self) -> None:
-    #     self.styles.border_left = ('double', 'red')  # type: ignore
+    def on_enter(self) -> None:
+        self.styles.text_opacity = '75%'  # type: ignore
 
-    # def on_leave(self) -> None:
-    #     self.styles.border_left = None  # type: ignore
+    def on_leave(self) -> None:
+        self.styles.text_opacity = None  # type: ignore
 
     async def on_click(self, click: Click) -> None:
         await self.emit(GraphChunk.Selected(self, self.id or ''))
-        # self.styles.border_left = ('double', 'red')  # type: ignore
         click.stop()
 
 
@@ -327,13 +325,16 @@ class KCFGViewer(App):
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
         if message.chunk_id.startswith('node_'):
-            # self._selected_chunk = message.chunk_id
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
+            self._selected_chunk = message.chunk_id
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
             node, *_ = message.chunk_id[5:].split('_')
             node_id = int(node)
             self._last_idx = self._node_idx[node_id]
             self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
 
         elif message.chunk_id.startswith('edge_'):
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
             # self._selected_chunk = None
             node_source, node_target, *_ = message.chunk_id[5:].split('_')
             source_id = int(node_source)
@@ -342,6 +343,7 @@ class KCFGViewer(App):
             self.query_one('#node-view', NodeView).update(edge)
 
         elif message.chunk_id.startswith('cover_'):
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
             # self._selected_chunk = None
             node_source, node_target, *_ = message.chunk_id[6:].split('_')
             source_id = int(node_source)
@@ -350,6 +352,7 @@ class KCFGViewer(App):
             self.query_one('#node-view', NodeView).update(cover)
 
         elif message.chunk_id.startswith('split_'):
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
             # self._selected_chunk = None
             node_source, node_target, *_ = message.chunk_id[6:].split('_')
             source_id = int(node_source)
@@ -358,6 +361,7 @@ class KCFGViewer(App):
             self.query_one('#node-view', NodeView).update(split)
 
         elif message.chunk_id.startswith('ndbranch_'):
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
             # self._selected_chunk = None
             node_source, node_target, *_ = message.chunk_id[8:].split('_')
             source_id = int(node_source)
@@ -366,12 +370,12 @@ class KCFGViewer(App):
             self.query_one('#node-view', NodeView).update(ndbranch)
 
     BINDINGS = [
-        ('f', 'keystroke("f")', 'Fold selected node.'),
-        ('F', 'keystroke("F")', 'Unfold all nodes.'),
-        ('t', 'keystroke("term")', 'Toggle term.'),
-        ('c', 'keystroke("constraint")', 'Toggle constraint.'),
-        ('v', 'keystroke("custom")', 'Toggle custom.'),
-        ('m', 'keystroke("minimize")', 'Toggle minimization.'),
+        ('f', 'keystroke("f")', 'Fold node'),
+        ('F', 'keystroke("F")', 'Unfold all nodes'),
+        ('t', 'keystroke("term")', 'Toggle term'),
+        ('c', 'keystroke("constraint")', 'Toggle constraint'),
+        ('v', 'keystroke("custom")', 'Toggle custom'),
+        ('m', 'keystroke("minimize")', 'Toggle minimization'),
         ('ctrl+w', 'keystroke("change-window")', 'Change window'),
         ('h', 'keystroke("h")', 'Go left'),
         ('j', 'keystroke("j")', 'Go down'),
@@ -379,6 +383,7 @@ class KCFGViewer(App):
         ('l', 'keystroke("l")', 'Go right'),
         ('g', 'keystroke("g")', 'Go to start'),
         ('G', 'keystroke("G")', 'Go to end'),
+        ('z', 'keystroke("z")', 'Center vertically'),
         # TODO: q for "quit"
     ]
 
@@ -446,9 +451,9 @@ class KCFGViewer(App):
         elif key == 'F':
             for hc in self._hidden_chunks:
                 self.query_one(f'#{hc}', GraphChunk).remove_class('hidden')
-                node_ids = [nid[5:] for nid in self._hidden_chunks]
-                self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
-                self._hidden_chunks = []
+            node_ids = [nid[5:] for nid in self._hidden_chunks]
+            self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
+            self._hidden_chunks = []
         elif key in ['term', 'constraint', 'custom']:
             self.query_one('#node-view', NodeView).toggle_view(key)
         elif key in ['minimize']:

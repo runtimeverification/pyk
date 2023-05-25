@@ -208,9 +208,9 @@ class KPrint:
         self.use_directory = use_directory
         self._definition = None
         self._symbol_table = None
-        with open(Path(self.definition_dir) / 'mainModule.txt') as mm:
+        with open(self.definition_dir / 'mainModule.txt') as mm:
             self.main_module = mm.read()
-        with open(Path(self.definition_dir) / 'backend.txt') as ba:
+        with open(self.definition_dir / 'backend.txt') as ba:
             self.backend = ba.read()
         self._extra_unparsing_modules = extra_unparsing_modules
         self._bug_report = bug_report
@@ -230,7 +230,7 @@ class KPrint:
 
     @cached_property
     def definition(self) -> KDefinition:
-        return read_kast_definition(Path(self.definition_dir) / 'compiled.json')
+        return read_kast_definition(self.definition_dir / 'compiled.json')
 
     @cached_property
     def kompiled_kore(self) -> KompiledKore:
