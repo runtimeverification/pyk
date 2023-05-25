@@ -15,9 +15,10 @@ from pyk.prelude.kbool import BOOL, andBool, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlOr, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
+from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
-from ..utils import K_FILES, KCFGExploreTest
+from ..utils import K_FILES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
