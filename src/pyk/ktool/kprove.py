@@ -204,15 +204,15 @@ class KProve(KPrint):
             ','.join(haskell_log_entries),
         ]
 
+        env = os.environ.copy()
         kore_exec_opts = ' '.join(list(haskell_args) + haskell_log_args)
         _LOGGER.debug(f'export KORE_EXEC_OPTS={kore_exec_opts!r}')
-        env = os.environ.copy()
         env['KORE_EXEC_OPTS'] = kore_exec_opts
 
-        haskell_backend_command = None
         if haskell_rts_args:
-            haskell_backend_command = f'kore-exec +RTS {" ".join(list(haskell_rts_args))} -RTS'
-            _LOGGER.debug(f'--haskell-backend-command={haskell_backend_command}')
+            ghc_rts = ' '.join(list(haskell_rts_args))
+            _LOGGER.debug(f'export GHCRTS={ghc_rts!r}')
+            env['GHCRTS'] = ghc_rts
 
         proc_result = _kprove(
             spec_file=spec_file,
@@ -222,7 +222,6 @@ class KProve(KPrint):
             include_dirs=include_dirs,
             md_selector=md_selector,
             output=KProveOutput.JSON,
-            haskell_backend_command=haskell_backend_command,
             dry_run=dry_run,
             args=self.prover_args + list(args),
             env=env,
