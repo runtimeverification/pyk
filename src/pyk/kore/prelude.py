@@ -35,7 +35,7 @@ def dv(val: bool | int | bytes | str) -> DV:
     if type(val) is bytes:
         return bytes_dv(val)
     if type(val) is str:
-        return string_dv(val)
+        return str_dv(val)
     raise TypeError(f'Illegal type: {type(val)}')
 
 
@@ -51,7 +51,7 @@ def bytes_dv(val: bytes) -> DV:
     return DV(BYTES, String(bytes_decode(val)))
 
 
-def string_dv(val: str) -> DV:
+def str_dv(val: str) -> DV:
     return DV(STRING, String(val))
 
 
@@ -211,7 +211,7 @@ def jsons(patterns: Iterable[Pattern]) -> RightAssoc:
 
 
 def json_key(key: str) -> App:
-    return inj(STRING, SORT_JSON_KEY, string_dv(key))
+    return inj(STRING, SORT_JSON_KEY, str_dv(key))
 
 
 def json_entry(key: Pattern, value: Pattern) -> App:
@@ -227,7 +227,7 @@ def json_to_kore(data: Any) -> Pattern:
         case int():
             return inj(INT, SORT_JSON, int_dv(data))
         case str():
-            return inj(STRING, SORT_JSON, string_dv(data))
+            return inj(STRING, SORT_JSON, str_dv(data))
         case list():
             return json_list(jsons(json_to_kore(elem) for elem in data))
         case dict():
