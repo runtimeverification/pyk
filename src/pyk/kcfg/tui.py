@@ -67,6 +67,7 @@ class BehaviorView(Widget):
         self,
         kcfg: KCFG,
         kprint: KPrint,
+        nodes: Iterable[GraphChunk],
         minimize: bool = True,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
         id: str = '',
@@ -76,12 +77,7 @@ class BehaviorView(Widget):
         self._kprint = kprint
         self._minimize = minimize
         self._node_printer = node_printer
-        self._nodes = []
-        kcfg_show = KCFGShow(kprint)
-        for lseg_id, node_lines in kcfg_show.pretty_segments(
-            self._kcfg, minimize=self._minimize, node_printer=self._node_printer
-        ):
-            self._nodes.append(GraphChunk(lseg_id, node_lines))
+        self._nodes = nodes
 
     def compose(self) -> ComposeResult:
         return self._nodes
@@ -284,8 +280,25 @@ class KCFGViewer(App):
         self._minimize = minimize
         self._hidden_chunks = []
         self._buffer = []
-        self._last_node_idx = 0
+
         # TODO: only take cut nodes
+
+        self._nodes = []
+        kcfg_show = KCFGShow(kprint)
+        i = 0
+        for lseg_id, node_lines in kcfg_show.pretty_segments(
+            self._kcfg, minimize=self._minimize, node_printer=self._node_printer
+        ):
+            self._nodes.append(GraphChunk(lseg_id, node_lines))
+            try:
+                as_id = int(lseg_id)
+                self._node_ids.append(as_id)
+                self._node_idx[as_id] = i
+                i += 1
+            except:
+                pass
+
+        self._last_node_idx = 0
         self._node_ids = list(kcfg._nodes.keys())
         self._node_idx = {} # TODO: one-liner for filling this
 
@@ -305,7 +318,7 @@ class KCFGViewer(App):
     def compose(self) -> ComposeResult:
         yield Horizontal(
             Vertical(
-                BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
+                BehaviorView(self._kcfg, self._kprint, nodes=self._nodes, node_printer=self._node_printer, id='behavior'),
                 id='navigation',
             ),
             Vertical(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
@@ -385,7 +398,7 @@ class KCFGViewer(App):
             else:
                 match key:
                     case 'j':
-                        if self._last_idx < len(self._node_ids):
+                        if self._last_idx + 1 < len(self._node_ids):
                             idx = self._last_idx + 1
                             node_id = self._node_ids[idx]
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
@@ -406,14 +419,20 @@ class KCFGViewer(App):
         elif key == 'g':
             try:
                 node_id = self._node_ids[0]
+                self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
+                self._selected_chunk = "node_" + str(node_id)
                 self._last_idx = 0
+                self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
                 self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
             except:
                 pass
         elif key == 'G':
             try:
                 node_id = self._node_ids[-1]
+                self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
+                self._selected_chunk = "node_" + str(node_id)
                 self._last_idx = self._node_idx[node_id]
+                self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
                 self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
             except:
                 pass
