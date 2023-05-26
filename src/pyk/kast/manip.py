@@ -37,13 +37,11 @@ def flatten_label(label: str, kast: KInner) -> list[KInner]:
     return [kast]
 
 
-# TODO: don't duplicate logic from build_assoc
 def sort_assoc_label(label: str, kast: KInner) -> KInner:
     res: KInner | None = None
     if type(kast) is KApply and kast.label.name == label:
         terms = sorted(flatten_label(label, kast))
-        assert len(terms) > 0
-        for term in reversed(list(terms)):
+        for term in reversed(terms):
             if not res:
                 res = term
             else:
