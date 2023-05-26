@@ -7,9 +7,11 @@ import pytest
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable
 from pyk.kast.manip import inline_cell_maps, remove_attrs
 from pyk.kast.pretty import assoc_with_unit
+from pyk.prelude.collections import set_of
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kbool import andBool
 from pyk.prelude.kint import INT, intToken, leInt, ltInt
+from pyk.prelude.utils import token
 from pyk.testing import KPrintTest
 
 from .utils import K_FILES
@@ -311,17 +313,17 @@ class TestUnparsingDefn(KPrintTest):
 SORT_COLLECTIONS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
     (
         'single-item',
-        KApply('SetItem', [intToken(1)]),
+        set_of([token(1)]),
         'SetItem ( 1 )',
     ),
     (
         'two-item',
-        KApply('_Set_', [KApply('SetItem', [intToken(1)]), KApply('SetItem', [intToken(2)])]),
+        set_of([token(1), token(2)]),
         'SetItem ( 1 ) SetItem ( 2 )',
     ),
     (
         'two-item-reversed',
-        KApply('_Set_', [KApply('SetItem', [intToken(2)]), KApply('SetItem', [intToken(1)])]),
+        set_of([token(2), token(1)]),
         'SetItem ( 1 ) SetItem ( 2 )',
     ),
     (
@@ -329,8 +331,8 @@ SORT_COLLECTIONS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
         KApply(
             '_AccountCellMap_',
             [
-                KApply('AccountCellMapItem', [KApply('<id>', [intToken(2)]), KVariable('V1')]),
-                KApply('AccountCellMapItem', [KApply('<id>', [intToken(1)]), KVariable('V2')]),
+                KApply('AccountCellMapItem', [KApply('<id>', [token(2)]), KVariable('V1')]),
+                KApply('AccountCellMapItem', [KApply('<id>', [token(1)]), KVariable('V2')]),
             ],
         ),
         'V1 V2',
@@ -340,8 +342,8 @@ SORT_COLLECTIONS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
         KApply(
             '_AccountCellMap_',
             [
-                KApply('AccountCellMapItem', [KApply('<id>', [intToken(1)]), KVariable('V2')]),
-                KApply('AccountCellMapItem', [KApply('<id>', [intToken(2)]), KVariable('V1')]),
+                KApply('AccountCellMapItem', [KApply('<id>', [token(1)]), KVariable('V2')]),
+                KApply('AccountCellMapItem', [KApply('<id>', [token(2)]), KVariable('V1')]),
             ],
         ),
         'V1 V2',
