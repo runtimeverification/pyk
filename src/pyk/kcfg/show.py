@@ -342,9 +342,9 @@ class KCFGShow:
                 ]
                 init_cterm = CTerm(simplify_config(edge.source.cterm.config), init_constraints)
                 target_constraints = [
-                    c for c in edge.source.cterm.constraints if not (type(c) is KApply and c.label.name == '#Ceil')
+                    c for c in edge.target.cterm.constraints if not (type(c) is KApply and c.label.name == '#Ceil')
                 ]
-                target_cterm = CTerm(simplify_config(edge.source.cterm.config), target_constraints)
+                target_cterm = CTerm(simplify_config(edge.target.cterm.config), target_constraints)
                 rule: KRuleLike
                 if claim:
                     rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
