@@ -1084,15 +1084,14 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 return sort
             case KRewrite(lhs, rhs):
                 sort = self.sort(lhs)
-                if sort == self.sort(rhs):
-                    return sort
+                return sort if sort == self.sort(rhs) else None
             case KSequence(_):
                 return KSort('K')
             case KApply(label, _):
                 prod = self.production_for_klabel(label)
-                if prod.sort not in prod.params:
-                    return prod.sort
-        return None
+                return prod.sort if prod.sort not in prod.params else None
+            case _:
+                return None
 
     def greatest_common_subsort(self, sort1: KSort, sort2: KSort) -> KSort | None:
         if sort1 == sort2:
