@@ -5,7 +5,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Callable
 
 from ..prelude.kbool import TRUE
-from .inner import KApply, KAs, KRewrite, KSequence, KSort, KToken, KVariable
+from .inner import KApply, KAs, KInner, KRewrite, KSequence, KSort, KToken, KVariable
 from .kast import KAtt
 from .manip import flatten_label
 from .outer import (
@@ -16,6 +16,7 @@ from .outer import (
     KFlatModule,
     KImport,
     KNonTerminal,
+    KOuter,
     KProduction,
     KRegexTerminal,
     KRequire,
@@ -73,22 +74,17 @@ class PrettyPrinter:
         -   Input: KAST term.
         -   Output: Best-effort string representation of KAST term.
         """
-        _LOGGER.debug(f'pretty_print_kast: {kast}')
+        _LOGGER.debug(f'Unparsing: {kast}')
+        if type(kast) is KAtt:
+            return self._print_katt(kast)
+        elif isinstance(kast, KOuter):
+            return self._print_kouter(kast)
+        elif isinstance(kast, KInner):
+            return self._print_kinner(kast)
+        raise AssertionError(f'Error unparsing: {kast}')
+
+    def _print_kouter(self, kast: KOuter) -> str:
         match kast:
-            case KVariable():
-                return self._print_kvariable(kast)
-            case KSort():
-                return self._print_ksort(kast)
-            case KToken():
-                return self._print_ktoken(kast)
-            case KApply():
-                return self._print_kapply(kast)
-            case KAs():
-                return self._print_kas(kast)
-            case KRewrite():
-                return self._print_krewrite(kast)
-            case KSequence():
-                return self._print_ksequence(kast)
             case KTerminal():
                 return self._print_kterminal(kast)
             case KRegexTerminal():
@@ -115,8 +111,6 @@ class PrettyPrinter:
                 return self._print_kclaim(kast)
             case KContext():
                 return self._print_kcontext(kast)
-            case KAtt():
-                return self._print_katt(kast)
             case KImport():
                 return self._print_kimport(kast)
             case KFlatModule():
@@ -128,11 +122,30 @@ class PrettyPrinter:
             case _:
                 raise AssertionError(f'Error unparsing: {kast}')
 
+    def _print_kinner(self, kast: KInner) -> str:
+        match kast:
+            case KVariable():
+                return self._print_kvariable(kast)
+            case KSort():
+                return self._print_ksort(kast)
+            case KToken():
+                return self._print_ktoken(kast)
+            case KApply():
+                return self._print_kapply(kast)
+            case KAs():
+                return self._print_kas(kast)
+            case KRewrite():
+                return self._print_krewrite(kast)
+            case KSequence():
+                return self._print_ksequence(kast)
+            case _:
+                raise AssertionError(f'Error unparsing: {kast}')
+
     def _print_kvariable(self, kvariable: KVariable) -> str:
         sort = kvariable.sort
         if not sort:
             return kvariable.name
-        return kvariable.name + ':' + self.print(sort)
+        return kvariable.name + ':' + self._print_kinner(sort)
 
     def _print_ksort(self, ksort: KSort) -> str:
         return ksort.name
@@ -143,7 +156,7 @@ class PrettyPrinter:
     def _print_kapply(self, kapply: KApply) -> str:
         label = kapply.label.name
         args = kapply.args
-        unparsed_args = [self.print(arg) for arg in args]
+        unparsed_args = [self._print_kinner(arg) for arg in args]
         if kapply.is_cell:
             cell_contents = '\n'.join(unparsed_args).rstrip()
             cell_str = label + '\n' + indent(cell_contents) + '\n</' + label[1:]
@@ -152,26 +165,26 @@ class PrettyPrinter:
         return unparser(*unparsed_args)
 
     def _print_kas(self, kas: KAs) -> str:
-        pattern_str = self.print(kas.pattern)
-        alias_str = self.print(kas.alias)
+        pattern_str = self._print_kinner(kas.pattern)
+        alias_str = self._print_kinner(kas.alias)
         return pattern_str + ' #as ' + alias_str
 
     def _print_krewrite(self, krewrite: KRewrite) -> str:
-        lhs_str = self.print(krewrite.lhs)
-        rhs_str = self.print(krewrite.rhs)
+        lhs_str = self._print_kinner(krewrite.lhs)
+        rhs_str = self._print_kinner(krewrite.rhs)
         return '( ' + lhs_str + ' => ' + rhs_str + ' )'
 
     def _print_ksequence(self, ksequence: KSequence) -> str:
         if ksequence.arity == 0:
-            # TODO: Would be nice to say `return self.print(EMPTY_K)`
+            # TODO: Would be nice to say `return self._print_kinner(EMPTY_K)`
             return '.K'
         if ksequence.arity == 1:
-            return self.print(ksequence.items[0])
-        unparsed_k_seq = '\n~> '.join([self.print(item) for item in ksequence.items[0:-1]])
+            return self._print_kinner(ksequence.items[0])
+        unparsed_k_seq = '\n~> '.join([self._print_kinner(item) for item in ksequence.items[0:-1]])
         if ksequence.items[-1] == KToken('...', KSort('K')):
-            unparsed_k_seq = unparsed_k_seq + '\n' + self.print(KToken('...', KSort('K')))
+            unparsed_k_seq = unparsed_k_seq + '\n' + self._print_kinner(KToken('...', KSort('K')))
         else:
-            unparsed_k_seq = unparsed_k_seq + '\n~> ' + self.print(ksequence.items[-1])
+            unparsed_k_seq = unparsed_k_seq + '\n~> ' + self._print_kinner(ksequence.items[-1])
         return unparsed_k_seq
 
     def _print_kterminal(self, kterminal: KTerminal) -> str:
@@ -188,7 +201,7 @@ class PrettyPrinter:
             kproduction = kproduction.update_atts({'klabel': kproduction.klabel.name})
         syntax_str = 'syntax ' + self.print(kproduction.sort)
         if kproduction.items:
-            syntax_str += ' ::= ' + ' '.join([self.print(pi) for pi in kproduction.items])
+            syntax_str += ' ::= ' + ' '.join([self._print_kouter(pi) for pi in kproduction.items])
         att_str = self.print(kproduction.att)
         if att_str:
             syntax_str += ' ' + att_str
@@ -276,8 +289,8 @@ class PrettyPrinter:
 
     def _print_kflatmodule(self, kflatmodule: KFlatModule) -> str:
         name = kflatmodule.name
-        imports = '\n'.join([self.print(kimport) for kimport in kflatmodule.imports])
-        sentences = '\n\n'.join([self.print(sentence) for sentence in kflatmodule.sentences])
+        imports = '\n'.join([self._print_kouter(kimport) for kimport in kflatmodule.imports])
+        sentences = '\n\n'.join([self._print_kouter(sentence) for sentence in kflatmodule.sentences])
         contents = imports + '\n\n' + sentences
         return 'module ' + name + '\n    ' + '\n    '.join(contents.split('\n')) + '\n\nendmodule'
 
@@ -285,8 +298,8 @@ class PrettyPrinter:
         return 'requires "' + krequire.require + '"'
 
     def _print_kdefinition(self, kdefinition: KDefinition) -> str:
-        requires = '\n'.join([self.print(require) for require in kdefinition.requires])
-        modules = '\n\n'.join([self.print(module) for module in kdefinition.all_modules])
+        requires = '\n'.join([self._print_kouter(require) for require in kdefinition.requires])
+        modules = '\n\n'.join([self._print_kouter(module) for module in kdefinition.all_modules])
         return requires + '\n\n' + modules
 
     def _print_kast_bool(self, kast: KAst) -> str:
