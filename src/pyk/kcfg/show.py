@@ -299,6 +299,9 @@ class KCFGShow:
             config = hide_cells(config)
             return config
 
+        def is_ceil_condition(kast: KInner) -> bool:
+            return type(kast) is KApply and kast.label.name == '#Ceil'
+
         nodes_printed = False
 
         for node_id in nodes:
@@ -337,13 +340,9 @@ class KCFGShow:
 
             def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
                 sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
-                init_constraints = [
-                    c for c in edge.source.cterm.constraints if not (type(c) is KApply and c.label.name == '#Ceil')
-                ]
+                init_constraints = [c for c in edge.source.cterm.constraints if not is_ceil_condition(c)]
                 init_cterm = CTerm(simplify_config(edge.source.cterm.config), init_constraints)
-                target_constraints = [
-                    c for c in edge.target.cterm.constraints if not (type(c) is KApply and c.label.name == '#Ceil')
-                ]
+                target_constraints = [c for c in edge.target.cterm.constraints if not is_ceil_condition(c)]
                 target_cterm = CTerm(simplify_config(edge.target.cterm.config), target_constraints)
                 rule: KRuleLike
                 if claim:
