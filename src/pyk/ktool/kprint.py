@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Callable
 from ..cli_utils import check_dir_path, check_file_path, run_process
 from ..kast import kast_term
 from ..kast.inner import KInner
-from ..kast.manip import undo_aliases
 from ..kast.outer import read_kast_definition
 from ..kast.pretty import PrettyPrinter
 from ..konvert import kast_to_kore, kore_to_kast
@@ -283,12 +282,11 @@ class KPrint:
         return App('inj', [SortApp('Sort' + isort.name), SortApp('Sort' + osort.name)], [pat])
 
     def pretty_print(self, kast: KAst, *, unalias: bool = True) -> str:
-        if unalias and isinstance(kast, KInner):
-            kast = undo_aliases(self.definition, kast)
         return PrettyPrinter(
             self.definition,
             extra_unparsing_modules=self._extra_unparsing_modules,
             patch_symbol_table=self._patch_symbol_table,
+            unalias=unalias,
         ).print(kast)
 
     def _expression_kast(

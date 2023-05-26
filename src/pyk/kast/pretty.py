@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Callable
 from ..prelude.kbool import TRUE
 from .inner import KApply, KAs, KInner, KRewrite, KSequence, KSort, KToken, KVariable
 from .kast import KAtt
-from .manip import flatten_label
+from .manip import flatten_label, undo_aliases
 from .outer import (
     KBubble,
     KClaim,
@@ -47,16 +47,19 @@ class PrettyPrinter:
     definition: KDefinition
     _extra_unparsing_modules: Iterable[KFlatModule]
     _patch_symbol_table: Callable[[SymbolTable], None] | None
+    _unalias: bool
 
     def __init__(
         self,
         definition: KDefinition,
         extra_unparsing_modules: Iterable[KFlatModule] = (),
         patch_symbol_table: Callable[[SymbolTable], None] | None = None,
+        unalias: bool = True,
     ):
         self.definition = definition
         self._extra_unparsing_modules = extra_unparsing_modules
         self._patch_symbol_table = patch_symbol_table
+        self._unalias = unalias
 
     @cached_property
     def symbol_table(self) -> SymbolTable:
@@ -80,6 +83,8 @@ class PrettyPrinter:
         elif isinstance(kast, KOuter):
             return self._print_kouter(kast)
         elif isinstance(kast, KInner):
+            if self._unalias:
+                kast = undo_aliases(self.definition, kast)
             return self._print_kinner(kast)
         raise AssertionError(f'Error unparsing: {kast}')
 
