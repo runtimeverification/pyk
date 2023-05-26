@@ -1079,21 +1079,19 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return list(set(_subsorts))
 
     def sort(self, kast: KInner) -> KSort | None:
-        if type(kast) is KToken:
-            return kast.sort
-        if type(kast) is KVariable:
-            return kast.sort
-        if type(kast) is KRewrite:
-            lhs_sort = self.sort(kast.lhs)
-            rhs_sort = self.sort(kast.rhs)
-            if lhs_sort == rhs_sort:
-                return lhs_sort
-        if type(kast) is KSequence:
-            return KSort('K')
-        if type(kast) is KApply:
-            prod = self.production_for_klabel(kast.label)
-            if prod.sort not in prod.params:
-                return prod.sort
+        match kast:
+            case KToken(_, sort) | KVariable(_, sort):
+                return sort
+            case KRewrite(lhs, rhs):
+                sort = self.sort(lhs)
+                if sort == self.sort(rhs):
+                    return sort
+            case KSequence(_):
+                return KSort('K')
+            case KApply(label, _):
+                prod = self.production_for_klabel(label)
+                if prod.sort not in prod.params:
+                    return prod.sort
         return None
 
     def greatest_common_subsort(self, sort1: KSort, sort2: KSort) -> KSort | None:
