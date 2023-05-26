@@ -8,7 +8,14 @@ from graphviz import Digraph
 from ..cli_utils import ensure_dir_path
 from ..cterm import CTerm, build_claim, build_rule
 from ..kast.inner import KApply, KRewrite, top_down
-from ..kast.manip import flatten_label, minimize_term, ml_pred_to_bool, push_down_rewrites, sort_ac_collections
+from ..kast.manip import (
+    flatten_label,
+    inline_cell_maps,
+    minimize_term,
+    ml_pred_to_bool,
+    push_down_rewrites,
+    sort_ac_collections,
+)
 from ..kast.outer import KFlatModule
 from ..prelude.k import DOTS
 from ..prelude.ml import mlAnd
@@ -305,6 +312,8 @@ class KCFGShow:
             nodes_printed = True
             config_1 = cfg.node(node_id_1).cterm.config
             config_2 = cfg.node(node_id_2).cterm.config
+            config_1 = inline_cell_maps(config_1)
+            config_2 = inline_cell_maps(config_2)
             config_1 = sort_ac_collections(self.kprint.definition, config_1)
             config_2 = sort_ac_collections(self.kprint.definition, config_2)
             config_delta = push_down_rewrites(KRewrite(config_1, config_2))
@@ -328,6 +337,7 @@ class KCFGShow:
             def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
                 sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
                 init_term = hide_cells(edge.source.cterm.config)
+                init_term = inline_cell_maps(init_term)
                 init_term = sort_ac_collections(self.kprint.definition, init_term)
                 init_cterm = CTerm(init_term, ())
                 for c in edge.source.cterm.constraints:
@@ -337,6 +347,7 @@ class KCFGShow:
                     else:
                         init_cterm.add_constraint(c)
                 target_term = hide_cells(edge.target.cterm.config)
+                target_term = inline_cell_maps(target_term)
                 target_term = sort_ac_collections(self.kprint.definition, target_term)
                 target_cterm = CTerm(target_term, ())
                 for c in edge.source.cterm.constraints:
