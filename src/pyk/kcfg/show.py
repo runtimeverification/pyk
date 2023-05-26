@@ -293,6 +293,12 @@ class KCFGShow:
                 return top_down(_hide_cells, term)
             return term
 
+        def simplify_config(config: KInner) -> KInner:
+            config = inline_cell_maps(config)
+            config = sort_ac_collections(self.kprint.definition, config)
+            config = hide_cells(config)
+            return config
+
         nodes_printed = False
 
         for node_id in nodes:
@@ -310,14 +316,9 @@ class KCFGShow:
 
         for node_id_1, node_id_2 in node_deltas:
             nodes_printed = True
-            config_1 = cfg.node(node_id_1).cterm.config
-            config_2 = cfg.node(node_id_2).cterm.config
-            config_1 = inline_cell_maps(config_1)
-            config_2 = inline_cell_maps(config_2)
-            config_1 = sort_ac_collections(self.kprint.definition, config_1)
-            config_2 = sort_ac_collections(self.kprint.definition, config_2)
+            config_1 = simplify_config(cfg.node(node_id_1).cterm.config)
+            config_2 = simplify_config(cfg.node(node_id_2).cterm.config)
             config_delta = push_down_rewrites(KRewrite(config_1, config_2))
-            config_delta = hide_cells(config_delta)
             if minimize:
                 config_delta = minimize_term(config_delta)
             res_lines.append('')
@@ -336,26 +337,14 @@ class KCFGShow:
 
             def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
                 sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
-                init_term = hide_cells(edge.source.cterm.config)
-                init_term = inline_cell_maps(init_term)
-                init_term = sort_ac_collections(self.kprint.definition, init_term)
-                init_cterm = CTerm(init_term, ())
-                for c in edge.source.cterm.constraints:
-                    assert type(c) is KApply
-                    if c.label.name == '#Ceil':
-                        _LOGGER.warning(f'Ignoring Ceil condition: {c}')
-                    else:
-                        init_cterm.add_constraint(c)
-                target_term = hide_cells(edge.target.cterm.config)
-                target_term = inline_cell_maps(target_term)
-                target_term = sort_ac_collections(self.kprint.definition, target_term)
-                target_cterm = CTerm(target_term, ())
-                for c in edge.source.cterm.constraints:
-                    assert type(c) is KApply
-                    if c.label.name == '#Ceil':
-                        _LOGGER.warning(f'Ignoring Ceil condition: {c}')
-                    else:
-                        target_cterm.add_constraint(c)
+                init_constraints = [
+                    c for c in edge.source.cterm.constraints if not (type(c) is KApply and c.label.name == '#Ceil')
+                ]
+                init_cterm = CTerm(simplify_config(edge.source.cterm.config), init_constraints)
+                target_constraints = [
+                    c for c in edge.source.cterm.constraints if not (type(c) is KApply and c.label.name == '#Ceil')
+                ]
+                target_cterm = CTerm(simplify_config(edge.source.cterm.config), target_constraints)
                 rule: KRuleLike
                 if claim:
                     rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
