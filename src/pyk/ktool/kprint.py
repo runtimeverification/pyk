@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from contextlib import contextmanager
 from enum import Enum
 from functools import cached_property
 from pathlib import Path
 from subprocess import CalledProcessError
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from ..cli_utils import check_dir_path, check_file_path, run_process
 from ..kast import kast_term

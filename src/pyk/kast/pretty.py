@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from functools import cached_property
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from ..prelude.kbool import TRUE
 from .inner import KApply, KAs, KInner, KRewrite, KSequence, KSort, KToken, KVariable
