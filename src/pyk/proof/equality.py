@@ -5,7 +5,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from ..cterm import CSubst, CTerm
-from ..kast.inner import KApply, KInner, KSort, Subst
+from ..kast.inner import KInner, KSort, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
@@ -57,12 +57,11 @@ class EqualityProof(Proof):
 
     @staticmethod
     def from_claim(claim: KClaim, defn: KDefinition) -> EqualityProof:
+        sort = defn.sort_strict(claim.body)
         lhs_body = extract_lhs(claim.body)
         rhs_body = extract_rhs(claim.body)
         if not (claim.ensures is None or claim.ensures == TRUE):
             raise ValueError(f'Cannot convert claim to EqualityProof due to non-trival ensures clause {claim.ensures}')
-        assert type(lhs_body) is KApply
-        sort = defn.return_sort(lhs_body.label)
         constraints = [mlEquals(TRUE, c, arg_sort=BOOL) for c in flatten_label('_andBool_', claim.requires)]
         return EqualityProof(claim.label, lhs_body, rhs_body, sort, constraints=constraints)
 
