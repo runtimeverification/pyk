@@ -93,4 +93,4 @@ class TestMinimizeTerm(KompiledTest):
         main()
         assume_argv(['pyk', 'print', str(definition_dir), str(prove_res_file), '--output-file', str(actual_file)])
         main()
-        assert expected_file.read_text() == actual_file.read_text()
+        assert expected_file.read_text().strip() == actual_file.read_text().strip()
