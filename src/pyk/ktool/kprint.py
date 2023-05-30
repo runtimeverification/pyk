@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable
 from contextlib import contextmanager
 from enum import Enum
 from functools import cached_property
@@ -22,7 +21,7 @@ from ..kore.parser import KoreParser
 from ..kore.syntax import App, SortApp
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
     from subprocess import CompletedProcess
     from tempfile import _TemporaryFileWrapper
     from typing import Final
