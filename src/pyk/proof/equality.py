@@ -69,6 +69,10 @@ class EqualityProof(Proof):
     def equality(self) -> KInner:
         return mlEquals(self.lhs_body, self.rhs_body, arg_sort=self.sort, sort=GENERATED_TOP_CELL)
 
+    @property
+    def constraint(self) -> KInner:
+        return mlAnd(self.constraints)
+
     def add_constraint(self, new_constraint: KInner) -> None:
         self.constraints = (*self.constraints, new_constraint)
 
