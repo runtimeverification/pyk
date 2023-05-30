@@ -76,6 +76,7 @@ APPLY_TEST_DATA: tuple[tuple[KInner, dict[str, KInner], KInner], ...] = (
     (f(x), {'x': f(x)}, f(f(x))),
     (f(a, g(x, a)), {'x': b}, f(a, g(b, a))),
     (f(g(h(x, y, z))), {'x': a, 'y': b, 'z': c}, f(g(h(a, b, c)))),
+    (KApply('#Exists', [x, f(x)]), {'x': b}, KApply('#Exists', [x, f(x)])),
 )
 
 

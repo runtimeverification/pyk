@@ -22,7 +22,7 @@ from .inner import (
     KVariable,
     Subst,
     bottom_up,
-    collect,
+    collect_with_binders,
     top_down,
     var_occurrences,
 )
@@ -1106,22 +1106,22 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         _var_sort_occurrences = var_occurrences(kast)
         subst = {}
 
-        def _sort_contexts(_kast: KInner) -> None:
+        def _sort_contexts(_kast: KInner, _bound_vars: Iterable[str]) -> None:
             if type(_kast) is KApply:
                 prod = self.production_for_klabel(_kast.label)
                 if len(prod.params) == 0:
                     for t, a in zip(prod.argument_sorts, _kast.args, strict=True):
-                        if type(a) is KVariable:
+                        if type(a) is KVariable and a.name not in _bound_vars:
                             _var_sort_occurrences[a.name].append(a.let_sort(t))
             if type(_kast) is KSequence and _kast.arity > 0:
                 for a in _kast.items[0:-1]:
-                    if type(a) is KVariable:
+                    if type(a) is KVariable and a.name not in _bound_vars:
                         _var_sort_occurrences[a.name].append(a.let_sort(KSort('KItem')))
                 last_a = _kast.items[-1]
-                if type(last_a) is KVariable:
+                if type(last_a) is KVariable and last_a.name not in _bound_vars:
                     _var_sort_occurrences[last_a.name].append(last_a.let_sort(KSort('K')))
 
-        collect(_sort_contexts, kast)
+        collect_with_binders(_sort_contexts, kast)
 
         for vname, _voccurrences in _var_sort_occurrences.items():
             vsorts = list(unique(v.sort for v in _voccurrences if v.sort is not None))
