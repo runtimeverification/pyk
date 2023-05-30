@@ -833,12 +833,32 @@ class TestImpProof(KCFGExploreTest):
         config_1: tuple[str, str, KInner],
         config_2: tuple[str, str, KInner],
     ) -> None:
-        _, kore_client = kcfg_explore._kore_rpc
-
+        #
+        # Unreachable target node
+        # =======================
+        #
+        #   Return value:
+        #   -------------
+        #     A KCFG node that could never be a legitimate target node
+        #
         def unreachable_target() -> CTerm:
-            # Q: How to create a proper unreachable configuration, something like #Bottom?
+            # Q: How to create a proper unreachable configuration?
             return self.config(kcfg_explore.kprint, *('int X:Id ; { }', '.Map'))
 
+        #
+        # Execution to completion
+        # =======================
+        #
+        #   Parameters:
+        #   -----------
+        #     config: initial configuration, constisting of the initial contents
+        #             of the two configuration cells (str) and
+        #             the initial path constraint (KInner)
+        #
+        #   Return value:
+        #   -------------
+        #     A list of nodes obtained after executing the initial configuration to completion
+        #
         def execute_to_completion(config: tuple[str, str, KInner]) -> list[KCFG.Node]:
             # Parse given configurations into a term
             configuration = self.config(kcfg_explore.kprint, *config)
@@ -869,7 +889,6 @@ class TestImpProof(KCFGExploreTest):
             # Q: If the target is unreachable, the terminal nodes (meaning, the ones that can't take more steps)
             #    in the kcfg will be stuck. These are the ones we want. In addition, there are frontier nodes,
             #    which I believe we don't want. Are there any other types of nodes that we might care for?
-
             frontier_nodes = kcfg.frontier
             final_nodes = kcfg.stuck
 
@@ -903,51 +922,107 @@ class TestImpProof(KCFGExploreTest):
 
             return final_nodes
 
-        def equivalence_check_path_constraints(
-            nodes_1: list[KCFG.Node],
-            nodes_2: list[KCFG.Node],
-        ) -> int:
-            # The collecting path constraint of a list of nodes
-            # is the disjunction of their individual path constraints
-            def collecting_path_constraint(nodes: list[KCFG.Node]) -> KInner:
-                cpc = ml_pred_to_bool(mlOr([mlAnd(list(node.cterm.constraints)) for node in nodes]))
+        #
+        # Path constraint
+        # ===============
+        #
+        #   Parameters:
+        #   -----------
+        #     nodes: a list of KCFG nodes
+        #
+        #   Return value:
+        #     the ML-sorted disjunction of the path constraints of the individual nodes
+        #
+        def get_path_constraint(nodes: list[KCFG.Node]) -> KInner:
+            pc = ml_pred_to_bool(mlOr([mlAnd(list(node.cterm.constraints)) for node in nodes]))
 
-                print('Collecting path constraint:\n', kcfg_explore.kprint.pretty_print(cpc))
+            print('Path constraint:\n', kcfg_explore.kprint.pretty_print(pc))
 
-                return cpc
+            return pc
 
-            cpc_1 = collecting_path_constraint(nodes_1)
-            cpc_2 = collecting_path_constraint(nodes_2)
-
-            unsat_implication_1_2 = bool_to_ml_pred(andBool([cpc_1, notBool(cpc_2)]))
-            unsat_implication_2_1 = bool_to_ml_pred(andBool([cpc_2, notBool(cpc_1)]))
+        #
+        # Implication check
+        # =================
+        #
+        #   Parameters:
+        #   -----------
+        #     antecedent: an ML-sorted K term
+        #     consequent: an ML-sorted K term
+        #
+        #   Return value:
+        #   -------------
+        #     true:   if antecedent => consequent is valid
+        #     false:  otherwise
+        #
+        def check_implication(antecedent: KInner, consequent: KInner) -> bool:
+            # As `kcfg_explore.cterm_implies` checks satisfiability of implication,
+            # to check if an implication is valid, we check that its negation
+            # (antecedent /\ not consequent) is not unsatisfiable
+            neg_implication = bool_to_ml_pred(andBool([antecedent, notBool(consequent)]))
 
             dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
             config_top = CTerm(config=dummy_config, constraints=[mlTop(GENERATED_TOP_CELL)])
-            config_1_2 = CTerm(config=dummy_config, constraints=[unsat_implication_1_2])
-            config_2_1 = CTerm(config=dummy_config, constraints=[unsat_implication_2_1])
+            config_neg_implication = CTerm(config=dummy_config, constraints=[neg_implication])
 
-            result_1_implies_2 = kcfg_explore.cterm_implies(config_top, config_1_2)
-            result_2_implies_1 = kcfg_explore.cterm_implies(config_top, config_2_1)
+            return kcfg_explore.cterm_implies(config_top, config_neg_implication) == None
 
-            if result_1_implies_2 == None:
-                if result_2_implies_1 == None:
+        #
+        # State space subsumption check
+        # =============================
+        #
+        #   Parameters:
+        #   -----------
+        #     nodes_1: list of KCFG nodes representing the final
+        #              execution states of program 1
+        #     nodes_2: list of KCFG nodes representing the final
+        #              execution states of program 2
+        #
+        #   Return value:
+        #   -------------
+        #     -1: two state spaces are incomparable
+        #      0: twp state spaces are equivalent
+        #      1: state space of program 1 subsumes state space of program 2
+        #      2: state space of program 2 subsumes state space of program 1
+        #
+        def state_space_subsumption(
+            nodes_1: list[KCFG.Node],
+            nodes_2: list[KCFG.Node],
+        ) -> int:
+            pc_1 = get_path_constraint(nodes_1)
+            pc_2 = get_path_constraint(nodes_2)
+
+            if check_implication(pc_1, pc_2):
+                if check_implication(pc_2, pc_1):
+                    # Both implications hold
                     return 0
                 else:
-                    return 1
-            else:
-                if result_2_implies_1 == None:
+                    # 1 => 2
                     return 2
+            else:
+                if check_implication(pc_2, pc_1):
+                    # 2 => 1
+                    return 1
                 else:
+                    # No implications hold
                     return -1
 
         # Parse the given configurations
         final_nodes_1 = execute_to_completion(config_1)
         final_nodes_2 = execute_to_completion(config_2)
 
-        eq_check = equivalence_check_path_constraints(final_nodes_1, final_nodes_2)
+        eq_check = state_space_subsumption(final_nodes_1, final_nodes_2)
 
-        assert eq_check == 0
+        match eq_check:
+            case -1:
+                print('State spaces not comparable.')
+            case 0:
+                print('State spaces equivalent.')
+            case 1:
+                print('State space of program 1 subsumes that of program 2.')
+            case 2:
+                print('State space of program 2 subsumes that of program 1.')
+
+        assert 1 == 0
 
         # Construct the equivalence check
         # OR of final states of config_1 <=> OR of final states of config_2
