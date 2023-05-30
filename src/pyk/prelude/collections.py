@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 from ..kast.inner import KApply, KLabel, KSort, build_assoc
 
 if TYPE_CHECKING:
-    from typing import Final, Iterable
+    from collections.abc import Iterable
+    from typing import Final
 
     from ..kast import KInner
 
