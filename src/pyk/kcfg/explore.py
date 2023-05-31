@@ -161,6 +161,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
+    def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
+        _LOGGER.debug(f'Simplifying: {kast}')
+        kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
+        _, kore_client = self._kore_rpc
+        kore_simplified, logs = kore_client.simplify(kore)
+        kast_simplified = self.kprint.kore_to_kast(kore_simplified)
+        return kast_simplified, logs
+
     def cterm_implies(
         self,
         antecedent: CTerm,
@@ -290,12 +298,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
-
-    def remove_subgraph_from(self, cfg: KCFG, node: NodeIdLike) -> None:
-        for _node in cfg.reachable_nodes(node, traverse_covers=True):
-            if not cfg.is_target(_node.id):
-                _LOGGER.info(f'Removing node: {shorten_hashes(_node.id)}')
-                cfg.remove_node(_node.id)
 
     def simplify(self, cfg: KCFG, logs: dict[int, tuple[LogEntry, ...]]) -> None:
         for node in cfg.nodes:
