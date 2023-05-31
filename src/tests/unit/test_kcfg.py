@@ -320,10 +320,10 @@ def test_reachable_nodes() -> None:
     cfg = KCFG.from_dict(d)
 
     # When
-    nodes_1 = cfg.reachable_nodes(12)
-    nodes_2 = cfg.reachable_nodes(12, traverse_covers=True)
-    nodes_3 = cfg.reachable_nodes(16, traverse_covers=True)
-    nodes_4 = cfg.reachable_nodes(13, traverse_covers=True, reverse=True)
+    nodes_1 = cfg.reachable_nodes(12, covers=False)
+    nodes_2 = cfg.reachable_nodes(12)
+    nodes_3 = cfg.reachable_nodes(16)
+    nodes_4 = cfg.reachable_nodes(13, reverse=True)
     nodes_5 = cfg.reachable_nodes(19, reverse=True)
 
     # Then
@@ -628,9 +628,10 @@ def test_pretty_print() -> None:
         '┃  ┗━━┓\n'
         '┃     │\n'
         '┃     └─ \033[1m25 (frontier, leaf)\033[0m\n'
-        '┃          #And ( <top>\n'
+        '┃          <top>\n'
         '┃            V25\n'
-        '┃          </top> , #Equals ( x , 25 ) )\n'
+        '┃          </top>\n'
+        '┃          #And #Equals ( x , 25 )\n'
         '┃\n'
         '┣━━┓ constraint: #Equals ( x , 23 )\n'
         '┃  ┃ subst: V14 <- V23\n'
