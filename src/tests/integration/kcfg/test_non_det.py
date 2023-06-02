@@ -7,8 +7,9 @@ import pytest
 
 from pyk.kcfg import KCFG
 from pyk.proof import APRProof, APRProver, ProofStatus
+from pyk.testing import KCFGExploreTest
 
-from ..utils import K_FILES, KCFGExploreTest
+from ..utils import K_FILES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -69,7 +70,7 @@ class TestImpProof(KCFGExploreTest):
 
         id1 = kcfg.get_unique_init().id
 
-        def assert_nd_branch(id: str) -> tuple[str, str]:
+        def assert_nd_branch(id: int) -> tuple[int, int]:
             assert len(kcfg.successors(source_id=id)) == 1
             ndbranches = kcfg.ndbranches(source_id=id)
             assert len(ndbranches) == 1
@@ -77,7 +78,7 @@ class TestImpProof(KCFGExploreTest):
             ida, idb = ndbranches[0].target_ids
             return ida, idb
 
-        def assert_edge(id: str) -> str:
+        def assert_edge(id: int) -> int:
             assert len(kcfg.successors(source_id=id)) == 1
             edges = kcfg.edges(source_id=id)
             assert len(edges) == 1

@@ -5,13 +5,16 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable
-from pyk.kast.manip import remove_attrs
-from pyk.ktool.kprint import assoc_with_unit
+from pyk.kast.manip import inline_cell_maps, remove_attrs
+from pyk.kast.pretty import assoc_with_unit
+from pyk.prelude.collections import set_of
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kbool import andBool
 from pyk.prelude.kint import INT, intToken, leInt, ltInt
+from pyk.prelude.utils import token
+from pyk.testing import KPrintTest
 
-from .utils import K_FILES, KPrintTest
+from .utils import K_FILES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -249,15 +252,113 @@ PRETTY_PRINT_ALIAS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
     ),
 )
 
+PRETTY_PRINT_NONTERM_LABEL_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
+    (
+        'all-labeled',
+        KApply(
+            'labeled',
+            KToken('1', 'Int'),
+            KToken('2', 'Int'),
+        ),
+        ('labeled ( ... label1: 1 , label2: 2 )'),
+    ),
+    (
+        'some-labeled',
+        KApply(
+            'some-labeled',
+            KToken('1', 'Int'),
+            KToken('2', 'Int'),
+        ),
+        ('someLabeled ( 1 , 2 )'),
+    ),
+    (
+        'none-labeled',
+        KApply(
+            'none-labeled',
+            KToken('1', 'Int'),
+            KToken('2', 'Int'),
+        ),
+        ('noneLabeled ( 1 , 2 )'),
+    ),
+    (
+        'no-nonterms',
+        KApply('no-nonterms', []),
+        ('nonNonTerms ( )'),
+    ),
+)
 
-class TestAliasDefn(KPrintTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'aliases.k'
+
+class TestUnparsingDefn(KPrintTest):
+    KOMPILE_MAIN_FILE = K_FILES / 'unparsing.k'
 
     @pytest.mark.parametrize(
         'test_id,kast,expected',
         PRETTY_PRINT_ALIAS_TEST_DATA,
         ids=[test_id for test_id, *_ in PRETTY_PRINT_ALIAS_TEST_DATA],
     )
-    def test_pretty_print(self, kprint: KPrint, test_id: str, kast: KInner, expected: str) -> None:
+    def test_aliases(self, kprint: KPrint, test_id: str, kast: KInner, expected: str) -> None:
         actual = kprint.pretty_print(kast)
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        'test_id,kast,expected',
+        PRETTY_PRINT_NONTERM_LABEL_TEST_DATA,
+        ids=[test_id for test_id, *_ in PRETTY_PRINT_NONTERM_LABEL_TEST_DATA],
+    )
+    def test_nonterm_labels(self, kprint: KPrint, test_id: str, kast: KInner, expected: str) -> None:
+        actual = kprint.pretty_print(kast)
+        assert actual == expected
+
+
+SORT_COLLECTIONS_TEST_DATA: Iterable[tuple[str, KInner, str]] = (
+    (
+        'single-item',
+        set_of([token(1)]),
+        'SetItem ( 1 )',
+    ),
+    (
+        'two-item',
+        set_of([token(1), token(2)]),
+        'SetItem ( 1 ) SetItem ( 2 )',
+    ),
+    (
+        'two-item-reversed',
+        set_of([token(2), token(1)]),
+        'SetItem ( 1 ) SetItem ( 2 )',
+    ),
+    (
+        'account-cell-map-items',
+        KApply(
+            '_AccountCellMap_',
+            [
+                KApply('AccountCellMapItem', [KApply('<id>', [token(2)]), KVariable('V1')]),
+                KApply('AccountCellMapItem', [KApply('<id>', [token(1)]), KVariable('V2')]),
+            ],
+        ),
+        'V1 V2',
+    ),
+    (
+        'account-cell-map-items-reversed',
+        KApply(
+            '_AccountCellMap_',
+            [
+                KApply('AccountCellMapItem', [KApply('<id>', [token(1)]), KVariable('V2')]),
+                KApply('AccountCellMapItem', [KApply('<id>', [token(2)]), KVariable('V1')]),
+            ],
+        ),
+        'V1 V2',
+    ),
+)
+
+
+class TestSortCollections(KPrintTest):
+    KOMPILE_MAIN_FILE = K_FILES / 'cell-map.k'
+
+    @pytest.mark.parametrize(
+        'test_id,kast,expected',
+        SORT_COLLECTIONS_TEST_DATA,
+        ids=[test_id for test_id, *_ in SORT_COLLECTIONS_TEST_DATA],
+    )
+    def test_pretty_print(self, kprint: KPrint, test_id: str, kast: KInner, expected: str) -> None:
+        actual = kprint.pretty_print(inline_cell_maps(kast), sort_collections=True)
         assert actual == expected

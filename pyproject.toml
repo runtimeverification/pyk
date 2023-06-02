@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "pyk"
-version = "0.1.289"
+version = "0.1.318"
 description = ""
 authors = [
     "Runtime Verification, Inc. <contact@runtimeverification.com>",
@@ -41,9 +41,13 @@ types-psutil = "^5.9.5.10"
 
 [tool.poetry.scripts]
 pyk = "pyk.__main__:main"
+pyk-covr = "pyk.kcovr:main"
 kbuild = "pyk.kbuild.__main__:main"
 krepl = "pyk.krepl.__main__:main"
 kore-exec-covr = "pyk.kore_exec_covr.__main__:main"
+
+[tool.poetry.plugins.pytest11]
+pytest-pyk = "pyk.testing.plugin"
 
 [tool.isort]
 profile = "black"

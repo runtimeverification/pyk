@@ -10,11 +10,12 @@ from pyk.kast import kast_term
 from pyk.kast.inner import EMPTY_ATT
 from pyk.kast.manip import remove_generated_cells
 from pyk.kast.outer import KDefinition, KFlatModuleList, KRequire
-from pyk.ktool.kprint import paren
+from pyk.kast.pretty import paren
 from pyk.ktool.kprove import _kprove
 from pyk.prelude.ml import is_top
+from pyk.testing import KProveTest
 
-from ..utils import K_FILES, KProveTest
+from ..utils import K_FILES
 
 if TYPE_CHECKING:
     from pyk.kast.outer import KFlatModule
@@ -51,7 +52,10 @@ class TestEmitJsonSpec(KProveTest):
     def test_prove(self, kprove: KProve, spec_module: KFlatModule) -> None:
         # Given
         spec_name = 'looping-2-spec'
+
+        assert kprove.use_directory is not None
         spec_file = kprove.use_directory / f'{spec_name}.k'
+
         spec_module_name = spec_name.upper()
         include_dir = Path(self.KOMPILE_MAIN_FILE).parent
 
