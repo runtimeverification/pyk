@@ -8,12 +8,12 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import bool_to_ml_pred, minimize_term, ml_pred_to_bool
+from pyk.kast.manip import bool_to_ml_pred, minimize_term
 from pyk.kcfg import KCFG
 from pyk.prelude.k import GENERATED_TOP_CELL
 from pyk.prelude.kbool import BOOL, andBool, notBool
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlOr, mlTop
+from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
@@ -477,7 +477,7 @@ PROGRAM_EQUIVALENCE_DATA = (
         (
             'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
             '.Map',
-            mlTop(),
+             mlEqualsTrue(KApply('_>Int_', [KVariable('N'), intToken(10)])),
         ),
         ('int $n; $n = N:Int ; $n = 2 * $n ;', '.Map', mlTop()),
     ),
@@ -859,7 +859,7 @@ class TestImpProof(KCFGExploreTest):
         #   -------------
         #     A list of nodes obtained after executing the initial configuration to completion
         #
-        def execute_to_completion(config: tuple[str, str, KInner]) -> list[KCFG.Node]:
+        def execute_to_completion(config: tuple[str, str, KInner]) -> KInner:
             # Parse given configurations into a term
             configuration = self.config(kcfg_explore.kprint, *config)
 
@@ -920,25 +920,7 @@ class TestImpProof(KCFGExploreTest):
             ]
             print(final_nodes_print)
 
-            return final_nodes
-
-        #
-        # Path constraint
-        # ===============
-        #
-        #   Parameters:
-        #   -----------
-        #     nodes: a list of KCFG nodes
-        #
-        #   Return value:
-        #     the ML-sorted disjunction of the path constraints of the individual nodes
-        #
-        def get_path_constraint(nodes: list[KCFG.Node]) -> KInner:
-            pc = ml_pred_to_bool(mlOr([mlAnd(list(node.cterm.constraints)) for node in nodes]))
-
-            print('Path constraint:\n', kcfg_explore.kprint.pretty_print(pc))
-
-            return pc
+            return kcfg.multinode_path_constraint([node.id for node in final_nodes])
 
         #
         # Implication check
@@ -967,30 +949,25 @@ class TestImpProof(KCFGExploreTest):
             return kcfg_explore.cterm_implies(config_top, config_neg_implication) == None
 
         #
-        # State space subsumption check
-        # =============================
+        # Path constraint subsumption check
+        # =================================
         #
         #   Parameters:
         #   -----------
-        #     nodes_1: list of KCFG nodes representing the final
-        #              execution states of program 1
-        #     nodes_2: list of KCFG nodes representing the final
-        #              execution states of program 2
+        #     pc_1: path constraint 1
+        #     pc_2: path constraint 2
         #
         #   Return value:
         #   -------------
-        #     -1: two state spaces are incomparable
-        #      0: twp state spaces are equivalent
-        #      1: state space of program 1 subsumes state space of program 2
-        #      2: state space of program 2 subsumes state space of program 1
+        #     -1: the two path constraints are incomparable
+        #      0: the two path constraints are equivalent
+        #      1: path constraint 1 subsumes path constraint 2
+        #      2: path constraint 2 subsumes path constraint 1
         #
-        def state_space_subsumption(
-            nodes_1: list[KCFG.Node],
-            nodes_2: list[KCFG.Node],
+        def path_constraint_subsumption(
+            pc_1: KInner,
+            pc_2: KInner,
         ) -> int:
-            pc_1 = get_path_constraint(nodes_1)
-            pc_2 = get_path_constraint(nodes_2)
-
             if check_implication(pc_1, pc_2):
                 if check_implication(pc_2, pc_1):
                     # Both implications hold
@@ -1006,11 +983,11 @@ class TestImpProof(KCFGExploreTest):
                     # No implications hold
                     return -1
 
-        # Parse the given configurations
-        final_nodes_1 = execute_to_completion(config_1)
-        final_nodes_2 = execute_to_completion(config_2)
+        # Execute to completion
+        pc_1 = execute_to_completion(config_1)
+        pc_2 = execute_to_completion(config_2)
 
-        eq_check = state_space_subsumption(final_nodes_1, final_nodes_2)
+        eq_check = path_constraint_subsumption(pc_1, pc_2)
 
         match eq_check:
             case -1:
