@@ -65,7 +65,7 @@ class Proof(ABC):
     def checksum(self) -> str:
         return hash_str(json.dumps(self.dict))
 
-    def is_uptodate(self, check_method: str = 'timestamp') -> bool:
+    def is_uptodate(self, check_method: str = 'checksum') -> bool:
         """
         Check that the proof's representation on disk is up-to-date.
 
