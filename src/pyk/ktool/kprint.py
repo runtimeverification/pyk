@@ -10,7 +10,7 @@ from subprocess import CalledProcessError
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
-from ..cli_utils import check_dir_path, check_file_path, run_process
+from ..cli.utils import check_dir_path, check_file_path, run_process
 from ..kast import kast_term
 from ..kast.inner import KInner
 from ..kast.outer import read_kast_definition
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from tempfile import _TemporaryFileWrapper
     from typing import Final
 
-    from ..cli_utils import BugReport
+    from ..cli.utils import BugReport
     from ..kast import KAst
     from ..kast.inner import KSort, KToken
     from ..kast.outer import KDefinition, KFlatModule

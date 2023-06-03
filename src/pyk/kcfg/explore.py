@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final
 
-    from ..cli_utils import BugReport
+    from ..cli.utils import BugReport
     from ..kast import KInner
     from ..kore.rpc import LogEntry
     from ..ktool.kprint import KPrint

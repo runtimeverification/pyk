@@ -7,7 +7,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
-from ..cli_utils import check_dir_path, check_file_path, run_process
+from ..cli.utils import check_dir_path, check_file_path, run_process
 from ..cterm import CTerm
 from ..kast import kast_term
 from ..kast.inner import KInner, KLabel, KSort
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from subprocess import CompletedProcess
     from typing import Final
 
-    from ..cli_utils import BugReport
+    from ..cli.utils import BugReport
     from ..kast.outer import KFlatModule
     from ..kast.pretty import SymbolTable
     from ..kore.syntax import Pattern

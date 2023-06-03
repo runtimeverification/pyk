@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, final
 
 import tomli
 
-from ..cli_utils import (
+from ..cli.utils import (
     abs_or_rel_to,
     check_absolute_path,
     check_dir_path,

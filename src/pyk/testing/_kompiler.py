@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from pytest import TempPathFactory
 
-    from ..cli_utils import BugReport
+    from ..cli.utils import BugReport
     from ..kast.outer import KDefinition
     from ..ktool.kprint import SymbolTable
 

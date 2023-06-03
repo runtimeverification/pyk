@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
-from .cli_utils import dir_path
+from .cli.utils import dir_path
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import split_config_and_constraints
 from .kast.inner import KInner
