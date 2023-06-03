@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
-from ..cli_utils import ensure_dir_path
+from ..cli.utils import ensure_dir_path
 from ..cterm import CTerm, build_claim, build_rule
 from ..kast.inner import KApply, KRewrite, top_down
 from ..kast.manip import (

@@ -10,7 +10,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
-from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
+from ..cli.utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
 from ..cterm import build_claim
 from ..kast import kast_term
 from ..kast.inner import KInner
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from subprocess import CompletedProcess
     from typing import Final
 
-    from ..cli_utils import BugReport
+    from ..cli.utils import BugReport
     from ..cterm import CTerm
     from ..kast.outer import KClaim, KRule, KRuleLike
     from ..kast.pretty import SymbolTable
