@@ -12,10 +12,15 @@ from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from logging import Logger
     from subprocess import CompletedProcess
-    from typing import Final
+    from typing import Final, TypeVar
+
+    from ..kcfg.kcfg import NodeIdLike
+
+    T1 = TypeVar('T1')
+    T2 = TypeVar('T2')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -192,3 +197,31 @@ class BugReport:
             arcname = Path('kompiled') / f'{self._defn_id:03}_defn'
             self.add_file(defn_path, arcname)
             self._defn_id += 1
+
+
+def list_of(elem_type: Callable[[str], T1], delim: str = ';') -> Callable[[str], list[T1]]:
+    def parse(s: str) -> list[T1]:
+        return [elem_type(elem) for elem in s.split(delim)]
+
+    return parse
+
+
+def node_id_like(s: str) -> NodeIdLike:
+    try:
+        return int(s)
+    except ValueError:
+        return s
+
+
+def arg_pair_of(
+    fst_type: Callable[[str], T1], snd_type: Callable[[str], T2], delim: str = ','
+) -> Callable[[str], tuple[T1, T2]]:
+    def parse(s: str) -> tuple[T1, T2]:
+        elems = s.split(delim)
+        length = len(elems)
+        if length != 2:
+            raise ValueError(f'Expected 2 elements, found {length}')
+
+        return fst_type(elems[0]), snd_type(elems[1])
+
+    return parse
