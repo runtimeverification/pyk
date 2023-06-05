@@ -4,7 +4,6 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
-from itertools import count
 from threading import RLock
 from typing import TYPE_CHECKING, List, Union, cast, final
 
@@ -21,7 +20,7 @@ from ..prelude.ml import mlAnd, mlTop
 from ..utils import single
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from types import TracebackType
     from typing import Any
 
