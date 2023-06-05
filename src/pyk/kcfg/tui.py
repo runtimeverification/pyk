@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Union
 
 from textual.app import App
 from textual.containers import Horizontal, VerticalScroll
+from textual.geometry import Offset, Region
 from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Footer, Static
@@ -165,7 +166,7 @@ class NodeView(Widget):
         # self.styles.border_left = None  # type: ignore
         # self.styles.border_left = ('double', 'red')  # type: ignore
         if self._element and type(self._element) is KCFG.Node:
-            selected_chunk = 'node_' + str(self._element.id)
+            'node_' + str(self._element.id)
             # self.query_one(f'#{selected_chunk}', GraphChunk).set_styles('border-left: double, red')
             # self.query_one(f'#{selected_chunk}', GraphChunk)
 
@@ -311,7 +312,9 @@ class KCFGViewer(App):
     def compose(self) -> ComposeResult:
         yield Horizontal(
             VerticalScroll(
-                BehaviorView(self._kcfg, self._kprint, nodes=self._kcfg_nodes, node_printer=self._node_printer, id='behavior'),
+                BehaviorView(
+                    self._kcfg, self._kprint, nodes=self._kcfg_nodes, node_printer=self._node_printer, id='behavior'
+                ),
                 id='navigation',
             ),
             VerticalScroll(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
@@ -382,6 +385,8 @@ class KCFGViewer(App):
         ('g', 'keystroke("g")', 'Go to start'),
         ('G', 'keystroke("G")', 'Go to end'),
         ('z', 'keystroke("z")', 'Center vertically'),
+        ('ctrl+d', 'keystroke("page-down")', 'Page down'),
+        ('ctrl+u', 'keystroke("page-up")', 'Page up'),
         # TODO: q for "quit"
     ]
 
@@ -407,7 +412,9 @@ class KCFGViewer(App):
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
                             self._selected_chunk = 'node_' + str(node_id)
                             self._last_idx = idx
-                            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
+                            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
+                                'border-left: double red;'
+                            )
                             self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
                     case 'k':
                         if self._last_idx != 0:
@@ -416,7 +423,9 @@ class KCFGViewer(App):
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
                             self._selected_chunk = 'node_' + str(node_id)
                             self._last_idx = idx
-                            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
+                            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
+                                'border-left: double red;'
+                            )
                             self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
 
         elif key == 'g':
@@ -441,11 +450,11 @@ class KCFGViewer(App):
                 pass
         elif key == 'f':
             if self._selected_chunk is not None and self._selected_chunk.startswith('node_'):
-                    node_id = self._selected_chunk[5:]
-                    self._last_idx = self._node_idx[int(node_id)]
-                    self._hidden_chunks.append(self._selected_chunk)
-                    self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
-                    self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
+                node_id = self._selected_chunk[5:]
+                self._last_idx = self._node_idx[int(node_id)]
+                self._hidden_chunks.append(self._selected_chunk)
+                self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
+                self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
         elif key == 'F':
             for hc in self._hidden_chunks:
                 self.query_one(f'#{hc}', GraphChunk).remove_class('hidden')
@@ -456,6 +465,30 @@ class KCFGViewer(App):
             self.query_one('#node-view', NodeView).toggle_view(key)
         elif key in ['minimize']:
             self.query_one('#node-view', NodeView).toggle_option(key)
+        elif key == 'z':
+            sel_node = self.query_one(f'#{self._selected_chunk}', GraphChunk)
+            bv = self.query_one('#behavior', BehaviorView)
+
+            central_point = Offset(
+                0,
+                sel_node.virtual_region.y + (1 + sel_node.virtual_region.height) // 2,
+            )
+
+            container_virtual_region = bv.virtual_region
+            target_region = Region(
+                0,
+                central_point.y - container_virtual_region.height // 2,
+                container_virtual_region.width,
+                container_virtual_region.height,
+            )
+            bv.scroll_to_region(target_region, animate=False)
+
+        elif key == 'page-up':
+            bv = self.query_one('#behavior', BehaviorView)
+            bv.scroll_page_up(animate=False)
+        elif key == 'page-down':
+            bv = self.query_one('#behavior', BehaviorView)
+            bv.scroll_page_down(animate=False)
         elif key == 'change-window':
             self._buffer.append(key)
 
