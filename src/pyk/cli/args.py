@@ -15,10 +15,15 @@ if TYPE_CHECKING:
 
 class KCLIArgs:
     @cached_property
-    def shared_args(self) -> ArgumentParser:
+    def logging_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
         args.add_argument('--verbose', '-v', default=False, action='store_true', help='Verbose output.')
         args.add_argument('--debug', default=False, action='store_true', help='Debug output.')
+        return args
+
+    @cached_property
+    def parallel_args(self) -> ArgumentParser:
+        args = ArgumentParser(add_help=False)
         args.add_argument('--workers', '-j', default=1, type=int, help='Number of processes to run in parallel.')
         return args
 
