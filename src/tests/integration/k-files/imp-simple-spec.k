@@ -30,6 +30,12 @@ module IMP-FUNCTIONAL-SPEC
     claim [concrete-requires-nontrivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
       requires 0 ==Int 1
 
+    claim [concrete-requires-trivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
+      requires false
+
+    claim [concrete-requires-nontrivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
+       requires 0 ==Int 1
+
     claim [symbolic-addition-commutativity]: N +Int M => M +Int N
 
     claim [ite-sort-param]: (#if false #then 1 #else 2 #fi) => 2
@@ -98,11 +104,11 @@ module IMP-SIMPLE-SPEC
 
     claim [fail-branch]: <k> if ( $s <= 123) { $n = 1; } else { } => . ... </k>
                          <state> $n |-> (0 => 1) $s |-> _S:Int </state>
-    
+
     claim [if-almost-same]:
         <k> if (_B:Bool) {$s = $n + $s; } else {$s = $s + $n; } => . ...</k>
         <state> ($s |-> S:Int $n |-> N:Int) => ($s |-> (S +Int N) $n |-> N) </state>
-    
+
     // The vision is that the proof of `use-if-almost-same` will re-use the proof of `if-almost-same`
     // and then it will be without branching.
     claim [use-if-almost-same]:
