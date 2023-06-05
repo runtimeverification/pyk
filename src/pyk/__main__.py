@@ -72,7 +72,7 @@ def exec_print(args: Namespace) -> None:
                     minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
                     config, constraint = split_config_and_constraints(minimized)
                 except ValueError as err:
-                    raise ValueError('The minified term does not contain a config cell.') from err
+                    raise ValueError('The minimized term does not contain a config cell.') from err
 
                 if not is_top(constraint):
                     minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
