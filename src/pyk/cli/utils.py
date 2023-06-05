@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from ..utils import check_dir_path, check_file_path, check_relative_path
 
 if TYPE_CHECKING:
+    from argparse import Namespace
     from collections.abc import Callable
     from typing import TypeVar
 
@@ -16,16 +17,18 @@ if TYPE_CHECKING:
     T2 = TypeVar('T2')
 
 
-def loglevel(level: str) -> int:
-    res = getattr(logging, level.upper(), None)
+def logformat() -> str:
+    return '%(levelname)s %(asctime)s %(name)s - %(message)s'
 
-    if isinstance(res, int):
-        return res
 
-    try:
-        return int(level)
-    except ValueError:
-        raise ValueError('Invalid log level: {level}') from None
+def loglevel(args: Namespace) -> int:
+    if args.debug:
+        return logging.DEBUG
+
+    if args.verbose:
+        return logging.INFO
+
+    return logging.WARNING
 
 
 def dir_path(s: str | Path) -> Path:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
-from .cli.utils import dir_path
+from .cli.utils import dir_path, logformat, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import split_config_and_constraints
 from .kast.inner import KInner
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from typing import Any, Final
 
 
-_LOG_FORMAT: Final = '%(levelname)s %(asctime)s %(name)s - %(message)s'
 _LOGGER: Final = logging.getLogger(__name__)
 
 
@@ -40,12 +39,7 @@ def main() -> None:
     cli_parser = create_argument_parser()
     args = cli_parser.parse_args()
 
-    if not args.verbose:
-        logging.basicConfig(level=logging.WARNING, format=_LOG_FORMAT)
-    elif args.verbose == 1:
-        logging.basicConfig(level=logging.INFO, format=_LOG_FORMAT)
-    elif args.verbose > 1:
-        logging.basicConfig(level=logging.DEBUG, format=_LOG_FORMAT)
+    logging.basicConfig(level=loglevel(args), format=logformat())
 
     executor_name = 'exec_' + args.command.lower().replace('-', '_')
     if executor_name not in globals():
