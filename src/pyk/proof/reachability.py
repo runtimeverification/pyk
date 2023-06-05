@@ -10,7 +10,7 @@ from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlEquals
-from ..utils import shorten_hash, shorten_hashes, single
+from ..utils import shorten_hashes, single
 from .equality import RefutationProof, RefutationProver
 from .proof import Proof, ProofStatus
 
@@ -37,15 +37,16 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
-    node_refutations: dict[str, str]
+    node_refutations: dict[int, str]
     logs: dict[int, tuple[LogEntry, ...]]
+
     def __init__(
         self,
         id: str,
         kcfg: KCFG,
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
-        node_refutations: dict[str, str] | None = None,
+        node_refutations: dict[int, str] | None = None,
         subproof_ids: list[str] | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
@@ -62,7 +63,7 @@ class APRProof(Proof):
                 )
         self.node_refutations = node_refutations if node_refutations is not None else {}
 
-    def read_refutations(self) -> Iterable[tuple[str, RefutationProof]]:
+    def read_refutations(self) -> Iterable[tuple[int, RefutationProof]]:
         if len(self.node_refutations) == 0:
             return
         else:
@@ -145,14 +146,12 @@ class APRProof(Proof):
         # traverse the path back from the node-to-refute and filter-out split nodes and non-deterministic branches
         branches_on_path = list(filter(lambda x: type(x) is KCFG.Split or type(x) is KCFG.NDBranch, reversed(path)))
         if len(branches_on_path) == 0:
-            _LOGGER.error(f'Cannot refute node {shorten_hash(node.id)} in linear KCFG')
+            _LOGGER.error(f'Cannot refute node {node.id} in linear KCFG')
             return None
         closest_branch = branches_on_path[0]
         assert type(closest_branch) is KCFG.Split or type(closest_branch) is KCFG.NDBranch
         if type(closest_branch) is KCFG.NDBranch:
-            _LOGGER.error(
-                f'Cannot refute node {shorten_hash(node.id)} following a non-determenistic branch: not yet implemented'
-            )
+            _LOGGER.error(f'Cannot refute node {node.id} following a non-determenistic branch: not yet implemented')
             return None
 
         assert type(closest_branch) is KCFG.Split
@@ -160,12 +159,12 @@ class APRProof(Proof):
         csubst = closest_branch.splits[refuted_branch_root.id]
         if len(csubst.subst) > 0:
             _LOGGER.error(
-                f'Cannot refute node {shorten_hash(node.id)}: unexpected non-empty substitution {csubst.subst} in Split from {shorten_hash(closest_branch.source.id)}'
+                f'Cannot refute node {node.id}: unexpected non-empty substitution {csubst.subst} in Split from {closest_branch.source.id}'
             )
             return None
         if len(csubst.constraints) > 1:
             _LOGGER.error(
-                f'Cannot refute node {shorten_hash(node.id)}: unexpected non-singleton constraints {csubst.constraints} in Split from {shorten_hash(closest_branch.source.id)}'
+                f'Cannot refute node {node.id}: unexpected non-singleton constraints {csubst.constraints} in Split from {closest_branch.source.id}'
             )
             return None
 
@@ -177,7 +176,7 @@ class APRProof(Proof):
         # extract the constriant added by the Split that leads to the node-to-refute
         last_constraint = mlEquals(TRUE, ml_pred_to_bool(csubst.constraints[0]), arg_sort=BOOL)
 
-        refutation_id = f'{self.id}.node-infeasible-{shorten_hash(node.id)}'
+        refutation_id = f'{self.id}.node-infeasible-{node.id}'
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
         refutation = RefutationProof(
             id=refutation_id,
@@ -203,7 +202,7 @@ class APRBMCProof(APRProof):
         bounded_states: Iterable[int] | None = None,
         proof_dir: Path | None = None,
         subproof_ids: list[str] | None = None,
-        node_refutations: dict[str, str] | None = None,
+        node_refutations: dict[int, str] | None = None,
     ):
         super().__init__(
             id, kcfg, logs, proof_dir=proof_dir, subproof_ids=subproof_ids, node_refutations=node_refutations
@@ -353,10 +352,10 @@ class APRProver:
         return self.proof.kcfg
 
     def refute_node(self, kcfg_explore: KCFGExplore, node: KCFG.Node, extra_constraint: KInner | None = None) -> None:
-        _LOGGER.info(f'Attempting to refute node {shorten_hash(node.id)}')
+        _LOGGER.info(f'Attempting to refute node {node.id}')
         refutation = self.proof.construct_node_refutation(node)
         if refutation is None:
-            _LOGGER.error(f'Failed to refute node {shorten_hash(node.id)}')
+            _LOGGER.error(f'Failed to refute node {node.id}')
             return None
         if extra_constraint is not None:
             _LOGGER.info(f'Adding the provided extra cosntraint {extra_constraint} to refutation {refutation.id}')
@@ -376,9 +375,9 @@ class APRProver:
         eq_prover.advance_proof(kcfg_explore)
 
         if eq_prover.proof.csubst is None:
-            _LOGGER.info(f'Successfully refuted node {shorten_hash(node.id)} by proof {eq_prover.proof.id}')
+            _LOGGER.info(f'Successfully refuted node {node.id} by proof {eq_prover.proof.id}')
         else:
-            _LOGGER.error(f'Failed to refute node {shorten_hash(node.id)} by proof {eq_prover.proof.id}')
+            _LOGGER.error(f'Failed to refute node {node.id} by proof {eq_prover.proof.id}')
         self.proof.node_refutations[node.id] = eq_prover.proof.id
 
 

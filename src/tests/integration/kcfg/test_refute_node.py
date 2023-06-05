@@ -10,9 +10,10 @@ from pyk.kcfg import KCFG
 from pyk.prelude.kint import eqInt, gtInt, intToken, leInt
 from pyk.prelude.ml import mlEqualsTrue
 from pyk.proof import APRProof, APRProver, ProofStatus
+from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
-from ..utils import K_FILES, KCFGExploreTest
+from ..utils import K_FILES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
