@@ -14,10 +14,11 @@ from ..kast.manip import (
     extract_lhs,
     extract_rhs,
     flatten_label,
+    ml_pred_to_bool,
     remove_source_attributes,
     rename_generated_vars,
 )
-from ..prelude.ml import mlAnd, mlTop
+from ..prelude.ml import mlAnd, mlOr, mlTop
 from ..utils import single
 
 if TYPE_CHECKING:
@@ -955,6 +956,20 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 )
 
         return visited
+
+    #
+    # Multi-node path constraint
+    # ==========================
+    #
+    #   Parameters:
+    #   -----------
+    #     nodes: a list of KCFG node ids
+    #
+    #   Return value:
+    #     the ML-sorted disjunction of the path constraints of the individual nodes
+    #
+    def multinode_path_constraint(self, nodes: list[int]) -> KInner:
+        return ml_pred_to_bool(mlOr([(self._nodes[node]).cterm.constraint for node in nodes]))
 
 
 def path_length(_path: Iterable[KCFG.Successor]) -> int:
