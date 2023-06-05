@@ -5,9 +5,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "pyk"
 <<<<<<< HEAD
-version = "0.1.318"
+version = "0.1.319"
 =======
-version = "0.1.318"
+version = "0.1.319"
 >>>>>>> textual-bump
 description = ""
 authors = [
