@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 from textual.app import App
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, VerticalScroll
 from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Footer, Static
@@ -75,11 +75,6 @@ class BehaviorView(Widget):
         self._minimize = minimize
         self._node_printer = node_printer
         self._kcfg_nodes = nodes
-        kcfg_show = KCFGShow(kprint)
-        for lseg_id, node_lines in kcfg_show.pretty_segments(
-            self._kcfg, minimize=self._minimize, node_printer=self._node_printer
-        ):
-            self._kcfg_nodes.append(GraphChunk(lseg_id, node_lines))
 
     def compose(self) -> ComposeResult:
         return self._kcfg_nodes
@@ -283,7 +278,7 @@ class KCFGViewer(App):
         self._hidden_chunks = []
         self._buffer = []
 
-        self._nodes = []
+        self._kcfg_nodes = []
         kcfg_show = KCFGShow(kprint)
         i = 0
         self._node_ids = []
@@ -291,7 +286,7 @@ class KCFGViewer(App):
         for lseg_id, node_lines in kcfg_show.pretty_segments(
             self._kcfg, minimize=self._minimize, node_printer=self._node_printer
         ):
-            self._nodes.append(GraphChunk(lseg_id, node_lines))
+            self._kcfg_nodes.append(GraphChunk(lseg_id, node_lines))
             try:
                 split = lseg_id.rsplit('_', 1)
                 (name, count) = (split[0], split[1])
@@ -315,11 +310,11 @@ class KCFGViewer(App):
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
-            Vertical(
-                BehaviorView(self._kcfg, self._kprint, nodes=self._nodes, node_printer=self._node_printer, id='behavior'),
+            VerticalScroll(
+                BehaviorView(self._kcfg, self._kprint, nodes=self._kcfg_nodes, node_printer=self._node_printer, id='behavior'),
                 id='navigation',
             ),
-            Vertical(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
+            VerticalScroll(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
         )
         yield Footer()
 
