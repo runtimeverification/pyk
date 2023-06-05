@@ -21,13 +21,14 @@ from ..utils import unique
 from .kprint import KPrint
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping
+    from collections.abc import Callable, Iterable, Iterator, Mapping
     from subprocess import CompletedProcess
     from typing import Final
 
     from ..cli_utils import BugReport
     from ..cterm import CTerm
     from ..kast.outer import KClaim, KRule, KRuleLike
+    from ..kast.pretty import SymbolTable
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -160,12 +161,14 @@ class KProve(KPrint):
         command: str = 'kprove',
         bug_report: BugReport | None = None,
         extra_unparsing_modules: Iterable[KFlatModule] = (),
+        patch_symbol_table: Callable[[SymbolTable], None] | None = None,
     ):
         super().__init__(
             definition_dir,
             use_directory=use_directory,
             bug_report=bug_report,
             extra_unparsing_modules=extra_unparsing_modules,
+            patch_symbol_table=patch_symbol_table,
         )
         # TODO: we should not have to supply main_file, it should be read
         self.main_file = main_file
@@ -180,6 +183,7 @@ class KProve(KPrint):
         include_dirs: Iterable[Path] = (),
         md_selector: str | None = None,
         haskell_args: Iterable[str] = (),
+        haskell_rts_args: Iterable[str] = (),
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         allow_zero_step: bool = False,
@@ -203,8 +207,15 @@ class KProve(KPrint):
             ','.join(haskell_log_entries),
         ]
 
-        haskell_backend_command = f'kore-exec {" ".join(list(haskell_args) + haskell_log_args)}'
-        _LOGGER.debug(f'haskell_backend_command={haskell_backend_command}')
+        env = os.environ.copy()
+        kore_exec_opts = ' '.join(list(haskell_args) + haskell_log_args)
+        _LOGGER.debug(f'export KORE_EXEC_OPTS={kore_exec_opts!r}')
+        env['KORE_EXEC_OPTS'] = kore_exec_opts
+
+        if haskell_rts_args:
+            ghc_rts = ' '.join(list(haskell_rts_args))
+            _LOGGER.debug(f'export GHCRTS={ghc_rts!r}')
+            env['GHCRTS'] = ghc_rts
 
         proc_result = _kprove(
             spec_file=spec_file,
@@ -214,10 +225,9 @@ class KProve(KPrint):
             include_dirs=include_dirs,
             md_selector=md_selector,
             output=KProveOutput.JSON,
-            haskell_backend_command=haskell_backend_command,
             dry_run=dry_run,
             args=self.prover_args + list(args),
-            env=os.environ.copy(),
+            env=env,
             check=False,
             depth=depth,
         )
