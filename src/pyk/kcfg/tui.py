@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import Enum, auto
 
 from typing import TYPE_CHECKING, Union
 
@@ -243,6 +244,36 @@ class NodeView(Widget):
         self.query_one('#custom', Static).update(custom_str)
 
 
+class Window(Enum):
+    BEHAVIOR = 'behavior'
+    TERM = 'term-view'
+    CONSTRAINT = 'constraint-view'
+    CUSTOM = 'custom-view'
+
+
+class Direction(Enum):
+    LEFT = 'h'
+    DOWN = 'j'
+    UP = 'k'
+    RIGHT = 'l'
+
+    @classmethod
+    def dir_of(cls, key: str) -> Direction | None:
+        match key:
+            case 'h': return Direction.LEFT
+            case 'j': return Direction.DOWN
+            case 'k': return Direction.UP
+            case 'l': return Direction.RIGHT
+            case _: return None
+
+class MoveKind(Enum):
+    SINGLE = auto()
+    PAGE = auto()
+    CENTER = auto()
+    START = auto()
+    END = auto()
+
+
 class KCFGViewer(App):
     CSS_PATH = 'style.css'
 
@@ -261,6 +292,8 @@ class KCFGViewer(App):
     _node_ids: list[int]
     _node_idx: dict[int, int]
     _last_idx: int
+
+    _curr_win: Window = Window.BEHAVIOR
 
     def __init__(
         self,
@@ -322,6 +355,7 @@ class KCFGViewer(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        # TODO: update to see cells
         self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
@@ -390,22 +424,18 @@ class KCFGViewer(App):
         # TODO: q for "quit"
     ]
 
-    async def action_keystroke(self, key: str) -> None:
-        if key in ['h', 'j', 'k', 'l']:
-            if self._buffer and self._buffer[-1] == 'change-window':
-                pass
-                # match key:
-                #     case 'h':
-                #         self.query_one('#node-view', NodeView).toggle_view('constraint')
-                #     case 'j':
-                #         self.query_one('#node-view', NodeView).toggle_view('term')
-                #     case 'k':
-                #         self.query_one('#node-view', NodeView).toggle_view('custom')
-                #     case 'l':
-                #         self.query_one('#node-view', NodeView).toggle_view('term')
-            else:
-                match key:
-                    case 'j':
+    def focus_window(self, to: Window) -> None:
+        curr_win = self._curr_win
+        self.query_one(f'#{curr_win.value}').set_class(True, "deselected")
+        self.query_one(f'#{to.value}').set_class(True, "selected")
+        self._curr_win = to
+
+    def move(self, dir: Direction, kind: MoveKind) -> None:
+        match dir:
+            case Direction.LEFT: ...
+            case Direction.DOWN:
+                match self._curr_win:
+                    case Window.BEHAVIOR:
                         if self._last_idx + 1 < len(self._node_ids):
                             idx = self._last_idx + 1
                             node_id = self._node_ids[idx]
@@ -416,7 +446,9 @@ class KCFGViewer(App):
                                 'border-left: double red;'
                             )
                             self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
-                    case 'k':
+            case Direction.UP:
+                match self._curr_win:
+                    case Window.BEHAVIOR:
                         if self._last_idx != 0:
                             idx = self._last_idx - 1
                             node_id = self._node_ids[idx]
@@ -427,7 +459,32 @@ class KCFGViewer(App):
                                 'border-left: double red;'
                             )
                             self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
+            case Direction.RIGHT: ...
 
+    async def action_keystroke(self, key: str) -> None:
+        if key in ['h', 'j', 'k', 'l']:
+            dir = Direction.dir_of(key)
+            if dir is not None:
+                if self._buffer and self._buffer[-1] in ['change-window']:
+                    match dir:
+                        case Direction.LEFT:
+                            if self._curr_win != Window.BEHAVIOR:
+                                self.focus_window(Window.BEHAVIOR)
+                        case Direction.DOWN:
+                            if self._curr_win == Window.TERM:
+                                self.focus_window(Window.CONSTRAINT)
+                            elif self._curr_win == Window.CONSTRAINT:
+                                self.focus_window(Window.CUSTOM)
+                        case Direction.UP:
+                            if self._curr_win == Window.CUSTOM:
+                                self.focus_window(Window.CONSTRAINT)
+                            elif self._curr_win == Window.CONSTRAINT:
+                                self.focus_window(Window.TERM)
+                        case Direction.RIGHT:
+                            if self._curr_win == Window.BEHAVIOR:
+                                self.focus_window(Window.TERM)
+                else:
+                    self.move(dir, MoveKind.SINGLE)
         elif key == 'g':
             try:
                 node_id = self._node_ids[0]
@@ -489,7 +546,8 @@ class KCFGViewer(App):
         elif key == 'page-down':
             bv = self.query_one('#behavior', BehaviorView)
             bv.scroll_page_down(animate=False)
-        elif key == 'change-window':
-            self._buffer.append(key)
 
         self._buffer = list()
+
+        if key == 'change-window':
+            self._buffer.append(key)
