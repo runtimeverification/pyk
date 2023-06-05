@@ -4,7 +4,8 @@ from argparse import ArgumentParser
 from functools import cached_property
 from typing import TYPE_CHECKING
 
-from .utils import dir_path, ensure_dir_path, file_path
+from ..utils import ensure_dir_path
+from .utils import dir_path, file_path
 
 if TYPE_CHECKING:
     from typing import TypeVar

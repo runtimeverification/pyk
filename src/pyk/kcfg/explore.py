@@ -30,10 +30,10 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final
 
-    from ..cli.utils import BugReport
     from ..kast import KInner
     from ..kore.rpc import LogEntry
     from ..ktool.kprint import KPrint
+    from ..utils import BugReport
     from .kcfg import NodeIdLike
 
 
