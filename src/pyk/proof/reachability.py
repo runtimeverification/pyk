@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from ..cterm import CTerm
     from ..kast.inner import KInner
     from ..kcfg import KCFGExplore
+    from ..kcfg.kcfg import NodeIdLike
 
     T = TypeVar('T', bound='Proof')
 
@@ -89,7 +90,7 @@ class APRBMCProof(APRProof):
     """APRBMCProof and APRBMCProver perform bounded model-checking of an all-path reachability logic claim."""
 
     bmc_depth: int
-    _bounded_states: list[int]
+    _bounded_nodes: list[NodeIdLike]
 
     def __init__(
         self,
@@ -97,12 +98,12 @@ class APRBMCProof(APRProof):
         kcfg: KCFG,
         logs: dict[int, tuple[LogEntry, ...]],
         bmc_depth: int,
-        bounded_states: Iterable[int] | None = None,
+        bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
     ):
         super().__init__(id, kcfg, logs, proof_dir=proof_dir)
         self.bmc_depth = bmc_depth
-        self._bounded_states = list(bounded_states) if bounded_states is not None else []
+        self._bounded_nodes = list(bounded_nodes) if bounded_nodes is not None else []
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRBMCProof:
@@ -115,7 +116,7 @@ class APRBMCProof(APRProof):
 
     @property
     def status(self) -> ProofStatus:
-        if any(nd.id not in self._bounded_states for nd in self.kcfg.stuck):
+        if any(nd.id not in self._bounded_nodes for nd in self.kcfg.stuck):
             return ProofStatus.FAILED
         elif len(self.kcfg.frontier) > 0:
             return ProofStatus.PENDING
@@ -126,13 +127,13 @@ class APRBMCProof(APRProof):
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
-        bounded_states = dct['bounded_states']
+        bounded_nodes = dct['bounded_nodes']
         bmc_depth = dct['bmc_depth']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        return APRBMCProof(id, cfg, logs, bmc_depth, bounded_states=bounded_states, proof_dir=proof_dir)
+        return APRBMCProof(id, cfg, logs, bmc_depth, bounded_nodes=bounded_nodes, proof_dir=proof_dir)
 
     @property
     def dict(self) -> dict[str, Any]:
@@ -143,11 +144,11 @@ class APRBMCProof(APRProof):
             'cfg': self.kcfg.to_dict(),
             'logs': logs,
             'bmc_depth': self.bmc_depth,
-            'bounded_states': self._bounded_states,
+            'bounded_nodes': self._bounded_nodes,
         }
 
-    def bound_state(self, nid: int) -> None:
-        self._bounded_states.append(nid)
+    def add_bounded(self, nid: NodeIdLike) -> None:
+        self._bounded_nodes.append(self.kcfg._resolve(nid))
 
     @property
     def summary(self) -> Iterable[str]:
@@ -156,8 +157,8 @@ class APRBMCProof(APRProof):
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
-            f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_states])}',
-            f'    bmc-depth-bounded: {len(self._bounded_states)}',
+            f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_nodes])}',
+            f'    bmc-depth-bounded: {len(self._bounded_nodes)}',
         ]
 
 
@@ -278,7 +279,7 @@ class APRBMCProver(APRProver):
                     ]
                     if len(prior_loops) >= self.proof.bmc_depth:
                         self.proof.kcfg.add_expanded(f.id)
-                        self.proof.bound_state(f.id)
+                        self.proof.add_bounded(f.id)
 
             super().advance_proof(
                 kcfg_explore,
