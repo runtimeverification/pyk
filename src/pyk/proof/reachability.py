@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
+from ..kast.manip import flatten_label
 from ..kcfg import KCFG
+from ..prelude.ml import mlAnd, mlTop
 from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus
 
@@ -97,6 +99,20 @@ class APRProof(Proof):
     def from_claim(defn: KDefinition, claim: KClaim) -> APRProof:
         cfg = KCFG.from_claim(defn, claim)
         return APRProof(claim.label, cfg, logs={})
+
+    def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
+        path = self.kcfg.shortest_path_between(self.kcfg.get_unique_init().id, final_node_id)
+        if path is None:
+            raise ValueError(f'No path found to specified node: {final_node_id}')
+        curr_constraint: KInner = mlTop()
+        for edge in reversed(path):
+            if type(edge) is KCFG.Split:
+                assert len(edge.targets) == 1
+                csubst = edge.splits[edge.targets[0].id]
+                curr_constraint = mlAnd([csubst.subst.ml_pred, csubst.constraint, curr_constraint])
+            if type(edge) is KCFG.Cover:
+                curr_constraint = mlAnd([edge.csubst.constraint, edge.csubst.subst.apply(curr_constraint)])
+        return mlAnd(flatten_label('#And', curr_constraint))
 
     @property
     def dict(self) -> dict[str, Any]:

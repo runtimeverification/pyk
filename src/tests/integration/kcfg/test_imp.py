@@ -712,7 +712,7 @@ class TestImpProof(KCFGExploreTest):
         )
 
         assert len(kcfg.stuck) == 1
-        path_constraint = kcfg.path_constraints(kcfg.stuck[0].id)
+        path_constraint = proof.path_constraints(kcfg.stuck[0].id)
         actual_constraint = kcfg_explore.kprint.pretty_print(path_constraint).replace('\n', ' ')
         assert actual_constraint == expected_constraint
 
