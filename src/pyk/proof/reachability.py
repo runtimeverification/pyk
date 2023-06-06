@@ -34,12 +34,21 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
+    _terminal_nodes: list[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
 
-    def __init__(self, id: str, kcfg: KCFG, logs: dict[int, tuple[LogEntry, ...]], proof_dir: Path | None = None):
+    def __init__(
+        self,
+        id: str,
+        kcfg: KCFG,
+        logs: dict[int, tuple[LogEntry, ...]],
+        terminal_nodes: Iterable[NodeIdLike] | None = None,
+        proof_dir: Path | None = None,
+    ):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
         self.logs = logs
+        self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -62,18 +71,28 @@ class APRProof(Proof):
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
+        terminal_nodes = dct['terminal_nodes']
         id = dct['id']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
 
-        return APRProof(id, cfg, logs, proof_dir=proof_dir)
+        return APRProof(id, cfg, logs, terminal_nodes=terminal_nodes, proof_dir=proof_dir)
 
     @property
     def dict(self) -> dict[str, Any]:
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        return {'type': 'APRProof', 'id': self.id, 'cfg': self.kcfg.to_dict(), 'logs': logs}
+        return {
+            'type': 'APRProof',
+            'id': self.id,
+            'cfg': self.kcfg.to_dict(),
+            'terminal_nodes': self._terminal_nodes,
+            'logs': logs,
+        }
+
+    def add_terminal(self, nid: NodeIdLike) -> None:
+        self._terminal_nodes.append(self.kcfg._resolve(nid))
 
     @property
     def summary(self) -> Iterable[str]:
@@ -182,6 +201,7 @@ class APRProver:
             _LOGGER.info(f'Checking terminal {self.proof.id}: {shorten_hashes(curr_node.id)}')
             if self._is_terminal(curr_node.cterm):
                 _LOGGER.info(f'Terminal node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
+                self.proof.add_terminal(curr_node.id)
                 self.proof.kcfg.add_expanded(curr_node.id)
                 return True
         return False
