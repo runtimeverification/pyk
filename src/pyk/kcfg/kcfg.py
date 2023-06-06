@@ -19,7 +19,7 @@ from ..kast.manip import (
 from ..utils import single
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping
+    from collections.abc import Iterable, Mapping
     from types import TracebackType
     from typing import Any
 
@@ -357,15 +357,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @staticmethod
     def from_json(s: str) -> KCFG:
         return KCFG.from_dict(json.loads(s))
-
-    def node_short_info(self, node: Node, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> list[str]:
-        attrs = self.node_attrs(node.id) + ['@' + alias for alias in sorted(self.aliases(node.id))]
-        attr_string = ' (' + ', '.join(attrs) + ')' if attrs else ''
-        node_header = str(node.id) + attr_string
-        node_strs = [node_header]
-        if node_printer:
-            node_strs.extend(f' {nl}' for nl in node_printer(node.cterm))
-        return node_strs
 
     def get_unique_init(self) -> Node:
         return single(self.init)
@@ -776,24 +767,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def is_stuck(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return self.is_expanded(node_id) and self.is_leaf(node_id)
-
-    def node_attrs(self, node_id: NodeIdLike) -> list[str]:
-        attrs = []
-        if self.is_init(node_id):
-            attrs.append('init')
-        if self.is_target(node_id):
-            attrs.append('target')
-        if self.is_expanded(node_id):
-            attrs.append('expanded')
-        if self.is_stuck(node_id):
-            attrs.append('stuck')
-        if self.is_frontier(node_id):
-            attrs.append('frontier')
-        if self.is_leaf(node_id):
-            attrs.append('leaf')
-        if self.is_split(node_id):
-            attrs.append('split')
-        return attrs
 
     def prune(self, node_id: NodeIdLike, keep_init: bool = True, keep_target: bool = True) -> list[int]:
         nodes = self.reachable_nodes(node_id)
