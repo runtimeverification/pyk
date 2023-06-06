@@ -206,6 +206,18 @@ class APRProver:
                 return True
         return False
 
+    def _check_subsume(self, kcfg_explore: KCFGExplore, node: KCFG.Node) -> bool:
+        target_node = self.proof.kcfg.get_unique_target()
+        _LOGGER.info(
+            f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, target_node.id))}'
+        )
+        csubst = kcfg_explore.cterm_implies(node.cterm, target_node.cterm)
+        if csubst is not None:
+            self.proof.kcfg.create_cover(node.id, target_node.id, csubst=csubst)
+            _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, target_node.id))}')
+            return True
+        return False
+
     def advance_proof(
         self,
         kcfg_explore: KCFGExplore,
@@ -226,7 +238,7 @@ class APRProver:
             iterations += 1
             curr_node = self.proof.kcfg.frontier[0]
 
-            if kcfg_explore.target_subsume(self.proof.kcfg, curr_node):
+            if self._check_subsume(kcfg_explore, curr_node):
                 continue
 
             if self._check_terminal(curr_node):
