@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
+    from ..kast.outer import KClaim, KDefinition
     from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
 
@@ -91,6 +92,11 @@ class APRProof(Proof):
             logs = {}
 
         return APRProof(id, cfg, logs, terminal_nodes=terminal_nodes, proof_dir=proof_dir)
+
+    @staticmethod
+    def from_claim(defn: KDefinition, claim: KClaim) -> APRProof:
+        cfg = KCFG.from_claim(defn, claim)
+        return APRProof(claim.label, cfg, logs={})
 
     @property
     def dict(self) -> dict[str, Any]:
