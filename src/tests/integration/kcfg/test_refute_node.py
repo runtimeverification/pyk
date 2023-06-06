@@ -10,6 +10,7 @@ from pyk.kcfg import KCFG
 from pyk.prelude.kint import eqInt, gtInt, intToken, leInt
 from pyk.prelude.ml import mlEqualsTrue
 from pyk.proof import APRProof, APRProver, ProofStatus
+from pyk.proof.equality import RefutationProof
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -28,12 +29,24 @@ if TYPE_CHECKING:
 
     STATE = Union[tuple[str, str], tuple[str, str, str]]
 
-REFUTE_NODE_TEST_DATA: Iterable[tuple[str, KInner | None, ProofStatus]] = (
-    ('refute-node-fail', None, ProofStatus.FAILED),
-    ('refute-node-success-concrete-N', mlEqualsTrue(eqInt(KVariable('N'), intToken(1))), ProofStatus.PASSED),
+REFUTE_NODE_TEST_DATA: Iterable[tuple[str, KInner | None, Iterable[KInner], ProofStatus]] = (
+    ('refute-node-fail', None, (mlEqualsTrue(leInt(KVariable('N'), intToken(0))),), ProofStatus.FAILED),
+    (
+        'refute-node-success-concrete-N',
+        mlEqualsTrue(eqInt(KVariable('N'), intToken(1))),
+        (
+            mlEqualsTrue(leInt(KVariable('N'), intToken(0))),
+            mlEqualsTrue(eqInt(KVariable('N'), intToken(1))),
+        ),
+        ProofStatus.PASSED,
+    ),
     (
         'refute-node-success-range-N',
         mlEqualsTrue(gtInt(KVariable('N'), intToken(10))),
+        (
+            mlEqualsTrue(leInt(KVariable('N'), intToken(0))),
+            mlEqualsTrue(gtInt(KVariable('N'), intToken(10))),
+        ),
         ProofStatus.PASSED,
     ),
 )
@@ -57,7 +70,7 @@ class TestAPRProof(KCFGExploreTest):
         return []
 
     @pytest.mark.parametrize(
-        'test_id,extra_constraint,expected_status',
+        'test_id,extra_constraint,expected_subproof_constraints,expected_status',
         REFUTE_NODE_TEST_DATA,
         ids=[test_id for test_id, *_ in REFUTE_NODE_TEST_DATA],
     )
@@ -68,6 +81,7 @@ class TestAPRProof(KCFGExploreTest):
         proof_dir: Path,
         test_id: str,
         extra_constraint: KInner,
+        expected_subproof_constraints: Iterable[KInner],
         expected_status: ProofStatus,
     ) -> None:
         # Given
@@ -90,6 +104,20 @@ class TestAPRProof(KCFGExploreTest):
 
         stuck_node = single(kcfg_post.stuck)
         prover.refute_node(kcfg_explore, stuck_node, extra_constraint=extra_constraint)
+
+        assert len(prover.proof.subproof_ids) == 1
+        subproof = single(prover.proof.subproofs)
+
+        assert type(subproof) is RefutationProof
+
+        expected_subproof_constraints = tuple(
+            [kprove.definition.sort_vars(constraint) for constraint in expected_subproof_constraints]
+        )
+        actual_subproof_constraints = tuple(
+            [kprove.definition.sort_vars(constraint) for constraint in subproof.constraints]
+        )
+
+        assert expected_subproof_constraints == actual_subproof_constraints
 
         # Then
         assert prover.proof.status == expected_status
