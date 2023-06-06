@@ -260,12 +260,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         claim_body = rename_generated_vars(claim_body)
 
         claim_lhs = CTerm.from_kast(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
-        init_state = cfg.create_node(claim_lhs)
-        cfg.add_init(init_state.id)
+        init_node = cfg.create_node(claim_lhs)
+        cfg.add_init(init_node.id)
 
         claim_rhs = CTerm.from_kast(extract_rhs(claim_body)).add_constraint(bool_to_ml_pred(claim.ensures))
-        target_state = cfg.create_node(claim_rhs)
-        cfg.add_target(target_state.id)
+        target_node = cfg.create_node(claim_rhs)
+        cfg.add_target(target_node.id)
 
         return cfg
 
