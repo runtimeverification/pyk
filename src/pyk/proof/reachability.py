@@ -50,6 +50,18 @@ class APRProof(Proof):
         self.logs = logs
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
 
+    @property
+    def terminal(self) -> list[KCFG.Node]:
+        return [self.kcfg.node(nid) for nid in self._terminal_nodes]
+
+    @property
+    def pending(self) -> list[KCFG.Node]:
+        return [
+            nd
+            for nd in self.kcfg.leaves
+            if nd not in self.terminal + self.kcfg.target and not self.kcfg.is_covered(nd.id)
+        ]
+
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
         proof_path = proof_dir / f'{hash_str(id)}.json'
@@ -61,9 +73,9 @@ class APRProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
-        if len(self.kcfg.stuck) > 0:
+        if len(self.terminal) > 0:
             return ProofStatus.FAILED
-        elif len(self.kcfg.frontier) > 0:
+        elif len(self.pending) > 0:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
@@ -100,8 +112,8 @@ class APRProof(Proof):
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
-            f'    frontier: {len(self.kcfg.frontier)}',
-            f'    stuck: {len(self.kcfg.stuck)}',
+            f'    pending: {len(self.pending)}',
+            f'    terminal: {len(self.terminal)}',
         ]
 
 
@@ -134,10 +146,22 @@ class APRBMCProof(APRProof):
         raise ValueError(f'Could not load APRBMCProof from file {id}: {proof_path}')
 
     @property
+    def bounded(self) -> list[KCFG.Node]:
+        return [self.kcfg.node(nid) for nid in self._bounded_nodes]
+
+    @property
+    def pending(self) -> list[KCFG.Node]:
+        return [
+            nd
+            for nd in self.kcfg.leaves
+            if nd not in self.terminal + self.kcfg.target + self.bounded and not self.kcfg.is_covered(nd.id)
+        ]
+
+    @property
     def status(self) -> ProofStatus:
-        if any(nd.id not in self._bounded_nodes for nd in self.kcfg.stuck):
+        if len(self.terminal) > 0:
             return ProofStatus.FAILED
-        elif len(self.kcfg.frontier) > 0:
+        elif len(self.pending) > 0:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
@@ -175,9 +199,9 @@ class APRBMCProof(APRProof):
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
-            f'    frontier: {len(self.kcfg.frontier)}',
-            f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_nodes])}',
-            f'    bmc-depth-bounded: {len(self._bounded_nodes)}',
+            f'    pending: {len(self.pending)}',
+            f'    terminal: {len(self.terminal)}',
+            f'    bounded: {len(self.bounded)}',
         ]
 
 
@@ -229,14 +253,14 @@ class APRProver:
     ) -> KCFG:
         iterations = 0
 
-        while self.proof.kcfg.frontier:
+        while self.proof.pending:
             self.proof.write_proof()
 
             if max_iterations is not None and max_iterations <= iterations:
                 _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
                 break
             iterations += 1
-            curr_node = self.proof.kcfg.frontier[0]
+            curr_node = self.proof.pending[0]
 
             if self._check_subsume(kcfg_explore, curr_node):
                 continue
@@ -293,7 +317,7 @@ class APRBMCProver(APRProver):
     ) -> KCFG:
         iterations = 0
 
-        while self.proof.kcfg.frontier:
+        while self.proof.pending:
             self.proof.write_proof()
 
             if max_iterations is not None and max_iterations <= iterations:
@@ -301,7 +325,7 @@ class APRBMCProver(APRProver):
                 break
             iterations += 1
 
-            for f in self.proof.kcfg.frontier:
+            for f in self.proof.pending:
                 if f.id not in self._checked_nodes:
                     self._checked_nodes.append(f.id)
                     prior_loops = [
