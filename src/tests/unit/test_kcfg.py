@@ -170,7 +170,7 @@ def test_from_dict_simple_edge() -> None:
 
 def test_to_dict() -> None:
     # Given
-    d = {'nodes': node_dicts(2), 'edges': edge_dicts((1, 2)), 'next': 3 }
+    d = {'nodes': node_dicts(2), 'edges': edge_dicts((1, 2)), 'next': 3}
 
     # When
     cfg = KCFG.from_dict(d)
@@ -179,9 +179,10 @@ def test_to_dict() -> None:
     # Then
     assert cfg_dict == d
 
+
 def test_to_dict_repeated() -> None:
     # Given
-    d = {'nodes': node_dicts(2), 'edges': edge_dicts((1, 2)), 'next': 3 }
+    d = {'nodes': node_dicts(2), 'edges': edge_dicts((1, 2)), 'next': 3}
 
     # When
     cfg = KCFG.from_dict(d)
