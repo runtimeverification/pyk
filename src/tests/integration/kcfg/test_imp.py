@@ -8,10 +8,9 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import bool_to_ml_pred, minimize_term
+from pyk.kast.manip import minimize_term
 from pyk.kcfg import KCFG
-from pyk.prelude.k import GENERATED_TOP_CELL
-from pyk.prelude.kbool import BOOL, andBool, notBool
+from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
@@ -858,7 +857,7 @@ class TestImpProof(KCFGExploreTest):
             kcfg.add_init(init_state.id)
 
             # Initialise prover
-            proof = APRProof('prog_eq.conf', kcfg, {})
+            proof = APRProof('prog_eq.conf', kcfg, {}, False)
             prover = APRProver(
                 proof,
                 is_terminal=TestImpProof._is_terminal,
@@ -903,84 +902,15 @@ class TestImpProof(KCFGExploreTest):
             ]
             print(final_nodes_print)
 
-            return kcfg.multinode_path_constraint([node.id for node in final_nodes])
-
-        #
-        # Implication check
-        # =================
-        #
-        #   Parameters:
-        #   -----------
-        #     antecedent: an ML-sorted K term
-        #     consequent: an ML-sorted K term
-        #
-        #   Return value:
-        #   -------------
-        #     true:   if antecedent => consequent is valid
-        #     false:  otherwise
-        #
-        def check_implication(antecedent: KInner, consequent: KInner) -> bool:
-            # As `kcfg_explore.cterm_implies` checks satisfiability of implication,
-            # to check if an implication is valid, we check that its negation
-            # (antecedent /\ not consequent) is not unsatisfiable
-            neg_implication = bool_to_ml_pred(andBool([antecedent, notBool(consequent)]))
-
-            dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-            config_top = CTerm(config=dummy_config, constraints=[mlTop(GENERATED_TOP_CELL)])
-            config_neg_implication = CTerm(config=dummy_config, constraints=[neg_implication])
-
-            return kcfg_explore.cterm_implies(config_top, config_neg_implication) == None
-
-        #
-        # Path constraint subsumption check
-        # =================================
-        #
-        #   Parameters:
-        #   -----------
-        #     pc_1: path constraint 1
-        #     pc_2: path constraint 2
-        #
-        #   Return value:
-        #   -------------
-        #     -1: the two path constraints are incomparable
-        #      0: the two path constraints are equivalent
-        #      1: path constraint 1 subsumes path constraint 2
-        #      2: path constraint 2 subsumes path constraint 1
-        #
-        def path_constraint_subsumption(
-            pc_1: KInner,
-            pc_2: KInner,
-        ) -> int:
-            if check_implication(pc_1, pc_2):
-                if check_implication(pc_2, pc_1):
-                    # Both implications hold
-                    return 0
-                else:
-                    # 1 => 2
-                    return 2
-            else:
-                if check_implication(pc_2, pc_1):
-                    # 2 => 1
-                    return 1
-                else:
-                    # No implications hold
-                    return -1
+            return KCFG.multinode_path_constraint(final_nodes)
 
         # Execute to completion
         pc_1 = execute_to_completion(config_1)
         pc_2 = execute_to_completion(config_2)
 
-        eq_check = path_constraint_subsumption(pc_1, pc_2)
+        eq_check = kcfg_explore.path_constraint_subsumption(pc_1, pc_2)
 
-        match eq_check:
-            case -1:
-                print('State spaces not comparable.')
-            case 0:
-                print('State spaces equivalent.')
-            case 1:
-                print('State space of program 1 subsumes that of program 2.')
-            case 2:
-                print('State space of program 2 subsumes that of program 1.')
+        print(eq_check.value)
 
         assert 1 == 0
 
