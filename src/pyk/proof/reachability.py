@@ -37,6 +37,8 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
+    init: NodeIdLike
+    target: NodeIdLike
     _terminal_nodes: list[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
 
@@ -44,12 +46,16 @@ class APRProof(Proof):
         self,
         id: str,
         kcfg: KCFG,
+        init: NodeIdLike,
+        target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
         terminal_nodes: Iterable[NodeIdLike] | None = None,
         proof_dir: Path | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir)
         self.kcfg = kcfg
+        self.init = init
+        self.target = target
         self.logs = logs
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
 
@@ -87,21 +93,23 @@ class APRProof(Proof):
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         terminal_nodes = dct['terminal_nodes']
+        init_node = dct['init']
+        target_node = dct['target']
         id = dct['id']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
 
-        return APRProof(id, cfg, logs, terminal_nodes=terminal_nodes, proof_dir=proof_dir)
+        return APRProof(id, cfg, init_node, target_node, logs, terminal_nodes=terminal_nodes, proof_dir=proof_dir)
 
     @staticmethod
-    def from_claim(defn: KDefinition, claim: KClaim) -> APRProof:
-        cfg, _, _ = KCFG.from_claim(defn, claim)
-        return APRProof(claim.label, cfg, logs={})
+    def from_claim(defn: KDefinition, claim: KClaim, *args: Any, **kwargs: Any) -> APRProof:
+        cfg, init_node, target_node = KCFG.from_claim(defn, claim)
+        return APRProof(claim.label, cfg, init_node, target_node, {})
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
-        path = self.kcfg.shortest_path_between(self.kcfg.get_unique_init().id, final_node_id)
+        path = self.kcfg.shortest_path_between(self.init, final_node_id)
         if path is None:
             raise ValueError(f'No path found to specified node: {final_node_id}')
         curr_constraint: KInner = mlTop()
@@ -121,6 +129,8 @@ class APRProof(Proof):
             'type': 'APRProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
+            'init': self.init,
+            'target': self.target,
             'terminal_nodes': self._terminal_nodes,
             'logs': logs,
         }
@@ -149,12 +159,14 @@ class APRBMCProof(APRProof):
         self,
         id: str,
         kcfg: KCFG,
+        init: NodeIdLike,
+        target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
         bmc_depth: int,
         bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
     ):
-        super().__init__(id, kcfg, logs, proof_dir=proof_dir)
+        super().__init__(id, kcfg, init, target, logs, proof_dir=proof_dir)
         self.bmc_depth = bmc_depth
         self._bounded_nodes = list(bounded_nodes) if bounded_nodes is not None else []
 
@@ -192,13 +204,20 @@ class APRBMCProof(APRProof):
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
+        init = dct['init']
+        target = dct['target']
         bounded_nodes = dct['bounded_nodes']
         bmc_depth = dct['bmc_depth']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        return APRBMCProof(id, cfg, logs, bmc_depth, bounded_nodes=bounded_nodes, proof_dir=proof_dir)
+        return APRBMCProof(id, cfg, init, target, logs, bmc_depth, bounded_nodes=bounded_nodes, proof_dir=proof_dir)
+
+    @staticmethod
+    def from_claim_with_bmc_depth(defn: KDefinition, claim: KClaim, bmc_depth: int) -> APRBMCProof:
+        cfg, init_node, target_node = KCFG.from_claim(defn, claim)
+        return APRBMCProof(claim.label, cfg, init_node, target_node, {}, bmc_depth)
 
     @property
     def dict(self) -> dict[str, Any]:
@@ -207,6 +226,8 @@ class APRBMCProof(APRProof):
             'type': 'APRBMCProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
+            'init': self.init,
+            'target': self.target,
             'logs': logs,
             'bmc_depth': self.bmc_depth,
             'bounded_nodes': self._bounded_nodes,
@@ -253,7 +274,7 @@ class APRProver:
         return False
 
     def _check_subsume(self, kcfg_explore: KCFGExplore, node: KCFG.Node) -> bool:
-        target_node = self.proof.kcfg.get_unique_target()
+        target_node = self.proof.kcfg.node(self.proof.target)
         _LOGGER.info(
             f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, target_node.id))}'
         )

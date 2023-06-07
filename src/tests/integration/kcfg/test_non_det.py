@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kcfg import KCFG, KCFGShow
+from pyk.kcfg import KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.testing import KCFGExploreTest
+from pyk.utils import single
 
 from ..utils import K_FILES
 
@@ -52,15 +53,13 @@ class TestNonDetProof(KCFGExploreTest):
         max_depth: int,
         terminal_rules: Iterable[str],
     ) -> None:
-        claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
-        assert len(claims) == 1
 
-        kcfg, _, _ = KCFG.from_claim(kprove.definition, claims[0])
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
+        proof = APRProof.from_claim(kprove.definition, claim)
         prover = APRProver(proof)
-        kcfg = prover.advance_proof(
+        prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
@@ -83,24 +82,24 @@ class TestNonDetProof(KCFGExploreTest):
         #          \
         #           id1b2 - final3 - success
 
-        id1 = kcfg.get_unique_init().id
+        id1 = proof.kcfg.get_unique_init().id
 
         def assert_nd_branch(id: int) -> tuple[int, int]:
-            assert len(kcfg.successors(source_id=id)) == 1
-            ndbranches = kcfg.ndbranches(source_id=id)
+            assert len(proof.kcfg.successors(source_id=id)) == 1
+            ndbranches = proof.kcfg.ndbranches(source_id=id)
             assert len(ndbranches) == 1
             assert len(ndbranches[0].target_ids) == 2
             ida, idb = ndbranches[0].target_ids
             return ida, idb
 
         def assert_edge(id: int) -> int:
-            assert len(kcfg.successors(source_id=id)) == 1
-            edges = kcfg.edges(source_id=id)
+            assert len(proof.kcfg.successors(source_id=id)) == 1
+            edges = proof.kcfg.edges(source_id=id)
             assert len(edges) == 1
             return edges[0].target.id
 
         id1a, id1b = assert_nd_branch(id1)
-        if len(kcfg.ndbranches(source_id=id1a)) > len(kcfg.ndbranches(source_id=id1b)):
+        if len(proof.kcfg.ndbranches(source_id=id1a)) > len(proof.kcfg.ndbranches(source_id=id1b)):
             (tmp, id1a) = (id1a, id1b)
             id1b = tmp
         id1b1, id1b2 = assert_nd_branch(id1b)
