@@ -8,6 +8,7 @@ from pyk.kore.rpc import LogEntry
 
 from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
+from ..kcfg.show import KCFGShow
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlEquals
 from ..utils import shorten_hashes, single
@@ -312,6 +313,7 @@ class APRProver:
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
+        interactive: bool = False,
     ) -> KCFG:
         iterations = 0
 
@@ -333,10 +335,23 @@ class APRProver:
             if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=curr_node.id)) == 0:
                 branches = list(self._extract_branches(curr_node.cterm))
                 if len(branches) > 0:
-                    self.proof.kcfg.split_on_constraints(curr_node.id, branches)
+                    nodes = self.proof.kcfg.split_on_constraints(curr_node.id, branches, interactive=interactive)
                     _LOGGER.info(
                         f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
                     )
+                    kcfg_show = KCFGShow(kcfg_explore.kprint)
+                    if interactive:
+                        print('\n'.join(kcfg_show.pretty(self.proof.kcfg)))
+                        print(f'Branching on node {curr_node.id}.')
+                        print(f'Branching conditions are:')
+                        for branch,node in zip(branches, nodes):
+                            print(f'{kcfg_explore.kprint.pretty_print(branch)} to node {node}')
+                    refute_nodes_str = input(f'Nodes to attempt refutation (select from: {nodes}): ')
+                    refute_nodes = refute_nodes_str.split(',') if refute_nodes_str != '' else []
+                    for node_id in refute_nodes:
+                        print(f'Attempting refutation on node: {node_id}')
+                        self.refute_node(kcfg_explore, self.proof.kcfg.get_node(int(node_id)))
+                        
                     continue
 
             kcfg_explore.extend(
@@ -346,6 +361,7 @@ class APRProver:
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
+                interactive=interactive,
             )
 
         self.proof.write_proof()

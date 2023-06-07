@@ -391,6 +391,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
+        interactive: bool = False
     ) -> None:
         if not kcfg.is_frontier(node.id):
             raise ValueError(f'Cannot extend non-frontier node {self.id}: {node.id}')
@@ -439,7 +440,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
             # Split on branch patterns
             if any(branch_pattern.match(branch_and) for branch_pattern in branch_patterns):
-                kcfg.split_on_constraints(node.id, branches)
+                kcfg.split_on_constraints(node.id, branches, interactive=interactive)
                 _LOGGER.info(
                     f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
                 )
