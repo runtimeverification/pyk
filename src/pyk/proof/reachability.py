@@ -97,7 +97,7 @@ class APRProof(Proof):
 
     @staticmethod
     def from_claim(defn: KDefinition, claim: KClaim) -> APRProof:
-        cfg = KCFG.from_claim(defn, claim)
+        cfg, _, _ = KCFG.from_claim(defn, claim)
         return APRProof(claim.label, cfg, logs={})
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:

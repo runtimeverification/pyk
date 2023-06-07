@@ -138,7 +138,7 @@ class TestCellMapProof(KCFGExploreTest):
         )
         assert len(claims) == 1
 
-        kcfg = KCFG.from_claim(kprove.definition, claims[0])
+        kcfg, _, _ = KCFG.from_claim(kprove.definition, claims[0])
         init = kcfg.get_unique_init()
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         kcfg.replace_node(init.id, new_init_term)

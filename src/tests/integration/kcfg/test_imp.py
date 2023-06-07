@@ -644,7 +644,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        kcfg = KCFG.from_claim(kprove.definition, claim)
+        kcfg, _, _ = KCFG.from_claim(kprove.definition, claim)
         proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
         prover = APRProver(
             proof,
@@ -695,7 +695,7 @@ class TestImpProof(KCFGExploreTest):
         )
         assert len(claims) == 1
 
-        kcfg = KCFG.from_claim(kprove.definition, claims[0])
+        kcfg, _, _ = KCFG.from_claim(kprove.definition, claims[0])
         proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
         prover = APRProver(
             proof,
@@ -741,7 +741,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        kcfg = KCFG.from_claim(kprove.definition, claim)
+        kcfg, _, _ = KCFG.from_claim(kprove.definition, claim)
         kcfg_explore.simplify(kcfg, {})
         proof = APRBMCProof(f'{spec_module}.{claim_id}', kcfg, {}, bmc_depth)
         prover = APRBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
