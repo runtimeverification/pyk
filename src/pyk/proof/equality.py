@@ -158,7 +158,7 @@ class EqualityProof(Proof):
     def summary(self) -> Iterable[str]:
         return [
             f'EqualityProof: {self.id}',
-            f'  status: {self.status}',
+            f'    status: {self.status}',
         ]
 
 
@@ -232,7 +232,7 @@ class RefutationProof(Proof):
     def summary(self) -> Iterable[str]:
         return [
             f'RefutationProof: {self.id}',
-            f'  status: {self.status}',
+            f'    status: {self.status}',
         ]
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
