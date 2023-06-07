@@ -35,8 +35,15 @@ class APRProof(Proof):
     kcfg: KCFG
     logs: dict[int, tuple[LogEntry, ...]]
 
-    def __init__(self, id: str, kcfg: KCFG, logs: dict[int, tuple[LogEntry, ...]], proof_dir: Path | None = None):
-        super().__init__(id, proof_dir=proof_dir)
+    def __init__(
+        self,
+        id: str,
+        kcfg: KCFG,
+        logs: dict[int, tuple[LogEntry, ...]],
+        has_target: bool = True,
+        proof_dir: Path | None = None,
+    ):
+        super().__init__(id, has_target, proof_dir=proof_dir)
         self.kcfg = kcfg
         self.logs = logs
 
@@ -51,28 +58,41 @@ class APRProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
-        if len(self.kcfg.stuck) > 0:
-            return ProofStatus.FAILED
-        elif len(self.kcfg.frontier) > 0:
-            return ProofStatus.PENDING
+        if self.has_target:
+            if len(self.kcfg.stuck) > 0:
+                return ProofStatus.FAILED
+            elif len(self.kcfg.frontier) > 0:
+                return ProofStatus.PENDING
+            else:
+                return ProofStatus.PASSED
         else:
-            return ProofStatus.PASSED
+            if len(self.kcfg.frontier) > 0:
+                return ProofStatus.PENDING
+            else:
+                return ProofStatus.COMPLETED
 
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
+        has_target = dct['has_target']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
 
-        return APRProof(id, cfg, logs, proof_dir=proof_dir)
+        return APRProof(id, cfg, logs, has_target, proof_dir=proof_dir)
 
     @property
     def dict(self) -> dict[str, Any]:
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        return {'type': 'APRProof', 'id': self.id, 'cfg': self.kcfg.to_dict(), 'logs': logs}
+        return {
+            'type': 'APRProof',
+            'id': self.id,
+            'has_target': self.has_target,
+            'cfg': self.kcfg.to_dict(),
+            'logs': logs,
+        }
 
     @property
     def summary(self) -> Iterable[str]:
@@ -82,6 +102,7 @@ class APRProof(Proof):
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
+            f'    has_target: {self.has_target}',
         ]
 
 
@@ -97,10 +118,11 @@ class APRBMCProof(APRProof):
         kcfg: KCFG,
         logs: dict[int, tuple[LogEntry, ...]],
         bmc_depth: int,
+        has_target: bool = True,
         bounded_states: Iterable[int] | None = None,
         proof_dir: Path | None = None,
     ):
-        super().__init__(id, kcfg, logs, proof_dir=proof_dir)
+        super().__init__(id, kcfg, logs, has_target, proof_dir=proof_dir)
         self.bmc_depth = bmc_depth
         self._bounded_states = list(bounded_states) if bounded_states is not None else []
 
@@ -115,24 +137,31 @@ class APRBMCProof(APRProof):
 
     @property
     def status(self) -> ProofStatus:
-        if any(nd.id not in self._bounded_states for nd in self.kcfg.stuck):
-            return ProofStatus.FAILED
-        elif len(self.kcfg.frontier) > 0:
-            return ProofStatus.PENDING
+        if self.has_target:
+            if any(nd.id not in self._bounded_states for nd in self.kcfg.stuck):
+                return ProofStatus.FAILED
+            elif len(self.kcfg.frontier) > 0:
+                return ProofStatus.PENDING
+            else:
+                return ProofStatus.PASSED
         else:
-            return ProofStatus.PASSED
+            if len(self.kcfg.frontier) > 0:
+                return ProofStatus.PENDING
+            else:
+                return ProofStatus.COMPLETED
 
     @classmethod
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
+        has_target = dct['has_target']
         bounded_states = dct['bounded_states']
         bmc_depth = dct['bmc_depth']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        return APRBMCProof(id, cfg, logs, bmc_depth, bounded_states=bounded_states, proof_dir=proof_dir)
+        return APRBMCProof(id, cfg, logs, has_target, bmc_depth, bounded_states=bounded_states, proof_dir=proof_dir)
 
     @property
     def dict(self) -> dict[str, Any]:
@@ -140,6 +169,7 @@ class APRBMCProof(APRProof):
         return {
             'type': 'APRBMCProof',
             'id': self.id,
+            'has_target': self.has_target,
             'cfg': self.kcfg.to_dict(),
             'logs': logs,
             'bmc_depth': self.bmc_depth,
@@ -154,10 +184,11 @@ class APRBMCProof(APRProof):
         return [
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
+            f'    has_target: {self.has_target}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_states])}',
-            f'    bmc-depth-bounded: {len(self._bounded_states)}',
+            f'    bounded_states: {len(self._bounded_states)}',
         ]
 
 
@@ -205,7 +236,7 @@ class APRProver:
             iterations += 1
             curr_node = self.proof.kcfg.frontier[0]
 
-            if kcfg_explore.target_subsume(self.proof.kcfg, curr_node):
+            if self.proof.has_target and kcfg_explore.target_subsume(self.proof.kcfg, curr_node):
                 continue
 
             if self._check_terminal(curr_node):

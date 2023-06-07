@@ -477,7 +477,7 @@ PROGRAM_EQUIVALENCE_DATA = (
         (
             'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
             '.Map',
-             mlEqualsTrue(KApply('_>Int_', [KVariable('N'), intToken(10)])),
+            mlEqualsTrue(KApply('_>Int_', [KVariable('N'), intToken(10)])),
         ),
         ('int $n; $n = N:Int ; $n = 2 * $n ;', '.Map', mlTop()),
     ),
@@ -834,17 +834,6 @@ class TestImpProof(KCFGExploreTest):
         config_2: tuple[str, str, KInner],
     ) -> None:
         #
-        # Unreachable target node
-        # =======================
-        #
-        #   Return value:
-        #   -------------
-        #     A KCFG node that could never be a legitimate target node
-        #
-        def unreachable_target() -> CTerm:
-            # Q: How to create a proper unreachable configuration?
-            return self.config(kcfg_explore.kprint, *('int X:Id ; { }', '.Map'))
-
         #
         # Execution to completion
         # =======================
@@ -866,9 +855,7 @@ class TestImpProof(KCFGExploreTest):
             # Create KCFG with its initial and target state
             kcfg = KCFG()
             init_state = kcfg.create_node(configuration)
-            target_state = kcfg.create_node(unreachable_target())  # Q: How could we not care about the target node?
             kcfg.add_init(init_state.id)
-            kcfg.add_target(target_state.id)
 
             # Initialise prover
             proof = APRProof('prog_eq.conf', kcfg, {})
@@ -880,11 +867,7 @@ class TestImpProof(KCFGExploreTest):
 
             # Q: What is the correct way of saying - go to completion, but maybe jump out in some scenarios?
             #    Is this a good use case for BMC? Right now I'm just limiting the number of iterations.
-            kcfg = prover.advance_proof(
-                kcfg_explore,
-                max_iterations=10,
-                execute_depth=10000,
-            )
+            kcfg = prover.advance_proof(kcfg_explore, max_iterations=10, execute_depth=10000)
 
             # Q: If the target is unreachable, the terminal nodes (meaning, the ones that can't take more steps)
             #    in the kcfg will be stuck. These are the ones we want. In addition, there are frontier nodes,
@@ -892,7 +875,7 @@ class TestImpProof(KCFGExploreTest):
             frontier_nodes = kcfg.frontier
             final_nodes = kcfg.stuck
 
-            assert len(kcfg.leaves) == 1 + len(kcfg.frontier) + len(kcfg.stuck)
+            assert len(kcfg.leaves) == len(kcfg.frontier) + len(kcfg.stuck)
 
             # Require that there are no frontier nodes
             if len(frontier_nodes) > 0:
