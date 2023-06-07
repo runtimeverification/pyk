@@ -65,6 +65,11 @@ class APRProof(Proof):
             return APRProof.from_dict(proof_dict, proof_dir=proof_dir)
         raise ValueError(f'Could not load APRProof from file {id}: {proof_path}')
 
+    def write_proof(self) -> None:
+        for d in self.dependencies:
+            d.write_proof()
+        super().write_proof()
+
     @property
     def status(self) -> ProofStatus:
         if len(self.kcfg.stuck) > 0:
@@ -78,7 +83,10 @@ class APRProof(Proof):
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
-        dependencies = [APRProof.from_dict(c) for c in dct['dependencies']]
+        if len(dct['dependencies']) > 0:
+            if proof_dir is None:
+                raise ValueError('The serialized proof has dependencies but no proof_dir was specified')
+            dependencies = [APRProof.read_proof(id, proof_dir=proof_dir) for id in dct['dependencies']]
         circularity = dct['circularity']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
@@ -93,7 +101,7 @@ class APRProof(Proof):
             'type': 'APRProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
-            'dependencies': [c.dict for c in self.dependencies],
+            'dependencies': [c.id for c in self.dependencies],
             'logs': logs,
             'circularity': self.circularity,
         }
