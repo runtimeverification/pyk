@@ -325,7 +325,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self,
         cfg: KCFG,
         node_id: NodeIdLike,
-        logs: dict[str, tuple[LogEntry, ...]],
+        logs: dict[int, tuple[LogEntry, ...]],
         depth: int = 1,
         module_name: str | None = None,
     ) -> int:

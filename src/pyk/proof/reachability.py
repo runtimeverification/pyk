@@ -40,13 +40,12 @@ class APRProof(Proof):
     logs: dict[int, tuple[LogEntry, ...]]
     dependencies: list[APRProof]  # list of dependencies other than self
     circularity: bool
-    logs: dict[str, tuple[LogEntry, ...]]
 
     def __init__(
         self,
         id: str,
         kcfg: KCFG,
-        logs: dict[str, tuple[LogEntry, ...]],
+        logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         dependencies: Iterable[APRProof] = (),
         circularity: bool = False,
