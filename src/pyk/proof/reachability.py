@@ -143,7 +143,7 @@ class APRProof(Proof):
 
         # construct the path from the KCFG root to the node to refute
         path = single(self.kcfg.paths_between(source_id=self.kcfg.get_unique_init().id, target_id=node.id))
-        # traverse the path back from the node-to-refute and filter-out split nodes and non-deterministic branches
+        # traverse the path back from the node-to-refute and choose only split nodes and non-deterministic branches
         branches_on_path = list(filter(lambda x: type(x) is KCFG.Split or type(x) is KCFG.NDBranch, reversed(path)))
         if len(branches_on_path) == 0:
             _LOGGER.error(f'Cannot refute node {node.id} in linear KCFG')
