@@ -37,6 +37,7 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
+    logs: dict[int, tuple[LogEntry, ...]]
     dependencies: list[APRProof]  # list of dependencies other than self
     circularity: bool
     logs: dict[str, tuple[LogEntry, ...]]
@@ -113,15 +114,15 @@ class APRBMCProof(APRProof):
     """APRBMCProof and APRBMCProver perform bounded model-checking of an all-path reachability logic claim."""
 
     bmc_depth: int
-    _bounded_states: list[str]
+    _bounded_states: list[int]
 
     def __init__(
         self,
         id: str,
         kcfg: KCFG,
-        logs: dict[str, tuple[LogEntry, ...]],
+        logs: dict[int, tuple[LogEntry, ...]],
         bmc_depth: int,
-        bounded_states: Iterable[str] | None = None,
+        bounded_states: Iterable[int] | None = None,
         proof_dir: Path | None = None,
         dependencies: Iterable[APRProof] = (),
         circularity: bool = False,
@@ -185,7 +186,7 @@ class APRBMCProof(APRProof):
             'bounded_states': self._bounded_states,
         }
 
-    def bound_state(self, nid: str) -> None:
+    def bound_state(self, nid: int) -> None:
         self._bounded_states.append(nid)
 
     @property
@@ -323,7 +324,7 @@ class APRProver:
 class APRBMCProver(APRProver):
     proof: APRBMCProof
     _same_loop: Callable[[CTerm, CTerm], bool]
-    _checked_nodes: list[str]
+    _checked_nodes: list[int]
 
     def __init__(
         self,
@@ -365,7 +366,7 @@ class APRBMCProver(APRProver):
                     self._checked_nodes.append(f.id)
                     prior_loops = [
                         nd.id
-                        for nd in self.proof.kcfg.reachable_nodes(f.id, reverse=True, traverse_covers=True)
+                        for nd in self.proof.kcfg.reachable_nodes(f.id, reverse=True)
                         if nd.id != f.id and self._same_loop(nd.cterm, f.cterm)
                     ]
                     if len(prior_loops) >= self.proof.bmc_depth:

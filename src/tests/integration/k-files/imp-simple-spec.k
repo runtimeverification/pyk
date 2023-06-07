@@ -2,35 +2,37 @@ requires "imp-verification.k"
 
 module IMP-FUNCTIONAL-SPEC
     imports IMP-VERIFICATION
+    imports K-EQUAL-SYNTAX
 
     claim [concrete-addition]: 3 +Int 4 => 7
 
     claim [concrete-addition-fail]: 3 +Int 4 => 0
 
-   claim [concrete-identity]: 0 => 0
+    claim [concrete-identity]: 0 => 0
 
-   claim [concrete-nonsense]: 0 => 1
+    claim [concrete-nonsense]: 0 => 1
 
-   claim [concrete-requires-trivial-false-identity]: 0 => 0
-     requires False
+    claim [concrete-requires-trivial-false-identity]: 0 => 0
+      requires false
 
-   claim [concrete-requires-nontrivial-false-identity]: 0 => 0
-     requires 0 ==Int 1
+    claim [concrete-requires-nontrivial-false-identity]: 0 => 0
+      requires 0 ==Int 1
 
-//   TODO: this should be trivially passing but it fails because cterm_implies returns None
-//   claim [concrete-requires-trivial-false-nonsense]: 0 => 1
-//     requires False
+    claim [concrete-requires-trivial-false-nonsense]: 0 => 1
+      requires false
 
-   claim [concrete-requires-nontrivial-false-nonsense]: 0 => 1
-     requires 0 ==Int 1
+    claim [concrete-requires-nontrivial-false-nonsense]: 0 => 1
+      requires 0 ==Int 1
 
-   claim [concrete-requires-trivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
-     requires False
+    claim [concrete-requires-trivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
+      requires false
 
-   claim [concrete-requires-nontrivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
+    claim [concrete-requires-nontrivial-false-nonsense-undecided]: _X:Int => ?_Y:Int
       requires 0 ==Int 1
 
     claim [symbolic-addition-commutativity]: N +Int M => M +Int N
+
+    claim [ite-sort-param]: (#if false #then 1 #else 2 #fi) => 2
 
 endmodule
 
