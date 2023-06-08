@@ -136,6 +136,9 @@ class APRProof(Proof):
         for summary in subproofs_summaries:
             yield from summary
 
+    def get_refutation_id(self, node_id: int) -> str:
+        return f'{self.id}.node-infeasible-{node_id}'
+
     def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:
         """Construct an EqualityProof stating that the node's path condition is unsatisfiable"""
         if not node in self.kcfg.nodes:
@@ -155,7 +158,7 @@ class APRProof(Proof):
         closest_branch = branches_on_path[0]
         assert type(closest_branch) is KCFG.Split or type(closest_branch) is KCFG.NDBranch
         if type(closest_branch) is KCFG.NDBranch:
-            _LOGGER.error(f'Cannot refute node {node.id} following a non-determenistic branch: not yet implemented')
+            _LOGGER.error(f'Cannot refute node {node.id} following a non-deterministic branch: not yet implemented')
             return None
 
         assert type(closest_branch) is KCFG.Split
@@ -180,7 +183,7 @@ class APRProof(Proof):
         # extract the constriant added by the Split that leads to the node-to-refute
         last_constraint = mlEquals(TRUE, ml_pred_to_bool(csubst.constraints[0]), arg_sort=BOOL)
 
-        refutation_id = f'{self.id}.node-infeasible-{node.id}'
+        refutation_id = self.get_refutation_id(node.id)
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
         refutation = RefutationProof(
             id=refutation_id,
@@ -383,6 +386,12 @@ class APRProver:
         else:
             _LOGGER.error(f'Failed to refute node {node.id} by proof {eq_prover.proof.id}')
         self.proof.node_refutations[node.id] = eq_prover.proof.id
+
+    def unrefute_node(self, node: KCFG.Node) -> None:
+        self.proof.kcfg.remove_expanded(node.id)
+        self.proof.remove_subproof(self.proof.get_refutation_id(node.id))
+        del self.proof.node_refutations[node.id]
+        _LOGGER.info(f'Disabled refutation of node {node.id}.')
 
 
 class APRBMCProver(APRProver):

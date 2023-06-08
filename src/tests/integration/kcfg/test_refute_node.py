@@ -64,10 +64,48 @@ class TestAPRProof(KCFGExploreTest):
         k_cell = cterm.cell('K_CELL')
         if type(k_cell) is KSequence and len(k_cell) > 0:
             k_cell = k_cell[0]
-        if type(k_cell) is KApply and k_cell.label.name == 'd(_)_REFUTE-NODE-SYNTAX_A_Int':
+        if type(k_cell) is KApply and k_cell.label.name in ['d(_)_REFUTE-NODE-SYNTAX_A_Int', 'a(_)_REFUTE-NODE-SYNTAX_A_Int']:
             discriminant = k_cell.args[0]
             return [mlEqualsTrue(gtInt(discriminant, intToken(0))), mlEqualsTrue(leInt(discriminant, intToken(0)))]
         return []
+
+    def test_apr_proof_unrefute_node(
+        self,
+        kprove: KProve,
+        proof_dir: Path,
+        kcfg_explore: KCFGExplore,
+    ) -> None:
+        # Given
+        spec_file = K_FILES / 'refute-node-spec.k'
+        spec_module = 'REFUTE-NODE-SPEC'
+        claim_id = 'split-int-succeed'
+
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
+        )
+        kcfg_pre = KCFG.from_claim(kprove.definition, claim)
+        proof = APRProof(f'{spec_module}.{claim_id}', kcfg_pre, logs={}, proof_dir=proof_dir)
+        prover = APRProver(proof, extract_branches=TestAPRProof._extract_branches)
+
+        # When
+        kcfg_post = prover.advance_proof(
+            kcfg_explore,
+            max_iterations=1,
+        )
+        frontier_nodes = kcfg_post.frontier
+        assert prover.proof.status == ProofStatus.PENDING
+
+        assert len(frontier_nodes)
+        frontier_node = frontier_nodes[0]
+        prover.refute_node(kcfg_explore, frontier_node)
+        prover.unrefute_node(frontier_node)
+
+        kcfg_post = prover.advance_proof(
+            kcfg_explore,
+        )
+
+        # Then
+        assert prover.proof.status == ProofStatus.PASSED
 
     @pytest.mark.parametrize(
         'test_id,extra_constraint,expected_subproof_constraints,expected_status',

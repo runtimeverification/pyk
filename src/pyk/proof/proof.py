@@ -93,6 +93,9 @@ class Proof(ABC):
         self.subproof_ids.append(subproof_id)
         self.fetch_subproof(subproof_id, force_reread=True)
 
+    def remove_subproof(self, subproof_id: str) -> None:
+        self.subproof_ids = [sid for sid in self.subproof_ids if sid != subproof_id]
+
     def fetch_subproof(
         self, proof_id: str, force_reread: bool = False, uptodate_check_method: str = 'timestamp'
     ) -> Proof:
