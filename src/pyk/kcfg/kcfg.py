@@ -466,40 +466,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for alias in [alias for alias, id in self._aliases.items() if id == node_id]:
             self.remove_alias(alias)
 
-    def replace_node(self, node_id: NodeIdLike, new_cterm: CTerm) -> int:
-        # Remove old node, record data
-        node = self.node(node_id)
-        in_edges = self.edges(target_id=node.id)
-        out_edges = self.edges(source_id=node.id)
-        in_covers = self.covers(target_id=node.id)
-        out_covers = self.covers(source_id=node.id)
-        init = self.is_init(node.id)
-        target = self.is_target(node.id)
-        expanded = self.is_expanded(node.id)
-        in_expanded = {edge.source.id: self.is_expanded(edge.source.id) for edge in in_edges}
-        self.remove_node(node.id)
-
-        # Add the new, update data
-        new_node = self.create_node(new_cterm)
-        for in_edge in in_edges:
-            self.create_edge(in_edge.source.id, new_node.id, in_edge.depth)
-        for out_edge in out_edges:
-            self.create_edge(new_node.id, out_edge.target.id, out_edge.depth)
-        for in_cover in in_covers:
-            self.create_cover(in_cover.source.id, new_node.id, csubst=in_cover.csubst)
-        for out_cover in out_covers:
-            self.create_cover(new_node.id, out_cover.target.id, csubst=out_cover.csubst)
-        if init:
-            self.add_init(new_node.id)
-        if target:
-            self.add_target(new_node.id)
-        if expanded:
-            self.add_expanded(new_node.id)
-        for nid in in_expanded:
-            if in_expanded[nid]:
-                self.add_expanded(nid)
-
-        return new_node.id
+    def replace_node(self, node_id: NodeIdLike, cterm: CTerm) -> None:
+        term = cterm.kast
+        term = remove_source_attributes(term)
+        cterm = CTerm.from_kast(term)
+        node_id = self._resolve(node_id)
+        node = KCFG.Node(node_id, cterm)
+        self._nodes[node_id] = node
 
     def successors(
         self,
