@@ -222,16 +222,12 @@ class APRBMCProof(APRProof):
     @property
     def dict(self) -> dict[str, Any]:
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        return {
-            'type': 'APRBMCProof',
-            'id': self.id,
-            'cfg': self.kcfg.to_dict(),
-            'init': self.init,
-            'target': self.target,
-            'logs': logs,
-            'bmc_depth': self.bmc_depth,
-            'bounded_nodes': self._bounded_nodes,
-        }
+        dct = super().dict
+        dct['type'] = 'APRBMCProof'
+        dct['bmc_depth'] = self.bmc_depth
+        dct['bounded_nodes'] = self._bounded_nodes
+        dct['logs'] = logs
+        return dct
 
     def add_bounded(self, nid: NodeIdLike) -> None:
         self._bounded_nodes.append(self.kcfg._resolve(nid))
