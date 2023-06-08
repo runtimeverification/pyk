@@ -8,15 +8,15 @@ from ..kcfg import KCFG
 
 # from ..utils import shorten_hashes
 from .proof import Proof, ProofStatus
-from .reachability import APRBMCProof  # , APRBMCProver
+from .reachability import APRBMCProof, APRBMCProver
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping  # Callable,
+    from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    # from ..cterm import CTerm
-    # from ..kast.inner import KInner
+    from ..cterm import CTerm
+    from ..kast.inner import KInner
     from ..kcfg import KCFGExplore
     from ..kcfg.explore import SubsumptionCheckResult
     from ..kore.rpc import LogEntry
@@ -74,10 +74,15 @@ class EquivalenceProof:
         proof_2 = APRBMCProof.read_proof(id_2, proof_dir_2)
         return EquivalenceProof.from_proofs(proof_1, proof_2)
 
-    # TODO
+    # The proof status of an equivalence proof says nothing
+    # about the actual equivalence, only whether or not there
+    # is still progress to be made
     @property
     def status(self) -> ProofStatus:
-        return ProofStatus.COMPLETED
+        if len(self.proof_1.kcfg.frontier) > 0 or len(self.proof_2.kcfg.frontier) > 0:
+            return ProofStatus.PENDING
+        else:
+            return ProofStatus.COMPLETED
 
     @classmethod
     def from_dict(cls: type[EquivalenceProof], dct: Mapping[str, Any]) -> EquivalenceProof:
@@ -111,6 +116,7 @@ class EquivalenceProof:
         kcfg_1 = self.proof_1.kcfg
         kcfg_2 = self.proof_2.kcfg
 
+        # 1. Nodes whose execution cannot proceed further (stuck nodes)
         stuck_1 = kcfg_1.stuck
         stuck_2 = kcfg_2.stuck
 
@@ -119,20 +125,59 @@ class EquivalenceProof:
 
         stuck_pc_check = kcfg_explore.path_constraint_subsumption(pc_stuck_1, pc_stuck_2)
 
+        # 2. Nodes whose execution can proceed further (frontier nodes)
         frontier_1 = kcfg_1.frontier
         frontier_2 = kcfg_2.frontier
 
         pc_frontier_1 = KCFG.multinode_path_constraint(frontier_1)
         pc_frontier_2 = KCFG.multinode_path_constraint(frontier_2)
 
+        # For these nodes, only the equivalence of their path conditions is relevant
         frontier_pc_check = kcfg_explore.path_constraint_subsumption(pc_frontier_1, pc_frontier_2)
 
+        # 3. Nodes whose execution has been stopped due to a bound reached (bounded nodes)
         bounded_1 = [kcfg_1.get_node_unsafe(id) for id in self.proof_1._bounded_states]
         bounded_2 = [kcfg_2.get_node_unsafe(id) for id in self.proof_2._bounded_states]
 
         pc_bounded_1 = KCFG.multinode_path_constraint(bounded_1)
         pc_bounded_2 = KCFG.multinode_path_constraint(bounded_2)
 
+        # For these nodes, only the equivalence of their path conditions is relevant
         bounded_pc_check = kcfg_explore.path_constraint_subsumption(pc_bounded_1, pc_bounded_2)
 
         return (stuck_pc_check, frontier_pc_check, bounded_pc_check)
+
+
+class EquivalenceProver:
+    prover_1: APRBMCProver
+    prover_2: APRBMCProver
+
+    def __init__(
+        self,
+        proof: EquivalenceProof,
+        same_loop: Callable[[CTerm, CTerm], bool],
+        is_terminal: Callable[[CTerm], bool] | None = None,
+        extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
+    ) -> None:
+        self.prover_1 = APRBMCProver(
+            proof.proof_1, same_loop, is_terminal=is_terminal, extract_branches=extract_branches
+        )
+        self.prover_2 = APRBMCProver(
+            proof.proof_2, same_loop, is_terminal=is_terminal, extract_branches=extract_branches
+        )
+
+    def advance_proof(
+        self,
+        kcfg_explore: KCFGExplore,
+        max_iterations: int | None = None,
+        execute_depth: int | None = None,
+        cut_point_rules: Iterable[str] = (),
+        terminal_rules: Iterable[str] = (),
+        implication_every_block: bool = True,
+    ) -> None:
+        _ = self.prover_1.advance_proof(
+            kcfg_explore, max_iterations, execute_depth, cut_point_rules, terminal_rules, implication_every_block
+        )
+        _ = self.prover_2.advance_proof(
+            kcfg_explore, max_iterations, execute_depth, cut_point_rules, terminal_rules, implication_every_block
+        )

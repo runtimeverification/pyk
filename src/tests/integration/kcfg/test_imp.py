@@ -14,6 +14,7 @@ from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
+from pyk.proof.equivalence import EquivalenceProof, EquivalenceProver
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -470,9 +471,14 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
     ),
 )
 
-PROGRAM_EQUIVALENCE_DATA = (
+PROGRAM_EQUIVALENCE_DATA: Iterable[
+    tuple[str, int, Iterable[str], Iterable[str], tuple[str, str, KInner], tuple[str, str, KInner]]
+] = (
     (
         'double-add-vs-mul',
+        10,
+        ['IMP.while'],
+        [],
         (
             'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
             '.Map',
@@ -818,7 +824,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,config_1,config_2',
+        'test_id,bmc_depth,cut_rules,terminal_rules,config_1,config_2',
         PROGRAM_EQUIVALENCE_DATA,
         ids=[test_id for test_id, *_ in PROGRAM_EQUIVALENCE_DATA],
     )
@@ -827,11 +833,66 @@ class TestImpProof(KCFGExploreTest):
         kprove: KProve,
         kcfg_explore: KCFGExplore,
         test_id: str,
+        bmc_depth: int,
+        cut_rules: Iterable[str],
+        terminal_rules: Iterable[str],
         # The following is taken from `test_implication_failure_reason`,
         # as it seems to be a reasonable way of inputting only a given initial state
         config_1: tuple[str, str, KInner],
         config_2: tuple[str, str, KInner],
     ) -> None:
+        configuration_1 = self.config(kcfg_explore.kprint, *config_1)
+        kcfg_1 = KCFG()
+        init_state_1 = kcfg_1.create_node(configuration_1)
+        kcfg_1.add_init(init_state_1.id)
+
+        configuration_2 = self.config(kcfg_explore.kprint, *config_2)
+        kcfg_2 = KCFG()
+        init_state_2 = kcfg_2.create_node(configuration_2)
+        kcfg_2.add_init(init_state_2.id)
+
+        proof = EquivalenceProof('eq_1', kcfg_1, {}, bmc_depth, 'eq_2', kcfg_2, {}, bmc_depth)
+        prover = EquivalenceProver(
+            proof,
+            same_loop=TestImpProof._same_loop,
+            is_terminal=TestImpProof._is_terminal,
+            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+        )
+
+        prover.advance_proof(
+            kcfg_explore=kcfg_explore,
+            max_iterations=10,
+            execute_depth=10000,
+            cut_point_rules=cut_rules,
+            terminal_rules=terminal_rules,
+        )
+
+        print(prover.prover_1.proof.status.value)
+        print(prover.prover_2.proof.status.value)
+
+        final_nodes_print_1 = [
+            (
+                kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cterm.constraint),
+            )
+            for s in prover.prover_1.proof.kcfg.stuck
+        ]
+
+        final_nodes_print_2 = [
+            (
+                kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cterm.constraint),
+            )
+            for s in prover.prover_2.proof.kcfg.stuck
+        ]
+
+        print(final_nodes_print_1)
+        print(final_nodes_print_2)
+
+        assert 1 == 0
+
         #
         #
         # Execution to completion
