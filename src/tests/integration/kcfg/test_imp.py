@@ -10,6 +10,7 @@ from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term
 from pyk.kcfg import KCFG
+from pyk.kcfg.explore import SubsumptionCheckResult
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
@@ -482,7 +483,7 @@ PROGRAM_EQUIVALENCE_DATA: Iterable[
         (
             'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
             '.Map',
-            mlEqualsTrue(KApply('_>Int_', [KVariable('N'), intToken(10)])),
+            mlTop(),
         ),
         ('int $n; $n = N:Int ; $n = 2 * $n ;', '.Map', mlTop()),
     ),
@@ -891,93 +892,10 @@ class TestImpProof(KCFGExploreTest):
         print(final_nodes_print_1)
         print(final_nodes_print_2)
 
-        assert 1 == 0
+        pc_stuck, pc_frontier, pc_bounded = proof.check_equivalence(kcfg_explore)
 
-        #
-        #
-        # Execution to completion
-        # =======================
-        #
-        #   Parameters:
-        #   -----------
-        #     config: initial configuration, constisting of the initial contents
-        #             of the two configuration cells (str) and
-        #             the initial path constraint (KInner)
-        #
-        #   Return value:
-        #   -------------
-        #     A list of nodes obtained after executing the initial configuration to completion
-        #
-        def execute_to_completion(config: tuple[str, str, KInner]) -> KInner:
-            # Parse given configurations into a term
-            configuration = self.config(kcfg_explore.kprint, *config)
-
-            # Create KCFG with its initial and target state
-            kcfg = KCFG()
-            init_state = kcfg.create_node(configuration)
-            kcfg.add_init(init_state.id)
-
-            # Initialise prover
-            proof = APRProof('prog_eq.conf', kcfg, {}, False)
-            prover = APRProver(
-                proof,
-                is_terminal=TestImpProof._is_terminal,
-                extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
-            )
-
-            # Q: What is the correct way of saying - go to completion, but maybe jump out in some scenarios?
-            #    Is this a good use case for BMC? Right now I'm just limiting the number of iterations.
-            kcfg = prover.advance_proof(kcfg_explore, max_iterations=10, execute_depth=10000)
-
-            # Q: If the target is unreachable, the terminal nodes (meaning, the ones that can't take more steps)
-            #    in the kcfg will be stuck. These are the ones we want. In addition, there are frontier nodes,
-            #    which I believe we don't want. Are there any other types of nodes that we might care for?
-            frontier_nodes = kcfg.frontier
-            final_nodes = kcfg.stuck
-
-            assert len(kcfg.leaves) == len(kcfg.frontier) + len(kcfg.stuck)
-
-            # Require that there are no frontier nodes
-            if len(frontier_nodes) > 0:
-                print('Non-zero frontier nodes: %d', len(frontier_nodes))
-                frontier_nodes_print = [
-                    (
-                        kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
-                        kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
-                    )
-                    for s in frontier_nodes
-                ]
-                print(frontier_nodes_print)
-                raise AssertionError()
-
-            print('Program: Number of final nodes: ', len(final_nodes))
-
-            # Q: What is the correct way of printing this information?
-            final_nodes_print = [
-                (
-                    kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
-                    kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
-                    kcfg_explore.kprint.pretty_print(mlAnd(list(s.cterm.constraints))),
-                )
-                for s in final_nodes
-            ]
-            print(final_nodes_print)
-
-            return KCFG.multinode_path_constraint(final_nodes)
-
-        # Execute to completion
-        pc_1 = execute_to_completion(config_1)
-        pc_2 = execute_to_completion(config_2)
-
-        eq_check = kcfg_explore.path_constraint_subsumption(pc_1, pc_2)
-
-        print(eq_check.value)
-
-        assert 1 == 0
-
-        # Construct the equivalence check
-        # OR of final states of config_1 <=> OR of final states of config_2
-
-        # Execute the equivalence check as two implications
-
-        # Report back
+        assert (
+            pc_stuck == SubsumptionCheckResult.EQUIVALENT
+            and pc_frontier == SubsumptionCheckResult.EQUIVALENT
+            and pc_bounded == SubsumptionCheckResult.EQUIVALENT
+        )
