@@ -142,7 +142,11 @@ class APRProof(Proof):
             raise ValueError(f'No such node {node.id}')
 
         # construct the path from the KCFG root to the node to refute
-        path = single(self.kcfg.paths_between(source_id=self.kcfg.get_unique_init().id, target_id=node.id))
+        try:
+            path = single(self.kcfg.paths_between(source_id=self.kcfg.get_unique_init().id, target_id=node.id))
+        except ValueError:
+            _LOGGER.error(f'Node {node.id} is not reachable from the initial node.')
+            return None
         # traverse the path back from the node-to-refute and choose only split nodes and non-deterministic branches
         branches_on_path = list(filter(lambda x: type(x) is KCFG.Split or type(x) is KCFG.NDBranch, reversed(path)))
         if len(branches_on_path) == 0:
