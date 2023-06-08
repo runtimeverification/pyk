@@ -50,7 +50,7 @@ class Proof(ABC):
         if not self.proof_dir:
             return
         proof_path = self.proof_dir / f'{hash_str(self.id)}.json'
-        if not self.is_uptodate():
+        if not self.up_to_date():
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
             self._last_modified = proof_path.stat().st_mtime_ns
@@ -62,13 +62,12 @@ class Proof(ABC):
         return proof_path.exists() and proof_path.is_file()
 
     @property
-    def checksum(self) -> str:
+    def digest(self) -> str:
         return hash_str(json.dumps(self.dict))
 
-    def is_uptodate(self, check_method: str = 'checksum') -> bool:
+    def up_to_date(self, check_method: str = 'checksum') -> bool:
         """
         Check that the proof's representation on disk is up-to-date.
-
         By default, compares the file timestamp to self._last_modified. Use check_method = 'checksum' to compare hashes instead.
         """
         if self.proof_dir is None:
@@ -77,7 +76,7 @@ class Proof(ABC):
         if proof_path.exists() and proof_path.is_file():
             match check_method:
                 case 'checksum':
-                    return self.checksum == hash_file(proof_path)
+                    return self.digest == hash_file(proof_path)
                 case _:  # timestamp
                     return self._last_modified == proof_path.stat().st_mtime_ns
         else:
@@ -100,7 +99,7 @@ class Proof(ABC):
         """Get a subproof, re-reading from disk if it's not up-to-date"""
 
         if self.proof_dir is not None and (
-            force_reread or not self._subproofs[proof_id].is_uptodate(check_method=uptodate_check_method)
+            force_reread or not self._subproofs[proof_id].up_to_date(check_method=uptodate_check_method)
         ):
             updated_subproof = Proof.read_proof(proof_id, self.proof_dir)
             self._subproofs[proof_id] = updated_subproof

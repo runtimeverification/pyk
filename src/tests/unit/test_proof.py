@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -16,7 +16,7 @@ from .test_kcfg import node_dicts
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from pytest import TempPathFactory
+    from pytest import FixtureRequest, TempPathFactory
 
 
 @pytest.fixture(scope='function')
@@ -40,57 +40,48 @@ def equality_proof(i: int, proof_dir: Path) -> EqualityProof:
     )
 
 
-PROOF_TEST_DATA: list[dict[str, Any]] = [
-    {
-        'proof_type': 'APRProof',
-        'proof_param': 1,
-    },
-    {
-        'proof_type': 'APRBMCProof',
-        'proof_param': 1,
-    },
-    {
-        'proof_type': 'EqualityProof',
-        'proof_param': 1,
-    },
+PROOF_TEST_DATA: list[tuple[str, str, Proof]] = [
+    (
+        'apr-proof',
+        'proof_dir',
+        APRProof(
+            id='apr_proof_1',
+            kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            logs={},
+        ),
+    ),
+    (
+        'aprbmc-proof',
+        'proof_dir',
+        APRBMCProof(
+            id='aprbmc_proof_1',
+            bmc_depth=1,
+            kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            logs={},
+        ),
+    ),
+    (
+        'equality-proof',
+        'proof_dir',
+        EqualityProof(
+            id='equality_proof_1',
+            lhs_body=intToken(1),
+            rhs_body=intToken(1),
+            sort=BOOL,
+        ),
+    ),
 ]
 
 
-@pytest.fixture(scope='function', params=PROOF_TEST_DATA)
-def sample_proof(
-    request: pytest.FixtureRequest,
-    proof_dir: Path,
-) -> Proof:
-    proof_type = request.param['proof_type']
-    proof_param = request.param['proof_param']
-    match proof_type:
-        case 'APRProof':
-            return APRProof(
-                id=f'apr_proof_{proof_param}',
-                kcfg=KCFG.from_dict({'nodes': node_dicts(proof_param)}),
-                logs={},
-                proof_dir=proof_dir,
-            )
-        case 'APRBMCProof':
-            return APRBMCProof(
-                id=f'aprbmc_proof_{proof_param}',
-                bmc_depth=proof_param,
-                kcfg=KCFG.from_dict({'nodes': node_dicts(proof_param)}),
-                logs={},
-                proof_dir=proof_dir,
-            )
-        case _:  # EqualityProof
-            return EqualityProof(
-                id=f'equality_proof_{proof_param}',
-                lhs_body=intToken(proof_param),
-                rhs_body=intToken(proof_param),
-                sort=BOOL,
-                proof_dir=proof_dir,
-            )
-
-
 class TestProof:
-    def test_read_proof(self, sample_proof: Proof) -> None:
+    @pytest.mark.parametrize(
+        'test_id,dir_fixture,sample_proof',
+        PROOF_TEST_DATA,
+        ids=[test_id for test_id, *_ in PROOF_TEST_DATA],
+    )
+    def test_read_proof(self, request: FixtureRequest, test_id: str, dir_fixture: str, sample_proof: Proof) -> None:
+        sample_proof.proof_dir = request.getfixturevalue(dir_fixture)
+
         # Given
         assert sample_proof.proof_dir
         sample_proof.write_proof()
