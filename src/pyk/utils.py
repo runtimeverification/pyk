@@ -355,3 +355,7 @@ def compare_short_hashes(lhs: str, rhs: str) -> bool:
     (l0, l1) = deconstruct_short_hash(lhs)
     (r0, r1) = deconstruct_short_hash(rhs)
     return (l0.startswith(r0) or r0.startswith(l0)) and (l1.endswith(r1) or r1.endswith(l1))
+
+
+def keys_to_int(d: dict) -> dict:
+    return {str(k): v for (k, v) in d.items()}

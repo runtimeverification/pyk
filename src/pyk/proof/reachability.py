@@ -10,7 +10,7 @@ from ..kast.manip import ml_pred_to_bool
 from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlEquals
-from ..utils import shorten_hashes, single
+from ..utils import keys_to_int, shorten_hashes, single
 from .equality import RefutationProof, RefutationProver
 from .proof import Proof, ProofStatus
 
@@ -97,7 +97,7 @@ class APRProof(Proof):
         cfg = KCFG.from_dict(dct['cfg'])
         id = dct['id']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
-        node_refutations = dct['node_refutations'] if 'node_refutations' in dct else {}
+        node_refutations = keys_to_int(dct['node_refutations']) if 'node_refutations' in dct else {}
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
@@ -236,7 +236,7 @@ class APRBMCProof(APRProof):
         bounded_states = dct['bounded_states']
         bmc_depth = dct['bmc_depth']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
-        node_refutations = dct['node_refutations'] if 'node_refutations' in dct else {}
+        node_refutations = keys_to_int(dct['node_refutations']) if 'node_refutations' in dct else {}
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
