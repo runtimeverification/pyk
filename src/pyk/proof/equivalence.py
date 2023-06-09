@@ -4,6 +4,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from pyk.kast.inner import Subst
+from pyk.prelude.ml import mlAnd
+
+from ..cterm import CTerm
 from ..kcfg import KCFG
 
 # from ..utils import shorten_hashes
@@ -15,7 +19,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    from ..cterm import CTerm
     from ..kast.inner import KInner
     from ..kcfg import KCFGExplore
     from ..kcfg.explore import SubsumptionCheckResult
@@ -111,19 +114,53 @@ class EquivalenceProof:
         )
 
     def check_equivalence(
-        self, kcfg_explore: KCFGExplore
-    ) -> tuple[SubsumptionCheckResult, SubsumptionCheckResult, SubsumptionCheckResult]:
+        self, kcfg_explore: KCFGExplore, cell_names: Iterable[str], config_comparator: KInner
+    ) -> tuple[bool, SubsumptionCheckResult, SubsumptionCheckResult, SubsumptionCheckResult]:
+        def config_equivalence(config_1: KCFG.Node, config_2: KCFG.Node) -> bool:
+            # Extend cell names with configuration suffixes
+            cell_names_1, cell_names_2 = ([s + '_1' for s in cell_names], [s + '_2' for s in cell_names])
+
+            # Get the contents of the cells in the configurations
+            cell_contents_1 = [config_1.cterm.cell(cell_name) for cell_name in cell_names]
+            cell_contents_2 = [config_2.cterm.cell(cell_name) for cell_name in cell_names]
+
+            # Create the substitution mapping the extended cell names to the appropriate contents
+            cell_subst = Subst(
+                dict(
+                    list(zip(cell_names_1, cell_contents_1, strict=True))
+                    + list(zip(cell_names_2, cell_contents_2, strict=True))
+                )
+            )
+
+            # and apply it to the comparator
+            _ = cell_subst.apply(config_comparator)
+
+            # Conjunction of the path constraints of the configurations
+            path_constraint = mlAnd([config_1.cterm.constraint, config_2.cterm.constraint])
+
+            config_1_adjusted = CTerm(config_1.cterm.config, [path_constraint])
+            config_2_adjusted = CTerm(config_2.cterm.config, [path_constraint])
+
+            return kcfg_explore.cterm_implies(config_1_adjusted, config_2_adjusted) != None
+
         kcfg_1 = self.proof_1.kcfg
         kcfg_2 = self.proof_2.kcfg
 
-        # 1. Nodes whose execution cannot proceed further (stuck nodes)
-        stuck_1 = kcfg_1.stuck
-        stuck_2 = kcfg_2.stuck
+        # 1. Nodes whose execution cannot proceed further (stuck/final nodes)
+        final_1 = kcfg_1.stuck
+        final_2 = kcfg_2.stuck
 
-        pc_stuck_1 = KCFG.multinode_path_constraint(stuck_1)
-        pc_stuck_2 = KCFG.multinode_path_constraint(stuck_2)
+        pc_final_1 = KCFG.multinode_path_constraint(final_1)
+        pc_final_2 = KCFG.multinode_path_constraint(final_2)
 
-        stuck_pc_check = kcfg_explore.path_constraint_subsumption(pc_stuck_1, pc_stuck_2)
+        # Relationship of path conditions
+        stuck_pc_check = kcfg_explore.path_constraint_subsumption(pc_final_1, pc_final_2)
+
+        # Relationship of individual final nodes
+        final_nodes_equivalence = [
+            config_equivalence(config_1, config_2) for config_1 in final_1 for config_2 in final_2
+        ]
+        final_nodes_equivalence_summary = not (False in final_nodes_equivalence)
 
         # 2. Nodes whose execution can proceed further (frontier nodes)
         frontier_1 = kcfg_1.frontier
@@ -132,7 +169,7 @@ class EquivalenceProof:
         pc_frontier_1 = KCFG.multinode_path_constraint(frontier_1)
         pc_frontier_2 = KCFG.multinode_path_constraint(frontier_2)
 
-        # For these nodes, only the equivalence of their path conditions is relevant
+        # For these nodes, only the relationship of their path conditions is relevant
         frontier_pc_check = kcfg_explore.path_constraint_subsumption(pc_frontier_1, pc_frontier_2)
 
         # 3. Nodes whose execution has been stopped due to a bound reached (bounded nodes)
@@ -142,10 +179,14 @@ class EquivalenceProof:
         pc_bounded_1 = KCFG.multinode_path_constraint(bounded_1)
         pc_bounded_2 = KCFG.multinode_path_constraint(bounded_2)
 
-        # For these nodes, only the equivalence of their path conditions is relevant
+        # For these nodes, only the relationship of their path conditions is relevant
         bounded_pc_check = kcfg_explore.path_constraint_subsumption(pc_bounded_1, pc_bounded_2)
 
-        return (stuck_pc_check, frontier_pc_check, bounded_pc_check)
+        print(
+            f'check_equivalence_summary:\n\tFinal nodes equivalent: {final_nodes_equivalence_summary}\n\tPCs of final nodes: {stuck_pc_check.value}\n\tPCs of frontier nodes: {frontier_pc_check.value}\n\tPCs of bounded nodes: {bounded_pc_check.value}\n'
+        )
+
+        return (final_nodes_equivalence_summary, stuck_pc_check, frontier_pc_check, bounded_pc_check)
 
 
 class EquivalenceProver:

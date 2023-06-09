@@ -312,17 +312,23 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     #     true:   if antecedent => consequent is valid
     #     false:  otherwise
     #
-    def check_implication(self, antecedent: KInner, consequent: KInner) -> bool:
-        # As `kcfg_explore.cterm_implies` checks satisfiability of implication,
-        # to check if an implication is valid, we check that its negation
-        # (antecedent /\ not consequent) is not unsatisfiable
+    def check_pure_implication(self, antecedent: KInner, consequent: KInner) -> bool:
+        # # As `kcfg_explore.cterm_implies` checks satisfiability of implication,
+        # # to check if an implication is valid, we check that its negation
+        # # (antecedent /\ not consequent) is not unsatisfiable
         neg_implication = bool_to_ml_pred(andBool([antecedent, notBool(consequent)]))
 
         dummy_config = self.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
         config_top = CTerm(config=dummy_config, constraints=[mlTop(GENERATED_TOP_CELL)])
         config_neg_implication = CTerm(config=dummy_config, constraints=[neg_implication])
 
-        return self.cterm_implies(config_top, config_neg_implication) == None
+        result = self.cterm_implies(config_top, config_neg_implication) == None
+
+        print('check_pure_implication summary:')
+        print(f'\tAntecedent: {self.kprint.pretty_print(antecedent)}')
+        print(f'\tConsequent: {self.kprint.pretty_print(consequent)}')
+        print(f'\tResult: {result}\n')
+        return result
 
     #
     # Path constraint subsumption check
@@ -345,20 +351,26 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         pc_1: KInner,
         pc_2: KInner,
     ) -> SubsumptionCheckResult:
-        if self.check_implication(pc_1, pc_2):
-            if self.check_implication(pc_2, pc_1):
+        if self.check_pure_implication(pc_1, pc_2):
+            if self.check_pure_implication(pc_2, pc_1):
                 # Both implications hold
-                return SubsumptionCheckResult.EQUIVALENT
+                result = SubsumptionCheckResult.EQUIVALENT
             else:
                 # 1 => 2
-                return SubsumptionCheckResult.SECOND_SUBSUMES
+                result = SubsumptionCheckResult.SECOND_SUBSUMES
         else:
-            if self.check_implication(pc_2, pc_1):
+            if self.check_pure_implication(pc_2, pc_1):
                 # 2 => 1
-                return SubsumptionCheckResult.FIRST_SUBSUMES
+                result = SubsumptionCheckResult.FIRST_SUBSUMES
             else:
                 # No implications hold
-                return SubsumptionCheckResult.INCOMPARABLE
+                result = SubsumptionCheckResult.INCOMPARABLE
+
+        print('path_constraint_subsumption summary:')
+        print(f'\tPC1: {self.kprint.pretty_print(pc_1)}')
+        print(f'\tPC2: {self.kprint.pretty_print(pc_2)}')
+        print(f'\tResult: {result.value}\n')
+        return result
 
     def cterm_assume_defined(self, cterm: CTerm) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
