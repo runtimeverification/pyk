@@ -358,4 +358,4 @@ def compare_short_hashes(lhs: str, rhs: str) -> bool:
 
 
 def keys_to_int(d: dict) -> dict:
-    return {str(k): v for (k, v) in d.items()}
+    return {int(k): v for (k, v) in d.items()}
