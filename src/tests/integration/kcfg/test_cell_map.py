@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -7,7 +8,7 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
-from pyk.kcfg import KCFG
+from pyk.kcfg import KCFG, KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.testing import KCFGExploreTest
 
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
     from pyk.kcfg import KCFGExplore
     from pyk.ktool.kprint import KPrint
     from pyk.ktool.kprove import KProve
+
+_LOGGER: Final = logging.getLogger(__name__)
 
 
 class State(NamedTuple):
@@ -48,6 +51,10 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
 
 class TestCellMapProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'cell-map.k'
+
+    @staticmethod
+    def node_printer(kprint: KPrint, cterm: CTerm) -> list[str]:
+        return kprint.pretty_print(cterm.kast).split('\n')
 
     @staticmethod
     def config(kprint: KPrint, k: str, active_accounts: str, accounts: Iterable[tuple[str, str]]) -> CTerm:
@@ -137,11 +144,17 @@ class TestCellMapProof(KCFGExploreTest):
         kcfg.replace_node(init.id, new_init_term)
         proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
         prover = APRProver(proof)
-        kcfg = prover.advance_proof(
+        prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,
         )
+
+        kcfg_show = KCFGShow(kcfg_explore.kprint)
+        cfg_lines = kcfg_show.show(
+            'test', proof.kcfg, node_printer=lambda k: TestCellMapProof.node_printer(kcfg_explore.kprint, k)
+        )
+        _LOGGER.info('\n'.join(cfg_lines))
 
         assert proof.status == ProofStatus.PASSED

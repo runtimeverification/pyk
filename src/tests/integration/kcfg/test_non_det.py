@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kcfg import KCFG
+from pyk.kcfg import KCFG, KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.testing import KCFGExploreTest
 
@@ -13,18 +14,26 @@ from ..utils import K_FILES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from typing import Final
 
+    from pyk.cterm import CTerm
     from pyk.kcfg import KCFGExplore
+    from pyk.ktool.kprint import KPrint
     from pyk.ktool.kprove import KProve
 
+_LOGGER: Final = logging.getLogger(__name__)
 
 APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str]]] = (
     ('test-nondet', K_FILES / 'non-det-spec.k', 'NON-DET-SPEC', 'non-det', 8, 1, []),
 )
 
 
-class TestImpProof(KCFGExploreTest):
+class TestNonDetProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'non-det.k'
+
+    @staticmethod
+    def node_printer(kprint: KPrint, cterm: CTerm) -> list[str]:
+        return kprint.pretty_print(cterm.kast).split('\n')
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules',
@@ -57,6 +66,12 @@ class TestImpProof(KCFGExploreTest):
             execute_depth=max_depth,
             terminal_rules=terminal_rules,
         )
+
+        kcfg_show = KCFGShow(kcfg_explore.kprint)
+        cfg_lines = kcfg_show.show(
+            'test', proof.kcfg, node_printer=lambda k: TestNonDetProof.node_printer(kcfg_explore.kprint, k)
+        )
+        _LOGGER.info('\n'.join(cfg_lines))
 
         # We expect this graph, in which all splits are non-deterministic:
         #
