@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast import KInner
-    from ..kast.outer import KRuleLike
+    from ..kast.outer import KDefinition, KRuleLike
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
 
@@ -73,6 +73,28 @@ class KCFGShow:
         if node_printer:
             node_strs.extend(f' {nl}' for nl in node_printer(node.cterm))
         return node_strs
+
+    @staticmethod
+    def is_ceil_condition(kast: KInner) -> bool:
+        return type(kast) is KApply and kast.label.name == '#Ceil'
+
+    @staticmethod
+    def hide_cells(term: KInner, omit_cells: Iterable[str]) -> KInner:
+        def _hide_cells(_k: KInner) -> KInner:
+            if type(_k) == KApply and _k.label.name in omit_cells:
+                return DOTS
+            return _k
+
+        if omit_cells:
+            return top_down(_hide_cells, term)
+        return term
+
+    @staticmethod
+    def simplify_config(defn: KDefinition, config: KInner, omit_cells: Iterable[str]) -> KInner:
+        config = inline_cell_maps(config)
+        config = sort_ac_collections(defn, config)
+        config = KCFGShow.hide_cells(config, omit_cells)
+        return config
 
     def pretty_segments(
         self,
@@ -313,31 +335,12 @@ class KCFGShow:
         res_lines: list[str] = []
         res_lines += self.pretty(cfg, minimize=minimize, node_printer=node_printer)
 
-        def hide_cells(term: KInner) -> KInner:
-            def _hide_cells(_k: KInner) -> KInner:
-                if type(_k) == KApply and _k.label.name in omit_cells:
-                    return DOTS
-                return _k
-
-            if omit_cells:
-                return top_down(_hide_cells, term)
-            return term
-
-        def simplify_config(config: KInner) -> KInner:
-            config = inline_cell_maps(config)
-            config = sort_ac_collections(self.kprint.definition, config)
-            config = hide_cells(config)
-            return config
-
-        def is_ceil_condition(kast: KInner) -> bool:
-            return type(kast) is KApply and kast.label.name == '#Ceil'
-
         nodes_printed = False
 
         for node_id in nodes:
             nodes_printed = True
             kast = cfg.node(node_id).cterm.kast
-            kast = hide_cells(kast)
+            kast = KCFGShow.hide_cells(kast, omit_cells)
             if minimize:
                 kast = minimize_term(kast)
             res_lines.append('')
@@ -349,8 +352,8 @@ class KCFGShow:
 
         for node_id_1, node_id_2 in node_deltas:
             nodes_printed = True
-            config_1 = simplify_config(cfg.node(node_id_1).cterm.config)
-            config_2 = simplify_config(cfg.node(node_id_2).cterm.config)
+            config_1 = KCFGShow.simplify_config(self.kprint.definition, cfg.node(node_id_1).cterm.config, omit_cells)
+            config_2 = KCFGShow.simplify_config(self.kprint.definition, cfg.node(node_id_2).cterm.config, omit_cells)
             config_delta = push_down_rewrites(KRewrite(config_1, config_2))
             if minimize:
                 config_delta = minimize_term(config_delta)
@@ -370,10 +373,16 @@ class KCFGShow:
 
             def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
                 sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
-                init_constraints = [c for c in edge.source.cterm.constraints if not is_ceil_condition(c)]
-                init_cterm = CTerm(simplify_config(edge.source.cterm.config), init_constraints)
-                target_constraints = [c for c in edge.target.cterm.constraints if not is_ceil_condition(c)]
-                target_cterm = CTerm(simplify_config(edge.target.cterm.config), target_constraints)
+                init_constraints = [c for c in edge.source.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
+                init_cterm = CTerm(
+                    KCFGShow.simplify_config(self.kprint.definition, edge.source.cterm.config, omit_cells),
+                    init_constraints,
+                )
+                target_constraints = [c for c in edge.target.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
+                target_cterm = CTerm(
+                    KCFGShow.simplify_config(self.kprint.definition, edge.target.cterm.config, omit_cells),
+                    target_constraints,
+                )
                 rule: KRuleLike
                 if claim:
                     rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
