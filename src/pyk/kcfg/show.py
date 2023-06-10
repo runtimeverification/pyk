@@ -370,39 +370,50 @@ class KCFGShow:
         res_lines.append('')
 
         if to_module:
-
-            def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
-                sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
-                init_constraints = [c for c in edge.source.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
-                init_cterm = CTerm(
-                    KCFGShow.simplify_config(self.kprint.definition, edge.source.cterm.config, omit_cells),
-                    init_constraints,
-                )
-                target_constraints = [c for c in edge.target.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
-                target_cterm = CTerm(
-                    KCFGShow.simplify_config(self.kprint.definition, edge.target.cterm.config, omit_cells),
-                    target_constraints,
-                )
-                rule: KRuleLike
-                if claim:
-                    rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
-                else:
-                    rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=35)
-                return rule
-
-            rules = [to_rule(e) for e in cfg.edges()]
-            nd_steps = [
-                to_rule(KCFG.Edge(ndbranch.source, target, 1))
-                for ndbranch in cfg.ndbranches()
-                for target in ndbranch.targets
-            ]
-            claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), -1), claim=True) for nd in cfg.frontier]
-            cfg_module_name = cfgid.upper().replace('.', '-').replace('_', '-')
-            new_module = KFlatModule(f'SUMMARY-{cfg_module_name}', rules + nd_steps + claims)
-            res_lines.append(self.kprint.pretty_print(new_module, sort_collections=sort_collections))
-            res_lines.append('')
+            module = self.to_module(cfgid, cfg, omit_cells=omit_cells)
+            res_lines.append(self.kprint.pretty_print(module, sort_collections=sort_collections))
 
         return res_lines
+
+    def to_module(
+        self,
+        cfgid: str,
+        cfg: KCFG,
+        module_name: str | None = None,
+        imports: Iterable[str] = (),
+        omit_cells: Iterable[str] = (),
+    ) -> KFlatModule:
+        def to_rule(edge: KCFG.Edge, label: str, *, claim: bool = False) -> KRuleLike:
+            sentence_id = f'{label}-{edge.source.id}-TO-{edge.target.id}'
+            init_constraints = [c for c in edge.source.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
+            init_cterm = CTerm(
+                KCFGShow.simplify_config(self.kprint.definition, edge.source.cterm.config, omit_cells),
+                init_constraints,
+            )
+            target_constraints = [c for c in edge.target.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
+            target_cterm = CTerm(
+                KCFGShow.simplify_config(self.kprint.definition, edge.target.cterm.config, omit_cells),
+                target_constraints,
+            )
+            rule: KRuleLike
+            if claim:
+                rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
+            else:
+                rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=35)
+            return rule
+
+        rules = [to_rule(e, 'BASIC-BLOCK') for e in cfg.edges()]
+        nd_steps = [
+            to_rule(KCFG.Edge(ndbranch.source, target, 1), 'ND-STEP')
+            for ndbranch in cfg.ndbranches()
+            for target in ndbranch.targets
+        ]
+        claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), -1), 'UNPROVEN', claim=True) for nd in cfg.frontier]
+
+        cfg_module_name = (
+            module_name if module_name is not None else f'SUMMARY-{cfgid.upper().replace(".", "-").replace("_", "-")}'
+        )
+        return KFlatModule(cfg_module_name, rules + nd_steps + claims)
 
     def dot(self, kcfg: KCFG, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> Digraph:
         def _short_label(label: str) -> str:
