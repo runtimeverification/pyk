@@ -58,6 +58,15 @@ class APRProofShow:
         omit_cells: Iterable[str] = (),
     ) -> list[str]:
         nodes = list(nodes) + [nd.id for nd in proof.pending]
+        node_descriptors: dict[NodeIdLike, list[str]] = {}
+        for pending in proof.pending:
+            if pending.id not in node_descriptors:
+                node_descriptors[pending.id] = []
+            node_descriptors[pending.id].append('pending')
+        for terminal in proof.terminal:
+            if terminal.id not in node_descriptors:
+                node_descriptors[terminal.id] = []
+            node_descriptors[terminal.id].append('terminal')
 
         res_lines = self.kcfg_show.show(
             proof.id,
@@ -68,6 +77,7 @@ class APRProofShow:
             minimize=minimize,
             sort_collections=sort_collections,
             node_printer=node_printer,
+            node_descriptors=node_descriptors,
             omit_cells=omit_cells,
         )
 
