@@ -96,6 +96,28 @@ class KCFGShow:
         config = KCFGShow.hide_cells(config, omit_cells)
         return config
 
+    @staticmethod
+    def to_rule(
+        defn: KDefinition, edge: KCFG.Edge, label: str, omit_cells: Iterable[str] = (), claim: bool = False
+    ) -> KRuleLike:
+        sentence_id = f'{label}-{edge.source.id}-TO-{edge.target.id}'
+        init_constraints = [c for c in edge.source.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
+        init_cterm = CTerm(
+            KCFGShow.simplify_config(defn, edge.source.cterm.config, omit_cells),
+            init_constraints,
+        )
+        target_constraints = [c for c in edge.target.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
+        target_cterm = CTerm(
+            KCFGShow.simplify_config(defn, edge.target.cterm.config, omit_cells),
+            target_constraints,
+        )
+        rule: KRuleLike
+        if claim:
+            rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
+        else:
+            rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=35)
+        return rule
+
     def pretty_segments(
         self,
         kcfg: KCFG,
@@ -383,32 +405,24 @@ class KCFGShow:
         imports: Iterable[str] = (),
         omit_cells: Iterable[str] = (),
     ) -> KFlatModule:
-        def to_rule(edge: KCFG.Edge, label: str, *, claim: bool = False) -> KRuleLike:
-            sentence_id = f'{label}-{edge.source.id}-TO-{edge.target.id}'
-            init_constraints = [c for c in edge.source.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
-            init_cterm = CTerm(
-                KCFGShow.simplify_config(self.kprint.definition, edge.source.cterm.config, omit_cells),
-                init_constraints,
-            )
-            target_constraints = [c for c in edge.target.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
-            target_cterm = CTerm(
-                KCFGShow.simplify_config(self.kprint.definition, edge.target.cterm.config, omit_cells),
-                target_constraints,
-            )
-            rule: KRuleLike
-            if claim:
-                rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
-            else:
-                rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=35)
-            return rule
-
-        rules = [to_rule(e, 'BASIC-BLOCK') for e in cfg.edges()]
+        rules = [KCFGShow.to_rule(self.kprint.definition, e, 'BASIC-BLOCK', omit_cells=omit_cells) for e in cfg.edges()]
         nd_steps = [
-            to_rule(KCFG.Edge(ndbranch.source, target, 1), 'ND-STEP')
+            KCFGShow.to_rule(
+                self.kprint.definition, KCFG.Edge(ndbranch.source, target, 1), 'ND-STEP', omit_cells=omit_cells
+            )
             for ndbranch in cfg.ndbranches()
             for target in ndbranch.targets
         ]
-        claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), -1), 'UNPROVEN', claim=True) for nd in cfg.frontier]
+        claims = [
+            KCFGShow.to_rule(
+                self.kprint.definition,
+                KCFG.Edge(nd, cfg.get_unique_target(), -1),
+                'UNPROVEN',
+                omit_cells=omit_cells,
+                claim=True,
+            )
+            for nd in cfg.frontier
+        ]
 
         cfg_module_name = (
             module_name if module_name is not None else f'SUMMARY-{cfgid.upper().replace(".", "-").replace("_", "-")}'
