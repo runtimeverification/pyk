@@ -44,7 +44,9 @@ class KCFGShow:
         self.kprint = kprint
 
     @staticmethod
-    def node_attrs(kcfg: KCFG, node: KCFG.Node) -> list[str]:
+    def node_attrs(
+        kcfg: KCFG, node: KCFG.Node, node_descriptors: dict[NodeIdLike, list[str]] | None = None
+    ) -> list[str]:
         attrs = []
         if kcfg.is_init(node.id):
             attrs.append('init')
@@ -60,13 +62,20 @@ class KCFGShow:
             attrs.append('leaf')
         if kcfg.is_split(node.id):
             attrs.append('split')
+        if node_descriptors is not None and node.id in node_descriptors and len(list(node_descriptors[node.id])) > 0:
+            attrs.extend(node_descriptors[node.id])
         return attrs
 
     @staticmethod
     def node_short_info(
-        kcfg: KCFG, node: KCFG.Node, node_printer: Callable[[CTerm], Iterable[str]] | None = None
+        kcfg: KCFG,
+        node: KCFG.Node,
+        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
     ) -> list[str]:
-        attrs = KCFGShow.node_attrs(kcfg, node) + ['@' + alias for alias in sorted(kcfg.aliases(node.id))]
+        attrs = KCFGShow.node_attrs(kcfg, node, node_descriptors=node_descriptors) + [
+            '@' + alias for alias in sorted(kcfg.aliases(node.id))
+        ]
         attr_string = ' (' + ', '.join(attrs) + ')' if attrs else ''
         node_header = str(node.id) + attr_string
         node_strs = [node_header]
@@ -123,6 +132,7 @@ class KCFGShow:
         kcfg: KCFG,
         minimize: bool = True,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
     ) -> Iterable[tuple[str, Iterable[str]]]:
         """Return a pretty version of the KCFG in segments.
 
@@ -134,17 +144,8 @@ class KCFGShow:
         processed_nodes: list[KCFG.Node] = []
         ret_lines: list[tuple[str, list[str]]] = []
 
-        def _bold(text: str) -> str:
-            return '\033[1m' + text + '\033[0m'
-
-        def _green(text: str) -> str:
-            return '\033[32m' + text + '\033[0m'
-
         def _print_node(node: KCFG.Node) -> list[str]:
-            short_info = KCFGShow.node_short_info(kcfg, node, node_printer=node_printer)
-            if kcfg.is_frontier(node.id):
-                short_info[0] = _bold(short_info[0])
-            return short_info
+            return KCFGShow.node_short_info(kcfg, node, node_printer=node_printer)
 
         def _print_edge(edge: KCFG.Edge) -> list[str]:
             if edge.depth == 1:
@@ -331,6 +332,7 @@ class KCFGShow:
         kcfg: KCFG,
         minimize: bool = True,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
     ) -> Iterable[str]:
         return (
             line
@@ -338,6 +340,7 @@ class KCFGShow:
                 kcfg,
                 minimize=minimize,
                 node_printer=node_printer,
+                node_descriptors=node_descriptors,
             )
             for line in seg_lines
         )
@@ -352,10 +355,11 @@ class KCFGShow:
         minimize: bool = True,
         sort_collections: bool = False,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
         omit_cells: Iterable[str] = (),
     ) -> list[str]:
         res_lines: list[str] = []
-        res_lines += self.pretty(cfg, minimize=minimize, node_printer=node_printer)
+        res_lines += self.pretty(cfg, minimize=minimize, node_printer=node_printer, node_descriptors=node_descriptors)
 
         nodes_printed = False
 
