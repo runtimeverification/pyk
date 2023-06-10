@@ -395,7 +395,7 @@ class KCFGShow:
 
         return res_lines
 
-    def dot(self, kcfg: KCFG, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> str:
+    def dot(self, kcfg: KCFG, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> Digraph:
         def _short_label(label: str) -> str:
             return '\n'.join(
                 [
@@ -445,7 +445,7 @@ class KCFGShow:
                 attrs = {'class': 'target', 'style': 'solid'}
                 graph.edge(tail_name=node.id, head_name=target_id, label='  false', **attrs)
 
-        return graph.source
+        return graph
 
     def dump(
         self,
