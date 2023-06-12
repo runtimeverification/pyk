@@ -10,10 +10,12 @@ from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term
 from pyk.kcfg import KCFG
+from pyk.kcfg.explore import SubsumptionCheckResult
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
-from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
+from pyk.prelude.ml import mlAnd, mlBottom, mlEquals, mlEqualsFalse, mlEqualsTrue, mlTop
+from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
+from pyk.proof.equivalence import EquivalenceProof, EquivalenceProver
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -460,6 +462,37 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
+FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
+    (
+        'func-spec-concrete',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-FUNCTIONAL-SPEC',
+        'concrete-addition',
+        ProofStatus.PASSED,
+    ),
+)
+
+PROGRAM_EQUIVALENCE_DATA: Iterable[
+    tuple[str, int, Iterable[str], Iterable[str], tuple[str, str, KInner], tuple[str, str, KInner]]
+] = (
+    (
+        'double-add-vs-mul',
+        10,
+        ['IMP.while'],
+        [],
+        (
+            'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
+            '.Map',
+            mlTop(),  # mlEqualsTrue(KApply('_<Int_', [KVariable('N', 'Int'), KToken('15', 'Int')])),
+        ),
+        (
+            'int $n; $n = N:Int ; $n = 2 * $n ;',
+            '.Map',
+            mlTop(),  # mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('5', 'Int')])),
+        ),
+    ),
+)
+
 
 def leaf_number(kcfg: KCFG) -> int:
     target_id = kcfg.get_unique_target().id
@@ -512,6 +545,21 @@ class TestImpProof(KCFGExploreTest):
         if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
             return k_cell_1[0].label.name == 'while(_)_'
         return False
+
+    # Names of IMP configuration cells
+    @staticmethod
+    def _cell_names() -> Iterable[str]:
+        return ['K_CELL', 'STATE_CELL']
+
+    # Default configuration comparator
+    @staticmethod
+    def _default_config_comparator() -> KInner:
+        return mlAnd(
+            [
+                mlEquals(KVariable('K_CELL_1'), KVariable('K_CELL_2')),
+                mlEquals(KVariable('STATE_CELL_1'), KVariable('STATE_CELL_2')),
+            ]
+        )
 
     @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: KInner | None = None) -> CTerm:
@@ -745,3 +793,169 @@ class TestImpProof(KCFGExploreTest):
 
         assert proof.status == proof_status
         assert leaf_number(kcfg) == expected_leaf_number
+
+    @pytest.mark.parametrize(
+        'test_id,spec_file,spec_module,claim_id,proof_status',
+        FUNC_PROVE_TEST_DATA,
+        ids=[test_id for test_id, *_ in FUNC_PROVE_TEST_DATA],
+    )
+    def test_functional_prove(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        spec_file: str,
+        spec_module: str,
+        claim_id: str,
+        proof_status: ProofStatus,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
+        )
+
+        equality_proof = EqualityProof.from_claim(claim, kprove.definition)
+        equality_prover = EqualityProver(equality_proof)
+        equality_prover.advance_proof(kcfg_explore)
+
+        assert equality_proof.status == proof_status
+
+    @pytest.mark.parametrize(
+        'test_id,antecedent,consequent,expected',
+        IMPLICATION_FAILURE_TEST_DATA,
+        ids=[test_id for test_id, *_ in IMPLICATION_FAILURE_TEST_DATA],
+    )
+    def test_implication_failure_reason(
+        self,
+        kcfg_explore: KCFGExplore,
+        kprove: KProve,
+        test_id: str,
+        antecedent: tuple[str, str] | tuple[str, str, KInner],
+        consequent: tuple[str, str] | tuple[str, str, KInner],
+        expected: str,
+    ) -> None:
+        antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
+        consequent_term = self.config(kcfg_explore.kprint, *consequent)
+
+        failed, actual = kcfg_explore.implication_failure_reason(antecedent_term, consequent_term)
+
+        print(actual)
+
+        assert failed == False
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        'test_id,bmc_depth,cut_rules,terminal_rules,config_1,config_2',
+        PROGRAM_EQUIVALENCE_DATA,
+        ids=[test_id for test_id, *_ in PROGRAM_EQUIVALENCE_DATA],
+    )
+    def test_program_equivalence(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        bmc_depth: int,
+        cut_rules: Iterable[str],
+        terminal_rules: Iterable[str],
+        # The following is taken from `test_implication_failure_reason`,
+        # as it seems to be a reasonable way of inputting only a given initial state
+        config_1: tuple[str, str, KInner],
+        config_2: tuple[str, str, KInner],
+    ) -> None:
+        configuration_1 = self.config(kcfg_explore.kprint, *config_1)
+        kcfg_1 = KCFG()
+        init_state_1 = kcfg_1.create_node(configuration_1)
+        kcfg_1.add_init(init_state_1.id)
+
+        configuration_2 = self.config(kcfg_explore.kprint, *config_2)
+        kcfg_2 = KCFG()
+        init_state_2 = kcfg_2.create_node(configuration_2)
+        kcfg_2.add_init(init_state_2.id)
+
+        proof = EquivalenceProof('eq_1', kcfg_1, {}, bmc_depth, 'eq_2', kcfg_2, {}, bmc_depth)
+        prover = EquivalenceProver(
+            proof,
+            same_loop=TestImpProof._same_loop,
+            is_terminal=TestImpProof._is_terminal,
+            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+        )
+
+        prover.advance_proof(
+            kcfg_explore=kcfg_explore,
+            max_iterations=6,
+            execute_depth=10000,
+            cut_point_rules=cut_rules,
+            terminal_rules=terminal_rules,
+        )
+
+        print(prover.prover_1.proof.status.value)
+        print(prover.prover_2.proof.status.value)
+
+        final_nodes_print_1 = [
+            (
+                kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cterm.constraint),
+            )
+            for s in prover.prover_1.proof.kcfg.stuck
+        ]
+
+        final_nodes_print_2 = [
+            (
+                kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
+                kcfg_explore.kprint.pretty_print(s.cterm.constraint),
+            )
+            for s in prover.prover_2.proof.kcfg.stuck
+        ]
+
+        print(final_nodes_print_1)
+        print(final_nodes_print_2)
+
+        final_nodes_equivalence, pc_stuck, pc_frontier, pc_bounded = proof.check_equivalence(
+            kcfg_explore, TestImpProof._cell_names(), TestImpProof._default_config_comparator()
+        )
+
+        #
+        # Correctness check
+        #
+
+        # Regardless of the proof statuses, equivalence of any final nodes has to hold
+        assert final_nodes_equivalence
+
+        # Statuses of the two proofs
+        status_1 = prover.prover_1.proof.status
+        status_2 = prover.prover_2.proof.status
+
+        if status_1 == ProofStatus.COMPLETED:
+            if status_2 == ProofStatus.COMPLETED:
+                # Both proofs have been completed
+                print('Both proofs have been completed.')
+                assert (
+                    pc_stuck == SubsumptionCheckResult.EQUIVALENT
+                    and pc_frontier == SubsumptionCheckResult.EQUIVALENT
+                    and pc_bounded == SubsumptionCheckResult.EQUIVALENT
+                )
+            elif status_2 == ProofStatus.PENDING:
+                # Only second proof has not been completed
+                print('Only second proof has not been completed.')
+                assert (
+                    pc_stuck == SubsumptionCheckResult.FIRST_SUBSUMES
+                    and pc_frontier == SubsumptionCheckResult.SECOND_SUBSUMES
+                )
+        elif status_2 == ProofStatus.COMPLETED:
+            # Only first proof has not been completed
+            print('Only first proof has not been completed.')
+            assert (
+                pc_stuck == SubsumptionCheckResult.SECOND_SUBSUMES
+                and pc_frontier == SubsumptionCheckResult.FIRST_SUBSUMES
+            )
+        elif status_2 == ProofStatus.PENDING:
+            # Neither proof has been completed
+            # The following check means the two proofs are done in lock-step,
+            # but this need not be the case in general
+            print('Neither proof has been completed.')
+            assert (
+                pc_stuck == SubsumptionCheckResult.EQUIVALENT
+                and pc_frontier == SubsumptionCheckResult.EQUIVALENT
+                and pc_bounded == SubsumptionCheckResult.EQUIVALENT
+            )

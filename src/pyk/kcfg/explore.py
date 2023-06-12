@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+from enum import Enum
 from typing import TYPE_CHECKING, ContextManager
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
 from ..kast.manip import (
     abstract_term_safely,
+    bool_to_ml_pred,
     bottom_up,
     extract_lhs,
     extract_rhs,
@@ -20,7 +22,7 @@ from ..kore.rpc import KoreClient, KoreServer, StopReason
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
-from ..prelude.kbool import notBool
+from ..prelude.kbool import andBool, notBool
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
@@ -38,6 +40,13 @@ if TYPE_CHECKING:
 
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class SubsumptionCheckResult(Enum):
+    INCOMPARABLE = 'incomparable'
+    FIRST_SUBSUMES = 'first subsumes second'
+    SECOND_SUBSUMES = 'second subsumes first'
+    EQUIVALENT = 'equivalent'
 
 
 class KCFGExplore(ContextManager['KCFGExplore']):
@@ -288,6 +297,80 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                     )
                 return (False, f'Implication check failed, the following is the remaining implication:\n{fail_str}')
         return (True, '')
+
+    #
+    # Implication check
+    # =================
+    #
+    #   Parameters:
+    #   -----------
+    #     antecedent: an ML-sorted K term
+    #     consequent: an ML-sorted K term
+    #
+    #   Return value:
+    #   -------------
+    #     true:   if antecedent => consequent is valid
+    #     false:  otherwise
+    #
+    def check_pure_implication(self, antecedent: KInner, consequent: KInner) -> bool:
+        # # As `kcfg_explore.cterm_implies` checks satisfiability of implication,
+        # # to check if an implication is valid, we check that its negation
+        # # (antecedent /\ not consequent) is not unsatisfiable
+        neg_implication = bool_to_ml_pred(andBool([antecedent, notBool(consequent)]))
+
+        dummy_config = self.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
+        config_top = CTerm(config=dummy_config, constraints=[mlTop(GENERATED_TOP_CELL)])
+        config_neg_implication = CTerm(config=dummy_config, constraints=[neg_implication])
+
+        result = self.cterm_implies(config_top, config_neg_implication) == None
+
+        print('check_pure_implication summary:')
+        print(f'\tAntecedent: {self.kprint.pretty_print(antecedent)}')
+        print(f'\tConsequent: {self.kprint.pretty_print(consequent)}')
+        print(f'\tResult: {result}\n')
+        return result
+
+    #
+    # Path constraint subsumption check
+    # =================================
+    #
+    #   Parameters:
+    #   -----------
+    #     pc_1: path constraint 1
+    #     pc_2: path constraint 2
+    #
+    #   Return value:
+    #   -------------
+    #     -1: the two path constraints are incomparable
+    #      0: the two path constraints are equivalent
+    #      1: path constraint 1 subsumes path constraint 2
+    #      2: path constraint 2 subsumes path constraint 1
+    #
+    def path_constraint_subsumption(
+        self,
+        pc_1: KInner,
+        pc_2: KInner,
+    ) -> SubsumptionCheckResult:
+        if self.check_pure_implication(pc_1, pc_2):
+            if self.check_pure_implication(pc_2, pc_1):
+                # Both implications hold
+                result = SubsumptionCheckResult.EQUIVALENT
+            else:
+                # 1 => 2
+                result = SubsumptionCheckResult.SECOND_SUBSUMES
+        else:
+            if self.check_pure_implication(pc_2, pc_1):
+                # 2 => 1
+                result = SubsumptionCheckResult.FIRST_SUBSUMES
+            else:
+                # No implications hold
+                result = SubsumptionCheckResult.INCOMPARABLE
+
+        print('path_constraint_subsumption summary:')
+        print(f'\tPC1: {self.kprint.pretty_print(pc_1)}')
+        print(f'\tPC2: {self.kprint.pretty_print(pc_2)}')
+        print(f'\tResult: {result.value}\n')
+        return result
 
     def cterm_assume_defined(self, cterm: CTerm) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')

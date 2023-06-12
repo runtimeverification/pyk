@@ -22,16 +22,19 @@ class ProofStatus(Enum):
     PASSED = 'passed'
     FAILED = 'failed'
     PENDING = 'pending'
+    COMPLETED = 'completed'
 
 
 class Proof(ABC):
     _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof'}
 
     id: str
+    has_target: bool
     proof_dir: Path | None
 
-    def __init__(self, id: str, proof_dir: Path | None = None) -> None:
+    def __init__(self, id: str, has_target: bool = True, proof_dir: Path | None = None) -> None:
         self.id = id
+        self.has_target = has_target
         self.proof_dir = proof_dir
 
     def write_proof(self) -> None:
