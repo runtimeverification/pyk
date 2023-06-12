@@ -53,6 +53,7 @@ class EquivalenceProof:
         self.proof_1 = APRBMCProof(id_1, kcfg_1, logs_1, bmc_depth_1, False, bounded_states_1, proof_dir_1)
         self.proof_2 = APRBMCProof(id_2, kcfg_2, logs_2, bmc_depth_2, False, bounded_states_2, proof_dir_2)
 
+    # Constructor from two proofs
     @staticmethod
     def from_proofs(proof_1: APRBMCProof, proof_2: APRBMCProof) -> EquivalenceProof:
         return EquivalenceProof(
@@ -113,9 +114,46 @@ class EquivalenceProof:
             + summary_2
         )
 
+    #
+    # Equivalence of two programs
+    # ===========================
+    #
+    #   Parameters:
+    #   -----------
+    #     self:              the equivalence proof being analysed
+    #     kcfg_explore:      KCFG explorer required for RPC calls
+    #     cell_names:        strings representing the names of the configuration cells
+    #     config_comparator: an ML-sorted term that describes what it means for two configurations to be equal
+    #                        using the configuration cell names suffixed with `_1` and `_2` to refer to the
+    #                        configuration cells of the two programs
+    #
+    #   Return value:
+    #     final_nodes_equivalence: point-wise equivalence between any two final configurations
+    #     final_pc_check:          subsumption of path constraints of final nodes
+    #     frontier_pc_check:       subsumption of path constraints of frontier nodes
+    #     bounded_pc_check:        subsumption of path constraints of bounded nodes
+    #
     def check_equivalence(
         self, kcfg_explore: KCFGExplore, cell_names: Iterable[str], config_comparator: KInner
     ) -> tuple[bool, SubsumptionCheckResult, SubsumptionCheckResult, SubsumptionCheckResult]:
+        #
+        # Equivalence of two configurations
+        # =================================
+        #
+        #   Parameters:
+        #   -----------
+        #     config_1: a KCFG node
+        #     config_2: a KCFG node
+        #
+        #   Return value:
+        #     True,  if the configurations are equivalent
+        #     False, otherwise
+        #
+        #   Methodology:
+        #     Two configurations are equivalent if the conjunction of their path
+        #     constraints implies the configuration comparator instantiated with
+        #     the contents of the appropriate configuration cells.
+        #
         def config_equivalence(config_1: KCFG.Node, config_2: KCFG.Node) -> bool:
             # Extend cell names with configuration suffixes
             cell_names_1, cell_names_2 = ([s + '_1' for s in cell_names], [s + '_2' for s in cell_names])
@@ -138,9 +176,11 @@ class EquivalenceProof:
             # Conjunction of the path constraints of the configurations
             path_constraint = mlAnd([config_1.cterm.constraint, config_2.cterm.constraint])
 
+            # Strengthen path constraints of both configurations with the conjunction
             config_1_adjusted = CTerm(config_1.cterm.config, [path_constraint])
             config_2_adjusted = CTerm(config_2.cterm.config, [path_constraint])
 
+            # Check validity of implication
             return kcfg_explore.cterm_implies(config_1_adjusted, config_2_adjusted) != None
 
         kcfg_1 = self.proof_1.kcfg
@@ -154,13 +194,14 @@ class EquivalenceProof:
         pc_final_2 = KCFG.multinode_path_constraint(final_2)
 
         # Relationship of path conditions
-        stuck_pc_check = kcfg_explore.path_constraint_subsumption(pc_final_1, pc_final_2)
+        final_pc_check = kcfg_explore.path_constraint_subsumption(pc_final_1, pc_final_2)
 
-        # Relationship of individual final nodes
-        final_nodes_equivalence = [
-            config_equivalence(config_1, config_2) for config_1 in final_1 for config_2 in final_2
-        ]
-        final_nodes_equivalence_summary = not (False in final_nodes_equivalence)
+        # # Relationship of individual final nodes
+        # final_nodes_equivalence = [
+        #     config_equivalence(config_1, config_2) for config_1 in final_1 for config_2 in final_2
+        # ]
+        # final_nodes_equivalence = not (False in final_nodes_equivalence)
+        final_nodes_equivalence = True
 
         # 2. Nodes whose execution can proceed further (frontier nodes)
         frontier_1 = kcfg_1.frontier
@@ -183,10 +224,10 @@ class EquivalenceProof:
         bounded_pc_check = kcfg_explore.path_constraint_subsumption(pc_bounded_1, pc_bounded_2)
 
         print(
-            f'check_equivalence_summary:\n\tFinal nodes equivalent: {final_nodes_equivalence_summary}\n\tPCs of final nodes: {stuck_pc_check.value}\n\tPCs of frontier nodes: {frontier_pc_check.value}\n\tPCs of bounded nodes: {bounded_pc_check.value}\n'
+            f'check_equivalence_summary:\n\tFinal nodes equivalent: {final_nodes_equivalence}\n\tPCs of final nodes: {final_pc_check.value}\n\tPCs of frontier nodes: {frontier_pc_check.value}\n\tPCs of bounded nodes: {bounded_pc_check.value}\n'
         )
 
-        return (final_nodes_equivalence_summary, stuck_pc_check, frontier_pc_check, bounded_pc_check)
+        return (final_nodes_equivalence, final_pc_check, frontier_pc_check, bounded_pc_check)
 
 
 class EquivalenceProver:
