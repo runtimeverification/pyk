@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from threading import RLock
 from typing import TYPE_CHECKING, List, Union, cast, final
 
-from ..cterm import CSubst, CTerm
+from ..cterm import CSubst, CTerm, build_claim, build_rule
+from ..kast.inner import KApply
 from ..kast.manip import (
     bool_to_ml_pred,
     extract_lhs,
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     from ..kast.inner import KInner
-    from ..kast.outer import KClaim, KDefinition
+    from ..kast.outer import KClaim, KDefinition, KRuleLike
 
 
 NodeIdLike = int | str
@@ -78,6 +79,22 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 'target': self.target.id,
                 'depth': self.depth,
             }
+
+        def to_rule(self, defn: KDefinition, label: str, claim: bool = False, priority: int | None = None) -> KRuleLike:
+            def is_ceil_condition(kast: KInner) -> bool:
+                return type(kast) is KApply and kast.label.name == '#Ceil'
+
+            sentence_id = f'{label}-{self.source.id}-TO-{self.target.id}'
+            init_constraints = [c for c in self.source.cterm.constraints if not is_ceil_condition(c)]
+            init_cterm = CTerm(self.source.cterm.config, init_constraints)
+            target_constraints = [c for c in self.target.cterm.constraints if not is_ceil_condition(c)]
+            target_cterm = CTerm(self.target.cterm.config, target_constraints)
+            rule: KRuleLike
+            if claim:
+                rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
+            else:
+                rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=priority)
+            return rule
 
     @final
     @dataclass(frozen=True)
