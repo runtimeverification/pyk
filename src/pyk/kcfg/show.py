@@ -145,7 +145,7 @@ class KCFGShow:
         ret_lines: list[tuple[str, list[str]]] = []
 
         def _print_node(node: KCFG.Node) -> list[str]:
-            return KCFGShow.node_short_info(kcfg, node, node_printer=node_printer)
+            return KCFGShow.node_short_info(kcfg, node, node_printer=node_printer, node_descriptors=node_descriptors)
 
         def _print_edge(edge: KCFG.Edge) -> list[str]:
             if edge.depth == 1:
