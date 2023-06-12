@@ -9,16 +9,14 @@ from ..utils import check_dir_path, check_file_path, check_relative_path
 if TYPE_CHECKING:
     from argparse import Namespace
     from collections.abc import Callable
-    from typing import TypeVar
+    from typing import Final, TypeVar
 
     from ..kcfg.kcfg import NodeIdLike
 
     T1 = TypeVar('T1')
     T2 = TypeVar('T2')
 
-
-def logformat() -> str:
-    return '%(levelname)s %(asctime)s %(name)s - %(message)s'
+LOG_FORMAT: Final = '%(levelname)s %(asctime)s %(name)s - %(message)s'
 
 
 def loglevel(args: Namespace) -> int:

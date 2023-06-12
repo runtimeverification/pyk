@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from graphviz import Digraph
 
 from .cli.args import KCLIArgs
-from .cli.utils import dir_path, logformat, loglevel
+from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import split_config_and_constraints
 from .kast.inner import KInner
@@ -40,7 +40,7 @@ def main() -> None:
     cli_parser = create_argument_parser()
     args = cli_parser.parse_args()
 
-    logging.basicConfig(level=loglevel(args), format=logformat())
+    logging.basicConfig(level=loglevel(args), format=LOG_FORMAT)
 
     executor_name = 'exec_' + args.command.lower().replace('-', '_')
     if executor_name not in globals():
