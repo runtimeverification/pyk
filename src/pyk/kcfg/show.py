@@ -433,7 +433,12 @@ class KCFGShow:
         )
         return KFlatModule(cfg_module_name, rules + nd_steps + claims)
 
-    def dot(self, kcfg: KCFG, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> Digraph:
+    def dot(
+        self,
+        kcfg: KCFG,
+        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
+    ) -> Digraph:
         def _short_label(label: str) -> str:
             return '\n'.join(
                 [
@@ -447,6 +452,8 @@ class KCFGShow:
         for node in kcfg.nodes:
             label = '\n'.join(KCFGShow.node_short_info(kcfg, node, node_printer=node_printer))
             class_attrs = ' '.join(KCFGShow.node_attrs(kcfg, node))
+            if node_descriptors is not None and node.id in node_descriptors and len(node_descriptors[node.id]) > 0:
+                class_attrs = class_attrs + ' ' + ' '.join(node_descriptors[node.id])
             attrs = {'class': class_attrs} if class_attrs else {}
             graph.node(name=node.id, label=label, **attrs)
 
@@ -492,6 +499,7 @@ class KCFGShow:
         dump_dir: Path,
         dot: bool = False,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
     ) -> None:
         ensure_dir_path(dump_dir)
 
@@ -500,7 +508,7 @@ class KCFGShow:
         _LOGGER.info(f'Wrote CFG file {cfgid}: {cfg_file}')
 
         if dot:
-            cfg_dot = self.dot(cfg, node_printer=node_printer)
+            cfg_dot = self.dot(cfg, node_printer=node_printer, node_descriptors=node_descriptors)
             dot_file = dump_dir / f'{cfgid}.dot'
             dot_file.write_text(cfg_dot)
             _LOGGER.info(f'Wrote DOT file {cfgid}: {dot_file}')

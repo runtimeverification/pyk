@@ -30,11 +30,28 @@ class APRProofShow:
     ):
         self.kcfg_show = KCFGShow(kprint)
 
+    @staticmethod
+    def node_descriptors(
+        proof: APRProof, node_descriptors: dict[NodeIdLike, list[str]] | None = None
+    ) -> dict[NodeIdLike, list[str]]:
+        if node_descriptors is None:
+            node_descriptors = {}
+        for pending in proof.pending:
+            if pending.id not in node_descriptors:
+                node_descriptors[pending.id] = []
+            node_descriptors[pending.id].append('pending')
+        for terminal in proof.terminal:
+            if terminal.id not in node_descriptors:
+                node_descriptors[terminal.id] = []
+            node_descriptors[terminal.id].append('terminal')
+        return node_descriptors
+
     def pretty(
         self,
         proof: APRProof,
         minimize: bool = True,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
     ) -> Iterable[str]:
         return (
             line
@@ -42,6 +59,7 @@ class APRProofShow:
                 proof.kcfg,
                 minimize=minimize,
                 node_printer=node_printer,
+                node_descriptors=APRProofShow.node_descriptors(proof, node_descriptors=node_descriptors),
             )
             for line in seg_lines
         )
@@ -55,19 +73,10 @@ class APRProofShow:
         minimize: bool = True,
         sort_collections: bool = False,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
         omit_cells: Iterable[str] = (),
     ) -> list[str]:
         nodes = list(nodes) + [nd.id for nd in proof.pending]
-        node_descriptors: dict[NodeIdLike, list[str]] = {}
-        for pending in proof.pending:
-            if pending.id not in node_descriptors:
-                node_descriptors[pending.id] = []
-            node_descriptors[pending.id].append('pending')
-        for terminal in proof.terminal:
-            if terminal.id not in node_descriptors:
-                node_descriptors[terminal.id] = []
-            node_descriptors[terminal.id].append('terminal')
-
         res_lines = self.kcfg_show.show(
             proof.id,
             proof.kcfg,
@@ -77,14 +86,23 @@ class APRProofShow:
             minimize=minimize,
             sort_collections=sort_collections,
             node_printer=node_printer,
-            node_descriptors=node_descriptors,
+            node_descriptors=APRProofShow.node_descriptors(proof, node_descriptors=node_descriptors),
             omit_cells=omit_cells,
         )
 
         return res_lines
 
-    def dot(self, proof: APRProof, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> Digraph:
-        graph = self.kcfg_show.dot(proof.kcfg, node_printer=node_printer)
+    def dot(
+        self,
+        proof: APRProof,
+        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
+    ) -> Digraph:
+        graph = self.kcfg_show.dot(
+            proof.kcfg,
+            node_printer=node_printer,
+            node_descriptors=APRProofShow.node_descriptors(proof, node_descriptors=node_descriptors),
+        )
         return graph
 
     def dump(
@@ -93,6 +111,7 @@ class APRProofShow:
         dump_dir: Path,
         dot: bool = False,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
     ) -> None:
         ensure_dir_path(dump_dir)
 
@@ -106,4 +125,11 @@ class APRProofShow:
             dot_file.write_text(cfg_dot)
             _LOGGER.info(f'Wrote DOT file {proof.id}: {dot_file}')
 
-        self.kcfg_show.dump(proof.id, proof.kcfg, dump_dir, dot=False, node_printer=node_printer)
+        self.kcfg_show.dump(
+            proof.id,
+            proof.kcfg,
+            dump_dir,
+            dot=False,
+            node_printer=node_printer,
+            node_descriptors=APRProofShow.node_descriptors(proof, node_descriptors=node_descriptors),
+        )
