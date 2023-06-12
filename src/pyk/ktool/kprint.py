@@ -67,6 +67,7 @@ def _kast(
     expression: str | None = None,
     module: str | None = None,
     sort: str | None = None,
+    temp_dir: str | Path | None = None,
     gen_glr_parser: bool = False,
     # ---
     check: bool = True,
@@ -84,6 +85,9 @@ def _kast(
         definition_dir = Path(definition_dir)
         check_dir_path(definition_dir)
 
+    if temp_dir is not None:
+        temp_dir = Path(temp_dir)
+
     if input is not None:
         input = KAstInput(input)
 
@@ -99,6 +103,7 @@ def _kast(
         expression=expression,
         module=module,
         sort=sort,
+        temp_dir=temp_dir,
         gen_glr_parser=gen_glr_parser,
     )
 
@@ -117,6 +122,7 @@ def gen_glr_parser(
     definition_dir: str | Path | None = None,
     module: str | None = None,
     sort: str | None = None,
+    temp_dir: str | Path | None = None,
 ) -> Path:
     parser_file = Path(parser_file)
     _kast(
@@ -125,6 +131,7 @@ def gen_glr_parser(
         definition_dir=definition_dir,
         module=module,
         sort=sort,
+        temp_dir=temp_dir,
         gen_glr_parser=True,
         check=True,
     )
@@ -142,6 +149,7 @@ def _build_arg_list(
     expression: str | None,
     module: str | None,
     sort: str | None,
+    temp_dir: Path | None,
     gen_glr_parser: bool,
 ) -> list[str]:
     args = [command if command is not None else 'kast']
@@ -159,6 +167,8 @@ def _build_arg_list(
         args += ['--module', module]
     if sort:
         args += ['--sort', sort]
+    if temp_dir:
+        args += ['--temp-dir', str(temp_dir)]
     if gen_glr_parser:
         args += ['--gen-glr-parser']
     return args
@@ -312,6 +322,7 @@ class KPrint:
                 output=output,
                 module=module,
                 sort=sort,
+                temp_dir=self.use_directory,
                 check=check,
             )
 
@@ -327,5 +338,6 @@ class KPrint:
                 output=output,
                 module=module,
                 sort=sort,
+                temp_dir=self.use_directory,
                 check=check,
             )

@@ -311,6 +311,14 @@ def hash_str(x: Any) -> str:
     return str(hash.hexdigest())
 
 
+def hash_file(file: Path, chunk_num_blocks: int = 128) -> str:
+    h = hashlib.sha256()
+    with open(str(file), 'rb') as f:
+        while chunk := f.read(chunk_num_blocks * h.block_size):
+            h.update(chunk)
+    return str(h.hexdigest())
+
+
 def is_hash(x: Any) -> bool:
     # NB! currently only sha256 in hexdec form is detected
     # 2b9e b7c5 441e 9f7e 97f9 a4e5 fc04 a0f7 9f62 c8e9 605a ad1e 02db e8de 3c21 0422
