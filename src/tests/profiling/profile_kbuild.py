@@ -24,10 +24,10 @@ def kbuild(tmp_path: Path) -> KBuild:
 
 
 def test_kbuild(kbuild: KBuild, profile: Profiler) -> None:
-    with profile('kompile.txt', sort_keys=('cumtime', 'tottime'), limit=35):
+    with profile('kompile.prof', sort_keys=('cumtime', 'tottime'), limit=35):
         package = Package.create(A_SEMANTICS_DIR / 'kbuild.toml')
         kbuild.kompile(package, 'llvm')
 
-    with profile('rekompile.txt', sort_keys=('cumtime', 'tottime'), limit=35):
+    with profile('rekompile.prof', sort_keys=('cumtime', 'tottime'), limit=35):
         package = Package.create(A_SEMANTICS_DIR / 'kbuild.toml')
         kbuild.kompile(package, 'llvm')
