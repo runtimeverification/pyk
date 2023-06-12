@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
-from ..cterm import CTerm, build_claim, build_rule
 from ..kast.inner import KApply, KRewrite, top_down
 from ..kast.manip import (
     flatten_label,
@@ -26,8 +25,9 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Final
 
+    from ..cterm import CTerm
     from ..kast import KInner
-    from ..kast.outer import KDefinition, KRuleLike
+    from ..kast.outer import KDefinition
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
 
@@ -84,10 +84,6 @@ class KCFGShow:
         return node_strs
 
     @staticmethod
-    def is_ceil_condition(kast: KInner) -> bool:
-        return type(kast) is KApply and kast.label.name == '#Ceil'
-
-    @staticmethod
     def hide_cells(term: KInner, omit_cells: Iterable[str]) -> KInner:
         def _hide_cells(_k: KInner) -> KInner:
             if type(_k) == KApply and _k.label.name in omit_cells:
@@ -104,28 +100,6 @@ class KCFGShow:
         config = sort_ac_collections(defn, config)
         config = KCFGShow.hide_cells(config, omit_cells)
         return config
-
-    @staticmethod
-    def to_rule(
-        defn: KDefinition, edge: KCFG.Edge, label: str, omit_cells: Iterable[str] = (), claim: bool = False
-    ) -> KRuleLike:
-        sentence_id = f'{label}-{edge.source.id}-TO-{edge.target.id}'
-        init_constraints = [c for c in edge.source.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
-        init_cterm = CTerm(
-            KCFGShow.simplify_config(defn, edge.source.cterm.config, omit_cells),
-            init_constraints,
-        )
-        target_constraints = [c for c in edge.target.cterm.constraints if not KCFGShow.is_ceil_condition(c)]
-        target_cterm = CTerm(
-            KCFGShow.simplify_config(defn, edge.target.cterm.config, omit_cells),
-            target_constraints,
-        )
-        rule: KRuleLike
-        if claim:
-            rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
-        else:
-            rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=35)
-        return rule
 
     def pretty_segments(
         self,
@@ -409,23 +383,23 @@ class KCFGShow:
         imports: Iterable[str] = (),
         omit_cells: Iterable[str] = (),
     ) -> KFlatModule:
-        rules = [KCFGShow.to_rule(self.kprint.definition, e, 'BASIC-BLOCK', omit_cells=omit_cells) for e in cfg.edges()]
+        rules = [e.to_rule(self.kprint.definition, 'BASIC-BLOCK') for e in cfg.edges()]
+        rules = [
+            r.let(body=KCFGShow.simplify_config(self.kprint.definition, r.body, omit_cells=omit_cells)) for r in rules
+        ]
         nd_steps = [
-            KCFGShow.to_rule(
-                self.kprint.definition, KCFG.Edge(ndbranch.source, target, 1), 'ND-STEP', omit_cells=omit_cells
-            )
-            for ndbranch in cfg.ndbranches()
-            for target in ndbranch.targets
+            edge.to_rule(self.kprint.definition, 'ND-STEP') for ndbranch in cfg.ndbranches() for edge in ndbranch.edges
+        ]
+        nd_steps = [
+            r.let(body=KCFGShow.simplify_config(self.kprint.definition, r.body, omit_cells=omit_cells))
+            for r in nd_steps
         ]
         claims = [
-            KCFGShow.to_rule(
-                self.kprint.definition,
-                KCFG.Edge(nd, cfg.get_unique_target(), -1),
-                'UNPROVEN',
-                omit_cells=omit_cells,
-                claim=True,
-            )
+            KCFG.Edge(nd, cfg.get_unique_target(), -1).to_rule(self.kprint.definition, 'UNPROVEN', claim=True)
             for nd in cfg.frontier
+        ]
+        claims = [
+            c.let(body=KCFGShow.simplify_config(self.kprint.definition, c.body, omit_cells=omit_cells)) for c in claims
         ]
 
         cfg_module_name = (
