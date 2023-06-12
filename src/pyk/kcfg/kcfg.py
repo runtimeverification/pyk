@@ -139,6 +139,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
             return KCFG.Split(self.source, ((target, self.splits[target.id]),))
 
+        @property
+        def covers(self) -> tuple[KCFG.Cover, ...]:
+            return tuple(KCFG.Cover(target, self.source, csubst) for target, csubst in self._targets)
+
     @final
     @dataclass(frozen=True)
     class NDBranch(MultiEdge):
@@ -161,6 +165,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         def with_single_target(self, target: KCFG.Node) -> KCFG.NDBranch:
             return KCFG.NDBranch(self.source, (target,))
+
+        @property
+        def edges(self) -> tuple[KCFG.Edge, ...]:
+            return tuple(KCFG.Edge(self.source, target, 1) for target in self.targets)
 
     _node_id: int
     _nodes: dict[int, Node]
