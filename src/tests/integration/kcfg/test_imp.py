@@ -157,6 +157,42 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
     ),
 )
 
+SATISFIABLE_TEST_DATA: Final = (
+    (
+        'refutation-1',
+        (
+            mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
+            mlEqualsTrue(KApply('_<=Int_', [intToken(3), KVariable('X')])),
+            mlEqualsTrue(KApply('_<Int_', [KVariable('X'), intToken(100)])),
+        ),
+        True,
+    ),
+    (
+        'refutation-2',
+        (
+            mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
+            mlEqualsTrue(KApply('_>Int_', [intToken(0), KVariable('Y')])),
+        ),
+        True,
+    ),
+    (
+        'refutation-3',
+        (
+            mlEqualsTrue(KApply('_<=Int_', [KVariable('Y'), KVariable('X')])),
+        ),
+        True,
+    ),
+    (
+        'refutation-4',
+        (
+            mlEqualsTrue(KApply('_<Int_', [KVariable('X'), KVariable('Y')])),
+            mlEqualsTrue(KApply('_<Int_', [KVariable('Y'), KVariable('Z')])),
+            mlEqualsTrue(KApply('_<Int_', [KVariable('Z'), KVariable('X')])),
+        ),
+        False,
+    ),
+)
+
 IMPLIES_TEST_DATA: Final = (
     (
         'constant-subst',
@@ -200,7 +236,7 @@ IMPLIES_TEST_DATA: Final = (
         ('int $n ; $n = 0 ;', '.Map', 
             mlAnd([
                 mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
-                mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('Y')])),
+                mlEqualsTrue(KApply('_>Int_', [intToken(0), KVariable('Y')])),
             ]),
         ),
         CSubst(Subst({})),
@@ -639,6 +675,25 @@ class TestImpProof(KCFGExploreTest):
 
         # When
         actual = kcfg_explore.cterm_implies(antecedent_term, consequent_term)
+
+        # Then
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        'test_id,constraints,expected',
+        SATISFIABLE_TEST_DATA,
+        ids=[test_id for test_id, *_ in SATISFIABLE_TEST_DATA],
+    )
+    def test_satisfiable(
+        self,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        constraints: tuple[KInner],
+        expected: bool | None,
+    ) -> None:
+
+        # When
+        actual = kcfg_explore.satisfiable(constraints)
 
         # Then
         assert actual == expected

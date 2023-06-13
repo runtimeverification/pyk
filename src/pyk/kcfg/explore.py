@@ -169,6 +169,25 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
+    def satisfiable(self, constraints: Iterable[KInner]) -> bool:
+        dummy_config = self.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
+
+        antecedent = CTerm(dummy_config, ())
+        consequent = CTerm(dummy_config, constraints)
+
+        _consequent = consequent.kast
+        fv_antecedent = free_vars(antecedent.kast)
+        unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
+        if len(unbound_consequent) > 0:
+            _LOGGER.debug(f'Binding variables in consequent: {unbound_consequent}')
+            for uc in unbound_consequent:
+                _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
+        antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
+        consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
+        _, kore_client = self._kore_rpc
+        result = kore_client.implies(antecedent_kore, consequent_kore)
+        return result.satisfiable
+
     def cterm_implies(
         self,
         antecedent: CTerm,
