@@ -8,7 +8,7 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import minimize_term
+from pyk.kast.manip import minimize_term, ml_pred_to_bool
 from pyk.kcfg import KCFG
 from pyk.kcfg.explore import SubsumptionCheckResult
 from pyk.prelude.kbool import BOOL, notBool
@@ -554,11 +554,11 @@ class TestImpProof(KCFGExploreTest):
     # Default configuration comparator
     @staticmethod
     def _default_config_comparator() -> KInner:
-        return mlAnd(
+        return ml_pred_to_bool(mlAnd(
             [
                 mlEquals(KVariable('K_CELL_1'), KVariable('K_CELL_2')),
                 mlEquals(KVariable('STATE_CELL_1'), KVariable('STATE_CELL_2')),
-            ]
+            ])
         )
 
     @staticmethod

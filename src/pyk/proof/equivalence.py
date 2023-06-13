@@ -5,6 +5,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from pyk.kast.inner import Subst
+from pyk.kast.manip import ml_pred_to_bool
 from pyk.prelude.ml import mlAnd
 
 from ..kcfg import KCFG
@@ -174,7 +175,7 @@ class EquivalenceProof:
             comparator = cell_subst.apply(config_comparator)
 
             # Conjunction of the path constraints of the configurations
-            path_constraint = mlAnd([config_1.cterm.constraint, config_2.cterm.constraint])
+            path_constraint = ml_pred_to_bool(mlAnd([config_1.cterm.constraint, config_2.cterm.constraint]))
 
             print(
                 f'Configuration equivalence check:\n{kcfg_explore.kprint.pretty_print(path_constraint)}\n\t#Implies\n{kcfg_explore.kprint.pretty_print(comparator)}'
