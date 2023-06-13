@@ -881,14 +881,14 @@ class TestImpProof(KCFGExploreTest):
 
         prover.advance_proof(
             kcfg_explore=kcfg_explore,
-            max_iterations=6,
+            max_iterations=10,
             execute_depth=10000,
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
         )
 
-        print(prover.prover_1.proof.status.value)
-        print(prover.prover_2.proof.status.value)
+        print(f'Status of proof 1: {prover.prover_1.proof.status.value}')
+        print(f'Status of proof 2: {prover.prover_2.proof.status.value}\n')
 
         final_nodes_print_1 = [
             (
@@ -908,8 +908,10 @@ class TestImpProof(KCFGExploreTest):
             for s in prover.prover_2.proof.kcfg.stuck
         ]
 
-        print(final_nodes_print_1)
-        print(final_nodes_print_2)
+        print('Final states of program 1:')
+        print(f'{final_nodes_print_1}\n')
+        print('Final states of program 2:')
+        print(f'{final_nodes_print_2}\n')
 
         final_nodes_equivalence, pc_stuck, pc_frontier, pc_bounded = proof.check_equivalence(
             kcfg_explore, TestImpProof._cell_names(), TestImpProof._default_config_comparator()

@@ -312,7 +312,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     #     true:   if antecedent => consequent is valid
     #     false:  otherwise
     #
-    def check_pure_implication(self, antecedent: KInner, consequent: KInner) -> bool:
+    def check_implication(self, antecedent: KInner, consequent: KInner) -> bool:
         # # As `kcfg_explore.cterm_implies` checks satisfiability of implication,
         # # to check if an implication is valid, we check that its negation
         # # (antecedent /\ not consequent) is not unsatisfiable
@@ -324,7 +324,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         result = self.cterm_implies(config_top, config_neg_implication) == None
 
-        print('check_pure_implication summary:')
+        print('check_implication summary:')
         print(f'\tAntecedent: {self.kprint.pretty_print(antecedent)}')
         print(f'\tConsequent: {self.kprint.pretty_print(consequent)}')
         print(f'\tResult: {result}\n')
@@ -351,15 +351,15 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         pc_1: KInner,
         pc_2: KInner,
     ) -> SubsumptionCheckResult:
-        if self.check_pure_implication(pc_1, pc_2):
-            if self.check_pure_implication(pc_2, pc_1):
+        if self.check_implication(pc_1, pc_2):
+            if self.check_implication(pc_2, pc_1):
                 # Both implications hold
                 result = SubsumptionCheckResult.EQUIVALENT
             else:
                 # 1 => 2
                 result = SubsumptionCheckResult.SECOND_SUBSUMES
         else:
-            if self.check_pure_implication(pc_2, pc_1):
+            if self.check_implication(pc_2, pc_1):
                 # 2 => 1
                 result = SubsumptionCheckResult.FIRST_SUBSUMES
             else:

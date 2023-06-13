@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from pyk.kast.inner import Subst
 from pyk.prelude.ml import mlAnd
 
-from ..cterm import CTerm
 from ..kcfg import KCFG
 
 # from ..utils import shorten_hashes
@@ -19,6 +18,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
+    from ..cterm import CTerm
     from ..kast.inner import KInner
     from ..kcfg import KCFGExplore
     from ..kcfg.explore import SubsumptionCheckResult
@@ -171,17 +171,17 @@ class EquivalenceProof:
             )
 
             # and apply it to the comparator
-            _ = cell_subst.apply(config_comparator)
+            comparator = cell_subst.apply(config_comparator)
 
             # Conjunction of the path constraints of the configurations
             path_constraint = mlAnd([config_1.cterm.constraint, config_2.cterm.constraint])
 
-            # Strengthen path constraints of both configurations with the conjunction
-            config_1_adjusted = CTerm(config_1.cterm.config, [path_constraint])
-            config_2_adjusted = CTerm(config_2.cterm.config, [path_constraint])
+            print(
+                f'Configuration equivalence check:\n{kcfg_explore.kprint.pretty_print(path_constraint)}\n\t#Implies\n{kcfg_explore.kprint.pretty_print(comparator)}'
+            )
 
             # Check validity of implication
-            return kcfg_explore.cterm_implies(config_1_adjusted, config_2_adjusted) != None
+            return kcfg_explore.check_implication(path_constraint, comparator)
 
         kcfg_1 = self.proof_1.kcfg
         kcfg_2 = self.proof_2.kcfg
@@ -193,20 +193,22 @@ class EquivalenceProof:
         pc_final_1 = KCFG.multinode_path_constraint(final_1)
         pc_final_2 = KCFG.multinode_path_constraint(final_2)
 
+        print('Checking subsumption of path constraints of final states')
+
         # Relationship of path conditions
         final_pc_check = kcfg_explore.path_constraint_subsumption(pc_final_1, pc_final_2)
 
-        # # Relationship of individual final nodes
-        # final_nodes_equivalence = [
-        #     config_equivalence(config_1, config_2) for config_1 in final_1 for config_2 in final_2
-        # ]
-        # final_nodes_equivalence = not (False in final_nodes_equivalence)
-        final_nodes_equivalence = True
+        # Relationship of individual final nodes
+        final_nodes_equivalence = [
+            config_equivalence(config_1, config_2) for config_1 in final_1 for config_2 in final_2
+        ]
+        final_nodes_equivalence_summary = not (False in final_nodes_equivalence)
 
         # 2. Nodes whose execution can proceed further (frontier nodes)
         frontier_1 = kcfg_1.frontier
         frontier_2 = kcfg_2.frontier
 
+        print('Checking subsumption of path constraints of frontier states')
         pc_frontier_1 = KCFG.multinode_path_constraint(frontier_1)
         pc_frontier_2 = KCFG.multinode_path_constraint(frontier_2)
 
@@ -217,6 +219,7 @@ class EquivalenceProof:
         bounded_1 = [kcfg_1.get_node_unsafe(id) for id in self.proof_1._bounded_states]
         bounded_2 = [kcfg_2.get_node_unsafe(id) for id in self.proof_2._bounded_states]
 
+        print('Checking subsumption of path constraints of bounded states')
         pc_bounded_1 = KCFG.multinode_path_constraint(bounded_1)
         pc_bounded_2 = KCFG.multinode_path_constraint(bounded_2)
 
@@ -224,10 +227,10 @@ class EquivalenceProof:
         bounded_pc_check = kcfg_explore.path_constraint_subsumption(pc_bounded_1, pc_bounded_2)
 
         print(
-            f'check_equivalence_summary:\n\tFinal nodes equivalent: {final_nodes_equivalence}\n\tPCs of final nodes: {final_pc_check.value}\n\tPCs of frontier nodes: {frontier_pc_check.value}\n\tPCs of bounded nodes: {bounded_pc_check.value}\n'
+            f'check_equivalence_summary:\n\tFinal nodes equivalent: {final_nodes_equivalence_summary}\n\tPCs of final nodes: {final_pc_check.value}\n\tPCs of frontier nodes: {frontier_pc_check.value}\n\tPCs of bounded nodes: {bounded_pc_check.value}\n'
         )
 
-        return (final_nodes_equivalence, final_pc_check, frontier_pc_check, bounded_pc_check)
+        return (final_nodes_equivalence_summary, final_pc_check, frontier_pc_check, bounded_pc_check)
 
 
 class EquivalenceProver:
