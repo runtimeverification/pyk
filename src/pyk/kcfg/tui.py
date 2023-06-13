@@ -1,6 +1,7 @@
 from __future__ import annotations
-from enum import Enum, auto
 
+from enum import Enum, auto
+from functools import cached_property
 from typing import TYPE_CHECKING, Union
 
 from textual.app import App
@@ -48,7 +49,7 @@ class GraphChunk(Static):
         self.styles.text_opacity = '75%'  # type: ignore
 
     def on_leave(self) -> None:
-        self.styles.text_opacity = None  # type: ignore
+        self.styles.text_opacity = '100%'  # type: ignore
 
     def on_click(self, click: Click) -> None:
         self.post_message(GraphChunk.Selected(self.id or ''))
@@ -156,18 +157,9 @@ class NodeView(Widget):
         else:
             self.query_one(f'#{field}-view', Horizontal).add_class('hidden')
 
-    def update(self, element: KCFGElem, style: bool = False) -> None:
+    def update(self, element: KCFGElem) -> None:
         self._element = element
         self._update()
-
-    def _focus_style(self) -> None:
-        # self.query_one('#node-view', NodeView).set_styles('border-left: double, red')
-        # self.styles.border_left = None  # type: ignore
-        # self.styles.border_left = ('double', 'red')  # type: ignore
-        if self._element and type(self._element) is KCFG.Node:
-            'node_' + str(self._element.id)
-            # self.query_one(f'#{selected_chunk}', GraphChunk).set_styles('border-left: double, red')
-            # self.query_one(f'#{selected_chunk}', GraphChunk)
 
     def _update(self) -> None:
         def _boolify(c: KInner) -> KInner:
@@ -188,11 +180,8 @@ class NodeView(Widget):
         custom_str = 'Custom'
 
         if self._element is not None:
-            # TODO update the graph node style and remove any other existing style
-
             if type(self._element) is KCFG.Node:
                 term_str, constraint_str = _cterm_text(self._element.cterm)
-                # self._focus_style(self._element)
 
             elif type(self._element) is KCFG.Edge:
                 config_source, *constraints_source = self._element.source.cterm
@@ -258,11 +247,17 @@ class Direction(Enum):
     @classmethod
     def dir_of(cls, key: str) -> Direction | None:
         match key:
-            case 'h': return Direction.LEFT
-            case 'j': return Direction.DOWN
-            case 'k': return Direction.UP
-            case 'l': return Direction.RIGHT
-            case _: return None
+            case 'h':
+                return Direction.LEFT
+            case 'j':
+                return Direction.DOWN
+            case 'k':
+                return Direction.UP
+            case 'l':
+                return Direction.RIGHT
+            case _:
+                return None
+
 
 class MoveKind(Enum):
     SINGLE = auto()
@@ -283,10 +278,9 @@ class KCFGViewer(App):
     _minimize: bool
 
     _hidden_chunks: list[str]
-    _selected_chunk: str | None
+    _selected_chunk: str
 
     _buffer: list[str]
-    _node_ids: list[int]
     _node_idx: dict[int, int]
     _last_idx: int
 
@@ -311,30 +305,42 @@ class KCFGViewer(App):
 
         self._kcfg_nodes = []
         kcfg_show = KCFGShow(kprint)
-        i = 0
-        self._node_ids = []
         self._node_idx = {}
-        for lseg_id, node_lines in kcfg_show.pretty_segments(
+        seg = kcfg_show.pretty_segments(
             self._kcfg, minimize=self._minimize, node_printer=self._node_printer
-        ):
+        )
+        self._selected_chunk = list(seg)[0][0]
+        for lseg_id, node_lines in seg:
             self._kcfg_nodes.append(GraphChunk(lseg_id, node_lines))
-            try:
-                split = lseg_id.rsplit('_', 1)
-                (name, count) = (split[0], split[1])
-                if name == 'node':
-                    as_id = int(count)
-                    self._node_ids.append(as_id)
-                    self._node_idx[as_id] = i
-                    i += 1
-            except:
-                pass
 
-        try:
-            node_id = self._node_ids[0]
-            self._selected_chunk = 'node_' + str(node_id)
-            self._last_idx = self._node_idx[node_id]
-        except:
-            raise ValueError("Should have at least one node to visit")
+    def last_idx(self) -> int:
+        return int(self._selected_chunk.rsplit('_', 1)[1])
+
+    def pos_of(self, kcfg_id: str) -> int | None:
+        # return any(node.id for node in self._kcfg_nodes if node.id == kcfg_id)
+        for i, node in enumerate(self._kcfg_nodes):
+            if node.id == kcfg_id:
+                return i
+
+    # def pos_of(self, kcfg_id: str) -> int | None:
+    #     return next((i for i, node in enumerate(self._kcfg_nodes) if node.id == kcfg_id), None)
+
+
+    def next_node_from(self, i: int = 0) -> str | None:
+        return next(node.id for node in self._kcfg_nodes[i:] if node.id != "unknown")
+
+    def next_node(self) -> str | None:
+        pos = self.pos_of(self._selected_chunk)
+        if pos != None:
+            return self.next_node_from(pos)
+
+    def prev_node_from(self, i: int) -> str | None:
+        return next(reversed(list(node.id for node in self._kcfg_nodes[:i] if node.id != "unknown")))
+
+    def prev_node(self) -> str | None:
+        pos = self.pos_of(self._selected_chunk)
+        if pos != None:
+            return self.prev_node_from(pos)
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -348,59 +354,53 @@ class KCFGViewer(App):
         )
         yield Footer()
 
+    def _resolve_any(self, kcfg_id: str) -> KCFGElem:
+        if kcfg_id.startswith('node_'):
+            node, *_ = kcfg_id[5:].split('_')
+            node_id = int(node)
+            return self._kcfg.node(node_id)
+        elif kcfg_id.startswith('edge_'): 
+            node, *_ = kcfg_id[5:].split('_')
+            node_source, node_target, *_ = kcfg_id[5:].split('_')
+            source_id = int(node_source)
+            target_id = int(node_target)
+            return single(self._kcfg.edges(source_id=source_id, target_id=target_id))
+        elif kcfg_id.startswith('cover_'): 
+            node_source, node_target, *_ = kcfg_id[6:].split('_')
+            source_id = int(node_source)
+            target_id = int(node_target)
+            return single(self._kcfg.covers(source_id=source_id, target_id=target_id))
+        elif kcfg_id.startswith('split_'): 
+            node_source, node_target, *_ = kcfg_id[6:].split('_')
+            source_id = int(node_source)
+            target_id = int(node_target)
+            return single(self._kcfg.splits(source_id=source_id, target_id=target_id))
+        elif kcfg_id.startswith('ndbranch_'): 
+            node_source, node_target, *_ = kcfg_id[8:].split('_')
+            source_id = int(node_source)
+            target_id = int(node_target)
+            return single(self._kcfg.ndbranches(source_id=source_id, target_id=target_id))
+        else:
+            raise ValueError(f'unsupported kcfg node {kcfg_id}')
+
     def on_mount(self) -> None:
-        node_id = self._node_ids[0]
-        self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
         for win in Window:
-            self.query_one(f'#{win.value}').set_class(True, "deselected")
+            self.query_one(f'#{win.value}').set_class(True, 'deselected')
         self.focus_window(Window.BEHAVIOR)
-        self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
+        next_node = self.next_node_from(0)
+        if next_node != None:
+            self.query_one('#node-view', NodeView).update(self._resolve_any(next_node))
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
-        if message.chunk_id.startswith('node_'):
+        try:
             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
+            kcfg_elem = self._resolve_any(message.chunk_id)
             self._selected_chunk = message.chunk_id
             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
-            node, *_ = message.chunk_id[5:].split('_')
-            node_id = int(node)
-            self._last_idx = self._node_idx[node_id]
-            self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
-
-        elif message.chunk_id.startswith('edge_'):
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-            # self._selected_chunk = None
-            node_source, node_target, *_ = message.chunk_id[5:].split('_')
-            source_id = int(node_source)
-            target_id = int(node_target)
-            edge = single(self._kcfg.edges(source_id=source_id, target_id=target_id))
-            self.query_one('#node-view', NodeView).update(edge)
-
-        elif message.chunk_id.startswith('cover_'):
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-            # self._selected_chunk = None
-            node_source, node_target, *_ = message.chunk_id[6:].split('_')
-            source_id = int(node_source)
-            target_id = int(node_target)
-            cover = single(self._kcfg.covers(source_id=source_id, target_id=target_id))
-            self.query_one('#node-view', NodeView).update(cover)
-
-        elif message.chunk_id.startswith('split_'):
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-            # self._selected_chunk = None
-            node_source, node_target, *_ = message.chunk_id[6:].split('_')
-            source_id = int(node_source)
-            target_id = int(node_target)
-            split = single(self._kcfg.splits(source_id=source_id, target_id=target_id))
-            self.query_one('#node-view', NodeView).update(split)
-
-        elif message.chunk_id.startswith('ndbranch_'):
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-            # self._selected_chunk = None
-            node_source, node_target, *_ = message.chunk_id[8:].split('_')
-            source_id = int(node_source)
-            target_id = int(node_target)
-            ndbranch = single(self._kcfg.ndbranches(source_id=source_id, target_id=target_id))
-            self.query_one('#node-view', NodeView).update(ndbranch)
+            self.query_one('#node-view', NodeView).update(kcfg_elem)
+        except:
+            pass
 
     BINDINGS = [
         ('f', 'keystroke("f")', 'Fold node'),
@@ -424,10 +424,10 @@ class KCFGViewer(App):
 
     def focus_window(self, to: Window) -> None:
         curr_win = self._curr_win
-        self.query_one(f'#{curr_win.value}').set_class(False, "selected")
-        self.query_one(f'#{curr_win.value}').set_class(True, "deselected")
-        self.query_one(f'#{to.value}').set_class(False, "deselected")
-        self.query_one(f'#{to.value}').set_class(True, "selected")
+        self.query_one(f'#{curr_win.value}').set_class(False, 'selected')
+        self.query_one(f'#{curr_win.value}').set_class(True, 'deselected')
+        self.query_one(f'#{to.value}').set_class(False, 'deselected')
+        self.query_one(f'#{to.value}').set_class(True, 'selected')
         self._curr_win = to
 
     def move(self, dir: Direction, kind: MoveKind) -> None:
@@ -441,31 +441,28 @@ class KCFGViewer(App):
                 if kind == MoveKind.SINGLE:
                     match self._curr_win:
                         case Window.BEHAVIOR:
-                            if self._last_idx + 1 < len(self._node_ids):
-                                idx = self._last_idx + 1
-                                node_id = self._node_ids[idx]
+                            next_node = self.next_node()
+                            if next_node != None:
                                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-                                self._selected_chunk = 'node_' + str(node_id)
-                                self._last_idx = idx
+                                self._selected_chunk = next_node
                                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
                                     'border-left: double red;'
                                 )
-                                self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
+                                self.query_one('#node-view', NodeView).update(self._resolve_any(next_node))
                         case Window.TERM | Window.CUSTOM | Window.CONSTRAINT:
                             self.query_one(f'#{view}', Horizontal).scroll_down(animate=False)
                 elif kind == MoveKind.PAGE:
                     self.query_one(f'#{view}').scroll_page_down(animate=False)
                 elif kind == MoveKind.BOUND:
                     if self._curr_win == Window.BEHAVIOR:
-                        try:
-                            node_id = self._node_ids[-1]
+                        last_node = self.prev_node_from(len(self._kcfg_nodes))
+                        if last_node != None:
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-                            self._selected_chunk = 'node_' + str(node_id)
-                            self._last_idx = self._node_idx[node_id]
-                            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
-                            self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
-                        except:
-                            pass
+                            self._selected_chunk = last_node
+                            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
+                                'border-left: double red;'
+                            )
+                            self.query_one('#node-view', NodeView).update(self._resolve_any(last_node))
                     else:
                         self.query_one(f'#{view}', Horizontal).scroll_end(animate=False)
                 elif kind == MoveKind.CENTER:
@@ -491,31 +488,28 @@ class KCFGViewer(App):
                     match self._curr_win:
                         case Window.BEHAVIOR:
                             if kind == MoveKind.SINGLE:
-                                if self._last_idx != 0:
-                                    idx = self._last_idx - 1
-                                    node_id = self._node_ids[idx]
+                                prev_node = self.prev_node()
+                                if prev_node != None:
                                     self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-                                    self._selected_chunk = 'node_' + str(node_id)
-                                    self._last_idx = idx
+                                    self._selected_chunk = prev_node
                                     self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
                                         'border-left: double red;'
                                     )
-                                    self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
+                                    self.query_one('#node-view', NodeView).update(self._resolve_any(prev_node))
                         case Window.TERM | Window.CUSTOM | Window.CONSTRAINT:
                             self.query_one(f'#{view}', Horizontal).scroll_up(animate=False)
                 elif kind == MoveKind.PAGE:
                     self.query_one(f'#{view}').scroll_page_up(animate=False)
                 elif kind == MoveKind.BOUND:
                     if self._curr_win == Window.BEHAVIOR:
-                        try:
-                            node_id = self._node_ids[0]
+                        first_node = self.next_node_from(0)
+                        if first_node != None:
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-                            self._selected_chunk = 'node_' + str(node_id)
-                            self._last_idx = 0
-                            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
-                            self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
-                        except:
-                            pass
+                            self._selected_chunk = first_node
+                            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
+                                'border-left: double red;'
+                            )
+                            self.query_one('#node-view', NodeView).update(self._resolve_any(first_node))
                     else:
                         self.query_one(f'#{view}', Horizontal).scroll_home(animate=False)
             case Direction.RIGHT:
@@ -554,7 +548,7 @@ class KCFGViewer(App):
         elif key == 'f':
             if self._selected_chunk is not None and self._selected_chunk.startswith('node_'):
                 node_id = self._selected_chunk[5:]
-                self._last_idx = self._node_idx[int(node_id)]
+                # self._last_idx = self._node_idx[int(node_id)]
                 self._hidden_chunks.append(self._selected_chunk)
                 self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
                 self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
