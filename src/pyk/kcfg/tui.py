@@ -127,7 +127,7 @@ class NodeView(Widget):
         return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
-        yield Horizontal(Static(self._info_text(), id='info'), id='info-view')
+        yield Horizontal(Static(self._info_text(), id='info'), id='info-view', classes='')
         yield Horizontal(Static('Term', id='term'), id='term-view', classes=('' if self._term_on else 'hidden'))
         yield Horizontal(
             Static('Constraint', id='constraint'),
@@ -158,8 +158,6 @@ class NodeView(Widget):
 
     def update(self, element: KCFGElem, style: bool = False) -> None:
         self._element = element
-        # if (style):
-        #     self._focus_style()
         self._update()
 
     def _focus_style(self) -> None:
@@ -336,10 +334,7 @@ class KCFGViewer(App):
             self._selected_chunk = 'node_' + str(node_id)
             self._last_idx = self._node_idx[node_id]
         except:
-            # TODO return an exception ?
-            node_id = 0
-            self._selected_chunk = None
-            self._last_idx = 0
+            raise ValueError("Should have at least one node to visit")
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -354,7 +349,11 @@ class KCFGViewer(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        # TODO: update to see cells
+        node_id = self._node_ids[0]
+        self.query_one('#node-view', NodeView).update(self._kcfg.node(node_id), True)
+        for win in Window:
+            self.query_one(f'#{win.value}').set_class(True, "deselected")
+        self.focus_window(Window.BEHAVIOR)
         self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
@@ -420,12 +419,14 @@ class KCFGViewer(App):
         ('z', 'keystroke("z")', 'Center vertically'),
         ('ctrl+d', 'keystroke("page-down")', 'Page down'),
         ('ctrl+u', 'keystroke("page-up")', 'Page up'),
-        # TODO: q for "quit"
+        ('q', 'keystroke("q")', 'Quit'),
     ]
 
     def focus_window(self, to: Window) -> None:
         curr_win = self._curr_win
+        self.query_one(f'#{curr_win.value}').set_class(False, "selected")
         self.query_one(f'#{curr_win.value}').set_class(True, "deselected")
+        self.query_one(f'#{to.value}').set_class(False, "deselected")
         self.query_one(f'#{to.value}').set_class(True, "selected")
         self._curr_win = to
 
@@ -573,6 +574,8 @@ class KCFGViewer(App):
             self.move(Direction.UP, MoveKind.PAGE)
         elif key == 'page-down':
             self.move(Direction.DOWN, MoveKind.PAGE)
+        elif key == 'q':
+            await self.action_quit()
 
         self._buffer = list()
 
