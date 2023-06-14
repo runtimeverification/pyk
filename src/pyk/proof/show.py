@@ -18,14 +18,15 @@ _LOGGER: Final = logging.getLogger(__name__)
 class APRProofNodePrinter(NodePrinter):
     proof: APRProof
 
-    def __init__(self, proof: APRProof, kprint: KPrint):
-        super().__init__(kprint)
+    def __init__(self, proof: APRProof, kprint: KPrint, full_printer: bool = False, minimize: bool = False):
+        super().__init__(kprint, full_printer=full_printer, minimize=minimize)
+        self.proof = proof
 
     def node_attrs(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
         attrs = super().node_attrs(kcfg, node)
-        if node.id in self.proof.pending:
+        if self.proof.is_pending(node.id):
             attrs.append('pending')
-        if node.id in self.proof.terminal:
+        if self.proof.is_terminal(node.id):
             attrs.append('terminal')
         return attrs
 
@@ -33,11 +34,11 @@ class APRProofNodePrinter(NodePrinter):
 class APRBMCProofNodePrinter(APRProofNodePrinter):
     proof: APRBMCProof
 
-    def __init__(self, proof: APRBMCProof, kprint: KPrint):
-        super().__init__(proof, kprint)
+    def __init__(self, proof: APRBMCProof, kprint: KPrint, full_printer: bool = False, minimize: bool = False):
+        super().__init__(proof, kprint, full_printer=full_printer, minimize=minimize)
 
     def node_attrs(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
         attrs = super().node_attrs(kcfg, node)
-        if node.id in self.proof.bounded:
+        if self.proof.is_bounded(node.id):
             attrs.append('bounded')
         return attrs
