@@ -21,11 +21,10 @@ from ..utils import add_indent, ensure_dir_path
 from .kcfg import KCFG
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
     from pathlib import Path
     from typing import Final
 
-    from ..cterm import CTerm
     from ..kast import KInner
     from ..kast.outer import KDefinition
     from ..ktool.kprint import KPrint
@@ -34,19 +33,28 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class KCFGShow:
+class NodePrinter:
     kprint: KPrint
+    full_printer: bool
+    minimize: bool
 
-    def __init__(
-        self,
-        kprint: KPrint,
-    ):
+    def __init__(self, kprint: KPrint, full_printer: bool = False, minimize: bool = False):
         self.kprint = kprint
+        self.full_printer = full_printer
+        self.minimize = minimize
 
-    @staticmethod
-    def node_attrs(
-        kcfg: KCFG, node: KCFG.Node, node_descriptors: dict[NodeIdLike, list[str]] | None = None
-    ) -> list[str]:
+    def print_node(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
+        attrs = self.node_attrs(kcfg, node)
+        attr_str = ' (' + ', '.join(attrs) + ')' if attrs else ''
+        node_strs = [f'{node.id}{attr_str}']
+        if self.full_printer:
+            kast = node.cterm.kast
+            if self.minimize:
+                kast = minimize_term(kast)
+            node_strs.extend(' ' + line for line in self.kprint.pretty_print(kast).split('\n'))
+        return node_strs
+
+    def node_attrs(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
         attrs = []
         if kcfg.is_init(node.id):
             attrs.append('init')
@@ -62,26 +70,20 @@ class KCFGShow:
             attrs.append('leaf')
         if kcfg.is_split(node.id):
             attrs.append('split')
-        if node_descriptors is not None and node.id in node_descriptors and len(list(node_descriptors[node.id])) > 0:
-            attrs.extend(node_descriptors[node.id])
+        attrs.extend(['@' + alias for alias in sorted(kcfg.aliases(node.id))])
         return attrs
 
-    @staticmethod
-    def node_short_info(
-        kcfg: KCFG,
-        node: KCFG.Node,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
-    ) -> list[str]:
-        attrs = KCFGShow.node_attrs(kcfg, node, node_descriptors=node_descriptors) + [
-            '@' + alias for alias in sorted(kcfg.aliases(node.id))
-        ]
-        attr_string = ' (' + ', '.join(attrs) + ')' if attrs else ''
-        node_header = str(node.id) + attr_string
-        node_strs = [node_header]
-        if node_printer:
-            node_strs.extend(f' {nl}' for nl in node_printer(node.cterm))
-        return node_strs
+
+class KCFGShow:
+    kprint: KPrint
+    node_printer: NodePrinter
+
+    def __init__(self, kprint: KPrint, node_printer: NodePrinter | None = None):
+        self.kprint = kprint
+        self.node_printer = node_printer if node_printer is not None else NodePrinter(kprint)
+
+    def node_short_info(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
+        return self.node_printer.print_node(kcfg, node)
 
     @staticmethod
     def hide_cells(term: KInner, omit_cells: Iterable[str]) -> KInner:
@@ -105,8 +107,6 @@ class KCFGShow:
         self,
         kcfg: KCFG,
         minimize: bool = True,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
     ) -> Iterable[tuple[str, Iterable[str]]]:
         """Return a pretty version of the KCFG in segments.
 
@@ -119,7 +119,7 @@ class KCFGShow:
         ret_lines: list[tuple[str, list[str]]] = []
 
         def _print_node(node: KCFG.Node) -> list[str]:
-            return KCFGShow.node_short_info(kcfg, node, node_printer=node_printer, node_descriptors=node_descriptors)
+            return self.node_short_info(kcfg, node)
 
         def _print_edge(edge: KCFG.Edge) -> list[str]:
             if edge.depth == 1:
@@ -305,19 +305,8 @@ class KCFGShow:
         self,
         kcfg: KCFG,
         minimize: bool = True,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
     ) -> Iterable[str]:
-        return (
-            line
-            for _, seg_lines in self.pretty_segments(
-                kcfg,
-                minimize=minimize,
-                node_printer=node_printer,
-                node_descriptors=node_descriptors,
-            )
-            for line in seg_lines
-        )
+        return (line for _, seg_lines in self.pretty_segments(kcfg, minimize=minimize) for line in seg_lines)
 
     def show(
         self,
@@ -328,12 +317,10 @@ class KCFGShow:
         to_module: bool = False,
         minimize: bool = True,
         sort_collections: bool = False,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
         omit_cells: Iterable[str] = (),
     ) -> list[str]:
         res_lines: list[str] = []
-        res_lines += self.pretty(cfg, minimize=minimize, node_printer=node_printer, node_descriptors=node_descriptors)
+        res_lines += self.pretty(cfg, minimize=minimize)
 
         nodes_printed = False
 
@@ -407,12 +394,7 @@ class KCFGShow:
         )
         return KFlatModule(cfg_module_name, rules + nd_steps + claims)
 
-    def dot(
-        self,
-        kcfg: KCFG,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
-    ) -> Digraph:
+    def dot(self, kcfg: KCFG) -> Digraph:
         def _short_label(label: str) -> str:
             return '\n'.join(
                 [
@@ -424,10 +406,8 @@ class KCFGShow:
         graph = Digraph()
 
         for node in kcfg.nodes:
-            label = '\n'.join(KCFGShow.node_short_info(kcfg, node, node_printer=node_printer))
-            class_attrs = ' '.join(KCFGShow.node_attrs(kcfg, node))
-            if node_descriptors is not None and node.id in node_descriptors and len(node_descriptors[node.id]) > 0:
-                class_attrs = class_attrs + ' ' + ' '.join(node_descriptors[node.id])
+            label = '\n'.join(self.node_short_info(kcfg, node))
+            class_attrs = ' '.join(self.node_printer.node_attrs(kcfg, node))
             attrs = {'class': class_attrs} if class_attrs else {}
             graph.node(name=node.id, label=label, **attrs)
 
@@ -466,15 +446,7 @@ class KCFGShow:
 
         return graph
 
-    def dump(
-        self,
-        cfgid: str,
-        cfg: KCFG,
-        dump_dir: Path,
-        dot: bool = False,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-        node_descriptors: dict[NodeIdLike, list[str]] | None = None,
-    ) -> None:
+    def dump(self, cfgid: str, cfg: KCFG, dump_dir: Path, dot: bool = False) -> None:
         ensure_dir_path(dump_dir)
 
         cfg_file = dump_dir / f'{cfgid}.json'
@@ -482,7 +454,7 @@ class KCFGShow:
         _LOGGER.info(f'Wrote CFG file {cfgid}: {cfg_file}')
 
         if dot:
-            cfg_dot = self.dot(cfg, node_printer=node_printer, node_descriptors=node_descriptors)
+            cfg_dot = self.dot(cfg)
             dot_file = dump_dir / f'{cfgid}.dot'
             dot_file.write_text(cfg_dot)
             _LOGGER.info(f'Wrote DOT file {cfgid}: {dot_file}')

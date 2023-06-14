@@ -7,6 +7,7 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KVariable
 from pyk.kcfg import KCFG, KCFGShow
+from pyk.kcfg.show import NodePrinter
 from pyk.prelude.ml import mlEquals, mlTop
 from pyk.prelude.utils import token
 
@@ -28,10 +29,6 @@ def term(i: int, with_cond: bool = False) -> CTerm:
     term: KInner = KApply('<top>', [inside])
     conds = (mlEquals(KVariable('x'), token(i)),) if with_cond else ()
     return CTerm(term, conds)
-
-
-def node_short_info(ct: CTerm) -> Iterable[str]:
-    return MockKPrint().pretty_print(ct.kast).split('\n')
 
 
 def node(i: int, with_cond: bool = False) -> KCFG.Node:
@@ -556,7 +553,7 @@ def test_pretty_print() -> None:
         '11 (frontier, leaf)\n'
     )
 
-    expected_short_info = (
+    expected_full_printer = (
         '\n'
         '┌─ 21 (init, expanded)\n'
         '│    <top>\n'
@@ -711,10 +708,11 @@ def test_pretty_print() -> None:
     )
 
     # When
-    kcfg_show = KCFGShow(MockKPrint())
+    kcfg_show = KCFGShow(MockKPrint(), node_printer=NodePrinter(MockKPrint()))
+    kcfg_show_full_printer = KCFGShow(MockKPrint(), node_printer=NodePrinter(MockKPrint(), full_printer=True))
     actual = '\n'.join(kcfg_show.pretty(cfg)) + '\n'
-    actual_short_info = '\n'.join(kcfg_show.pretty(cfg, node_printer=node_short_info)) + '\n'
+    actual_full_printer = '\n'.join(kcfg_show_full_printer.pretty(cfg)) + '\n'
 
     # Then
     assert actual == expected
-    assert actual_short_info == expected_short_info
+    assert actual_full_printer == expected_full_printer
