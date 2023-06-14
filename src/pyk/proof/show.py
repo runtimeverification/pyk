@@ -28,6 +28,8 @@ class APRProofNodePrinter(NodePrinter):
             attrs.append('pending')
         if self.proof.is_terminal(node.id):
             attrs.append('terminal')
+            if 'stuck' in attrs:
+                attrs.remove('stuck')
         return attrs
 
 
@@ -41,4 +43,6 @@ class APRBMCProofNodePrinter(APRProofNodePrinter):
         attrs = super().node_attrs(kcfg, node)
         if self.proof.is_bounded(node.id):
             attrs.append('bounded')
+            if 'stuck' in attrs:
+                attrs.remove('stuck')
         return attrs
