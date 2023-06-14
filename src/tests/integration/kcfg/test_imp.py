@@ -686,7 +686,6 @@ class TestImpProof(KCFGExploreTest):
         consequent: tuple[str, str] | tuple[str, str, KInner],
         expected: CSubst | None,
     ) -> None:
-
         if test_id in ['refutation-2']:
             pytest.skip()
 
@@ -712,7 +711,6 @@ class TestImpProof(KCFGExploreTest):
         constraints: tuple[KInner],
         expected: bool | None,
     ) -> None:
-
         if test_id in ['refutation-2']:
             pytest.skip()
 
