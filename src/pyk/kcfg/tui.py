@@ -553,7 +553,6 @@ class KCFGViewer(App):
         elif key == 'f':
             if self._selected_chunk is not None and self._selected_chunk.startswith('node_'):
                 node_id = self._selected_chunk[5:]
-                # self._last_idx = self._node_idx[int(node_id)]
                 self._hidden_chunks.append(self._selected_chunk)
                 self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
                 self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
