@@ -159,6 +159,10 @@ class Proof(ABC):
         raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
 
     @property
+    def json(self) -> str:
+        return json.dumps(self.dict)
+
+    @property
     def summary(self) -> Iterable[str]:
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
         return chain([f'Proof: {self.id}', f'    status: {self.status}'], *subproofs_summaries)

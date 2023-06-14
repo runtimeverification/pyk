@@ -11,7 +11,7 @@ from pyk.proof.equality import EqualityProof
 from pyk.proof.proof import Proof
 from pyk.proof.reachability import APRBMCProof, APRProof
 
-from .test_kcfg import node_dicts
+from .test_kcfg import node, node_dicts
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,12 +25,25 @@ def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
 
 
 def apr_proof(i: int, proof_dir: Path) -> APRProof:
-    return APRProof(id=f'apr_proof_{i}', kcfg=KCFG.from_dict({'nodes': node_dicts(i)}), logs={}, proof_dir=proof_dir)
+    return APRProof(
+        id=f'apr_proof_{i}',
+        init=node(1).id,
+        target=node(1).id,
+        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
+        logs={},
+        proof_dir=proof_dir,
+    )
 
 
 def aprbmc_proof(i: int, proof_dir: Path) -> APRBMCProof:
     return APRBMCProof(
-        id=f'aprbmc_proof_{i}', bmc_depth=i, kcfg=KCFG.from_dict({'nodes': node_dicts(i)}), logs={}, proof_dir=proof_dir
+        id=f'aprbmc_proof_{i}',
+        init=node(1).id,
+        target=node(1).id,
+        bmc_depth=i,
+        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
+        logs={},
+        proof_dir=proof_dir,
     )
 
 
@@ -47,6 +60,8 @@ PROOF_TEST_DATA: list[tuple[str, str, Proof]] = [
         APRProof(
             id='apr_proof_1',
             kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            init=node(1).id,
+            target=node(1).id,
             logs={},
         ),
     ),
@@ -57,6 +72,8 @@ PROOF_TEST_DATA: list[tuple[str, str, Proof]] = [
             id='aprbmc_proof_1',
             bmc_depth=1,
             kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            init=node(1).id,
+            target=node(1).id,
             logs={},
         ),
     ),
