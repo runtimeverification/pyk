@@ -316,9 +316,12 @@ class KCFGViewer(App):
         for i, node in enumerate(self._kcfg_nodes):
             if node.id == kcfg_id:
                 return i
+        return None
 
     def next_node_from(self, i: int = 0) -> str | None:
-        li: list[str] = [node.id for node in self._kcfg_nodes[(i + 1) :] if not node.id.startswith('unknown')]
+        li = [
+            node.id for node in self._kcfg_nodes[(i + 1) :] if node.id is not None and not node.id.startswith('unknown')
+        ]
         try:
             return li[0]
         except StopIteration:
@@ -326,11 +329,14 @@ class KCFGViewer(App):
 
     def next_node(self) -> str | None:
         pos = self.pos_of(self._selected_chunk)
-        if pos != None:
+        if pos is not None:
             return self.next_node_from(pos)
+        return None
 
     def prev_node_from(self, i: int) -> str | None:
-        li = reversed([node.id for node in self._kcfg_nodes[:i] if not node.id.startswith('unknown')])
+        li = reversed(
+            [node.id for node in self._kcfg_nodes[:i] if node.id is not None and not node.id.startswith('unknown')]
+        )
         try:
             return next(li)
         except StopIteration:
@@ -338,8 +344,9 @@ class KCFGViewer(App):
 
     def prev_node(self) -> str | None:
         pos = self.pos_of(self._selected_chunk)
-        if pos != None:
+        if pos is not None:
             return self.prev_node_from(pos)
+        return None
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -387,7 +394,7 @@ class KCFGViewer(App):
             self.query_one(f'#{win.value}').set_class(True, 'deselected')
         self.focus_window(Window.BEHAVIOR)
         next_node = self.next_node_from(0)
-        if next_node != None:
+        if next_node is not None:
             self._selected_chunk = next_node
             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
             self.query_one('#node-view', NodeView).update(self._resolve_any(next_node))
@@ -442,7 +449,7 @@ class KCFGViewer(App):
                     match self._curr_win:
                         case Window.BEHAVIOR:
                             next_node = self.next_node()
-                            if next_node != None:
+                            if next_node is not None:
                                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
                                 self._selected_chunk = next_node
                                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
@@ -456,7 +463,7 @@ class KCFGViewer(App):
                 elif kind == MoveKind.BOUND:
                     if self._curr_win == Window.BEHAVIOR:
                         last_node = self.prev_node_from(len(self._kcfg_nodes))
-                        if last_node != None:
+                        if last_node is not None:
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
                             self._selected_chunk = last_node
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
@@ -489,7 +496,7 @@ class KCFGViewer(App):
                         case Window.BEHAVIOR:
                             if kind == MoveKind.SINGLE:
                                 prev_node = self.prev_node()
-                                if prev_node != None:
+                                if prev_node is not None:
                                     self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
                                     self._selected_chunk = prev_node
                                     self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
@@ -503,7 +510,7 @@ class KCFGViewer(App):
                 elif kind == MoveKind.BOUND:
                     if self._curr_win == Window.BEHAVIOR:
                         first_node = self.next_node_from(0)
-                        if first_node != None:
+                        if first_node is not None:
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
                             self._selected_chunk = first_node
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
