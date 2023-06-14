@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -7,9 +8,10 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
-from pyk.kcfg import KCFG
+from pyk.kcfg import KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.testing import KCFGExploreTest
+from pyk.utils import single
 
 from ..utils import K_FILES
 
@@ -21,6 +23,8 @@ if TYPE_CHECKING:
     from pyk.kcfg import KCFGExplore
     from pyk.ktool.kprint import KPrint
     from pyk.ktool.kprove import KProve
+
+_LOGGER: Final = logging.getLogger(__name__)
 
 
 class State(NamedTuple):
@@ -50,6 +54,10 @@ class TestCellMapProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'cell-map.k'
 
     @staticmethod
+    def node_printer(kprint: KPrint, cterm: CTerm) -> list[str]:
+        return kprint.pretty_print(cterm.kast).split('\n')
+
+    @staticmethod
     def config(kprint: KPrint, k: str, active_accounts: str, accounts: Iterable[tuple[str, str]]) -> CTerm:
         def _parse(kt: KToken) -> KInner:
             return kprint.parse_token(kt, as_rule=True)
@@ -77,7 +85,6 @@ class TestCellMapProof(KCFGExploreTest):
                 KApply('<accounts>', _accounts),
                 KVariable('GENERATED_COUNTER_CELL'),
             ),
-            (),
         )
 
     @pytest.mark.parametrize(
@@ -126,22 +133,26 @@ class TestCellMapProof(KCFGExploreTest):
         max_depth: int,
         terminal_rules: Iterable[str],
     ) -> None:
-        claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
-        assert len(claims) == 1
 
-        kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        init = kcfg.get_unique_init()
+        proof = APRProof.from_claim(kprove.definition, claim)
+        init = proof.kcfg.get_unique_init()
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
-        kcfg.replace_node(init.id, new_init_term)
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
+        proof.kcfg.replace_node(init.id, new_init_term)
         prover = APRProver(proof)
-        kcfg = prover.advance_proof(
+        prover.advance_proof(
             kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,
         )
+
+        kcfg_show = KCFGShow(kcfg_explore.kprint)
+        cfg_lines = kcfg_show.show(
+            'test', proof.kcfg, node_printer=lambda k: TestCellMapProof.node_printer(kcfg_explore.kprint, k)
+        )
+        _LOGGER.info('\n'.join(cfg_lines))
 
         assert proof.status == ProofStatus.PASSED
