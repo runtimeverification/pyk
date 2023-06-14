@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-import json
 import logging
-from typing import TYPE_CHECKING
+from itertools import chain
+from typing import TYPE_CHECKING, cast
 
 from pyk.kore.rpc import LogEntry
 
-from ..kast.manip import flatten_label
+from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kcfg import KCFG
-from ..prelude.ml import mlAnd, mlTop
-from ..utils import hash_str, shorten_hashes
+from ..prelude.kbool import BOOL, TRUE
+from ..prelude.ml import mlAnd, mlEquals, mlTop
+from ..utils import keys_to_int, shorten_hashes, single
+from .equality import RefutationProof, RefutationProver
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -37,6 +39,7 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
+    node_refutations: dict[int, str]
     init: NodeIdLike
     target: NodeIdLike
     _terminal_nodes: list[NodeIdLike]
@@ -49,15 +52,27 @@ class APRProof(Proof):
         init: NodeIdLike,
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
-        terminal_nodes: Iterable[NodeIdLike] | None = None,
         proof_dir: Path | None = None,
+        node_refutations: dict[int, str] | None = None,
+        subproof_ids: list[str] | None = None,
+        terminal_nodes: Iterable[NodeIdLike] | None = None,
     ):
-        super().__init__(id, proof_dir=proof_dir)
+        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
         self.init = init
         self.target = target
         self.logs = logs
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
+
+        if node_refutations is not None:
+            refutations_not_in_subprroofs = set(node_refutations.values()).difference(
+                set(subproof_ids if subproof_ids else [])
+            )
+            if refutations_not_in_subprroofs:
+                raise ValueError(
+                    f'All node refutations must be included in subproofs, violators are {refutations_not_in_subprroofs}'
+                )
+        self.node_refutations = node_refutations if node_refutations is not None else {}
 
     @property
     def terminal(self) -> list[KCFG.Node]:
@@ -71,23 +86,34 @@ class APRProof(Proof):
             if nd not in self.terminal + self.kcfg.target and not self.kcfg.is_covered(nd.id)
         ]
 
-    @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> APRProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if APRProof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading APRProof from file {id}: {proof_path}')
-            return APRProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load APRProof from file {id}: {proof_path}')
+    def read_refutations(self) -> Iterable[tuple[int, RefutationProof]]:
+        if len(self.node_refutations) == 0:
+            return
+        else:
+            if self.proof_dir is None:
+                raise ValueError(f'Cannot read refutations proof {self.id} with no proof_dir')
+            for node_id, proof_id in self.node_refutations.items():
+                yield node_id, cast('RefutationProof', self.fetch_subproof(proof_id))
+
+    @property
+    def stuck_nodes_refuted(self) -> bool:
+        stuck_nodes = self.kcfg.stuck
+        refutations = dict(self.read_refutations())
+        return all(n.id in self.node_refutations.keys() and refutations[n.id].csubst is None for n in stuck_nodes)
 
     @property
     def status(self) -> ProofStatus:
-        if len(self.terminal) > 0:
+        all_stuck_refuted = self.stuck_nodes_refuted
+
+        if len(self.terminal) > 0 and not all_stuck_refuted:
             return ProofStatus.FAILED
-        elif len(self.pending) > 0:
+        elif len(self.pending) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
-            return ProofStatus.PASSED
+            if self.subproofs_status == ProofStatus.PASSED:
+                return ProofStatus.PASSED
+            else:
+                return ProofStatus.FAILED
 
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
@@ -96,12 +122,24 @@ class APRProof(Proof):
         init_node = dct['init']
         target_node = dct['target']
         id = dct['id']
+        subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
+        node_refutations = keys_to_int(dct['node_refutations']) if 'node_refutations' in dct else {}
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
 
-        return APRProof(id, cfg, init_node, target_node, logs, terminal_nodes=terminal_nodes, proof_dir=proof_dir)
+        return APRProof(
+            id,
+            cfg,
+            init_node,
+            target_node,
+            logs,
+            terminal_nodes=terminal_nodes,
+            proof_dir=proof_dir,
+            subproof_ids=subproof_ids,
+            node_refutations=node_refutations,
+        )
 
     @staticmethod
     def from_claim(defn: KDefinition, claim: KClaim, *args: Any, **kwargs: Any) -> APRProof:
@@ -132,6 +170,8 @@ class APRProof(Proof):
             'init': self.init,
             'target': self.target,
             'terminal_nodes': self._terminal_nodes,
+            'subproof_ids': self.subproof_ids,
+            'node_refutations': self.node_refutations,
             'logs': logs,
         }
 
@@ -140,13 +180,77 @@ class APRProof(Proof):
 
     @property
     def summary(self) -> Iterable[str]:
-        return [
+        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
+        yield from [
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
+            f'    frontier: {len(self.kcfg.frontier)}',
+            f'    stuck: {len(self.kcfg.stuck)}',
+            f'    refuted: {len(self.node_refutations.keys())}',
+            'Subproofs:' if len(self.subproof_ids) else '',
             f'    pending: {len(self.pending)}',
             f'    terminal: {len(self.terminal)}',
         ]
+        for summary in subproofs_summaries:
+            yield from summary
+
+    def get_refutation_id(self, node_id: int) -> str:
+        return f'{self.id}.node-infeasible-{node_id}'
+
+    def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:
+        """Construct an EqualityProof stating that the node's path condition is unsatisfiable"""
+        if not node in self.kcfg.nodes:
+            raise ValueError(f'No such node {node.id}')
+
+        # construct the path from the KCFG root to the node to refute
+        try:
+            path = single(self.kcfg.paths_between(source_id=self.kcfg.get_unique_init().id, target_id=node.id))
+        except ValueError:
+            _LOGGER.error(f'Node {node.id} is not reachable from the initial node.')
+            return None
+        # traverse the path back from the node-to-refute and choose only split nodes and non-deterministic branches
+        branches_on_path = list(filter(lambda x: type(x) is KCFG.Split or type(x) is KCFG.NDBranch, reversed(path)))
+        if len(branches_on_path) == 0:
+            _LOGGER.error(f'Cannot refute node {node.id} in linear KCFG')
+            return None
+        closest_branch = branches_on_path[0]
+        assert type(closest_branch) is KCFG.Split or type(closest_branch) is KCFG.NDBranch
+        if type(closest_branch) is KCFG.NDBranch:
+            _LOGGER.error(f'Cannot refute node {node.id} following a non-deterministic branch: not yet implemented')
+            return None
+
+        assert type(closest_branch) is KCFG.Split
+        refuted_branch_root = closest_branch.targets[0]
+        csubst = closest_branch.splits[refuted_branch_root.id]
+        if len(csubst.subst) > 0:
+            _LOGGER.error(
+                f'Cannot refute node {node.id}: unexpected non-empty substitution {csubst.subst} in Split from {closest_branch.source.id}'
+            )
+            return None
+        if len(csubst.constraints) > 1:
+            _LOGGER.error(
+                f'Cannot refute node {node.id}: unexpected non-singleton constraints {csubst.constraints} in Split from {closest_branch.source.id}'
+            )
+            return None
+
+        # extract the path condition prior to the Split that leads to the node-to-refute
+        pre_split_constraints = [
+            mlEquals(TRUE, ml_pred_to_bool(c), arg_sort=BOOL) for c in closest_branch.source.cterm.constraints
+        ]
+
+        # extract the constriant added by the Split that leads to the node-to-refute
+        last_constraint = mlEquals(TRUE, ml_pred_to_bool(csubst.constraints[0]), arg_sort=BOOL)
+
+        refutation_id = self.get_refutation_id(node.id)
+        _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
+        refutation = RefutationProof(
+            id=refutation_id,
+            sort=BOOL,
+            constraints=[*pre_split_constraints, last_constraint],
+            proof_dir=self.proof_dir,
+        )
+        return refutation
 
 
 class APRBMCProof(APRProof):
@@ -165,19 +269,21 @@ class APRBMCProof(APRProof):
         bmc_depth: int,
         bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
+        subproof_ids: list[str] | None = None,
+        node_refutations: dict[int, str] | None = None,
     ):
-        super().__init__(id, kcfg, init, target, logs, proof_dir=proof_dir)
+        super().__init__(
+            id,
+            kcfg,
+            init,
+            target,
+            logs,
+            proof_dir=proof_dir,
+            subproof_ids=subproof_ids,
+            node_refutations=node_refutations,
+        )
         self.bmc_depth = bmc_depth
         self._bounded_nodes = list(bounded_nodes) if bounded_nodes is not None else []
-
-    @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> APRBMCProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if APRBMCProof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading APRBMCProof from file {id}: {proof_path}')
-            return APRBMCProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load APRBMCProof from file {id}: {proof_path}')
 
     @property
     def bounded(self) -> list[KCFG.Node]:
@@ -193,9 +299,12 @@ class APRBMCProof(APRProof):
 
     @property
     def status(self) -> ProofStatus:
-        if len(self.terminal) > 0:
+        if (
+            any(nd.id not in self._bounded_nodes for nd in self.kcfg.stuck)
+            or self.subproofs_status == ProofStatus.FAILED
+        ):
             return ProofStatus.FAILED
-        elif len(self.pending) > 0:
+        elif len(self.pending) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
@@ -208,40 +317,66 @@ class APRBMCProof(APRProof):
         target = dct['target']
         bounded_nodes = dct['bounded_nodes']
         bmc_depth = dct['bmc_depth']
+        subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
+        node_refutations = keys_to_int(dct['node_refutations']) if 'node_refutations' in dct else {}
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        return APRBMCProof(id, cfg, init, target, logs, bmc_depth, bounded_nodes=bounded_nodes, proof_dir=proof_dir)
+        return APRBMCProof(
+            id,
+            cfg,
+            init,
+            target,
+            logs,
+            bmc_depth,
+            bounded_nodes=bounded_nodes,
+            proof_dir=proof_dir,
+            subproof_ids=subproof_ids,
+            node_refutations=node_refutations,
+        )
+
+    @property
+    def dict(self) -> dict[str, Any]:
+        result = {
+            'type': 'APRBMCProof',
+            'id': self.id,
+            'cfg': self.kcfg.to_dict(),
+            'bmc_depth': self.bmc_depth,
+            'bounded_states': self._bounded_nodes,
+            'subproof_ids': self.subproof_ids,
+            'node_refutations': self.node_refutations,
+        }
+        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
+        if logs:
+            result['logs'] = logs
+        return result
 
     @staticmethod
     def from_claim_with_bmc_depth(defn: KDefinition, claim: KClaim, bmc_depth: int) -> APRBMCProof:
         cfg, init_node, target_node = KCFG.from_claim(defn, claim)
         return APRBMCProof(claim.label, cfg, init_node, target_node, {}, bmc_depth)
 
-    @property
-    def dict(self) -> dict[str, Any]:
-        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        dct = super().dict
-        dct['type'] = 'APRBMCProof'
-        dct['bmc_depth'] = self.bmc_depth
-        dct['bounded_nodes'] = self._bounded_nodes
-        dct['logs'] = logs
-        return dct
-
     def add_bounded(self, nid: NodeIdLike) -> None:
         self._bounded_nodes.append(self.kcfg._resolve(nid))
 
     @property
     def summary(self) -> Iterable[str]:
-        return [
+        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
+        yield from [
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
+            f'    frontier: {len(self.kcfg.frontier)}',
+            f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_nodes])}',
+            f'    bmc-depth-bounded: {len(self._bounded_nodes)}',
+            'Subproofs' if len(self.subproof_ids) else '',
             f'    pending: {len(self.pending)}',
             f'    terminal: {len(self.terminal)}',
             f'    bounded: {len(self.bounded)}',
         ]
+        for summary in subproofs_summaries:
+            yield from summary
 
 
 class APRProver:
@@ -327,6 +462,41 @@ class APRProver:
 
         self.proof.write_proof()
         return self.proof.kcfg
+
+    def refute_node(self, kcfg_explore: KCFGExplore, node: KCFG.Node, extra_constraint: KInner | None = None) -> None:
+        _LOGGER.info(f'Attempting to refute node {node.id}')
+        refutation = self.proof.construct_node_refutation(node)
+        if refutation is None:
+            _LOGGER.error(f'Failed to refute node {node.id}')
+            return None
+        if extra_constraint is not None:
+            _LOGGER.info(f'Adding the provided extra cosntraint {extra_constraint} to refutation {refutation.id}')
+            refutation.add_constraint(extra_constraint)
+        refutation.write_proof()
+
+        # mark the node-to-refute as expanded to prevent further exploration
+        self.proof.kcfg.add_expanded(node.id)
+
+        if refutation.id in self.proof.subproof_ids:
+            _LOGGER.warning(f'{refutation.id} is already a subproof of {self.proof.id}, overriding.')
+        else:
+            self.proof.add_subproof(refutation.id)
+        self.proof.write_proof()
+
+        eq_prover = RefutationProver(refutation)
+        eq_prover.advance_proof(kcfg_explore)
+
+        if eq_prover.proof.csubst is None:
+            _LOGGER.info(f'Successfully refuted node {node.id} by proof {eq_prover.proof.id}')
+        else:
+            _LOGGER.error(f'Failed to refute node {node.id} by proof {eq_prover.proof.id}')
+        self.proof.node_refutations[node.id] = eq_prover.proof.id
+
+    def unrefute_node(self, node: KCFG.Node) -> None:
+        self.proof.kcfg.remove_expanded(node.id)
+        self.proof.remove_subproof(self.proof.get_refutation_id(node.id))
+        del self.proof.node_refutations[node.id]
+        _LOGGER.info(f'Disabled refutation of node {node.id}.')
 
 
 class APRBMCProver(APRProver):

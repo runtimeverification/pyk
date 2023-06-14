@@ -12,7 +12,7 @@ from pyk.kast.manip import minimize_term
 from pyk.kcfg import KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
+from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
@@ -157,6 +157,40 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
     ),
 )
 
+SATISFIABLE_TEST_DATA: Final = (
+    (
+        'refutation-1',
+        (
+            mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
+            mlEqualsTrue(KApply('_<=Int_', [intToken(3), KVariable('X')])),
+            mlEqualsTrue(KApply('_<Int_', [KVariable('X'), intToken(100)])),
+        ),
+        True,
+    ),
+    (
+        'refutation-2',
+        (
+            mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
+            mlEqualsTrue(KApply('_>Int_', [intToken(0), KVariable('Y')])),
+        ),
+        True,
+    ),
+    (
+        'refutation-3',
+        (mlEqualsTrue(KApply('_<=Int_', [KVariable('Y'), KVariable('X')])),),
+        True,
+    ),
+    (
+        'refutation-4',
+        (
+            mlEqualsTrue(KApply('_<Int_', [KVariable('X'), KVariable('Y')])),
+            mlEqualsTrue(KApply('_<Int_', [KVariable('Y'), KVariable('Z')])),
+            mlEqualsTrue(KApply('_<Int_', [KVariable('Z'), KVariable('X')])),
+        ),
+        False,
+    ),
+)
+
 IMPLIES_TEST_DATA: Final = (
     (
         'constant-subst',
@@ -180,6 +214,67 @@ IMPLIES_TEST_DATA: Final = (
         'consequent-constraint',
         ('int $n , $s ; $n = 3 ;', '.Map'),
         ('int $n , $s ; $n = X ;', '.Map', mlEqualsTrue(KApply('_<Int_', [KVariable('X'), intToken(3)]))),
+        None,
+    ),
+    (
+        'refutation-1',
+        ('int $n ; $n = 0 ;', '.Map', mlTop()),
+        (
+            'int $n ; $n = 0 ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
+                    mlEqualsTrue(KApply('_<=Int_', [intToken(3), KVariable('X')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('X'), intToken(100)])),
+                ]
+            ),
+        ),
+        CSubst(Subst({})),
+    ),
+    (
+        'refutation-2',
+        ('int $n ; $n = 0 ;', '.Map', mlTop()),
+        (
+            'int $n ; $n = 0 ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
+                    mlEqualsTrue(KApply('_>Int_', [intToken(0), KVariable('Y')])),
+                ]
+            ),
+        ),
+        CSubst(Subst({})),
+    ),
+    (
+        'refutation-3',
+        ('int $n ; $n = 0 ;', '.Map', mlTop()),
+        (
+            'int $n ; $n = 0 ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<=Int_', [KVariable('Y'), KVariable('X')])),
+                ]
+            ),
+        ),
+        CSubst(Subst({})),
+    ),
+    (
+        'refutation-4',
+        ('int $n ; $n = 0 ;', '.Map', mlTop()),
+        (
+            'int $n ; $n = 0 ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('X'), KVariable('Y')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('Y'), KVariable('Z')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('Z'), KVariable('X')])),
+                ]
+            ),
+        ),
         None,
     ),
     (
@@ -597,6 +692,24 @@ class TestImpProof(KCFGExploreTest):
 
         # When
         actual = kcfg_explore.cterm_implies(antecedent_term, consequent_term)
+
+        # Then
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        'test_id,constraints,expected',
+        SATISFIABLE_TEST_DATA,
+        ids=[test_id for test_id, *_ in SATISFIABLE_TEST_DATA],
+    )
+    def test_satisfiable(
+        self,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        constraints: tuple[KInner],
+        expected: bool | None,
+    ) -> None:
+        # When
+        actual = kcfg_explore.satisfiable(constraints)
 
         # Then
         assert actual == expected
