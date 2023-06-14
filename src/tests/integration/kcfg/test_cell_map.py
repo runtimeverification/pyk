@@ -8,8 +8,9 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
-from pyk.kcfg.show import KCFGShow, NodePrinter
+from pyk.kcfg.show import KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
+from pyk.proof.show import APRProofNodePrinter
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -146,7 +147,9 @@ class TestCellMapProof(KCFGExploreTest):
             terminal_rules=terminal_rules,
         )
 
-        kcfg_show = KCFGShow(kcfg_explore.kprint, node_printer=NodePrinter(kcfg_explore.kprint, full_printer=True))
+        kcfg_show = KCFGShow(
+            kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+        )
         cfg_lines = kcfg_show.show('test', proof.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 

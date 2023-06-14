@@ -9,11 +9,12 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term
-from pyk.kcfg.show import KCFGShow, NodePrinter
+from pyk.kcfg.show import KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
+from pyk.proof.show import APRBMCProofNodePrinter, APRProofNodePrinter
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -653,7 +654,9 @@ class TestImpProof(KCFGExploreTest):
             cut_point_rules=cut_rules,
         )
 
-        kcfg_show = KCFGShow(kcfg_explore.kprint, node_printer=NodePrinter(kcfg_explore.kprint, full_printer=True))
+        kcfg_show = KCFGShow(
+            kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+        )
         cfg_lines = kcfg_show.show('test', proof.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 
@@ -743,7 +746,9 @@ class TestImpProof(KCFGExploreTest):
             terminal_rules=terminal_rules,
         )
 
-        kcfg_show = KCFGShow(kcfg_explore.kprint, node_printer=NodePrinter(kcfg_explore.kprint, full_printer=True))
+        kcfg_show = KCFGShow(
+            kcfg_explore.kprint, node_printer=APRBMCProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+        )
         cfg_lines = kcfg_show.show('test', proof.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 
