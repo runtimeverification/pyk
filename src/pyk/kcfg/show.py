@@ -189,8 +189,6 @@ class KCFGShow:
                     suffix = ['(looped back)', '']
                 elif processed and not kcfg.is_target(curr_node.id):
                     suffix = ['(continues as previously)', '']
-                elif kcfg.is_stuck(curr_node.id):
-                    suffix = ['(stuck)', '']
                 else:
                     suffix = ['']
             ret_node_lines.append(indent + elbow + ' ' + curr_node_strs[0])
