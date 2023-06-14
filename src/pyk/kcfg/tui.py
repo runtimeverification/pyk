@@ -425,8 +425,10 @@ class KCFGViewer(App):
         ('j', 'keystroke("j")', 'Go down'),
         ('k', 'keystroke("k")', 'Go up'),
         ('l', 'keystroke("l")', 'Go right'),
-        ('g', 'keystroke("g")', 'Go to start'),
-        ('G', 'keystroke("G")', 'Go to end'),
+        ('g', 'keystroke("g")', 'Go to vert start'),
+        ('G', 'keystroke("G")', 'Go to vert end'),
+        ('0', 'keystroke("0")', 'Go to hor end'),
+        ('$', 'keystroke("$")', 'Go to hor end'),
         ('z', 'keystroke("z")', 'Center vertically'),
         ('ctrl+d', 'keystroke("page-down")', 'Page down'),
         ('ctrl+u', 'keystroke("page-up")', 'Page up'),
@@ -445,9 +447,10 @@ class KCFGViewer(App):
         view = self._curr_win.value
         match dir:
             case Direction.LEFT:
-                match self._curr_win:
-                    case Window.TERM | Window.CUSTOM | Window.CONSTRAINT:
-                        self.query_one(f'#{view}', Horizontal).scroll_left(animate=False)
+                if kind == MoveKind.BOUND:
+                    self.query_one(f'#{view}').scroll_page_left(animate=False)
+                else:
+                    self.query_one(f'#{view}').scroll_left(animate=False)
             case Direction.DOWN:
                 if kind == MoveKind.SINGLE:
                     match self._curr_win:
@@ -524,9 +527,10 @@ class KCFGViewer(App):
                     else:
                         self.query_one(f'#{view}', Horizontal).scroll_home(animate=False)
             case Direction.RIGHT:
-                match self._curr_win:
-                    case Window.TERM | Window.CUSTOM | Window.CONSTRAINT:
-                        self.query_one(f'#{view}', Horizontal).scroll_right(animate=False)
+                if kind == MoveKind.BOUND:
+                    self.query_one(f'#{view}').scroll_page_right(animate=False)
+                else:
+                    self.query_one(f'#{view}').scroll_right(animate=False)
 
     async def action_keystroke(self, key: str) -> None:
         if key in ['h', 'j', 'k', 'l']:
@@ -556,6 +560,10 @@ class KCFGViewer(App):
             self.move(Direction.UP, MoveKind.BOUND)
         elif key == 'G':
             self.move(Direction.DOWN, MoveKind.BOUND)
+        elif key == '0':
+            self.move(Direction.LEFT, MoveKind.BOUND)
+        elif key == '$':
+            self.move(Direction.RIGHT, MoveKind.BOUND)
         elif key == 'f':
             if self._selected_chunk is not None and self._selected_chunk.startswith('node_'):
                 node_id = self._selected_chunk[5:]
