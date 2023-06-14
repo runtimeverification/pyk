@@ -139,7 +139,7 @@ class TestAPRProof(KCFGExploreTest):
         proof = APRProof(
             f'{spec_module}.{claim_id}', kcfg_pre, init=init_node, target=target_node, logs={}, proof_dir=proof_dir
         )
-        prover = APRProver(proof, extract_branches=TestAPRProof._extract_branches)
+        prover = APRProver(proof, is_terminal=TestAPRProof._is_terminal, extract_branches=TestAPRProof._extract_branches)
 
         # When
         kcfg_post = prover.advance_proof(
@@ -166,3 +166,17 @@ class TestAPRProof(KCFGExploreTest):
 
         # Then
         assert prover.proof.status == expected_status
+
+    @staticmethod
+    def _is_terminal(cterm1: CTerm) -> bool:
+        k_cell = cterm1.cell('K_CELL')
+        if type(k_cell) is KSequence:
+            if len(k_cell) == 0:
+                return True
+            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
+                return True
+            if len(k_cell) == 2 and type(k_cell[1]) is KVariable and type(k_cell[0]) is KApply and (k_cell[0].label.name == 'e(_)_REFUTE-NODE-SYNTAX_A_Int' or k_cell[0].label.name == 'f(_)_REFUTE-NODE-SYNTAX_A_Int'):
+                return True
+        if type(k_cell) is KVariable:
+            return True
+        return False
