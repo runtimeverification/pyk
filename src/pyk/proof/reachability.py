@@ -342,8 +342,10 @@ class APRBMCProof(APRProof):
             'type': 'APRBMCProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
+            'init': self.init,
+            'target': self.target,
             'bmc_depth': self.bmc_depth,
-            'bounded_states': self._bounded_nodes,
+            'bounded_nodes': self._bounded_nodes,
             'subproof_ids': self.subproof_ids,
             'node_refutations': self.node_refutations,
         }
