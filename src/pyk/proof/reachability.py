@@ -338,7 +338,8 @@ class APRBMCProof(APRProof):
 
     @property
     def dict(self) -> dict[str, Any]:
-        result = {
+        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
+        return {
             'type': 'APRBMCProof',
             'id': self.id,
             'cfg': self.kcfg.to_dict(),
@@ -348,11 +349,8 @@ class APRBMCProof(APRProof):
             'bounded_nodes': self._bounded_nodes,
             'subproof_ids': self.subproof_ids,
             'node_refutations': self.node_refutations,
+            'logs': logs,
         }
-        logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        if logs:
-            result['logs'] = logs
-        return result
 
     @staticmethod
     def from_claim_with_bmc_depth(defn: KDefinition, claim: KClaim, bmc_depth: int) -> APRBMCProof:
