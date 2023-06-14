@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
     from ..kcfg import KCFG
     from ..ktool.kprint import KPrint
-    from .reachability import APRProof
+    from .reachability import APRBMCProof, APRProof
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -27,4 +27,17 @@ class APRProofNodePrinter(NodePrinter):
             attrs.append('pending')
         if node.id in self.proof.terminal:
             attrs.append('terminal')
+        return attrs
+
+
+class APRBMCProofNodePrinter(APRProofNodePrinter):
+    proof: APRBMCProof
+
+    def __init__(self, proof: APRBMCProof, kprint: KPrint):
+        super().__init__(proof, kprint)
+
+    def node_attrs(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
+        attrs = super().node_attrs(kcfg, node)
+        if node.id in self.proof.bounded:
+            attrs.append('bounded')
         return attrs
