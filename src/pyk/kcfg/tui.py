@@ -309,7 +309,6 @@ class KCFGViewer(App):
         seg = kcfg_show.pretty_segments(
             self._kcfg, minimize=self._minimize, node_printer=self._node_printer
         )
-        self._selected_chunk = list(seg)[0][0]
         for lseg_id, node_lines in seg:
             self._kcfg_nodes.append(GraphChunk(lseg_id, node_lines))
 
@@ -327,7 +326,12 @@ class KCFGViewer(App):
 
 
     def next_node_from(self, i: int = 0) -> str | None:
-        return next(node.id for node in self._kcfg_nodes[i:] if node.id != "unknown")
+        li: list[str] = [node.id for node in self._kcfg_nodes[(i + 1):] if not node.id.startswith("unknown")]
+        try:
+            # return next(li)
+            return li[0]
+        except:
+            return None
 
     def next_node(self) -> str | None:
         pos = self.pos_of(self._selected_chunk)
@@ -335,7 +339,11 @@ class KCFGViewer(App):
             return self.next_node_from(pos)
 
     def prev_node_from(self, i: int) -> str | None:
-        return next(reversed(list(node.id for node in self._kcfg_nodes[:i] if node.id != "unknown")))
+        li = reversed(list(node.id for node in self._kcfg_nodes[:i] if not node.id.startswith("unknown")))
+        try:
+            return next(li)
+        except:
+            return None
 
     def prev_node(self) -> str | None:
         pos = self.pos_of(self._selected_chunk)
@@ -389,8 +397,11 @@ class KCFGViewer(App):
         self.focus_window(Window.BEHAVIOR)
         next_node = self.next_node_from(0)
         if next_node != None:
+            self._selected_chunk = next_node
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
+                'border-left: double red;'
+            )
             self.query_one('#node-view', NodeView).update(self._resolve_any(next_node))
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
         try:
