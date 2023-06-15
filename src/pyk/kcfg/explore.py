@@ -54,7 +54,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _rpc_closed: bool
     _trace_rewrites: bool
 
-    _simplify_node: Callable[[CTerm, NodeIdLike], CTerm] | None
+    _simplify_node: Callable[CTerm, CTerm] | None
 
     def __init__(
         self,
@@ -70,7 +70,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         trace_rewrites: bool = False,
-        simplify_node: Callable[[CTerm, NodeIdLike], CTerm] | None = None,
+        simplify_node: Callable[CTerm, CTerm] | None = None,
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
@@ -393,8 +393,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         )
 
         if self._simplify_node is not None:
-            next_cterms = [self._simplify_node(cterm, node.id) for cterm in next_cterms]
-            cterm = self._simplify_node(cterm, node.id)
+            next_cterms = [self._simplify_node(cterm) for cterm in next_cterms]
+            cterm = self._simplify_node(cterm)
 
         # Basic block
         if depth > 0:
