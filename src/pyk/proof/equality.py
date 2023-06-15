@@ -330,6 +330,9 @@ class RefutationProver:
             )
             if result is None:
                 _LOGGER.warning('cterm_implies returned None, the implication is unsatisfiable')
+                _LOGGER.warning(
+                    'Refutation is possibly falsely indicated as correct. See https://github.com/runtimeverification/haskell-backend/issues/3605.'
+                )
             else:
                 self.proof.set_csubst(result)
         self.proof.write_proof()
