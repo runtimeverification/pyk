@@ -80,7 +80,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 'depth': self.depth,
             }
 
-        def to_rule(self, defn: KDefinition, label: str, claim: bool = False, priority: int | None = None) -> KRuleLike:
+        def to_rule(self, label: str, claim: bool = False, priority: int | None = None) -> KRuleLike:
             def is_ceil_condition(kast: KInner) -> bool:
                 return type(kast) is KApply and kast.label.name == '#Ceil'
 

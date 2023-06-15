@@ -368,21 +368,16 @@ class KCFGShow:
         imports: Iterable[str] = (),
         omit_cells: Iterable[str] = (),
     ) -> KFlatModule:
-        rules = [e.to_rule(self.kprint.definition, 'BASIC-BLOCK') for e in cfg.edges()]
+        rules = [e.to_rule('BASIC-BLOCK') for e in cfg.edges()]
         rules = [
             r.let(body=KCFGShow.simplify_config(self.kprint.definition, r.body, omit_cells=omit_cells)) for r in rules
         ]
-        nd_steps = [
-            edge.to_rule(self.kprint.definition, 'ND-STEP') for ndbranch in cfg.ndbranches() for edge in ndbranch.edges
-        ]
+        nd_steps = [edge.to_rule('ND-STEP') for ndbranch in cfg.ndbranches() for edge in ndbranch.edges]
         nd_steps = [
             r.let(body=KCFGShow.simplify_config(self.kprint.definition, r.body, omit_cells=omit_cells))
             for r in nd_steps
         ]
-        claims = [
-            KCFG.Edge(nd, cfg.get_unique_target(), -1).to_rule(self.kprint.definition, 'UNPROVEN', claim=True)
-            for nd in cfg.frontier
-        ]
+        claims = [KCFG.Edge(nd, cfg.get_unique_target(), -1).to_rule('UNPROVEN', claim=True) for nd in cfg.frontier]
         claims = [
             c.let(body=KCFGShow.simplify_config(self.kprint.definition, c.body, omit_cells=omit_cells)) for c in claims
         ]
