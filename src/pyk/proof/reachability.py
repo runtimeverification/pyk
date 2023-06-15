@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from itertools import chain
 from typing import TYPE_CHECKING, cast
@@ -10,7 +11,7 @@ from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
-from ..utils import keys_to_int, shorten_hashes, single
+from ..utils import hash_str, keys_to_int, shorten_hashes, single
 from .equality import RefutationProof, RefutationProver
 from .proof import Proof, ProofStatus
 
@@ -100,6 +101,21 @@ class APRProof(Proof):
         stuck_nodes = self.kcfg.stuck
         refutations = dict(self.read_refutations())
         return all(n.id in self.node_refutations.keys() and refutations[n.id].csubst is None for n in stuck_nodes)
+
+    def is_terminal(self, node_id: NodeIdLike) -> bool:
+        return self.kcfg._resolve(node_id) in (nd.id for nd in self.terminal)
+
+    def is_pending(self, node_id: NodeIdLike) -> bool:
+        return self.kcfg._resolve(node_id) in (nd.id for nd in self.pending)
+
+    @staticmethod
+    def read_proof(id: str, proof_dir: Path) -> APRProof:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if APRProof.proof_exists(id, proof_dir):
+            proof_dict = json.loads(proof_path.read_text())
+            _LOGGER.info(f'Reading APRProof from file {id}: {proof_path}')
+            return APRProof.from_dict(proof_dict, proof_dir=proof_dir)
+        raise ValueError(f'Could not load APRProof from file {id}: {proof_path}')
 
     @property
     def status(self) -> ProofStatus:
@@ -296,6 +312,9 @@ class APRBMCProof(APRProof):
             for nd in self.kcfg.leaves
             if nd not in self.terminal + self.kcfg.target + self.bounded and not self.kcfg.is_covered(nd.id)
         ]
+
+    def is_bounded(self, node_id: NodeIdLike) -> bool:
+        return self.kcfg._resolve(node_id) in (nd.id for nd in self.bounded)
 
     @property
     def status(self) -> ProofStatus:
