@@ -54,7 +54,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _rpc_closed: bool
     _trace_rewrites: bool
 
-    _simplify_node: Callable[CTerm, CTerm] | None
+    _simplify_node: Callable[[CTerm], CTerm] | None
 
     def __init__(
         self,
@@ -70,7 +70,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         trace_rewrites: bool = False,
-        simplify_node: Callable[CTerm, CTerm] | None = None,
+        simplify_node: Callable[[CTerm], CTerm] | None = None,
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
