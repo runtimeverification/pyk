@@ -93,6 +93,8 @@ class NodeView(Widget):
     _constraint_on: bool
     _custom_on: bool
 
+    _terms: dict[str, tuple[str, str, str]]
+
     def __init__(
         self,
         kprint: KPrint,
@@ -111,6 +113,7 @@ class NodeView(Widget):
         self._constraint_on = constraint_on
         self._custom_on = custom_on or custom_view is not None
         self._custom_view = custom_view
+        self._terms = {}
 
     def _info_text(self) -> str:
         term_str = '✅' if self._term_on else '❌'
@@ -156,8 +159,9 @@ class NodeView(Widget):
         else:
             self.query_one(f'#{field}-view', Horizontal).add_class('hidden')
 
-    def update(self, element: KCFGElem) -> None:
+    def update(self, element: KCFGElem, selected_chunk: str) -> None:
         self._element = element
+        self._selected_chunk = selected_chunk
         self._update()
 
     def _update(self) -> None:
@@ -174,13 +178,12 @@ class NodeView(Widget):
                 config = minimize_term(config)
             return (self._kprint.pretty_print(config), '\n'.join(self._kprint.pretty_print(c) for c in constraints))
 
-        term_str = 'Term'
-        constraint_str = 'Constraint'
-        custom_str = 'Custom'
+        (term_str, constraint_str, custom_str) = ('Term', 'Constraint', 'Custom')
 
-        if self._element is not None:
+        def _compute_views() -> tuple[str, str, str]:
+            (_term_str, _constraint_str, _custom_str) = (term_str, constraint_str, custom_str)
             if type(self._element) is KCFG.Node:
-                term_str, constraint_str = _cterm_text(self._element.cterm)
+                _term_str, _constraint_str = _cterm_text(self._element.cterm)
 
             elif type(self._element) is KCFG.Edge:
                 config_source, *constraints_source = self._element.source.cterm
@@ -188,13 +191,13 @@ class NodeView(Widget):
                 constraints_new = [c for c in constraints_target if c not in constraints_source]
                 config = push_down_rewrites(KRewrite(config_source, config_target))
                 crewrite = CTerm(config, constraints_new)
-                term_str, constraint_str = _cterm_text(crewrite)
+                _term_str, _constraint_str = _cterm_text(crewrite)
 
             elif type(self._element) is KCFG.Cover:
                 subst_equalities = map(_boolify, flatten_label('#And', self._element.csubst.subst.ml_pred))
                 constraints = map(_boolify, flatten_label('#And', self._element.csubst.constraint))
-                term_str = '\n'.join(self._kprint.pretty_print(se) for se in subst_equalities)
-                constraint_str = '\n'.join(self._kprint.pretty_print(c) for c in constraints)
+                _term_str = '\n'.join(self._kprint.pretty_print(se) for se in subst_equalities)
+                _constraint_str = '\n'.join(self._kprint.pretty_print(c) for c in constraints)
 
             elif type(self._element) is KCFG.Split:
                 term_strs = [f'split: {shorten_hashes(self._element.source.id)}']
@@ -207,7 +210,7 @@ class NodeView(Widget):
                     if len(csubst.constraints) > 0:
                         constraints = map(_boolify, flatten_label('#And', csubst.constraint))
                         term_strs.extend(f'    {self._kprint.pretty_print(cline)}' for cline in constraints)
-                term_str = '\n'.join(term_strs)
+                _term_str = '\n'.join(term_strs)
 
             elif type(self._element) is KCFG.NDBranch:
                 term_strs = [f'ndbranch: {shorten_hashes(self._element.source.id)}']
@@ -215,14 +218,23 @@ class NodeView(Widget):
                     term_strs.append('')
                     term_strs.append(f'  - {shorten_hashes(target.id)}')
                     term_strs.append('    (1 step)')
-                term_str = '\n'.join(term_strs)
+                _term_str = '\n'.join(term_strs)
 
             if self._custom_view is not None:
                 # To appease the type-checker
                 if type(self._element) is KCFG.Node:
-                    custom_str = '\n'.join(self._custom_view(self._element))
+                    _custom_str = '\n'.join(self._custom_view(self._element))
                 elif type(self._element) is KCFG.Successor:
-                    custom_str = '\n'.join(self._custom_view(self._element))
+                    _custom_str = '\n'.join(self._custom_view(self._element))
+
+            return (_term_str, _constraint_str, _custom_str)
+
+
+        if self._terms.get(self._selected_chunk) is None:
+            (term_str, constraint_str, custom_str) = _compute_views()
+            self._terms[self._selected_chunk] = (term_str, constraint_str, custom_str)
+        else:
+            (term_str, constraint_str, custom_str) = self._terms[self._selected_chunk]
 
         self.query_one('#info', Static).update(self._info_text())
         self.query_one('#term', Static).update(term_str)
@@ -397,14 +409,14 @@ class KCFGViewer(App):
         if next_node is not None:
             self._selected_chunk = next_node
             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
-            self.query_one('#node-view', NodeView).update(self._resolve_any(next_node))
+            self.query_one('#node-view', NodeView).update(self._resolve_any(next_node), self._selected_chunk)
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
         self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
         kcfg_elem = self._resolve_any(message.chunk_id)
         self._selected_chunk = message.chunk_id
         self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
-        self.query_one('#node-view', NodeView).update(kcfg_elem)
+        self.query_one('#node-view', NodeView).update(kcfg_elem, self._selected_chunk)
 
     BINDINGS = [
         ('f', 'keystroke("f")', 'Fold node'),
@@ -455,7 +467,7 @@ class KCFGViewer(App):
                                 self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
                                     'border-left: double red;'
                                 )
-                                self.query_one('#node-view', NodeView).update(self._resolve_any(next_node))
+                                self.query_one('#node-view', NodeView).update(self._resolve_any(next_node), self._selected_chunk)
                         case Window.TERM | Window.CUSTOM | Window.CONSTRAINT:
                             self.query_one(f'#{view}', Horizontal).scroll_down(animate=False)
                 elif kind == MoveKind.PAGE:
@@ -469,7 +481,7 @@ class KCFGViewer(App):
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
                                 'border-left: double red;'
                             )
-                            self.query_one('#node-view', NodeView).update(self._resolve_any(last_node))
+                            self.query_one('#node-view', NodeView).update(self._resolve_any(last_node), self._selected_chunk)
                     else:
                         self.query_one(f'#{view}', Horizontal).scroll_end(animate=False)
                 elif kind == MoveKind.CENTER:
@@ -502,7 +514,7 @@ class KCFGViewer(App):
                                     self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
                                         'border-left: double red;'
                                     )
-                                    self.query_one('#node-view', NodeView).update(self._resolve_any(prev_node))
+                                    self.query_one('#node-view', NodeView).update(self._resolve_any(prev_node), self._selected_chunk)
                         case Window.TERM | Window.CUSTOM | Window.CONSTRAINT:
                             self.query_one(f'#{view}', Horizontal).scroll_up(animate=False)
                 elif kind == MoveKind.PAGE:
@@ -516,7 +528,7 @@ class KCFGViewer(App):
                             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
                                 'border-left: double red;'
                             )
-                            self.query_one('#node-view', NodeView).update(self._resolve_any(first_node))
+                            self.query_one('#node-view', NodeView).update(self._resolve_any(first_node), self._selected_chunk)
                     else:
                         self.query_one(f'#{view}', Horizontal).scroll_home(animate=False)
             case Direction.RIGHT:
