@@ -19,6 +19,10 @@ if TYPE_CHECKING:
     W = TypeVar('W', bound='WithKAtt')
     KI = TypeVar('KI', bound='KInner')
 
+
+EMPTY_K_LABEL: Final = '#EmptyK'
+
+
 _LOGGER: Final = logging.getLogger(__name__)
 
 
@@ -589,6 +593,7 @@ class KSequence(KInner, Sequence[KInner]):
                 _items.extend(list(i.items))
             else:
                 _items.append(i)
+        _items = [i for i in _items if not is_empty_k(i)]
         items = tuple(_items)
 
         object.__setattr__(self, 'items', tuple(items))
@@ -696,3 +701,9 @@ def build_cons(unit: KInner, label: str | KLabel, terms: Iterable[KInner]) -> KI
         return KApply(label, (fst, build_cons(unit, label, it)))
     except StopIteration:
         return unit
+
+
+def is_empty_k(item: KInner) -> bool:
+    if not isinstance(item, KApply):
+        return False
+    return item.label == EMPTY_K_LABEL
