@@ -307,7 +307,7 @@ class KCFGViewer(App):
         self._kcfg_nodes = []
         kcfg_show = KCFGShow(kprint)
         self._node_idx = {}
-        seg = kcfg_show.pretty_segments(self._kcfg, minimize=self._minimize, node_printer=self._node_printer)
+        seg = kcfg_show.pretty_segments(self._kcfg, minimize=self._minimize)
         for lseg_id, node_lines in seg:
             self._kcfg_nodes.append(GraphChunk(lseg_id, node_lines))
 
@@ -353,9 +353,7 @@ class KCFGViewer(App):
     def compose(self) -> ComposeResult:
         yield Horizontal(
             VerticalScroll(
-                BehaviorView(
-                    self._kcfg, self._kprint, nodes=self._kcfg_nodes, node_printer=self._node_printer, id='behavior'
-                ),
+                BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
                 id='navigation',
             ),
             VerticalScroll(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
