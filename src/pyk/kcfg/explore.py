@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, ContextManager
+from typing import TYPE_CHECKING, ContextManager
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
@@ -54,8 +54,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _rpc_closed: bool
     _trace_rewrites: bool
 
-    _simplify_node: Callable[[CTerm], CTerm] | None
-
     def __init__(
         self,
         kprint: KPrint,
@@ -70,7 +68,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         trace_rewrites: bool = False,
-        simplify_node: Callable[[CTerm], CTerm] | None = None,
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
@@ -86,7 +83,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._kore_client = None
         self._rpc_closed = False
         self._trace_rewrites = trace_rewrites
-        self._simplify_node = simplify_node
 
     def __enter__(self) -> KCFGExplore:
         return self
@@ -391,10 +387,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
             node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
         )
-
-        if self._simplify_node is not None:
-            next_cterms = [self._simplify_node(cterm) for cterm in next_cterms]
-            cterm = self._simplify_node(cterm)
 
         # Basic block
         if depth > 0:
