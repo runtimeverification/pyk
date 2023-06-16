@@ -8,7 +8,7 @@ from ..kast.inner import KInner, KSort, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -52,6 +52,9 @@ class EqualityProof(Proof):
         self.csubst = csubst
         self.simplified_constraints = simplified_constraints
         self.simplified_equality = simplified_equality
+        _LOGGER.warning(
+            'Building an EqualityProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
+        )
 
     @staticmethod
     def from_claim(claim: KClaim, defn: KDefinition, proof_dir: Path | None = None) -> EqualityProof:
@@ -177,6 +180,13 @@ class RefutationProof(Proof):
         self.constraints = tuple(constraints)
         self.csubst = csubst
         self.simplified_constraints = simplified_constraints
+        _LOGGER.warning(
+            'Building a RefutationProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
+        )
+
+    @property
+    def constraint(self) -> KInner:
+        return mlAnd(self.constraints)
 
     def add_constraint(self, new_constraint: KInner) -> None:
         self.constraints = (*self.constraints, new_constraint)
@@ -299,40 +309,41 @@ class RefutationProver:
         self.proof = proof
 
     def advance_proof(self, kcfg_explore: KCFGExplore) -> None:
-        if self.proof.status is not ProofStatus.PENDING:
-            return
-
-        consequent_kast = mlAnd(self.proof.constraints)
-
-        _, kore_client = kcfg_explore._kore_rpc
-
         _LOGGER.info(f'Attempting RefutationProof {self.proof.id}')
 
-        proof_failed_trivially = False
-        consequent_simplified_kore, _ = kore_client.simplify(kcfg_explore.kprint.kast_to_kore(consequent_kast))
-        consequent_simplified_kast = kcfg_explore.kprint.kore_to_kast(consequent_simplified_kore)
-        _LOGGER.info(f'Simplified consequent: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
-        self.proof.set_simplified_constraints(consequent_simplified_kast)
-        if is_top(consequent_simplified_kast):
-            _LOGGER.warning(
-                'Consequent of implication (proof equality) simplifies to #Top. The constraints are satisfiable, the implication will not be checked.'
-            )
-            proof_failed_trivially = True
-            self.proof.set_csubst(CSubst(Subst({}), ()))
+        if self.proof.status is not ProofStatus.PENDING:
+            _LOGGER.info(f'RefutationProof finished {self.proof.id}: {self.proof.status}')
+            return
 
-        if not proof_failed_trivially:
-            # third, check implication from antecedent to consequent
+        antecedent_kast = mlTop()
+        consequent_kast = self.proof.constraint
+
+        #          _, kore_client = kcfg_explore._kore_rpc
+
+        #          _LOGGER.info(f'Attempting RefutationProof {self.proof.id}')
+
+        #          proof_failed_trivially = False
+        #          consequent_simplified_kore, _ = kore_client.simplify(kcfg_explore.kprint.kast_to_kore(consequent_kast))
+        #          consequent_simplified_kast = kcfg_explore.kprint.kore_to_kast(consequent_simplified_kore)
+        #          _LOGGER.info(f'Simplified consequent: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
+        antecedent_simplified_kast, _ = kcfg_explore.kast_simplify(antecedent_kast)
+        consequent_simplified_kast, _ = kcfg_explore.kast_simplify(consequent_kast)
+        self.proof.set_simplified_constraints(consequent_simplified_kast)
+        _LOGGER.info(f'Simplified antecedent: {kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
+        _LOGGER.info(f'Simplified consequent: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
+
+        if is_top(consequent_simplified_kast):
+            _LOGGER.warning(f'Consequent of implication (proof equality) simplifies to #Top {self.proof.id}')
+            self.proof.set_csubst(CSubst(Subst({}), ()))
+        else:
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
             dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
             result = kcfg_explore.cterm_implies(
-                antecedent=CTerm(config=dummy_config, constraints=[]),
+                antecedent=CTerm(config=dummy_config, constraints=[antecedent_kast]),
                 consequent=CTerm(config=dummy_config, constraints=[consequent_kast]),
             )
-            if result is None:
-                _LOGGER.warning('cterm_implies returned None, the implication is unsatisfiable')
-                _LOGGER.warning(
-                    'Refutation is possibly falsely indicated as correct. See https://github.com/runtimeverification/haskell-backend/issues/3605.'
-                )
-            else:
+            if result is not None:
                 self.proof.set_csubst(result)
+
+        _LOGGER.info(f'RefutationProof finished {self.proof.id}: {self.proof.status}')
         self.proof.write_proof()
