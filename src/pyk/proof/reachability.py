@@ -231,7 +231,6 @@ class APRProof(Proof):
             _LOGGER.error(f'Cannot refute node {node.id} in linear KCFG')
             return None
         closest_branch = branches_on_path[0]
-        assert type(closest_branch) is KCFG.Split or type(closest_branch) is KCFG.NDBranch
         if type(closest_branch) is KCFG.NDBranch:
             _LOGGER.error(f'Cannot refute node {node.id} following a non-deterministic branch: not yet implemented')
             return None
