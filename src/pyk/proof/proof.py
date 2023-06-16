@@ -133,9 +133,11 @@ class Proof(ABC):
         ...
 
     @property
-    @abstractmethod
     def dict(self) -> dict[str, Any]:
-        ...
+        return {
+            'id': self.id,
+            'subproofs': self.subproof_ids,
+        }
 
     @classmethod
     @abstractmethod
