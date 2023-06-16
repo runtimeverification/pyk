@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from itertools import chain
 from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
@@ -112,7 +113,16 @@ class APRProof(Proof):
         else:
             logs = {}
 
-        return APRProof(id, cfg, init_node, target_node, logs, terminal_nodes=terminal_nodes, proof_dir=proof_dir, subproof_ids=subproof_ids)
+        return APRProof(
+            id,
+            cfg,
+            init_node,
+            target_node,
+            logs,
+            terminal_nodes=terminal_nodes,
+            proof_dir=proof_dir,
+            subproof_ids=subproof_ids,
+        )
 
     @staticmethod
     def from_claim(defn: KDefinition, claim: KClaim, *args: Any, **kwargs: Any) -> APRProof:
@@ -157,7 +167,6 @@ class APRProof(Proof):
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
-            f'    refuted: {len(self.node_refutations.keys())}',
             'Subproofs:' if len(self.subproof_ids) else '',
             f'    pending: {len(self.pending)}',
             f'    terminal: {len(self.terminal)}',
@@ -237,7 +246,17 @@ class APRBMCProof(APRProof):
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        return APRBMCProof(id, cfg, init, target, logs, bmc_depth, bounded_nodes=bounded_nodes, proof_dir=proof_dir, subproof_ids=subproof_ids)
+        return APRBMCProof(
+            id,
+            cfg,
+            init,
+            target,
+            logs,
+            bmc_depth,
+            bounded_nodes=bounded_nodes,
+            proof_dir=proof_dir,
+            subproof_ids=subproof_ids,
+        )
 
     @staticmethod
     def from_claim_with_bmc_depth(defn: KDefinition, claim: KClaim, bmc_depth: int) -> APRBMCProof:
