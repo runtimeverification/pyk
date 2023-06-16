@@ -269,6 +269,7 @@ class APRProver:
         self.proof = proof
         self._is_terminal = is_terminal
         self._extract_branches = extract_branches
+        self._abstract_node = abstract_node
 
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
         if self._is_terminal is not None:
