@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     T = TypeVar('T', bound='KAst')
     W = TypeVar('W', bound='WithKAtt')
     KI = TypeVar('KI', bound='KInner')
+    A = TypeVar('A', bound='Any')
+    B = TypeVar('B', bound='Any')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -696,3 +698,40 @@ def build_cons(unit: KInner, label: str | KLabel, terms: Iterable[KInner]) -> KI
         return KApply(label, (fst, build_cons(unit, label, it)))
     except StopIteration:
         return unit
+
+
+def fold(folder: Callable[[KInner, list[A]], A], to_fold: KInner) -> A:
+    def child_collect(children: list[A], child: KInner) -> KInner:
+        children.append(fold(folder, child))
+        return child
+
+    children: list[A] = []
+    to_fold.map_inner(lambda c: child_collect(children, c))
+    return folder(to_fold, children)
+
+
+def unzip(l: list[tuple[A, B]]) -> tuple[list[A], list[B]]:
+    return ([a for a, _ in l], [b for _, b in l])
+
+
+def fold_transform(
+    folder: Callable[[KInner, list[A]], A], transformer: Callable[[KInner, A], tuple[KInner, A]], to_fold: KInner
+) -> tuple[KInner, A]:
+    def fold_term(term: KInner, children: list[tuple[KInner, A]]) -> tuple[KInner, A]:
+        (child_terms, child_values) = unzip(children)
+        child_index = 0
+
+        def get_child(_: KInner) -> KInner:
+            nonlocal child_index
+
+            retv = child_terms[child_index]
+            child_index += 1
+            return retv
+
+        new_term = term.map_inner(get_child)
+        if child_index != len(child_terms):
+            raise ValueError(f'Expected {len(child_terms)} children, but got {child_index}.')
+        new_value = folder(new_term, child_values)
+        return transformer(new_term, new_value)
+
+    return fold(fold_term, to_fold)
