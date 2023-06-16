@@ -315,7 +315,7 @@ class RefutationProver:
         self.proof.set_simplified_constraints(consequent_simplified_kast)
         if is_top(consequent_simplified_kast):
             _LOGGER.warning(
-                'Consequent of implication (proof equality) simplifies to #Top. The constraitns are satisfiable, the implication will not be checked.'
+                'Consequent of implication (proof equality) simplifies to #Top. The constraints are satisfiable, the implication will not be checked.'
             )
             proof_failed_trivially = True
             self.proof.set_csubst(CSubst(Subst({}), ()))
