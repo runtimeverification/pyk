@@ -66,7 +66,6 @@ class BehaviorView(Widget):
         self,
         kcfg: KCFG,
         kprint: KPrint,
-        nodes: Iterable[GraphChunk],
         minimize: bool = True,
         node_printer: Callable[[CTerm], Iterable[str]] | None = None,
         id: str = '',
@@ -76,7 +75,10 @@ class BehaviorView(Widget):
         self._kprint = kprint
         self._minimize = minimize
         self._node_printer = node_printer
-        self._kcfg_nodes = nodes
+        self._kcfg_nodes = []
+        kcfg_show = KCFGShow(kprint)
+        for lseg_id, node_lines in kcfg_show.pretty_segments(self._kcfg, minimize=self._minimize):
+            self._kcfg_nodes.append(GraphChunk(lseg_id, node_lines))
 
     def compose(self) -> ComposeResult:
         return self._kcfg_nodes
@@ -127,7 +129,7 @@ class NodeView(Widget):
         return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
-        yield Horizontal(Static(self._info_text(), id='info'), id='info-view', classes='')
+        yield Horizontal(Static(self._info_text(), id='info'), id='info-view')
         yield Horizontal(Static('Term', id='term'), id='term-view', classes=('' if self._term_on else 'hidden'))
         yield Horizontal(
             Static('Constraint', id='constraint'),
