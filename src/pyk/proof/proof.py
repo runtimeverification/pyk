@@ -136,7 +136,7 @@ class Proof(ABC):
     def dict(self) -> dict[str, Any]:
         return {
             'id': self.id,
-            'subproofs': self.subproof_ids,
+            'subproof_ids': self.subproof_ids,
         }
 
     @classmethod

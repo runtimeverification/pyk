@@ -54,7 +54,7 @@ class APRProof(Proof):
         proof_dir: Path | None = None,
         subproof_ids: list[str] | None = None,
     ):
-        super().__init__(id, proof_dir=proof_dir)
+        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
         self.init = init
         self.target = target
@@ -103,8 +103,8 @@ class APRProof(Proof):
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
-        terminal_nodes = dct['terminal_nodes']
         init_node = dct['init']
+        terminal_nodes = dct['terminal_nodes']
         target_node = dct['target']
         id = dct['id']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
@@ -112,7 +112,6 @@ class APRProof(Proof):
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-
         return APRProof(
             id,
             cfg,
@@ -236,11 +235,11 @@ class APRBMCProof(APRProof):
     @classmethod
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
-        id = dct['id']
         init = dct['init']
         target = dct['target']
         bounded_nodes = dct['bounded_nodes']
         bmc_depth = dct['bmc_depth']
+        id = dct['id']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
