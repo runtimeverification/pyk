@@ -303,7 +303,6 @@ class KCFGShow:
 
     def show(
         self,
-        cfgid: str,
         cfg: KCFG,
         nodes: Iterable[NodeIdLike] = (),
         node_deltas: Iterable[tuple[NodeIdLike, NodeIdLike]] = (),
@@ -311,6 +310,7 @@ class KCFGShow:
         minimize: bool = True,
         sort_collections: bool = False,
         omit_cells: Iterable[str] = (),
+        module_name: str | None = None,
     ) -> list[str]:
         res_lines: list[str] = []
         res_lines += self.pretty(cfg, minimize=minimize)
@@ -350,19 +350,19 @@ class KCFGShow:
         res_lines.append('')
 
         if to_module:
-            module = self.to_module(cfgid, cfg, omit_cells=omit_cells)
+            module = self.to_module(cfg, module_name=module_name, omit_cells=omit_cells)
             res_lines.append(self.kprint.pretty_print(module, sort_collections=sort_collections))
 
         return res_lines
 
     def to_module(
         self,
-        cfgid: str,
         cfg: KCFG,
         module_name: str | None = None,
         imports: Iterable[str] = (),
         omit_cells: Iterable[str] = (),
     ) -> KFlatModule:
+        module_name = module_name if module_name is not None else 'SUMMARY'
         rules = [e.to_rule('BASIC-BLOCK') for e in cfg.edges()]
         rules = [
             r.let(body=KCFGShow.simplify_config(self.kprint.definition, r.body, omit_cells=omit_cells)) for r in rules
@@ -377,10 +377,7 @@ class KCFGShow:
             c.let(body=KCFGShow.simplify_config(self.kprint.definition, c.body, omit_cells=omit_cells)) for c in claims
         ]
 
-        cfg_module_name = (
-            module_name if module_name is not None else f'SUMMARY-{cfgid.upper().replace(".", "-").replace("_", "-")}'
-        )
-        return KFlatModule(cfg_module_name, rules + nd_steps + claims)
+        return KFlatModule(module_name, rules + nd_steps)
 
     def dot(self, kcfg: KCFG) -> Digraph:
         def _short_label(label: str) -> str:

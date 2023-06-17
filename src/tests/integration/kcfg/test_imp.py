@@ -649,7 +649,7 @@ class TestImpProof(KCFGExploreTest):
         kcfg_show = KCFGShow(
             kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
         )
-        cfg_lines = kcfg_show.show('test', proof.kcfg)
+        cfg_lines = kcfg_show.show(proof.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 
         assert proof.status == proof_status
@@ -741,7 +741,7 @@ class TestImpProof(KCFGExploreTest):
         kcfg_show = KCFGShow(
             kcfg_explore.kprint, node_printer=APRBMCProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
         )
-        cfg_lines = kcfg_show.show('test', proof.kcfg)
+        cfg_lines = kcfg_show.show(proof.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 
         assert proof.status == proof_status
