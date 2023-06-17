@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast import KInner
-    from ..kast.outer import KDefinition
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
 
@@ -95,9 +94,9 @@ class KCFGShow:
         return term
 
     @staticmethod
-    def simplify_config(defn: KDefinition, config: KInner, omit_cells: Iterable[str]) -> KInner:
+    def simplify_config(config: KInner, omit_cells: Iterable[str]) -> KInner:
         config = inline_cell_maps(config)
-        config = sort_ac_collections(defn, config)
+        config = sort_ac_collections(config)
         config = KCFGShow.hide_cells(config, omit_cells)
         return config
 
@@ -332,8 +331,8 @@ class KCFGShow:
 
         for node_id_1, node_id_2 in node_deltas:
             nodes_printed = True
-            config_1 = KCFGShow.simplify_config(self.kprint.definition, cfg.node(node_id_1).cterm.config, omit_cells)
-            config_2 = KCFGShow.simplify_config(self.kprint.definition, cfg.node(node_id_2).cterm.config, omit_cells)
+            config_1 = KCFGShow.simplify_config(cfg.node(node_id_1).cterm.config, omit_cells)
+            config_2 = KCFGShow.simplify_config(cfg.node(node_id_2).cterm.config, omit_cells)
             config_delta = push_down_rewrites(KRewrite(config_1, config_2))
             if minimize:
                 config_delta = minimize_term(config_delta)
@@ -364,18 +363,11 @@ class KCFGShow:
     ) -> KFlatModule:
         module_name = module_name if module_name is not None else 'SUMMARY'
         rules = [e.to_rule('BASIC-BLOCK') for e in cfg.edges()]
-        rules = [
-            r.let(body=KCFGShow.simplify_config(self.kprint.definition, r.body, omit_cells=omit_cells)) for r in rules
-        ]
+        rules = [r.let(body=KCFGShow.simplify_config(r.body, omit_cells=omit_cells)) for r in rules]
         nd_steps = [edge.to_rule('ND-STEP') for ndbranch in cfg.ndbranches() for edge in ndbranch.edges]
-        nd_steps = [
-            r.let(body=KCFGShow.simplify_config(self.kprint.definition, r.body, omit_cells=omit_cells))
-            for r in nd_steps
-        ]
+        nd_steps = [r.let(body=KCFGShow.simplify_config(r.body, omit_cells=omit_cells)) for r in nd_steps]
         claims = [KCFG.Edge(nd, cfg.get_unique_target(), -1).to_rule('UNPROVEN', claim=True) for nd in cfg.leaves]
-        claims = [
-            c.let(body=KCFGShow.simplify_config(self.kprint.definition, c.body, omit_cells=omit_cells)) for c in claims
-        ]
+        claims = [c.let(body=KCFGShow.simplify_config(c.body, omit_cells=omit_cells)) for c in claims]
 
         return KFlatModule(module_name, rules + nd_steps)
 
