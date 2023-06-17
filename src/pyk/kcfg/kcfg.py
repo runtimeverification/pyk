@@ -793,16 +793,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         return self.is_expanded(node_id) and self.is_leaf(node_id)
 
-    def prune(self, node_id: NodeIdLike, keep_init: bool = True, keep_target: bool = True) -> list[int]:
+    def prune(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[NodeIdLike]:
         nodes = self.reachable_nodes(node_id)
-        pruned_nodes = []
+        keep_nodes = [self._resolve(nid) for nid in keep_nodes]
+        pruned_nodes: list[NodeIdLike] = []
         for node in nodes:
-            if self.is_init(node.id) and keep_init:
-                continue
-            if self.is_target(node.id) and keep_target:
-                continue
-            self.remove_node(node.id)
-            pruned_nodes.append(node.id)
+            if node.id not in keep_nodes:
+                self.remove_node(node.id)
+                pruned_nodes.append(node.id)
         return pruned_nodes
 
     def shortest_path_between(
