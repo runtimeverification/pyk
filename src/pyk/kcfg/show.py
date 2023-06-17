@@ -101,6 +101,21 @@ class KCFGShow:
         config = KCFGShow.hide_cells(config, omit_cells)
         return config
 
+    @staticmethod
+    def make_unique_segments(segments: Iterable[tuple[str, Iterable[str]]]) -> Iterable[tuple[str, Iterable[str]]]:
+        _segments = []
+        used_ids = []
+        for id, seg_lines in segments:
+            suffix = ''
+            counter = 0
+            while f'{id}{suffix}' in used_ids:
+                suffix = f'_{counter}'
+                counter += 1
+            new_id = f'{id}{suffix}'
+            used_ids.append(new_id)
+            _segments.append((f'{new_id}', [l.rstrip() for l in seg_lines]))
+        return _segments
+
     def pretty_segments(self, kcfg: KCFG, minimize: bool = True) -> Iterable[tuple[str, Iterable[str]]]:
         """Return a pretty version of the KCFG in segments.
 
@@ -277,18 +292,7 @@ class KCFGShow:
                 ret_node_lines = [''] + _print_node(node)
                 ret_lines.append((f'node_{node.id}', ret_node_lines))
 
-        _ret_lines = []
-        used_ids = []
-        for id, seg_lines in ret_lines:
-            suffix = ''
-            counter = 0
-            while f'{id}{suffix}' in used_ids:
-                suffix = f'_{counter}'
-                counter += 1
-            new_id = f'{id}{suffix}'
-            used_ids.append(new_id)
-            _ret_lines.append((f'{new_id}', [l.rstrip() for l in seg_lines]))
-        return _ret_lines
+        return KCFGShow.make_unique_segments(ret_lines)
 
     def pretty(
         self,
