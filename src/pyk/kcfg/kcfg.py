@@ -193,7 +193,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _covers: dict[int, dict[int, Cover]]
     _splits: dict[int, Split]
     _ndbranches: dict[int, NDBranch]
-    _init: set[int]
     _target: set[int]
     _expanded: set[int]
     _aliases: dict[str, int]
@@ -206,7 +205,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._covers = {}
         self._splits = {}
         self._ndbranches = {}
-        self._init = set()
         self._target = set()
         self._expanded = set()
         self._aliases = {}
@@ -281,7 +279,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         claim_lhs = CTerm.from_kast(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
         init_node = cfg.create_node(claim_lhs)
-        cfg.add_init(init_node.id)
 
         claim_rhs = CTerm.from_kast(extract_rhs(claim_body)).add_constraint(bool_to_ml_pred(claim.ensures))
         target_node = cfg.create_node(claim_rhs)
@@ -296,7 +293,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         splits = [split.to_dict() for split in self.splits()]
         ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
-        init = sorted(self._init)
         target = sorted(self._target)
         expanded = sorted(self._expanded)
         aliases = dict(sorted(self._aliases.items()))
@@ -308,7 +304,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             'covers': covers,
             'splits': splits,
             'ndbranches': ndbranches,
-            'init': init,
             'target': target,
             'expanded': expanded,
             'aliases': aliases,
@@ -340,9 +335,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             target_id = cover_dict['target']
             csubst = CSubst.from_dict(cover_dict['csubst'])
             cfg.create_cover(source_id, target_id, csubst=csubst)
-
-        for init_id in dct.get('init') or []:
-            cfg.add_init(init_id)
 
         for target_id in dct.get('target') or []:
             cfg.add_target(target_id)
@@ -379,9 +371,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def from_json(s: str) -> KCFG:
         return KCFG.from_dict(json.loads(s))
 
-    def get_unique_init(self) -> Node:
-        return single(self.init)
-
     def get_unique_target(self) -> Node:
         return single(self.target)
 
@@ -395,8 +384,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         if type(id_like) is not str:
             raise TypeError(f'Expected int or str for id_like, got: {id_like}')
 
-        if id_like == '#init':
-            return self.get_unique_init().id
         if id_like == '#target':
             return self.get_unique_target().id
 
@@ -460,7 +447,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             if not self._covers[source_id]:
                 self._covers.pop(source_id)
 
-        self._init.discard(node_id)
         self._target.discard(node_id)
         self._expanded.discard(node_id)
 
@@ -627,10 +613,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             'List[KCFG.EdgeLike]', self.covers(source_id=source_id, target_id=target_id)
         )
 
-    def add_init(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._init.add(node_id)
-
     def add_target(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
         self._target.add(node_id)
@@ -704,12 +686,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         self._aliases[alias] = node_id
 
-    def remove_init(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        if node_id not in self._init:
-            raise ValueError(f'Node is not init: {node_id}')
-        self._init.remove(node_id)
-
     def remove_target(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
         if node_id not in self._target:
@@ -726,10 +702,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         if alias not in self._aliases:
             raise ValueError(f'Alias does not exist: {alias}')
         self._aliases.pop(alias)
-
-    def discard_init(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._init.discard(node_id)
 
     def discard_target(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
