@@ -752,7 +752,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def is_init(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
-        return node_id in self._init
+        return len(self.predecessors(node_id)) == 0
 
     def is_target(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
@@ -771,8 +771,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return node_id in self._ndbranches
 
     def is_leaf(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return node_id not in self._edges and node_id not in self._splits and node_id not in self._ndbranches
+        return len(self.successors(node_id)) == 0
 
     def is_covered(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)

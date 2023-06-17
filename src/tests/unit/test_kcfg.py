@@ -411,7 +411,6 @@ def test_aliases() -> None:
     cfg = KCFG.from_dict(d)
     assert cfg.node('@foo'), node(2)
 
-    assert cfg.node('#init'), node(1)
     assert cfg.node('#target'), node(4)
     cfg.add_expanded(1)
     cfg.add_expanded(2)
@@ -533,7 +532,7 @@ def test_pretty_print() -> None:
         '   ├─ 22 (expanded)\n'
         '   │\n'
         '   │  (1 step)\n'
-        '   ├─ 19 (leaf)\n'
+        '   ├─ 19\n'
         '   │\n'
         '   ┊  constraint: true\n'
         '   ┊  subst: V22 <- V19\n'
@@ -541,15 +540,13 @@ def test_pretty_print() -> None:
         '      (looped back)\n'
         '\n'
         '\n'
+        '┌─ 10 (init, frontier, leaf)\n'
+        '\n'
+        '┌─ 11 (init, frontier, leaf)\n'
+        '\n'
         'Target Nodes:\n'
         '\n'
         '17 (target, leaf)\n'
-        '\n'
-        'Remaining Nodes:\n'
-        '\n'
-        '10 (frontier, leaf)\n'
-        '\n'
-        '11 (frontier, leaf)\n'
     )
 
     expected_full_printer = (
@@ -671,7 +668,7 @@ def test_pretty_print() -> None:
         '   │    </top>\n'
         '   │\n'
         '   │  (1 step)\n'
-        '   ├─ 19 (leaf)\n'
+        '   ├─ 19\n'
         '   │    <top>\n'
         '   │      V19\n'
         '   │    </top>\n'
@@ -685,23 +682,21 @@ def test_pretty_print() -> None:
         '      (looped back)\n'
         '\n'
         '\n'
+        '┌─ 10 (init, frontier, leaf)\n'
+        '│    <top>\n'
+        '│      10\n'
+        '│    </top>\n'
+        '\n'
+        '┌─ 11 (init, frontier, leaf)\n'
+        '│    <top>\n'
+        '│      V11\n'
+        '│    </top>\n'
+        '\n'
         'Target Nodes:\n'
         '\n'
         '17 (target, leaf)\n'
         ' <top>\n'
         '   V17\n'
-        ' </top>\n'
-        '\n'
-        'Remaining Nodes:\n'
-        '\n'
-        '10 (frontier, leaf)\n'
-        ' <top>\n'
-        '   10\n'
-        ' </top>\n'
-        '\n'
-        '11 (frontier, leaf)\n'
-        ' <top>\n'
-        '   V11\n'
         ' </top>\n'
     )
 

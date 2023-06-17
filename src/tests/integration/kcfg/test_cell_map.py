@@ -135,7 +135,7 @@ class TestCellMapProof(KCFGExploreTest):
         )
 
         proof = APRProof.from_claim(kprove.definition, claim)
-        init = proof.kcfg.get_unique_init()
+        init = proof.kcfg.node(proof.init)
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         proof.kcfg.replace_node(init.id, new_init_term)
         prover = APRProver(proof)

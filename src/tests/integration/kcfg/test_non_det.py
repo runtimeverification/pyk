@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from typing import Final
 
     from pyk.kcfg import KCFGExplore
+    from pyk.kcfg.kcfg import NodeIdLike
     from pyk.ktool.kprove import KProve
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -77,9 +78,9 @@ class TestNonDetProof(KCFGExploreTest):
         #          \
         #           id1b2 - final3 - success
 
-        id1 = proof.kcfg.get_unique_init().id
+        id1 = proof.init
 
-        def assert_nd_branch(id: int) -> tuple[int, int]:
+        def assert_nd_branch(id: NodeIdLike) -> tuple[int, int]:
             assert len(proof.kcfg.successors(source_id=id)) == 1
             ndbranches = proof.kcfg.ndbranches(source_id=id)
             assert len(ndbranches) == 1
