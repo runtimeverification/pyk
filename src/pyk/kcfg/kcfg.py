@@ -286,6 +286,19 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         return cfg, init_node.id, target_node.id
 
+    @staticmethod
+    def path_length(_path: Iterable[KCFG.Successor]) -> int:
+        _path = tuple(_path)
+        if len(_path) == 0:
+            return 0
+        if type(_path[0]) is KCFG.Split or type(_path[0]) is KCFG.Cover:
+            return KCFG.path_length(_path[1:])
+        elif type(_path[0]) is KCFG.NDBranch:
+            return 1 + KCFG.path_length(_path[1:])
+        elif type(_path[0]) is KCFG.Edge:
+            return _path[0].depth + KCFG.path_length(_path[1:])
+        raise ValueError(f'Cannot handle Successor type: {type(_path[0])}')
+
     def to_dict(self) -> dict[str, Any]:
         nodes = [node.to_dict() for node in self.nodes]
         edges = [edge.to_dict() for edge in self.edges()]
@@ -499,7 +512,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def _check_no_zero_loops(self, source_id: NodeIdLike, target_ids: Iterable[NodeIdLike]) -> None:
         for target_id in target_ids:
             path = self.shortest_path_between(target_id, source_id)
-            if path is not None and path_length(path) == 0:
+            if path is not None and KCFG.path_length(path) == 0:
                 raise ValueError(
                     f'Adding successor would create zero-length loop with backedge: {source_id} -> {target_id}'
                 )
@@ -758,7 +771,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         paths = self.paths_between(source_node_id, target_node_id)
         if len(paths) == 0:
             return None
-        return sorted(paths, key=(lambda path: path_length(path)))[0]
+        return sorted(paths, key=(lambda path: KCFG.path_length(path)))[0]
 
     def paths_between(self, source_id: NodeIdLike, target_id: NodeIdLike) -> list[tuple[Successor, ...]]:
         source_id = self._resolve(source_id)
@@ -858,16 +871,3 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 )
 
         return visited
-
-
-def path_length(_path: Iterable[KCFG.Successor]) -> int:
-    _path = tuple(_path)
-    if len(_path) == 0:
-        return 0
-    if type(_path[0]) is KCFG.Split or type(_path[0]) is KCFG.Cover:
-        return path_length(_path[1:])
-    elif type(_path[0]) is KCFG.NDBranch:
-        return 1 + path_length(_path[1:])
-    elif type(_path[0]) is KCFG.Edge:
-        return _path[0].depth + path_length(_path[1:])
-    raise ValueError(f'Cannot handle Successor type: {type(_path[0])}')
