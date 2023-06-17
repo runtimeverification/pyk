@@ -101,11 +101,7 @@ class KCFGShow:
         config = KCFGShow.hide_cells(config, omit_cells)
         return config
 
-    def pretty_segments(
-        self,
-        kcfg: KCFG,
-        minimize: bool = True,
-    ) -> Iterable[tuple[str, Iterable[str]]]:
+    def pretty_segments(self, kcfg: KCFG, minimize: bool = True) -> Iterable[tuple[str, Iterable[str]]]:
         """Return a pretty version of the KCFG in segments.
 
         Each segment is a tuple of an identifier and a list of lines to be printed for that segment (Tuple[str, Iterable[str]).
@@ -180,12 +176,12 @@ class KCFGShow:
             node_indent = '│   '
             if kcfg.is_init(curr_node.id):
                 elbow = '┌─'
-            elif processed or kcfg.is_target(curr_node.id) or not successors:
+            elif processed or not successors:
                 elbow = '└─'
                 node_indent = '    '
                 if curr_node in prior_on_trace:
                     suffix = ['(looped back)', '']
-                elif processed and not kcfg.is_target(curr_node.id):
+                elif processed and not kcfg.is_leaf(curr_node.id):
                     suffix = ['(continues as previously)', '']
                 else:
                     suffix = ['']
@@ -194,10 +190,7 @@ class KCFGShow:
             ret_node_lines.extend(add_indent(indent + '   ', suffix))
             ret_lines.append((f'node_{curr_node.id}', ret_node_lines))
 
-            if processed or kcfg.is_target(curr_node.id):
-                return
-
-            if not successors:
+            if processed or not successors:
                 return
             successor = successors[0]
 
