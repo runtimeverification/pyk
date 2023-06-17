@@ -64,8 +64,6 @@ class NodePrinter:
             attrs.append('expanded')
         if kcfg.is_stuck(node.id):
             attrs.append('stuck')
-        if kcfg.is_frontier(node.id):
-            attrs.append('frontier')
         if kcfg.is_leaf(node.id):
             attrs.append('leaf')
         if kcfg.is_split(node.id):
@@ -274,7 +272,7 @@ class KCFGShow:
             ret_lines.append(('unknown', ['']))
             _print_subgraph('', init[0], [])
             init, _ = _sorted_init_nodes()
-        if kcfg.frontier or kcfg.stuck:
+        if kcfg.leaves or kcfg.stuck:
             ret_lines.append(('unknown', ['', 'Target Nodes:']))
             for target in kcfg.target:
                 ret_node_lines = [''] + _print_node(target)
@@ -377,7 +375,7 @@ class KCFGShow:
             r.let(body=KCFGShow.simplify_config(self.kprint.definition, r.body, omit_cells=omit_cells))
             for r in nd_steps
         ]
-        claims = [KCFG.Edge(nd, cfg.get_unique_target(), -1).to_rule('UNPROVEN', claim=True) for nd in cfg.frontier]
+        claims = [KCFG.Edge(nd, cfg.get_unique_target(), -1).to_rule('UNPROVEN', claim=True) for nd in cfg.leaves]
         claims = [
             c.let(body=KCFGShow.simplify_config(self.kprint.definition, c.body, omit_cells=omit_cells)) for c in claims
         ]
@@ -430,7 +428,7 @@ class KCFGShow:
                 graph.edge(tail_name=ndbranch.source.id, head_name=target, label=f'  {label}        ')
 
         for target_id in kcfg._target:
-            for node in kcfg.frontier:
+            for node in kcfg.leaves:
                 attrs = {'class': 'target', 'style': 'solid'}
                 graph.edge(tail_name=node.id, head_name=target_id, label='  ???', **attrs)
             for node in kcfg.stuck:

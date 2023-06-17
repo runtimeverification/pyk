@@ -269,10 +269,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return [node for node in self.nodes if not self.is_covered(node.id)]
 
     @property
-    def frontier(self) -> list[Node]:
-        return [node for node in self.nodes if self.is_frontier(node.id)]
-
-    @property
     def stuck(self) -> list[Node]:
         return [node for node in self.nodes if self.is_stuck(node.id)]
 
@@ -389,11 +385,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def get_unique_target(self) -> Node:
         return single(self.target)
 
-    def get_first_frontier(self) -> Node:
-        if len(self.frontier) == 0:
-            raise ValueError('No frontiers remaining!')
-        return self.frontier[0]
-
     def _resolve_or_none(self, id_like: NodeIdLike) -> int | None:
         if type(id_like) is int:
             if id_like in self._nodes:
@@ -408,8 +399,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return self.get_unique_init().id
         if id_like == '#target':
             return self.get_unique_target().id
-        if id_like == '#frontier':
-            return self.get_first_frontier().id
 
         if id_like.startswith('@'):
             if id_like[1:] in self._aliases:
@@ -776,17 +765,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def is_covered(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return node_id in self._covers
-
-    def is_frontier(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return not any(
-            [
-                self.is_target(node_id),
-                self.is_expanded(node_id),
-                self.is_covered(node_id),
-                self.is_split(node_id),
-            ]
-        )
 
     def is_stuck(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)

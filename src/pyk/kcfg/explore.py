@@ -378,8 +378,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
     ) -> None:
-        if not kcfg.is_frontier(node.id):
-            raise ValueError(f'Cannot extend non-frontier node {self.id}: {node.id}')
+        if not kcfg.is_leaf(node.id):
+            raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
 
         kcfg.add_expanded(node.id)
 

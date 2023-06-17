@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
     from pyk.kast.inner import KInner
     from pyk.kast.outer import KDefinition
-    from pyk.kcfg import KCFG, KCFGExplore
+    from pyk.kcfg import KCFGExplore
     from pyk.ktool.kprint import KPrint, SymbolTable
     from pyk.ktool.kprove import KProve
 
@@ -462,16 +462,9 @@ APRBMC_PROVE_TEST_DATA: Iterable[
 )
 
 
-def leaf_number(kcfg: KCFG) -> int:
-    target_id = kcfg.get_unique_target().id
-    target_subsumed_nodes = (
-        len(kcfg.edges(target_id=target_id))
-        + len(kcfg.covers(target_id=target_id))
-        + len(kcfg.splits(target_id=target_id))
-    )
-    frontier_nodes = len(kcfg.frontier)
-    stuck_nodes = len(kcfg.stuck)
-    return target_subsumed_nodes + frontier_nodes + stuck_nodes
+def leaf_number(proof: APRProof) -> int:
+    non_target_leaves = [nd for nd in proof.kcfg.leaves if not proof.is_target(nd.id)]
+    return len(non_target_leaves) + len(proof.kcfg.predecessors(proof.target))
 
 
 class TestImpProof(KCFGExploreTest):
@@ -660,7 +653,7 @@ class TestImpProof(KCFGExploreTest):
         _LOGGER.info('\n'.join(cfg_lines))
 
         assert proof.status == proof_status
-        assert leaf_number(proof.kcfg) == expected_leaf_number
+        assert leaf_number(proof) == expected_leaf_number
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
@@ -752,4 +745,4 @@ class TestImpProof(KCFGExploreTest):
         _LOGGER.info('\n'.join(cfg_lines))
 
         assert proof.status == proof_status
-        assert leaf_number(proof.kcfg) == expected_leaf_number
+        assert leaf_number(proof) == expected_leaf_number
