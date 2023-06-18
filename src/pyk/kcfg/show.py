@@ -14,7 +14,6 @@ from ..kast.manip import (
     push_down_rewrites,
     sort_ac_collections,
 )
-from ..kast.outer import KFlatModule
 from ..prelude.k import DOTS
 from ..prelude.ml import mlAnd
 from ..utils import add_indent, ensure_dir_path
@@ -349,27 +348,10 @@ class KCFGShow:
         res_lines.append('')
 
         if to_module:
-            module = self.to_module(cfg, module_name=module_name, omit_cells=omit_cells)
+            module = cfg.to_module(module_name)
             res_lines.append(self.kprint.pretty_print(module, sort_collections=sort_collections))
 
         return res_lines
-
-    def to_module(
-        self,
-        cfg: KCFG,
-        module_name: str | None = None,
-        imports: Iterable[str] = (),
-        omit_cells: Iterable[str] = (),
-    ) -> KFlatModule:
-        module_name = module_name if module_name is not None else 'SUMMARY'
-        rules = [e.to_rule('BASIC-BLOCK') for e in cfg.edges()]
-        rules = [r.let(body=KCFGShow.simplify_config(r.body, omit_cells=omit_cells)) for r in rules]
-        nd_steps = [edge.to_rule('ND-STEP') for ndbranch in cfg.ndbranches() for edge in ndbranch.edges]
-        nd_steps = [r.let(body=KCFGShow.simplify_config(r.body, omit_cells=omit_cells)) for r in nd_steps]
-        claims = [KCFG.Edge(nd, cfg.get_unique_target(), -1).to_rule('UNPROVEN', claim=True) for nd in cfg.leaves]
-        claims = [c.let(body=KCFGShow.simplify_config(c.body, omit_cells=omit_cells)) for c in claims]
-
-        return KFlatModule(module_name, rules + nd_steps)
 
     def dot(self, kcfg: KCFG) -> Digraph:
         def _short_label(label: str) -> str:

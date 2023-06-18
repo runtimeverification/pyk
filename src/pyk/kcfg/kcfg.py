@@ -9,14 +9,18 @@ from typing import TYPE_CHECKING, List, Union, cast, final
 
 from ..cterm import CSubst, CTerm, build_claim, build_rule
 from ..kast.inner import KApply
+from ..kast.kast import EMPTY_ATT
 from ..kast.manip import (
     bool_to_ml_pred,
     extract_lhs,
     extract_rhs,
     flatten_label,
+    inline_cell_maps,
     remove_source_attributes,
     rename_generated_vars,
+    sort_ac_collections,
 )
+from ..kast.outer import KFlatModule
 from ..utils import single
 
 if TYPE_CHECKING:
@@ -24,8 +28,9 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Any
 
+    from ..kast import KAtt
     from ..kast.inner import KInner
-    from ..kast.outer import KClaim, KDefinition, KRuleLike
+    from ..kast.outer import KClaim, KDefinition, KImport, KRuleLike
 
 
 NodeIdLike = int | str
@@ -84,11 +89,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             def is_ceil_condition(kast: KInner) -> bool:
                 return type(kast) is KApply and kast.label.name == '#Ceil'
 
+            def _simplify_config(config: KInner) -> KInner:
+                return sort_ac_collections(inline_cell_maps(config))
+
             sentence_id = f'{label}-{self.source.id}-TO-{self.target.id}'
             init_constraints = [c for c in self.source.cterm.constraints if not is_ceil_condition(c)]
-            init_cterm = CTerm(self.source.cterm.config, init_constraints)
+            init_cterm = CTerm(_simplify_config(self.source.cterm.config), init_constraints)
             target_constraints = [c for c in self.target.cterm.constraints if not is_ceil_condition(c)]
-            target_cterm = CTerm(self.target.cterm.config, target_constraints)
+            target_cterm = CTerm(_simplify_config(self.target.cterm.config), target_constraints)
             rule: KRuleLike
             if claim:
                 rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
@@ -386,6 +394,17 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def get_unique_target(self) -> Node:
         return single(self.target)
+
+    def to_module(
+        self,
+        module_name: str | None = None,
+        imports: Iterable[KImport] = (),
+        att: KAtt = EMPTY_ATT,
+    ) -> KFlatModule:
+        module_name = module_name if module_name is not None else 'KCFG'
+        rules = [e.to_rule('BASIC-BLOCK') for e in self.edges()]
+        nd_steps = [edge.to_rule('ND-STEP') for ndbranch in self.ndbranches() for edge in ndbranch.edges]
+        return KFlatModule(module_name, rules + nd_steps, imports=imports, att=att)
 
     def _resolve_or_none(self, id_like: NodeIdLike) -> int | None:
         if type(id_like) is int:
