@@ -58,8 +58,6 @@ class NodePrinter:
             attrs.append('init')
         if kcfg.is_target(node.id):
             attrs.append('target')
-        if kcfg.is_expanded(node.id):
-            attrs.append('expanded')
         if kcfg.is_stuck(node.id):
             attrs.append('stuck')
         if kcfg.is_leaf(node.id):
@@ -257,21 +255,18 @@ class KCFGShow:
 
         def _sorted_init_nodes() -> tuple[list[KCFG.Node], list[KCFG.Node]]:
             sorted_init_nodes = sorted(node for node in kcfg.nodes if node not in processed_nodes)
-            init_expanded_nodes = []
-            init_unexpanded_nodes = []
-            target_nodes = []
+            init_nodes = []
+            init_leaf_nodes = []
             remaining_nodes = []
             for node in sorted_init_nodes:
                 if kcfg.is_init(node.id):
-                    if kcfg.is_expanded(node.id):
-                        init_expanded_nodes.append(node)
+                    if kcfg.is_leaf(node.id):
+                        init_leaf_nodes.append(node)
                     else:
-                        init_unexpanded_nodes.append(node)
-                elif kcfg.is_target(node.id):
-                    target_nodes.append(node)
+                        init_nodes.append(node)
                 else:
                     remaining_nodes.append(node)
-            return (init_expanded_nodes + init_unexpanded_nodes + target_nodes, remaining_nodes)
+            return (init_nodes + init_leaf_nodes, remaining_nodes)
 
         init, _ = _sorted_init_nodes()
         while init:

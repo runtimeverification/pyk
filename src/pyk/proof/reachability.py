@@ -285,7 +285,6 @@ class APRProver:
             if self._is_terminal(curr_node.cterm):
                 _LOGGER.info(f'Terminal node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
                 self.proof.add_terminal(curr_node.id)
-                self.proof.kcfg.add_expanded(curr_node.id)
                 return True
         return False
 
@@ -393,7 +392,6 @@ class APRBMCProver(APRProver):
                         if nd.id != f.id and self._same_loop(nd.cterm, f.cterm)
                     ]
                     if len(prior_loops) >= self.proof.bmc_depth:
-                        self.proof.kcfg.add_expanded(f.id)
                         self.proof.add_bounded(f.id)
 
             super().advance_proof(

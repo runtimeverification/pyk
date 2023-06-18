@@ -202,7 +202,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _splits: dict[int, Split]
     _ndbranches: dict[int, NDBranch]
     _target: set[int]
-    _expanded: set[int]
+    _stuck: set[int]
     _aliases: dict[str, int]
     _lock: RLock
 
@@ -214,7 +214,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._splits = {}
         self._ndbranches = {}
         self._target = set()
-        self._expanded = set()
+        self._stuck = set()
         self._aliases = {}
         self._lock = RLock()
 
@@ -259,8 +259,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return [node for node in self.nodes if self.is_target(node.id)]
 
     @property
-    def expanded(self) -> list[Node]:
-        return [node for node in self.nodes if self.is_expanded(node.id)]
+    def stuck(self) -> list[Node]:
+        return [node for node in self.nodes if self.is_stuck(node.id)]
 
     @property
     def leaves(self) -> list[Node]:
@@ -273,10 +273,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @property
     def uncovered(self) -> list[Node]:
         return [node for node in self.nodes if not self.is_covered(node.id)]
-
-    @property
-    def stuck(self) -> list[Node]:
-        return [node for node in self.nodes if self.is_stuck(node.id)]
 
     @staticmethod
     def from_claim(defn: KDefinition, claim: KClaim) -> tuple[KCFG, NodeIdLike, NodeIdLike]:
@@ -315,7 +311,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
         target = sorted(self._target)
-        expanded = sorted(self._expanded)
+        stuck = sorted(self._stuck)
         aliases = dict(sorted(self._aliases.items()))
 
         res = {
@@ -326,7 +322,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             'splits': splits,
             'ndbranches': ndbranches,
             'target': target,
-            'expanded': expanded,
+            'stuck': stuck,
             'aliases': aliases,
         }
         return {k: v for k, v in res.items() if v}
@@ -360,8 +356,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for target_id in dct.get('target') or []:
             cfg.add_target(target_id)
 
-        for expanded_id in dct.get('expanded') or []:
-            cfg.add_expanded(expanded_id)
+        for stuck_id in dct.get('stuck') or []:
+            cfg.add_stuck(stuck_id)
 
         for alias, node_id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=node_id)
@@ -462,9 +458,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def remove_node(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
 
-        for edge_in in [edge.source for edge in self.edges(target_id=node_id)]:
-            self.discard_expanded(edge_in.id)
-
         self._nodes.pop(node_id)
 
         self._edges.pop(node_id, None)
@@ -479,8 +472,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             if not self._covers[source_id]:
                 self._covers.pop(source_id)
 
-        self._target.discard(node_id)
-        self._expanded.discard(node_id)
+        self._stuck.discard(node_id)
 
         self._splits = {k: s for k, s in self._splits.items() if k != node_id and node_id not in s.target_ids}
         self._ndbranches = {k: b for k, b in self._ndbranches.items() if k != node_id and node_id not in b.target_ids}
@@ -649,9 +641,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         self._target.add(node_id)
 
-    def add_expanded(self, node_id: NodeIdLike) -> None:
+    def add_stuck(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
-        self._expanded.add(node_id)
+        self._stuck.add(node_id)
 
     def splits(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[Split]:
         source_id = self._resolve(source_id) if source_id is not None else None
@@ -724,11 +716,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             raise ValueError(f'Node is not target: {node_id}')
         self._target.remove(node_id)
 
-    def remove_expanded(self, node_id: NodeIdLike) -> None:
+    def remove_stuck(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
-        if node_id not in self._expanded:
-            raise ValueError(f'Node is not expanded: {node_id}')
-        self._expanded.remove(node_id)
+        if node_id not in self._stuck:
+            raise ValueError(f'Node is not stuck: {node_id}')
+        self._stuck.remove(node_id)
 
     def remove_alias(self, alias: str) -> None:
         if alias not in self._aliases:
@@ -739,9 +731,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         self._target.discard(node_id)
 
-    def discard_expanded(self, node_id: NodeIdLike) -> None:
+    def discard_stuck(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
-        self._expanded.discard(node_id)
+        self._stuck.discard(node_id)
 
     def is_init(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
@@ -751,9 +743,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         return node_id in self._target
 
-    def is_expanded(self, node_id: NodeIdLike) -> bool:
+    def is_stuck(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
-        return node_id in self._expanded
+        return node_id in self._stuck
 
     def is_split(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
@@ -769,10 +761,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def is_covered(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return node_id in self._covers
-
-    def is_stuck(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return self.is_expanded(node_id) and self.is_leaf(node_id)
 
     def prune(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[NodeIdLike]:
         nodes = self.reachable_nodes(node_id)
