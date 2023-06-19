@@ -410,7 +410,7 @@ class KCFGShow:
         if dot:
             cfg_dot = self.dot(cfg)
             dot_file = dump_dir / f'{cfgid}.dot'
-            dot_file.write_text(cfg_dot)
+            dot_file.write_text(cfg_dot.source)
             _LOGGER.info(f'Wrote DOT file {cfgid}: {dot_file}')
 
         nodes_dir = dump_dir / 'nodes'
