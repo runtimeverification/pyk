@@ -68,7 +68,7 @@ class APRProof(Proof):
         return [
             nd
             for nd in self.kcfg.leaves
-            if nd not in self.terminal + self.kcfg.target and not self.kcfg.is_covered(nd.id)
+            if not (self.is_terminal(nd.id) or self.kcfg.is_covered(nd.id) or self.is_target(nd.id))
         ]
 
     def is_terminal(self, node_id: NodeIdLike) -> bool:
@@ -76,6 +76,12 @@ class APRProof(Proof):
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) in (nd.id for nd in self.pending)
+
+    def is_init(self, node_id: NodeIdLike) -> bool:
+        return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.init)
+
+    def is_target(self, node_id: NodeIdLike) -> bool:
+        return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.target)
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -194,7 +200,12 @@ class APRBMCProof(APRProof):
         return [
             nd
             for nd in self.kcfg.leaves
-            if nd not in self.terminal + self.kcfg.target + self.bounded and not self.kcfg.is_covered(nd.id)
+            if not (
+                self.is_terminal(nd.id)
+                or self.is_bounded(nd.id)
+                or self.kcfg.is_covered(nd.id)
+                or self.is_target(nd.id)
+            )
         ]
 
     def is_bounded(self, node_id: NodeIdLike) -> bool:
