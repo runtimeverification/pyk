@@ -442,9 +442,7 @@ class KCFGViewer(App):
         if node is not None:
             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
             self._selected_chunk = node
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
-                'border-left: double red;'
-            )
+            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
             self.query_one('#node-view', NodeView).update(self._resolve_any(node))
 
     def goto_prev_node(self) -> None:
