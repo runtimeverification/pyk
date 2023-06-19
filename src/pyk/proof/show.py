@@ -7,8 +7,9 @@ from ..kcfg.show import KCFGShow, NodePrinter
 from ..utils import ensure_dir_path
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
-    from typing import Final, Iterable
+    from typing import Final
 
     from graphviz import Digraph
 
