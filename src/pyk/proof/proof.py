@@ -106,8 +106,7 @@ class Proof(ABC):
     @property
     def subproofs(self) -> Iterable[Proof]:
         """Return the subproofs, re-reading from disk the ones that changed"""
-        for proof_id in self.subproof_ids:
-            yield self.fetch_subproof(proof_id)
+        return self._subproofs.values()
 
     @property
     def subproofs_status(self) -> ProofStatus:
