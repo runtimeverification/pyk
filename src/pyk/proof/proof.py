@@ -31,7 +31,6 @@ class Proof(ABC):
     id: str
     proof_dir: Path | None
     _subproofs: dict[str, Proof]
-    _last_modified: int | None
 
     def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str] = ()) -> None:
         self.id = id
@@ -51,10 +50,9 @@ class Proof(ABC):
         if not self.proof_dir:
             return
         proof_path = self.proof_dir / f'{hash_str(self.id)}.json'
-        if not self.up_to_date():
+        if not self.up_to_date:
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
-            self._last_modified = proof_path.stat().st_mtime_ns
             _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
 
     @staticmethod
@@ -66,20 +64,16 @@ class Proof(ABC):
     def digest(self) -> str:
         return hash_str(json.dumps(self.dict))
 
-    def up_to_date(self, check_method: str = 'checksum') -> bool:
+    @property
+    def up_to_date(self) -> bool:
         """
         Check that the proof's representation on disk is up-to-date.
-        By default, compares the file timestamp to self._last_modified. Use check_method = 'checksum' to compare hashes instead.
         """
         if self.proof_dir is None:
             raise ValueError(f'Cannot check if proof {self.id} with no proof_dir is up-to-date')
         proof_path = self.proof_dir / f'{hash_str(id)}.json'
         if proof_path.exists() and proof_path.is_file():
-            match check_method:
-                case 'checksum':
-                    return self.digest == hash_file(proof_path)
-                case _:  # timestamp
-                    return self._last_modified == proof_path.stat().st_mtime_ns
+            return self.digest == hash_file(proof_path)
         else:
             return False
 
@@ -99,9 +93,7 @@ class Proof(ABC):
     ) -> Proof:
         """Get a subproof, re-reading from disk if it's not up-to-date"""
 
-        if self.proof_dir is not None and (
-            force_reread or not self._subproofs[proof_id].up_to_date(check_method=uptodate_check_method)
-        ):
+        if self.proof_dir is not None and (force_reread or not self._subproofs[proof_id].up_to_date):
             updated_subproof = Proof.read_proof(proof_id, self.proof_dir)
             self._subproofs[proof_id] = updated_subproof
             return updated_subproof
