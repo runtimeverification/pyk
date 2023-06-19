@@ -327,7 +327,7 @@ class KCFGViewer(App):
         ]
         try:
             return li[0]
-        except StopIteration:
+        except (StopIteration, IndexError):
             return None
 
     def next_node(self) -> str | None:
@@ -477,8 +477,8 @@ class KCFGViewer(App):
 
     def go_left(self, kind: MoveKind) -> None:
         match kind:
-            case MoveKind.BOUND:
-                self.query_one(f'#{self._curr_win.value}').scroll_page_left(animate=False)
+            case MoveKind.SINGLE:
+                self.query_one(f'#{self._curr_win.value}').scroll_left(animate=False)
             case MoveKind.BOUND:
                 self.query_one(f'#{self._curr_win.value}').scroll_page_left(animate=False)
 
