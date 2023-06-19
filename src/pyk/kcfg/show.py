@@ -14,6 +14,7 @@ from ..kast.manip import (
     push_down_rewrites,
     sort_ac_collections,
 )
+from ..kast.outer import KRule
 from ..prelude.k import DOTS
 from ..prelude.ml import mlAnd
 from ..utils import add_indent, ensure_dir_path
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast import KInner
+    from ..kast.outer import KFlatModule, KSentence
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
 
@@ -87,6 +89,17 @@ class KCFGShow:
         if omit_cells:
             return top_down(_hide_cells, term)
         return term
+
+    @staticmethod
+    def hide_cells_in_rules(
+        module: KFlatModule, module_name: str | None = None, omit_cells: Iterable[str] = ()
+    ) -> KFlatModule:
+        def _hide_cells_in_rule(_sent: KSentence) -> KSentence:
+            if type(_sent) is KRule:
+                return _sent.let(body=KCFGShow.hide_cells(_sent.body, omit_cells))
+            return _sent
+
+        return module.let(sentences=map(_hide_cells_in_rule, module.sentences))
 
     @staticmethod
     def simplify_config(config: KInner, omit_cells: Iterable[str]) -> KInner:
@@ -287,6 +300,9 @@ class KCFGShow:
     ) -> Iterable[str]:
         return (line for _, seg_lines in self.pretty_segments(kcfg, minimize=minimize) for line in seg_lines)
 
+    def to_module(self, cfg: KCFG, module_name: str | None = None, omit_cells: Iterable[str] = ()) -> KFlatModule:
+        return KCFGShow.hide_cells_in_rules(cfg.to_module(module_name), omit_cells=omit_cells)
+
     def show(
         self,
         cfg: KCFG,
@@ -336,7 +352,7 @@ class KCFGShow:
         res_lines.append('')
 
         if to_module:
-            module = cfg.to_module(module_name)
+            module = self.to_module(cfg, module_name, omit_cells=omit_cells)
             res_lines.append(self.kprint.pretty_print(module, sort_collections=sort_collections))
 
         return res_lines
