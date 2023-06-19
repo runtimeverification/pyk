@@ -56,8 +56,6 @@ class NodePrinter:
         attrs = []
         if kcfg.is_init(node.id):
             attrs.append('init')
-        if kcfg.is_target(node.id):
-            attrs.append('target')
         if kcfg.is_stuck(node.id):
             attrs.append('stuck')
         if kcfg.is_leaf(node.id):
@@ -273,11 +271,6 @@ class KCFGShow:
             ret_lines.append(('unknown', ['']))
             _print_subgraph('', init[0], [])
             init, _ = _sorted_init_nodes()
-        if kcfg.leaves or kcfg.stuck:
-            ret_lines.append(('unknown', ['', 'Target Nodes:']))
-            for target in kcfg.target:
-                ret_node_lines = [''] + _print_node(target)
-                ret_lines.append((f'node_{target.id}', ret_node_lines))
         _, remaining = _sorted_init_nodes()
         if remaining:
             ret_lines.append(('unknown', ['', 'Remaining Nodes:']))
@@ -389,14 +382,6 @@ class KCFGShow:
             for target in ndbranch.target_ids:
                 label = '1 step'
                 graph.edge(tail_name=ndbranch.source.id, head_name=target, label=f'  {label}        ')
-
-        for target_id in kcfg._target:
-            for node in kcfg.leaves:
-                attrs = {'class': 'target', 'style': 'solid'}
-                graph.edge(tail_name=node.id, head_name=target_id, label='  ???', **attrs)
-            for node in kcfg.stuck:
-                attrs = {'class': 'target', 'style': 'solid'}
-                graph.edge(tail_name=node.id, head_name=target_id, label='  false', **attrs)
 
         return graph
 

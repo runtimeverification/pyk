@@ -405,8 +405,6 @@ def test_aliases() -> None:
     cfg = KCFG.from_dict(d)
     assert cfg.node('@foo'), node(2)
 
-    assert cfg.node('#target'), node(4)
-
     cfg.add_alias('bar', 1)
     cfg.add_alias('bar2', 1)
     assert cfg.node('@bar'), node(1)
@@ -488,7 +486,7 @@ def test_pretty_print() -> None:
         '┣━━┓ constraint: #Equals ( x , 17 )\n'
         '┃  ┃ subst: V14 <- V17\n'
         '┃  │\n'
-        '┃  └─ 17 (target, leaf)\n'
+        '┃  └─ 17 (leaf)\n'
         '┃\n'
         '┣━━┓ constraint: #Equals ( x , 18 )\n'
         '┃  ┃ subst: V14 <- V18\n'
@@ -496,7 +494,7 @@ def test_pretty_print() -> None:
         '┃  ├─ 18\n'
         '┃  │\n'
         '┃  │  (1 step)\n'
-        '┃  └─ 17 (target, leaf)\n'
+        '┃  └─ 17 (leaf)\n'
         '┃\n'
         '┣━━┓ constraint: #Equals ( x , 20 )\n'
         '┃  ┃ subst: V14 <- V20\n'
@@ -534,10 +532,6 @@ def test_pretty_print() -> None:
         '┌─ 10 (init, leaf)\n'
         '\n'
         '┌─ 11 (init, leaf)\n'
-        '\n'
-        'Target Nodes:\n'
-        '\n'
-        '17 (target, leaf)\n'
     )
 
     expected_full_printer = (
@@ -599,7 +593,7 @@ def test_pretty_print() -> None:
         '┣━━┓ constraint: #Equals ( x , 17 )\n'
         '┃  ┃ subst: V14 <- V17\n'
         '┃  │\n'
-        '┃  └─ 17 (target, leaf)\n'
+        '┃  └─ 17 (leaf)\n'
         '┃       <top>\n'
         '┃         V17\n'
         '┃       </top>\n'
@@ -613,7 +607,7 @@ def test_pretty_print() -> None:
         '┃  │    </top>\n'
         '┃  │\n'
         '┃  │  (1 step)\n'
-        '┃  └─ 17 (target, leaf)\n'
+        '┃  └─ 17 (leaf)\n'
         '┃       <top>\n'
         '┃         V17\n'
         '┃       </top>\n'
@@ -682,13 +676,6 @@ def test_pretty_print() -> None:
         '│    <top>\n'
         '│      V11\n'
         '│    </top>\n'
-        '\n'
-        'Target Nodes:\n'
-        '\n'
-        '17 (target, leaf)\n'
-        ' <top>\n'
-        '   V17\n'
-        ' </top>\n'
     )
 
     # When

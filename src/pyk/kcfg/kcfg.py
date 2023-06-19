@@ -21,7 +21,6 @@ from ..kast.manip import (
     sort_ac_collections,
 )
 from ..kast.outer import KFlatModule
-from ..utils import single
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -201,7 +200,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _covers: dict[int, dict[int, Cover]]
     _splits: dict[int, Split]
     _ndbranches: dict[int, NDBranch]
-    _target: set[int]
     _stuck: set[int]
     _aliases: dict[str, int]
     _lock: RLock
@@ -213,7 +211,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._covers = {}
         self._splits = {}
         self._ndbranches = {}
-        self._target = set()
         self._stuck = set()
         self._aliases = {}
         self._lock = RLock()
@@ -255,10 +252,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return [node for node in self.nodes if self.is_init(node.id)]
 
     @property
-    def target(self) -> list[Node]:
-        return [node for node in self.nodes if self.is_target(node.id)]
-
-    @property
     def stuck(self) -> list[Node]:
         return [node for node in self.nodes if self.is_stuck(node.id)]
 
@@ -286,7 +279,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         claim_rhs = CTerm.from_kast(extract_rhs(claim_body)).add_constraint(bool_to_ml_pred(claim.ensures))
         target_node = cfg.create_node(claim_rhs)
-        cfg.add_target(target_node.id)
 
         return cfg, init_node.id, target_node.id
 
@@ -310,7 +302,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         splits = [split.to_dict() for split in self.splits()]
         ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
-        target = sorted(self._target)
         stuck = sorted(self._stuck)
         aliases = dict(sorted(self._aliases.items()))
 
@@ -321,7 +312,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             'covers': covers,
             'splits': splits,
             'ndbranches': ndbranches,
-            'target': target,
             'stuck': stuck,
             'aliases': aliases,
         }
@@ -352,9 +342,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             target_id = cover_dict['target']
             csubst = CSubst.from_dict(cover_dict['csubst'])
             cfg.create_cover(source_id, target_id, csubst=csubst)
-
-        for target_id in dct.get('target') or []:
-            cfg.add_target(target_id)
 
         for stuck_id in dct.get('stuck') or []:
             cfg.add_stuck(stuck_id)
@@ -388,9 +375,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def from_json(s: str) -> KCFG:
         return KCFG.from_dict(json.loads(s))
 
-    def get_unique_target(self) -> Node:
-        return single(self.target)
-
     def to_module(
         self,
         module_name: str | None = None,
@@ -411,9 +395,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         if type(id_like) is not str:
             raise TypeError(f'Expected int or str for id_like, got: {id_like}')
-
-        if id_like == '#target':
-            return self.get_unique_target().id
 
         if id_like.startswith('@'):
             if id_like[1:] in self._aliases:
@@ -637,10 +618,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             'List[KCFG.EdgeLike]', self.covers(source_id=source_id, target_id=target_id)
         )
 
-    def add_target(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._target.add(node_id)
-
     def add_stuck(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
         self._stuck.add(node_id)
@@ -710,12 +687,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         self._aliases[alias] = node_id
 
-    def remove_target(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        if node_id not in self._target:
-            raise ValueError(f'Node is not target: {node_id}')
-        self._target.remove(node_id)
-
     def remove_stuck(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
         if node_id not in self._stuck:
@@ -727,10 +698,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             raise ValueError(f'Alias does not exist: {alias}')
         self._aliases.pop(alias)
 
-    def discard_target(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._target.discard(node_id)
-
     def discard_stuck(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
         self._stuck.discard(node_id)
@@ -738,10 +705,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def is_init(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return len(self.predecessors(node_id)) == 0
-
-    def is_target(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return node_id in self._target
 
     def is_stuck(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
