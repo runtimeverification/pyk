@@ -46,7 +46,7 @@ class Proof(ABC):
     def subproof_ids(self) -> list[str]:
         return [sp.id for sp in self._subproofs.values()]
 
-    def write_proof(self) -> None:
+    def write_proof(self, subproofs: bool = False) -> None:
         if not self.proof_dir:
             return
         proof_path = self.proof_dir / f'{hash_str(self.id)}.json'
@@ -54,6 +54,9 @@ class Proof(ABC):
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
             _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
+        if subproofs:
+            for sp in self.subproofs:
+                sp.write_proof(subproofs=subproofs)
 
     @staticmethod
     def proof_exists(id: str, proof_dir: Path) -> bool:
