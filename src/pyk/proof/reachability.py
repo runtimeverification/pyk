@@ -65,11 +65,7 @@ class APRProof(Proof):
 
     @property
     def pending(self) -> list[KCFG.Node]:
-        return [
-            nd
-            for nd in self.kcfg.leaves
-            if not (self.is_terminal(nd.id) or self.kcfg.is_covered(nd.id) or self.is_target(nd.id))
-        ]
+        return [nd for nd in self.kcfg.leaves if not (self.is_terminal(nd.id) or self.is_target(nd.id))]
 
     def is_terminal(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) in (nd.id for nd in self.terminal)
@@ -200,12 +196,7 @@ class APRBMCProof(APRProof):
         return [
             nd
             for nd in self.kcfg.leaves
-            if not (
-                self.is_terminal(nd.id)
-                or self.is_bounded(nd.id)
-                or self.kcfg.is_covered(nd.id)
-                or self.is_target(nd.id)
-            )
+            if not (self.is_terminal(nd.id) or self.is_bounded(nd.id) or self.is_target(nd.id))
         ]
 
     def is_bounded(self, node_id: NodeIdLike) -> bool:
