@@ -51,7 +51,7 @@ class NodePrinter:
             kast = node.cterm.kast
             if self.minimize:
                 kast = minimize_term(kast)
-            node_strs.extend(' ' + line for line in self.kprint.pretty_print(kast).split('\n'))
+            node_strs.extend('  ' + line for line in self.kprint.pretty_print(kast).split('\n'))
         return node_strs
 
     def node_attrs(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
