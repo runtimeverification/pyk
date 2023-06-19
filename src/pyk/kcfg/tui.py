@@ -286,6 +286,7 @@ class KCFGViewer(App):
     _last_idx: int
 
     _curr_win: Window = Window.BEHAVIOR
+    _last_win: Window | None
 
     def __init__(
         self,
@@ -430,31 +431,33 @@ class KCFGViewer(App):
 
     def focus_window(self, to: Window) -> None:
         curr_win = self._curr_win
+        self._last_win = curr_win
         self.query_one(f'#{curr_win.value}').set_class(False, 'selected')
         self.query_one(f'#{curr_win.value}').set_class(True, 'deselected')
         self.query_one(f'#{to.value}').set_class(False, 'deselected')
         self.query_one(f'#{to.value}').set_class(True, 'selected')
         self._curr_win = to
 
-    def goto_prev_node(self) -> None:
-        prev_node = self.prev_node()
-        if prev_node is not None:
+    def select_node(self, node: str | None) -> None:
+        if node is not None:
             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-            self._selected_chunk = prev_node
+            self._selected_chunk = node
             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
                 'border-left: double red;'
             )
-            self.query_one('#node-view', NodeView).update(self._resolve_any(prev_node))
+            self.query_one('#node-view', NodeView).update(self._resolve_any(node))
+
+    def goto_prev_node(self) -> None:
+        self.select_node(self.prev_node())
 
     def goto_next_node(self) -> None:
-        next_node = self.next_node()
-        if next_node is not None:
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-            self._selected_chunk = next_node
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
-                'border-left: double red;'
-            )
-            self.query_one('#node-view', NodeView).update(self._resolve_any(next_node))
+        self.select_node(self.next_node())
+
+    def goto_first_node(self) -> None:
+        self.select_node(self.next_node_from(0))
+
+    def goto_last_node(self) -> None:
+        self.select_node(self.prev_node_from(len(self._kcfg_nodes)))
 
     def center_from_node(self) -> None:
         sel_node = self.query_one(f'#{self._selected_chunk}', GraphChunk)
@@ -473,26 +476,6 @@ class KCFGViewer(App):
             container_virtual_region.height,
         )
         bv.scroll_to_region(target_region, animate=False)
-
-    def goto_first_node(self) -> None:
-        first_node = self.next_node_from(0)
-        if first_node is not None:
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-            self._selected_chunk = first_node
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
-                'border-left: double red;'
-            )
-            self.query_one('#node-view', NodeView).update(self._resolve_any(first_node))
-
-    def goto_last_node(self) -> None:
-        last_node = self.prev_node_from(len(self._kcfg_nodes))
-        if last_node is not None:
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
-            self._selected_chunk = last_node
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles(
-                'border-left: double red;'
-            )
-            self.query_one('#node-view', NodeView).update(self._resolve_any(last_node))
 
     def go_left(self, kind: MoveKind) -> None:
         match kind:
@@ -568,7 +551,10 @@ class KCFGViewer(App):
                     self.focus_window(Window.TERM)
             case Direction.RIGHT:
                 if self._curr_win == Window.BEHAVIOR:
-                    self.focus_window(Window.TERM)
+                    if self._last_win is not None and self._last_win != Window.BEHAVIOR:
+                        self.focus_window(self._last_win)
+                    else:
+                        self.focus_window(Window.TERM)
 
     async def action_keystroke(self, key: str) -> None:
         if key in ['h', 'j', 'k', 'l']:
