@@ -30,21 +30,22 @@ class Proof(ABC):
 
     id: str
     proof_dir: Path | None
-    subproof_ids: list[str]
     _subproofs: dict[str, Proof]
     _last_modified: int | None
 
-    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: list[str] | None = None) -> None:
+    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str] = ()) -> None:
         self.id = id
         self.proof_dir = proof_dir
-        self.subproof_ids = subproof_ids if subproof_ids is not None else []
         self._subproofs = {}
-        if self.proof_dir is None and len(self.subproof_ids) > 0:
-            raise ValueError(f'Cannot read subproofs {self.subproof_ids} of proof {self.id} with no proof_dir')
-        if len(self.subproof_ids) > 0:
-            assert self.proof_dir
-            for proof_id in self.subproof_ids:
+        if self.proof_dir is None and len(list(subproof_ids)) > 0:
+            raise ValueError(f'Cannot read subproofs {subproof_ids} of proof {self.id} with no proof_dir')
+        if len(list(subproof_ids)) > 0:
+            for proof_id in subproof_ids:
                 self.fetch_subproof(proof_id, force_reread=True)
+
+    @property
+    def subproof_ids(self) -> list[str]:
+        return [sp.id for sp in self._subproofs.values()]
 
     def write_proof(self) -> None:
         if not self.proof_dir:
@@ -82,19 +83,16 @@ class Proof(ABC):
         else:
             return False
 
-    def add_subproof(self, subproof_id: str) -> None:
+    def add_subproof(self, proof_id: str) -> None:
         if self.proof_dir is None:
             raise ValueError(f'Cannot add subproof to the proof {self.id} with no proof_dir')
         assert self.proof_dir
-        if not Proof.proof_exists(subproof_id, self.proof_dir):
-            raise ValueError(
-                f"Cannot find subproof {subproof_id} in parent proof's {self.id} proof_dir {self.proof_dir}"
-            )
-        self.subproof_ids.append(subproof_id)
-        self.fetch_subproof(subproof_id, force_reread=True)
+        if not Proof.proof_exists(proof_id, self.proof_dir):
+            raise ValueError(f"Cannot find subproof {proof_id} in parent proof's {self.id} proof_dir {self.proof_dir}")
+        self._subproofs[proof_id] = self.fetch_subproof(proof_id, force_reread=True)
 
-    def remove_subproof(self, subproof_id: str) -> None:
-        self.subproof_ids = [sid for sid in self.subproof_ids if sid != subproof_id]
+    def remove_subproof(self, proof_id: str) -> None:
+        del self._subproofs[proof_id]
 
     def fetch_subproof(
         self, proof_id: str, force_reread: bool = False, uptodate_check_method: str = 'timestamp'

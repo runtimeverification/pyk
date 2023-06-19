@@ -52,7 +52,7 @@ class APRProof(Proof):
         logs: dict[int, tuple[LogEntry, ...]],
         terminal_nodes: Iterable[NodeIdLike] | None = None,
         proof_dir: Path | None = None,
-        subproof_ids: list[str] | None = None,
+        subproof_ids: Iterable[str] = (),
     ):
         super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
@@ -190,7 +190,7 @@ class APRBMCProof(APRProof):
         bmc_depth: int,
         bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
-        subproof_ids: list[str] | None = None,
+        subproof_ids: Iterable[str] = (),
     ):
         super().__init__(id, kcfg, init, target, logs, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.bmc_depth = bmc_depth
