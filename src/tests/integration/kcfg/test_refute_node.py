@@ -147,9 +147,10 @@ class TestAPRProof(KCFGExploreTest):
         kcfg_post = prover.advance_proof(
             kcfg_explore,
         )
+
         assert prover.proof.status == ProofStatus.FAILED
 
-        stuck_node = single(kcfg_post.stuck)
+        stuck_node = single(prover.proof.terminal)
         prover.refute_node(kcfg_explore, stuck_node, extra_constraint=extra_constraint)
 
         assert len(prover.proof.subproof_ids) == 1

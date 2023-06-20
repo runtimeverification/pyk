@@ -98,7 +98,7 @@ class APRProof(Proof):
 
     @property
     def stuck_nodes_refuted(self) -> bool:
-        stuck_nodes = self.kcfg.stuck
+        stuck_nodes = self.kcfg.stuck + self.terminal
         refutations = dict(self.read_refutations())
         return all(n.id in self.node_refutations.keys() and refutations[n.id].csubst is None for n in stuck_nodes)
 
