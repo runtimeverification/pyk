@@ -9,11 +9,12 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term
-from pyk.kcfg import KCFG
+from pyk.kcfg.show import KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
+from pyk.proof.show import APRBMCProofNodePrinter, APRProofNodePrinter
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
 
     from pyk.kast.inner import KInner
     from pyk.kast.outer import KDefinition
-    from pyk.kcfg import KCFGExplore
+    from pyk.kcfg import KCFG, KCFGExplore
     from pyk.ktool.kprint import KPrint, SymbolTable
     from pyk.ktool.kprove import KProve
 
@@ -584,7 +585,6 @@ class TestImpProof(KCFGExploreTest):
                 ),
                 KVariable('GENERATED_COUNTER_CELL'),
             ),
-            (),
         )
         if constraint is not None:
             _config = _config.add_constraint(constraint)
@@ -713,25 +713,34 @@ class TestImpProof(KCFGExploreTest):
         ]
 
         kcfg = KCFG.from_claim(kprove.definition, claim)
+        #proof = APRProof.from_claim(kprove.definition, claim)
         proof = APRProof(
             f'{spec_module}.{claim_id}', kcfg, dependencies=deps_proofs, circularity=claim.is_circularity, logs={}
         )
         _msg_suffix = ' (and is a circularity)' if claim.is_circularity else ''
         _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(deps_claims)} dependencies{_msg_suffix}")
+
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
             is_terminal=TestImpProof._is_terminal,
             extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
-        kcfg = prover.advance_proof(
+
+        prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
         )
 
+        kcfg_show = KCFGShow(
+            kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+        )
+        cfg_lines = kcfg_show.show('test', proof.kcfg)
+        _LOGGER.info('\n'.join(cfg_lines))
+
         assert proof.status == proof_status
-        assert leaf_number(kcfg) == expected_leaf_number
+        assert leaf_number(proof.kcfg) == expected_leaf_number
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
@@ -756,13 +765,11 @@ class TestImpProof(KCFGExploreTest):
             _kast = minimize_term(cterm.kast)
             return kcfg_explore.kprint.pretty_print(_kast).split('\n')
 
-        claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
-        assert len(claims) == 1
 
-        kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
+        proof = APRProof.from_claim(kprove.definition, claim)
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -770,15 +777,15 @@ class TestImpProof(KCFGExploreTest):
             extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
 
-        kcfg = prover.advance_proof(
+        prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
         )
 
-        assert len(kcfg.stuck) == 1
-        path_constraint = kcfg.path_constraints(kcfg.stuck[0].id)
+        assert len(proof.kcfg.stuck) == 1
+        path_constraint = proof.path_constraints(proof.kcfg.stuck[0].id)
         actual_constraint = kcfg_explore.kprint.pretty_print(path_constraint).replace('\n', ' ')
         assert actual_constraint == expected_constraint
 
@@ -807,21 +814,26 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        kcfg = KCFG.from_claim(kprove.definition, claim)
-        kcfg_explore.simplify(kcfg, {})
-        proof = APRBMCProof(f'{spec_module}.{claim_id}', kcfg, logs={}, bmc_depth=bmc_depth)
+        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
+        kcfg_explore.simplify(proof.kcfg, {})
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
             same_loop=TestImpProof._same_loop,
             is_terminal=TestImpProof._is_terminal,
         )
-        kcfg = prover.advance_proof(
+        prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
         )
 
+        kcfg_show = KCFGShow(
+            kcfg_explore.kprint, node_printer=APRBMCProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+        )
+        cfg_lines = kcfg_show.show('test', proof.kcfg)
+        _LOGGER.info('\n'.join(cfg_lines))
+
         assert proof.status == proof_status
-        assert leaf_number(kcfg) == expected_leaf_number
+        assert leaf_number(proof.kcfg) == expected_leaf_number
