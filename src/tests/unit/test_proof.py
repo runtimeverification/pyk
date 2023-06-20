@@ -16,7 +16,7 @@ from .test_kcfg import node, node_dicts
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from pytest import FixtureRequest, TempPathFactory
+    from pytest import TempPathFactory
 
 
 @pytest.fixture(scope='function')
@@ -116,6 +116,7 @@ class TestProof:
         # Then
         assert type(proof_from_disk) is type(sample_proof)
         assert proof_from_disk.dict == sample_proof.dict
+
 
 #### APRProof
 
