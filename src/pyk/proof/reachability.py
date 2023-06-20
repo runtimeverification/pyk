@@ -166,11 +166,10 @@ class APRProof(Proof):
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
-            f'    frontier: {len(self.kcfg.frontier)}',
             f'    stuck: {len(self.kcfg.stuck)}',
-            'Subproofs:' if len(self.subproof_ids) else '',
             f'    pending: {len(self.pending)}',
             f'    terminal: {len(self.terminal)}',
+            f'Subproofs: {len(self.subproof_ids)}',
         ]
         for summary in subproofs_summaries:
             yield from summary
@@ -284,13 +283,11 @@ class APRBMCProof(APRProof):
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
-            f'    frontier: {len(self.kcfg.frontier)}',
-            f'    stuck: {len([nd for nd in self.kcfg.stuck if nd.id not in self._bounded_nodes])}',
-            f'    bmc-depth-bounded: {len(self._bounded_nodes)}',
-            'Subproofs' if len(self.subproof_ids) else '',
+            f'    stuck: {len(self.kcfg.stuck)}',
             f'    pending: {len(self.pending)}',
             f'    terminal: {len(self.terminal)}',
             f'    bounded: {len(self.bounded)}',
+            f'Subproofs: {len(self.subproof_ids)}',
         ]
         for summary in subproofs_summaries:
             yield from summary
