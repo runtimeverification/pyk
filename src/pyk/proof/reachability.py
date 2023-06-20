@@ -252,7 +252,13 @@ class APRBMCProof(APRProof):
         init = dct['init']
         target = dct['target']
         bounded_nodes = dct['bounded_nodes']
-        dependencies = [APRProof.from_dict(c) for c in dct['dependencies']]
+        if len(dct['dependencies']) > 0:
+            if proof_dir is None:
+                raise ValueError('The serialized proof has dependencies but no proof_dir was specified')
+            dependencies = [APRProof.read_proof(id, proof_dir=proof_dir) for id in dct['dependencies']]
+        else:
+            dependencies = []
+
         circularity = dct.get('circularity', False)
         bmc_depth = dct['bmc_depth']
         if 'logs' in dct:
