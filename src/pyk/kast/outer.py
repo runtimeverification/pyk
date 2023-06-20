@@ -1035,11 +1035,18 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 prods = _prods
             # Automatically defined symbols like isInt may get multiple
             # definitions in different modules.
-            unique_no_att: dict[KProduction, KProduction] = {}
+            unique_no_att: list[tuple[KProduction, KProduction]] = []
             for prod in prods:
-                trimmed_prod = prod.let_att(EMPTY_ATT)
-                unique_no_att[trimmed_prod] = prod
-            _prods = list(unique_no_att.values())
+                trimmed_prod = prod.let_att(remove_source_map_from_katt(prod.att))
+                found = False
+                for t, _ in unique_no_att:
+                    if t == trimmed_prod:
+                        found = True
+                        break
+                if found:
+                    continue
+                unique_no_att.append((trimmed_prod, prod))
+            _prods = [p for _, p in unique_no_att]
             if len(_prods) < len(prods):
                 _LOGGER.warning(f'Discarding {len(prods) - len(_prods)} equivalent productions')
                 prods = _prods
@@ -1333,3 +1340,12 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 def read_kast_definition(path: str | PathLike) -> KDefinition:
     with open(path) as f:
         return kast_term(json.loads(f.read()), KDefinition)
+
+
+def remove_source_map_from_katt(att: KAtt) -> KAtt:
+    atts = att.atts
+    new_atts = {}
+    for att_key in atts:
+        if att_key != 'org.kframework.attributes.Source' and att_key != 'org.kframework.attributes.Location':
+            new_atts[att_key] = atts[att_key]
+    return KAtt(atts=new_atts)

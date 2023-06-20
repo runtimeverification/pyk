@@ -10,7 +10,7 @@ from ..prelude.ml import mlAnd, mlEqualsTrue, mlImplies, mlOr
 from ..utils import find_common_items, hash_str
 from .inner import KApply, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
 from .kast import EMPTY_ATT, KAtt, WithKAtt
-from .outer import KDefinition, KFlatModule, KRuleLike
+from .outer import KDefinition, KFlatModule, KRuleLike, remove_source_map_from_katt
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable
@@ -500,15 +500,7 @@ def minimize_rule(rule: RL, keep_vars: Iterable[str] = ()) -> RL:
 
 
 def remove_source_map(definition: KDefinition) -> KDefinition:
-    def _remove_source_map(att: KAtt) -> KAtt:
-        atts = att.atts
-        new_atts = {}
-        for att_key in atts:
-            if att_key != 'org.kframework.attributes.Source' and att_key != 'org.kframework.attributes.Location':
-                new_atts[att_key] = atts[att_key]
-        return KAtt(atts=new_atts)
-
-    return on_attributes(definition, _remove_source_map)
+    return on_attributes(definition, remove_source_map_from_katt)
 
 
 def remove_attrs(term: KInner) -> KInner:
