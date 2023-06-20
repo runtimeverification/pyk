@@ -199,6 +199,9 @@ class APRProof(Proof):
     def add_terminal(self, nid: NodeIdLike) -> None:
         self._terminal_nodes.append(self.kcfg._resolve(nid))
 
+    def remove_terminal(self, nid: NodeIdLike) -> None:
+        self._terminal_nodes.remove(self.kcfg._resolve(nid))
+
     @property
     def summary(self) -> Iterable[str]:
         subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
@@ -206,7 +209,6 @@ class APRProof(Proof):
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
-            f'    frontier: {len(self.kcfg.frontier)}',
             f'    refuted: {len(self.node_refutations.keys())}',
             f'    pending: {len(self.pending)}',
             f'    failing: {len(self.failing)}',
@@ -227,7 +229,7 @@ class APRProof(Proof):
 
         # construct the path from the KCFG root to the node to refute
         try:
-            path = single(self.kcfg.paths_between(source_id=self.kcfg.get_unique_init().id, target_id=node.id))
+            path = single(self.kcfg.paths_between(source_id=self.init, target_id=node.id))
         except ValueError:
             _LOGGER.error(f'Node {node.id} is not reachable from the initial node.')
             return None
@@ -508,7 +510,8 @@ class APRProver:
         refutation.write_proof()
 
         # mark the node-to-refute as expanded to prevent further exploration
-        self.proof.kcfg.add_expanded(node.id)
+        #          self.proof.kcfg.add_expanded(node.id)
+        self.proof.add_terminal(node.id)
 
         if refutation.id in self.proof.subproof_ids:
             _LOGGER.warning(f'{refutation.id} is already a subproof of {self.proof.id}, overriding.')
@@ -526,7 +529,7 @@ class APRProver:
         self.proof.node_refutations[node.id] = eq_prover.proof.id
 
     def unrefute_node(self, node: KCFG.Node) -> None:
-        self.proof.kcfg.remove_expanded(node.id)
+        self.proof.remove_terminal(node.id)
         self.proof.remove_subproof(self.proof.get_refutation_id(node.id))
         del self.proof.node_refutations[node.id]
         _LOGGER.info(f'Disabled refutation of node {node.id}.')

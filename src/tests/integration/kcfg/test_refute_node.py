@@ -93,11 +93,11 @@ class TestAPRProof(KCFGExploreTest):
         prover = APRProver(proof, extract_branches=TestAPRProof._extract_branches)
 
         # When
-        kcfg_post = prover.advance_proof(
+        prover.advance_proof(
             kcfg_explore,
             max_iterations=1,
         )
-        frontier_nodes = kcfg_post.frontier
+        frontier_nodes = prover.proof.pending
         assert prover.proof.status == ProofStatus.PENDING
 
         assert len(frontier_nodes)
@@ -105,7 +105,7 @@ class TestAPRProof(KCFGExploreTest):
         prover.refute_node(kcfg_explore, frontier_node)
         prover.unrefute_node(frontier_node)
 
-        kcfg_post = prover.advance_proof(
+        prover.advance_proof(
             kcfg_explore,
         )
 
