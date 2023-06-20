@@ -144,7 +144,7 @@ class TestAPRProof(KCFGExploreTest):
         )
 
         # When
-        kcfg_post = prover.advance_proof(
+        prover.advance_proof(
             kcfg_explore,
         )
 
