@@ -38,7 +38,7 @@ class Proof(ABC):
         self._subproofs = {}
         if self.proof_dir is None and len(self.subproof_ids) > 0:
             raise ValueError(f'Cannot read subproofs {self.subproof_ids} of proof {self.id} with no proof_dir')
-        if subproof_ids is not None and len(self.subproof_ids) > 0:
+        if subproof_ids is not None and len(subproof_ids) > 0:
             assert self.proof_dir
             for proof_id in subproof_ids:
                 self.fetch_subproof(proof_id, force_reread=True)
