@@ -160,10 +160,10 @@ def simplify_bool(k: KInner) -> KInner:
 
 
 def remove_empty_k(term: KInner) -> KInner:
-    def cleanup(term: KApply) -> KInner:
-        if is_empty_k(term):
+    def cleanup(_term: KApply) -> KInner:
+        if is_empty_k(_term):
             return KSequence()
-        return term
+        return _term
 
     return top_down(if_ktype(KApply, cleanup), term)
 

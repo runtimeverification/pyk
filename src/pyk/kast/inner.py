@@ -706,4 +706,4 @@ def build_cons(unit: KInner, label: str | KLabel, terms: Iterable[KInner]) -> KI
 def is_empty_k(item: KInner) -> bool:
     if not isinstance(item, KApply):
         return False
-    return item.label == EMPTY_K_LABEL
+    return item.label.name == EMPTY_K_LABEL
