@@ -52,7 +52,7 @@ class TestNonDetProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim)
+        proof = APRProof.from_claim(kprove.definition, claim, logs={})
         prover = APRProver(proof, kcfg_explore=kcfg_explore)
         prover.advance_proof(
             max_iterations=max_iterations,

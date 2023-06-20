@@ -138,9 +138,11 @@ class APRProof(Proof):
         )
 
     @staticmethod
-    def from_claim(defn: KDefinition, claim: KClaim, *args: Any, **kwargs: Any) -> APRProof:
+    def from_claim(
+        defn: KDefinition, claim: KClaim, logs: dict[int, tuple[LogEntry, ...]], *args: Any, **kwargs: Any
+    ) -> APRProof:
         cfg, init_node, target_node = KCFG.from_claim(defn, claim)
-        return APRProof(claim.label, cfg, init=init_node, target=target_node, logs={}, **kwargs)
+        return APRProof(claim.label, cfg, init=init_node, target=target_node, logs=logs, **kwargs)
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
         path = self.kcfg.shortest_path_between(self.init, final_node_id)

@@ -716,7 +716,7 @@ class TestImpProof(KCFGExploreTest):
 
         # kcfg = KCFG.from_claim(kprove.definition, claim)
         proof = APRProof.from_claim(
-            kprove.definition, claim, dependencies=deps_proofs, circularity=claim.is_circularity
+            kprove.definition, claim, dependencies=deps_proofs, circularity=claim.is_circularity, logs={}
         )
         # proof = APRProof(
         #    f'{spec_module}.{claim_id}', kcfg, dependencies=deps_proofs, circularity=claim.is_circularity, logs={}
@@ -773,7 +773,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim)
+        proof = APRProof.from_claim(kprove.definition, claim, logs={})
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
