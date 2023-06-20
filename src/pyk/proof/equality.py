@@ -315,14 +315,12 @@ class RefutationProver:
             _LOGGER.info(f'RefutationProof finished {self.proof.id}: {self.proof.status}')
             return
 
-        antecedent_kast = mlTop()
         consequent_kast = self.proof.constraint
 
-        antecedent_simplified_kast, _ = kcfg_explore.kast_simplify(antecedent_kast)
+        antecedent_simplified_kast, mlTop()
         consequent_simplified_kast, _ = kcfg_explore.kast_simplify(consequent_kast)
         self.proof.set_simplified_constraints(consequent_simplified_kast)
-        _LOGGER.info(f'Simplified antecedent: {kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
-        _LOGGER.info(f'Simplified consequent: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
+        _LOGGER.info(f'Simplified constraints: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
 
         if is_top(consequent_simplified_kast):
             _LOGGER.warning(f'Consequent of implication (proof equality) simplifies to #Top {self.proof.id}')

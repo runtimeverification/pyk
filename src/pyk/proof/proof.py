@@ -32,14 +32,13 @@ class Proof(ABC):
     proof_dir: Path | None
     _subproofs: dict[str, Proof]
 
-    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str] | None = None) -> None:
+    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str]  = ()) -> None:
         self.id = id
         self.proof_dir = proof_dir
         self._subproofs = {}
-        if self.proof_dir is None and len(self.subproof_ids) > 0:
-            raise ValueError(f'Cannot read subproofs {self.subproof_ids} of proof {self.id} with no proof_dir')
-        if subproof_ids is not None and len(list(subproof_ids)) > 0:
-            assert self.proof_dir
+        if self.proof_dir is None and len(list(subproof_ids)) > 0:
+            raise ValueError(f'Cannot read subproofs {subproof_ids} of proof {self.id} with no proof_dir')
+        if len(list(subproof_ids)) > 0:
             for proof_id in subproof_ids:
                 self.fetch_subproof(proof_id, force_reread=True)
 
