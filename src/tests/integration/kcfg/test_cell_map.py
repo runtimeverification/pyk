@@ -54,10 +54,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
 class TestCellMapProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'cell-map.k'
 
-    @pytest.fixture(scope='function')
-    def proof_dir(self, tmp_path_factory: TempPathFactory) -> Path:
-        return tmp_path_factory.mktemp('proofs')
-
     @staticmethod
     def config(kprint: KPrint, k: str, active_accounts: str, accounts: Iterable[tuple[str, str]]) -> CTerm:
         def _parse(kt: KToken) -> KInner:
@@ -133,13 +129,12 @@ class TestCellMapProof(KCFGExploreTest):
         max_iterations: int,
         max_depth: int,
         terminal_rules: Iterable[str],
-        proof_dir: Path,
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim, proof_dir=proof_dir)
+        proof = APRProof.from_claim(kprove.definition, claim)
         init = proof.kcfg.node(proof.init)
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         proof.kcfg.replace_node(init.id, new_init_term)
