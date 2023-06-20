@@ -118,6 +118,8 @@ class APRProof(Proof):
             if proof_dir is None:
                 raise ValueError('The serialized proof has dependencies but no proof_dir was specified')
             dependencies = [APRProof.read_proof(id, proof_dir=proof_dir) for id in dct['dependencies']]
+        else:
+            dependencies = []
         circularity = dct.get('circularity', False)
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
