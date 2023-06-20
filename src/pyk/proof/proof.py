@@ -26,7 +26,7 @@ class ProofStatus(Enum):
 
 
 class Proof(ABC):
-    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof'}
+    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof', 'RefutationProof'}
 
     id: str
     proof_dir: Path | None
@@ -139,7 +139,7 @@ class Proof(ABC):
     @classmethod
     def read_proof(cls: type[Proof], id: str, proof_dir: Path) -> Proof:
         # these local imports allow us to call .to_dict() based on the proof type we read from JSON
-        from .equality import EqualityProof  # noqa
+        from .equality import EqualityProof, RefutationProof  # noqa
         from .reachability import APRBMCProof, APRProof  # noqa
 
         proof_path = proof_dir / f'{hash_str(id)}.json'
