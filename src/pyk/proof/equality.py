@@ -317,7 +317,7 @@ class RefutationProver:
 
         consequent_kast = self.proof.constraint
 
-        antecedent_simplified_kast, mlTop()
+        antecedent_simplified_kast = mlTop()
         consequent_simplified_kast, _ = kcfg_explore.kast_simplify(consequent_kast)
         self.proof.set_simplified_constraints(consequent_simplified_kast)
         _LOGGER.info(f'Simplified constraints: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
@@ -329,8 +329,8 @@ class RefutationProver:
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
             dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
             result = kcfg_explore.cterm_implies(
-                antecedent=CTerm(config=dummy_config, constraints=[antecedent_kast]),
-                consequent=CTerm(config=dummy_config, constraints=[consequent_kast]),
+                antecedent=CTerm(config=dummy_config, constraints=[antecedent_simplified_kast]),
+                consequent=CTerm(config=dummy_config, constraints=[consequent_simplified_kast]),
             )
             if result is not None:
                 self.proof.set_csubst(result)

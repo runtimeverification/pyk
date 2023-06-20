@@ -32,7 +32,7 @@ class Proof(ABC):
     proof_dir: Path | None
     _subproofs: dict[str, Proof]
 
-    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str]  = ()) -> None:
+    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str] = ()) -> None:
         self.id = id
         self.proof_dir = proof_dir
         self._subproofs = {}

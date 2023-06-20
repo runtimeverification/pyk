@@ -45,6 +45,7 @@ class APRProof(Proof):
     target: NodeIdLike
     _terminal_nodes: list[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
+    _refuted_nodes: list[NodeIdLike]
 
     def __init__(
         self,
@@ -57,6 +58,7 @@ class APRProof(Proof):
         node_refutations: dict[int, str] | None = None,
         terminal_nodes: Iterable[NodeIdLike] | None = None,
         subproof_ids: Iterable[str] = (),
+        refuted_nodes: Iterable[NodeIdLike] | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
@@ -64,6 +66,7 @@ class APRProof(Proof):
         self.target = target
         self.logs = logs
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
+        self._refuted_nodes = list(refuted_nodes) if refuted_nodes is not None else []
 
         if node_refutations is not None:
             refutations_not_in_subprroofs = set(node_refutations.values()).difference(
@@ -148,6 +151,7 @@ class APRProof(Proof):
         id = dct['id']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations = keys_to_int(dct['node_refutations']) if 'node_refutations' in dct else {}
+        refuted_nodes = dct['refuted_nodes'] if 'refuted_nodes' in dct else []
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
@@ -162,6 +166,7 @@ class APRProof(Proof):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            refuted_nodes=refuted_nodes,
         )
 
     @staticmethod
@@ -192,9 +197,16 @@ class APRProof(Proof):
         dct['target'] = self.target
         dct['terminal_nodes'] = self._terminal_nodes
         dct['node_refutations'] = self.node_refutations
+        dct['refuted_nodes'] = self._refuted_nodes
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
+
+    def add_refuted(self, nid: NodeIdLike) -> None:
+        self._refuted_nodes.append(self.kcfg._resolve(nid))
+
+    def remove_refuted(self, nid: NodeIdLike) -> None:
+        self._refuted_nodes.remove(self.kcfg._resolve(nid))
 
     def add_terminal(self, nid: NodeIdLike) -> None:
         self._terminal_nodes.append(self.kcfg._resolve(nid))
@@ -509,9 +521,7 @@ class APRProver:
             refutation.add_constraint(extra_constraint)
         refutation.write_proof()
 
-        # mark the node-to-refute as expanded to prevent further exploration
-        #          self.proof.kcfg.add_expanded(node.id)
-        self.proof.add_terminal(node.id)
+        self.proof.add_refuted(node.id)
 
         if refutation.id in self.proof.subproof_ids:
             _LOGGER.warning(f'{refutation.id} is already a subproof of {self.proof.id}, overriding.')
@@ -529,7 +539,7 @@ class APRProver:
         self.proof.node_refutations[node.id] = eq_prover.proof.id
 
     def unrefute_node(self, node: KCFG.Node) -> None:
-        self.proof.remove_terminal(node.id)
+        self.proof.remove_refuted(node.id)
         self.proof.remove_subproof(self.proof.get_refutation_id(node.id))
         del self.proof.node_refutations[node.id]
         _LOGGER.info(f'Disabled refutation of node {node.id}.')
