@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
-    from ..kast.outer import KClaim, KDefinition
+    from ..kast.outer import KDefinition
     from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
 
@@ -111,7 +111,6 @@ class APRProof(Proof):
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
-        terminal_nodes = dct['terminal_nodes']
         init_node = dct['init']
         target_node = dct['target']
         id = dct['id']
@@ -125,12 +124,21 @@ class APRProof(Proof):
         else:
             logs = {}
 
-        return APRProof(id, cfg, init_node, target_node, logs=logs, proof_dir=proof_dir, dependencies=dependencies, circularity=circularity)
+        return APRProof(
+            id,
+            cfg,
+            init_node,
+            target_node,
+            logs=logs,
+            proof_dir=proof_dir,
+            dependencies=dependencies,
+            circularity=circularity,
+        )
 
     @staticmethod
     def from_claim(defn: KDefinition, claim: KClaim, *args: Any, **kwargs: Any) -> APRProof:
         cfg, init_node, target_node = KCFG.from_claim(defn, claim)
-        return APRProof(claim.label, cfg, init_node, target_node, {})
+        return APRProof(claim.label, cfg, init=init_node, target=target_node, logs={}, **kwargs)
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
         path = self.kcfg.shortest_path_between(self.init, final_node_id)
@@ -194,7 +202,9 @@ class APRBMCProof(APRProof):
         dependencies: Iterable[APRProof] = (),
         circularity: bool = False,
     ):
-        super().__init__(id, kcfg, init, target, logs, proof_dir=proof_dir, dependencies=dependencies, circularity=circularity)
+        super().__init__(
+            id, kcfg, init, target, logs, proof_dir=proof_dir, dependencies=dependencies, circularity=circularity
+        )
         self.bmc_depth = bmc_depth
         self._bounded_nodes = list(bounded_nodes) if bounded_nodes is not None else []
 
@@ -362,12 +372,12 @@ class APRProver:
             return False
         return path_length(p) > 0
 
-    def _check_subsume(self, kcfg_explore: KCFGExplore, node: KCFG.Node) -> bool:
+    def _check_subsume(self, node: KCFG.Node) -> bool:
         target_node = self.proof.kcfg.node(self.proof.target)
         _LOGGER.info(
             f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, target_node.id))}'
         )
-        csubst = kcfg_explore.cterm_implies(node.cterm, target_node.cterm)
+        csubst = self.kcfg_explore.cterm_implies(node.cterm, target_node.cterm)
         if csubst is not None:
             self.proof.kcfg.create_cover(node.id, target_node.id, csubst=csubst)
             _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, target_node.id))}')
@@ -405,7 +415,7 @@ class APRProver:
             iterations += 1
             curr_node = self.proof.pending[0]
 
-            if self._check_subsume(kcfg_explore, curr_node):
+            if self._check_subsume(curr_node):
                 continue
 
             if self._check_terminal(curr_node):

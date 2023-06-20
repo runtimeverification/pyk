@@ -331,7 +331,7 @@ class KProve(KPrint):
         spec_file: Path,
         spec_module_name: str | None = None,
         include_dirs: Iterable[Path] = (),
-        md_selector: str | None = None,      
+        md_selector: str | None = None,
     ) -> Mapping[str, KClaim]:
         flat_module_list = self.get_claim_modules(
             spec_file=spec_file,
@@ -352,7 +352,7 @@ class KProve(KPrint):
         all_claims = self.get_all_claims(
             spec_file=spec_file, spec_module_name=spec_module_name, include_dirs=include_dirs, md_selector=md_selector
         )
-        return [cl for l, cl in all_claims.items() if cl.is_circularity]      
+        return [cl for l, cl in all_claims.items() if cl.is_circularity]
 
     def get_claims(
         self,
