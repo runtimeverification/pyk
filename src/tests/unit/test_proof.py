@@ -16,7 +16,7 @@ from .test_kcfg import node, node_dicts
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from pytest import FixtureRequest, TempPathFactory
+    from pytest import TempPathFactory
 
 
 @pytest.fixture(scope='function')
@@ -53,51 +53,58 @@ def equality_proof(i: int, proof_dir: Path) -> EqualityProof:
     )
 
 
-PROOF_TEST_DATA: list[tuple[str, str, Proof]] = [
-    (
-        'apr-proof',
-        'proof_dir',
-        APRProof(
+class TestProof:
+    def test_read_proof_apr(self, proof_dir: Path) -> None:
+        sample_proof = APRProof(
             id='apr_proof_1',
             kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
             init=node(1).id,
             target=node(1).id,
             logs={},
-        ),
-    ),
-    (
-        'aprbmc-proof',
-        'proof_dir',
-        APRBMCProof(
+            proof_dir=proof_dir,
+        )
+
+        # Given
+        assert sample_proof.proof_dir
+        sample_proof.write_proof()
+
+        # When
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+
+        # Then
+        assert type(proof_from_disk) is type(sample_proof)
+        assert proof_from_disk.dict == sample_proof.dict
+
+    def test_read_proof_aprbmc(self, proof_dir: Path) -> None:
+        sample_proof = APRBMCProof(
             id='aprbmc_proof_1',
             bmc_depth=1,
             kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
             init=node(1).id,
             target=node(1).id,
             logs={},
-        ),
-    ),
-    (
-        'equality-proof',
-        'proof_dir',
-        EqualityProof(
+            proof_dir=proof_dir,
+        )
+
+        # Given
+        assert sample_proof.proof_dir
+        sample_proof.write_proof()
+
+        # When
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+
+        # Then
+        assert type(proof_from_disk) is type(sample_proof)
+        assert proof_from_disk.dict == sample_proof.dict
+
+    def test_read_proof_equality(self, proof_dir: Path) -> None:
+        sample_proof = EqualityProof(
             id='equality_proof_1',
             lhs_body=intToken(1),
             rhs_body=intToken(1),
             sort=BOOL,
-        ),
-    ),
-]
-
-
-class TestProof:
-    @pytest.mark.parametrize(
-        'test_id,dir_fixture,sample_proof',
-        PROOF_TEST_DATA,
-        ids=[test_id for test_id, *_ in PROOF_TEST_DATA],
-    )
-    def test_read_proof(self, request: FixtureRequest, test_id: str, dir_fixture: str, sample_proof: Proof) -> None:
-        sample_proof.proof_dir = request.getfixturevalue(dir_fixture)
+            proof_dir=proof_dir,
+        )
 
         # Given
         assert sample_proof.proof_dir

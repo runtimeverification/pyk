@@ -26,19 +26,20 @@ class ProofStatus(Enum):
 
 
 class Proof(ABC):
-    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof'}
+    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof', 'RefutationProof'}
 
     id: str
     proof_dir: Path | None
     _subproofs: dict[str, Proof]
 
-    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str] = ()) -> None:
+    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str] | None = None) -> None:
         self.id = id
         self.proof_dir = proof_dir
         self._subproofs = {}
-        if self.proof_dir is None and len(list(subproof_ids)) > 0:
-            raise ValueError(f'Cannot read subproofs {subproof_ids} of proof {self.id} with no proof_dir')
-        if len(list(subproof_ids)) > 0:
+        if self.proof_dir is None and len(self.subproof_ids) > 0:
+            raise ValueError(f'Cannot read subproofs {self.subproof_ids} of proof {self.id} with no proof_dir')
+        if subproof_ids is not None:
+            assert self.proof_dir
             for proof_id in subproof_ids:
                 self.fetch_subproof(proof_id, force_reread=True)
 
@@ -139,7 +140,7 @@ class Proof(ABC):
     @classmethod
     def read_proof(cls: type[Proof], id: str, proof_dir: Path) -> Proof:
         # these local imports allow us to call .to_dict() based on the proof type we read from JSON
-        from .equality import EqualityProof  # noqa
+        from .equality import EqualityProof, RefutationProof  # noqa
         from .reachability import APRBMCProof, APRProof  # noqa
 
         proof_path = proof_dir / f'{hash_str(id)}.json'
