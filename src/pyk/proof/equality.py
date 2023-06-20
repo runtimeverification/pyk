@@ -318,14 +318,6 @@ class RefutationProver:
         antecedent_kast = mlTop()
         consequent_kast = self.proof.constraint
 
-        #          _, kore_client = kcfg_explore._kore_rpc
-
-        #          _LOGGER.info(f'Attempting RefutationProof {self.proof.id}')
-
-        #          proof_failed_trivially = False
-        #          consequent_simplified_kore, _ = kore_client.simplify(kcfg_explore.kprint.kast_to_kore(consequent_kast))
-        #          consequent_simplified_kast = kcfg_explore.kprint.kore_to_kast(consequent_simplified_kore)
-        #          _LOGGER.info(f'Simplified consequent: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
         antecedent_simplified_kast, _ = kcfg_explore.kast_simplify(antecedent_kast)
         consequent_simplified_kast, _ = kcfg_explore.kast_simplify(consequent_kast)
         self.proof.set_simplified_constraints(consequent_simplified_kast)
