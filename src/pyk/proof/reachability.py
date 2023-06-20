@@ -55,8 +55,8 @@ class APRProof(Proof):
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         node_refutations: dict[int, str] | None = None,
-        subproof_ids: list[str] | None = None,
         terminal_nodes: Iterable[NodeIdLike] | None = None,
+        subproof_ids: Iterable[str] = (),
     ):
         super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
@@ -134,8 +134,8 @@ class APRProof(Proof):
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
-        terminal_nodes = dct['terminal_nodes']
         init_node = dct['init']
+        terminal_nodes = dct['terminal_nodes']
         target_node = dct['target']
         id = dct['id']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
@@ -144,7 +144,6 @@ class APRProof(Proof):
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-
         return APRProof(
             id,
             cfg,
@@ -178,18 +177,16 @@ class APRProof(Proof):
 
     @property
     def dict(self) -> dict[str, Any]:
+        dct = super().dict
+        dct['type'] = 'APRProof'
+        dct['cfg'] = self.kcfg.to_dict()
+        dct['init'] = self.init
+        dct['target'] = self.target
+        dct['terminal_nodes'] = self._terminal_nodes
+        dct['node_refutations'] = self._terminal_nodes
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
-        return {
-            'type': 'APRProof',
-            'id': self.id,
-            'cfg': self.kcfg.to_dict(),
-            'init': self.init,
-            'target': self.target,
-            'terminal_nodes': self._terminal_nodes,
-            'subproof_ids': self.subproof_ids,
-            'node_refutations': self.node_refutations,
-            'logs': logs,
-        }
+        dct['logs'] = logs
+        return dct
 
     def add_terminal(self, nid: NodeIdLike) -> None:
         self._terminal_nodes.append(self.kcfg._resolve(nid))
@@ -284,7 +281,7 @@ class APRBMCProof(APRProof):
         bmc_depth: int,
         bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
-        subproof_ids: list[str] | None = None,
+        subproof_ids: Iterable[str] = (),
         node_refutations: dict[int, str] | None = None,
     ):
         super().__init__(
@@ -330,13 +327,13 @@ class APRBMCProof(APRProof):
     @classmethod
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
-        id = dct['id']
         init = dct['init']
         target = dct['target']
         bounded_nodes = dct['bounded_nodes']
         bmc_depth = dct['bmc_depth']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations = keys_to_int(dct['node_refutations']) if 'node_refutations' in dct else {}
+        id = dct['id']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
@@ -401,16 +398,19 @@ class APRProver:
     proof: APRProof
     _is_terminal: Callable[[CTerm], bool] | None
     _extract_branches: Callable[[CTerm], Iterable[KInner]] | None
+    _abstract_node: Callable[[CTerm], CTerm] | None
 
     def __init__(
         self,
         proof: APRProof,
         is_terminal: Callable[[CTerm], bool] | None = None,
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
+        abstract_node: Callable[[CTerm], CTerm] | None = None,
     ) -> None:
         self.proof = proof
         self._is_terminal = is_terminal
         self._extract_branches = extract_branches
+        self._abstract_node = abstract_node
 
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
         if self._is_terminal is not None:
@@ -433,6 +433,18 @@ class APRProver:
             _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, target_node.id))}')
             return True
         return False
+
+    def _check_abstract(self, node: KCFG.Node) -> bool:
+        if self._abstract_node is None:
+            return False
+
+        new_cterm = self._abstract_node(node.cterm)
+        if new_cterm == node.cterm:
+            return False
+
+        new_node = self.proof.kcfg.create_node(new_cterm)
+        self.proof.kcfg.create_cover(node.id, new_node.id)
+        return True
 
     def advance_proof(
         self,
@@ -458,6 +470,9 @@ class APRProver:
                 continue
 
             if self._check_terminal(curr_node):
+                continue
+
+            if self._check_abstract(curr_node):
                 continue
 
             if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=curr_node.id)) == 0:
@@ -528,8 +543,9 @@ class APRBMCProver(APRProver):
         same_loop: Callable[[CTerm, CTerm], bool],
         is_terminal: Callable[[CTerm], bool] | None = None,
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
+        abstract_node: Callable[[CTerm], CTerm] | None = None,
     ) -> None:
-        super().__init__(proof, is_terminal=is_terminal, extract_branches=extract_branches)
+        super().__init__(proof, is_terminal=is_terminal, extract_branches=extract_branches, abstract_node=abstract_node)
         self._same_loop = same_loop
         self._checked_nodes = []
 
