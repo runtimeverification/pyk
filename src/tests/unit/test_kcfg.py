@@ -395,7 +395,6 @@ def test_resolve() -> None:
 def test_aliases() -> None:
     # Given
     d = {
-        'target': [4],
         'nodes': node_dicts(4),
         'edges': edge_dicts((1, 2), (2, 3)),
         'aliases': {'foo': 2},
@@ -425,7 +424,6 @@ def test_pretty_print() -> None:
         return mlEquals(KVariable('x'), token(i))
 
     d = {
-        'target': [17],
         'nodes': node_dicts(15, start=10) + predicate_node_dicts(1, start=25),
         'aliases': {'foo': 14, 'bar': 14},
         'edges': edge_dicts((21, 12), (12, 13, 5), (13, 14), (15, 16), (16, 13), (18, 17), (22, 19)),
