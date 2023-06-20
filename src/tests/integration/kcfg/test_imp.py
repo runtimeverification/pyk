@@ -312,10 +312,21 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         1,
     ),
     (
-        'imp-if-almost-same',
+        'imp-if-almost-same-plus',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC-DEPENDENCIES',
+        'if-almost-same-plus',
+        None,
+        None,
+        [],
+        ProofStatus.PASSED,
+        2,
+    ),
+    (
+        'imp-if-almost-same-times',
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
-        'if-almost-same',
+        'if-almost-same-times',
         None,
         None,
         [],
@@ -331,7 +342,51 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         [],
         ProofStatus.PASSED,
-        2,  # Change this to 1 once we can reuse subproofs
+        1,  # We can reuse subproofs.
+    ),
+    (
+        'imp-use-if-almost-same-twice',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'use-if-almost-same-twice',
+        None,
+        None,
+        [],
+        ProofStatus.PASSED,
+        1,  # We can reuse subproofs.
+    ),
+    (
+        'imp-simple-sum-loop',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'sum-loop',
+        None,
+        None,
+        ['IMP.while'],  # If we do not include `IMP.while` in this list, we get 4 branches instead of 2
+        ProofStatus.PASSED,
+        2,
+    ),
+    (
+        'imp-simple-sum-N',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'sum-N',
+        None,
+        None,
+        [],
+        ProofStatus.PASSED,
+        1,
+    ),
+    (
+        'imp-failing-circularity',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'failing-circularity',
+        None,
+        None,
+        [],
+        ProofStatus.FAILED,
+        1,
     ),
 )
 
@@ -640,14 +695,39 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim)
+        deps = claim.dependencies
+
+        def qualify(module: str, label: str) -> str:
+            if '.' in label:
+                return label
+            return f'{module}.{label}'
+
+        deps_claims = kprove.get_claims(
+            Path(spec_file),
+            spec_module_name=spec_module,
+            claim_labels=[qualify(spec_module, dep_id) for dep_id in deps],
+        )
+
+        deps_proofs = [
+            APRProof(c.label, KCFG.from_claim(kprove.definition, c), dependencies=[], logs={}) for c in deps_claims
+        ]
+
+        kcfg = KCFG.from_claim(kprove.definition, claim)
+        #proof = APRProof.from_claim(kprove.definition, claim)
+        proof = APRProof(
+            f'{spec_module}.{claim_id}', kcfg, dependencies=deps_proofs, circularity=claim.is_circularity, logs={}
+        )
+        _msg_suffix = ' (and is a circularity)' if claim.is_circularity else ''
+        _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(deps_claims)} dependencies{_msg_suffix}")
+
         prover = APRProver(
             proof,
+            kcfg_explore=kcfg_explore,
             is_terminal=TestImpProof._is_terminal,
             extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
+
         prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
@@ -692,12 +772,12 @@ class TestImpProof(KCFGExploreTest):
         proof = APRProof.from_claim(kprove.definition, claim)
         prover = APRProver(
             proof,
+            kcfg_explore=kcfg_explore,
             is_terminal=TestImpProof._is_terminal,
             extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
 
         prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
@@ -736,9 +816,13 @@ class TestImpProof(KCFGExploreTest):
 
         proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
         kcfg_explore.simplify(proof.kcfg, {})
-        prover = APRBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
+        prover = APRBMCProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            same_loop=TestImpProof._same_loop,
+            is_terminal=TestImpProof._is_terminal,
+        )
         prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,

@@ -138,9 +138,8 @@ class TestCellMapProof(KCFGExploreTest):
         init = proof.kcfg.get_unique_init()
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         proof.kcfg.replace_node(init.id, new_init_term)
-        prover = APRProver(proof)
+        prover = APRProver(proof, kcfg_explore=kcfg_explore)
         prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,

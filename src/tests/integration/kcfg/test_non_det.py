@@ -53,9 +53,8 @@ class TestNonDetProof(KCFGExploreTest):
         )
 
         proof = APRProof.from_claim(kprove.definition, claim)
-        prover = APRProver(proof)
+        prover = APRProver(proof, kcfg_explore=kcfg_explore)
         prover.advance_proof(
-            kcfg_explore,
             max_iterations=max_iterations,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,
