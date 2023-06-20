@@ -1029,27 +1029,20 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
             _prods = [prod for prod in prods if 'unparseAvoid' not in prod.att]
             if len(_prods) < len(prods):
-                prods = _prods
                 _LOGGER.warning(
                     f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}'
                 )
+                prods = _prods
             # Automatically defined symbols like isInt may get multiple
             # definitions in different modules.
-            unique_no_att: list[tuple[KProduction, KProduction]] = []
+            unique_no_att: dict[KProduction, KProduction] = {}
             for prod in prods:
-                equivalent = False
-                trimmed_prod = prod.let_att(KAtt({}))
-                for _, t in unique_no_att:
-                    if t == trimmed_prod:
-                        equivalent = True
-                        break
-                if equivalent:
-                    continue
-                unique_no_att.append((prod, trimmed_prod))
-            _prods = [p for p, _ in unique_no_att]
+                trimmed_prod = prod.let_att(EMPTY_ATT)
+                unique_no_att[trimmed_prod] = prod
+            _prods = list(unique_no_att.values())
             if len(_prods) < len(prods):
-                prods = _prods
                 _LOGGER.warning(f'Discarding {len(prods) - len(_prods)} equivalent productions')
+                prods = _prods
             try:
                 self._production_for_klabel[klabel] = single(prods)
             except ValueError as err:
