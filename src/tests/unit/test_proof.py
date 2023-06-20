@@ -54,7 +54,7 @@ def equality_proof(i: int, proof_dir: Path) -> EqualityProof:
 
 
 class TestProof:
-    def test_read_proof_apr(self, proof_dir: Path, sample_proof: Proof) -> None:
+    def test_read_proof_apr(self, proof_dir: Path) -> None:
         sample_proof = APRProof(
             id='apr_proof_1',
             kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
@@ -75,7 +75,7 @@ class TestProof:
         assert type(proof_from_disk) is type(sample_proof)
         assert proof_from_disk.dict == sample_proof.dict
 
-    def test_read_proof_aprbmc(self, proof_dir: Path, sample_proof: Proof) -> None:
+    def test_read_proof_aprbmc(self, proof_dir: Path) -> None:
         sample_proof = APRBMCProof(
             id='aprbmc_proof_1',
             bmc_depth=1,
@@ -97,7 +97,7 @@ class TestProof:
         assert type(proof_from_disk) is type(sample_proof)
         assert proof_from_disk.dict == sample_proof.dict
 
-    def test_read_proof_equality(self, proof_dir: Path, sample_proof: Proof) -> None:
+    def test_read_proof_equality(self, proof_dir: Path) -> None:
         sample_proof = EqualityProof(
             id='equality_proof_1',
             lhs_body=intToken(1),
