@@ -248,8 +248,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return list(self._nodes.values())
 
     @property
-    def init(self) -> list[Node]:
-        return [node for node in self.nodes if self.is_init(node.id)]
+    def root(self) -> list[Node]:
+        return [node for node in self.nodes if self.is_root(node.id)]
 
     @property
     def stuck(self) -> list[Node]:
@@ -702,7 +702,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         self._stuck.discard(node_id)
 
-    def is_init(self, node_id: NodeIdLike) -> bool:
+    def is_root(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return len(self.predecessors(node_id)) == 0
 

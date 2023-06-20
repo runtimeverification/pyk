@@ -395,7 +395,6 @@ def test_resolve() -> None:
 def test_aliases() -> None:
     # Given
     d = {
-        'init': [1],
         'target': [4],
         'nodes': node_dicts(4),
         'edges': edge_dicts((1, 2), (2, 3)),
@@ -426,7 +425,6 @@ def test_pretty_print() -> None:
         return mlEquals(KVariable('x'), token(i))
 
     d = {
-        'init': [21],
         'target': [17],
         'nodes': node_dicts(15, start=10) + predicate_node_dicts(1, start=25),
         'aliases': {'foo': 14, 'bar': 14},
@@ -453,7 +451,7 @@ def test_pretty_print() -> None:
 
     expected = (
         '\n'
-        '┌─ 21 (init)\n'
+        '┌─ 21 (root)\n'
         '│\n'
         '│  (1 step)\n'
         '├─ 12\n'
@@ -529,14 +527,14 @@ def test_pretty_print() -> None:
         '      (looped back)\n'
         '\n'
         '\n'
-        '┌─ 10 (init, leaf)\n'
+        '┌─ 10 (root, leaf)\n'
         '\n'
-        '┌─ 11 (init, leaf)\n'
+        '┌─ 11 (root, leaf)\n'
     )
 
     expected_full_printer = (
         '\n'
-        '┌─ 21 (init)\n'
+        '┌─ 21 (root)\n'
         '│     <top>\n'
         '│       V21\n'
         '│     </top>\n'
@@ -667,12 +665,12 @@ def test_pretty_print() -> None:
         '      (looped back)\n'
         '\n'
         '\n'
-        '┌─ 10 (init, leaf)\n'
+        '┌─ 10 (root, leaf)\n'
         '│     <top>\n'
         '│       10\n'
         '│     </top>\n'
         '\n'
-        '┌─ 11 (init, leaf)\n'
+        '┌─ 11 (root, leaf)\n'
         '│     <top>\n'
         '│       V11\n'
         '│     </top>\n'

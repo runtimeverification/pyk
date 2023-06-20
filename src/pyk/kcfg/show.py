@@ -56,8 +56,8 @@ class NodePrinter:
 
     def node_attrs(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
         attrs = []
-        if kcfg.is_init(node.id):
-            attrs.append('init')
+        if kcfg.is_root(node.id):
+            attrs.append('root')
         if kcfg.is_stuck(node.id):
             attrs.append('stuck')
         if kcfg.is_leaf(node.id):
@@ -196,7 +196,7 @@ class KCFGShow:
             suffix = []
             elbow = '├─'
             node_indent = '│   '
-            if kcfg.is_init(curr_node.id):
+            if kcfg.is_root(curr_node.id):
                 elbow = '┌─'
             elif processed or not successors:
                 elbow = '└─'
@@ -270,7 +270,7 @@ class KCFGShow:
             init_leaf_nodes = []
             remaining_nodes = []
             for node in sorted_init_nodes:
-                if kcfg.is_init(node.id):
+                if kcfg.is_root(node.id):
                     if kcfg.is_leaf(node.id):
                         init_leaf_nodes.append(node)
                     else:
