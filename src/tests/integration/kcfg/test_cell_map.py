@@ -135,7 +135,7 @@ class TestCellMapProof(KCFGExploreTest):
         )
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={})
-        init = proof.kcfg.get_unique_init()
+        init = proof.kcfg.node(proof.init)
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         proof.kcfg.replace_node(init.id, new_init_term)
         prover = APRProver(proof, kcfg_explore=kcfg_explore)
@@ -148,7 +148,7 @@ class TestCellMapProof(KCFGExploreTest):
         kcfg_show = KCFGShow(
             kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
         )
-        cfg_lines = kcfg_show.show('test', proof.kcfg)
+        cfg_lines = kcfg_show.show(proof.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 
         assert proof.status == ProofStatus.PASSED

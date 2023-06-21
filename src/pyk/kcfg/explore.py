@@ -395,10 +395,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         terminal_rules: Iterable[str] = (),
         module_name: str | None = None,
     ) -> None:
-        if not kcfg.is_frontier(node.id):
-            raise ValueError(f'Cannot extend non-frontier node {self.id}: {node.id}')
-
-        kcfg.add_expanded(node.id)
+        if not kcfg.is_leaf(node.id):
+            raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
+        if kcfg.is_stuck(node.id):
+            raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
 
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
         depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
@@ -420,6 +420,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         # Stuck
         elif len(next_cterms) == 0:
+            kcfg.add_stuck(node.id)
             _LOGGER.info(f'Found stuck node {self.id}: {shorten_hashes(node.id)}')
 
         # Cut Rule
