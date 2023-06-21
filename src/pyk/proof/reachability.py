@@ -44,7 +44,6 @@ class APRProof(Proof):
     target: NodeIdLike
     _terminal_nodes: list[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
-    dependencies: list[APRProof]  # list of dependencies other than self
     circularity: bool
     admitted: bool
 
@@ -301,7 +300,6 @@ class APRBMCProof(APRProof):
         dct['bmc_depth'] = self.bmc_depth
         dct['bounded_nodes'] = self._bounded_nodes
         dct['logs'] = logs
-        dct['dependencies'] = [c.dict for c in self.dependencies]
         dct['circularity'] = self.circularity
         return dct
 
