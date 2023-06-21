@@ -466,17 +466,7 @@ class APRProver:
         _LOGGER.info(f'Disabled refutation of node {node.id}.')
 
     def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:  # TODO put into prover class
-        """Construct an EqualityProof stating that the node's path condition is unsatisfiable"""
-        if not node in self.proof.kcfg.nodes:
-            raise ValueError(f'No such node {node.id}')
-
-        # construct the path from the KCFG root to the node to refute
-        try:
-            path = single(self.proof.kcfg.paths_between(source_id=self.proof.init, target_id=node.id))
-        except ValueError:
-            _LOGGER.error(f'Node {node.id} is not reachable from the initial node.')
-            return None
-        # traverse the path back from the node-to-refute and choose only split nodes and non-deterministic branches
+        path = single(self.proof.kcfg.paths_between(source_id=self.proof.init, target_id=node.id))
         branches_on_path = list(filter(lambda x: type(x) is KCFG.Split or type(x) is KCFG.NDBranch, reversed(path)))
         if len(branches_on_path) == 0:
             _LOGGER.error(f'Cannot refute node {node.id} in linear KCFG')
