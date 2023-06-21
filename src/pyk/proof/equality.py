@@ -94,7 +94,7 @@ class EqualityProof(Proof):
     def status(self) -> ProofStatus:
         if self.simplified_constraints is None or self.simplified_equality is None:
             return ProofStatus.PENDING
-        elif self.csubst is not None:
+        elif self.csubst is None:
             return ProofStatus.FAILED
         else:
             return ProofStatus.PASSED
@@ -209,7 +209,7 @@ class RefutationProof(Proof):
     def status(self) -> ProofStatus:
         if self.simplified_constraints is None:
             return ProofStatus.PENDING
-        elif self.csubst is not None:
+        elif self.csubst is None:
             return ProofStatus.FAILED
         else:
             return ProofStatus.PASSED
