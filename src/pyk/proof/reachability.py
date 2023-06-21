@@ -10,7 +10,7 @@ from pyk.kore.rpc import LogEntry
 from ..kast.inner import KRewrite, KSort
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KClaim
-from ..kcfg import KCFG, path_length
+from ..kcfg import KCFG
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import hash_str, shorten_hashes, single
 from .proof import Proof, ProofStatus
@@ -104,11 +104,6 @@ class APRProof(Proof):
             _LOGGER.info(f'Reading APRProof from file {id}: {proof_path}')
             return APRProof.from_dict(proof_dict, proof_dir=proof_dir)
         raise ValueError(f'Could not load APRProof from file {id}: {proof_path}')
-
-    def write_proof(self) -> None:
-        for d in self.dependencies:
-            d.write_proof()
-        super().write_proof()
 
     @property
     def status(self) -> ProofStatus:
@@ -259,12 +254,6 @@ class APRBMCProof(APRProof):
         init = dct['init']
         target = dct['target']
         bounded_nodes = dct['bounded_nodes']
-        if len(dct['dependencies']) > 0:
-            if proof_dir is None:
-                raise ValueError('The serialized proof has dependencies but no proof_dir was specified')
-            dependencies = [APRProof.read_proof(id, proof_dir=proof_dir) for id in dct['dependencies']]
-        else:
-            dependencies = []
 
         circularity = dct.get('circularity', False)
         bmc_depth = dct['bmc_depth']
@@ -353,8 +342,8 @@ class APRProver:
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
         def build_claim(pf: APRProof) -> KClaim:
-            fr: CTerm = single(pf.kcfg.init).cterm
-            to: CTerm = single(pf.kcfg.target).cterm
+            fr: CTerm = single(pf.kcfg.root).cterm
+            to: CTerm = pf.kcfg.node(pf.target).cterm
             fr_config_sorted = self.kcfg_explore.kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
             to_config_sorted = self.kcfg_explore.kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
             kc = KClaim(
@@ -364,18 +353,15 @@ class APRProver:
             )
             return kc
 
-        subproofs: list[Proof] = [
-            Proof.read_proof(i, proof_dir=proof.proof_dir)
-            for i in proof.subproof_ids
-        ]
+        subproofs: list[Proof] = (
+            [Proof.read_proof(i, proof_dir=proof.proof_dir) for i in proof.subproof_ids]
+            if proof.proof_dir is not None
+            else []
+        )
 
-        apr_subproofs: list[APRProof] = [
-            pf for pf in subproofs if type(pf) is APRProof
-        ]
+        apr_subproofs: list[APRProof] = [pf for pf in subproofs if type(pf) is APRProof]
 
-        dependencies_as_claims: list[KClaim] = [
-            build_claim(d) for d in apr_subproofs
-        ]
+        dependencies_as_claims: list[KClaim] = [build_claim(d) for d in apr_subproofs]
 
         self.some_dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
         self.kcfg_explore.add_dependencies_module(
@@ -402,11 +388,11 @@ class APRProver:
         return False
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
-        init = self.proof.kcfg.get_unique_init()
+        init = self.proof.kcfg.node(self.proof.init)
         p = self.proof.kcfg.shortest_path_between(init.id, node.id)
         if p is None:
             return False
-        return path_length(p) > 0
+        return KCFG.path_length(p) > 0
 
     def _check_subsume(self, node: KCFG.Node) -> bool:
         target_node = self.proof.kcfg.node(self.proof.target)
