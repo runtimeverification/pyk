@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from abc import abstractmethod
+from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
@@ -1029,10 +1030,17 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
             _prods = [prod for prod in prods if 'unparseAvoid' not in prod.att]
             if len(_prods) < len(prods):
-                prods = _prods
                 _LOGGER.warning(
                     f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}'
                 )
+                prods = _prods
+            # Automatically defined symbols like isInt may get multiple
+            # definitions in different modules.
+            counter = Counter(prod.let_att(prod.att.drop_source()) for prod in prods)
+            _prods = list(counter)
+            if len(_prods) < len(prods):
+                _LOGGER.warning(f'Discarding {len(prods) - len(_prods)} equivalent productions')
+                prods = _prods
             try:
                 self._production_for_klabel[klabel] = single(prods)
             except ValueError as err:
