@@ -134,11 +134,7 @@ class KAtt(KAst, Mapping[str, Any]):
         return KAtt({k: v for k, v in self.atts.items() if k not in atts})
 
     def drop_source(self) -> KAtt:
-        new_atts = {
-            key: value
-            for key, value in self.atts.items()
-            if key != self.SOURCE and key != self.LOCATION
-        }
+        new_atts = {key: value for key, value in self.atts.items() if key != self.SOURCE and key != self.LOCATION}
         return KAtt(atts=new_atts)
 
     @property

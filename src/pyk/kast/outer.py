@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 from abc import abstractmethod
-from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
@@ -1036,8 +1035,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 prods = _prods
             # Automatically defined symbols like isInt may get multiple
             # definitions in different modules.
-            counter = Counter(prod.let_att(prod.att.drop_source()) for prod in prods)
-            _prods = list(counter)
+            _prods = list({prod.let_att(prod.att.drop_source()) for prod in prods})
             if len(_prods) < len(prods):
                 _LOGGER.warning(f'Discarding {len(prods) - len(_prods)} equivalent productions')
                 prods = _prods
