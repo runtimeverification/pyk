@@ -40,7 +40,7 @@ class APRProof(Proof):
     """
 
     kcfg: KCFG
-    node_refutations: dict[NodeIdLike, RefutationProof]
+    node_refutations: dict[NodeIdLike, RefutationProof]  # TODO _node_refutatations
     init: NodeIdLike
     target: NodeIdLike
     _terminal_nodes: list[NodeIdLike]
@@ -143,7 +143,7 @@ class APRProof(Proof):
 
         if (len(self.failing) > 0 and not all_stuck_refuted) or self.subproofs_status == ProofStatus.FAILED:
             return ProofStatus.FAILED
-        elif len(self.pending) > 0 or self.subproofs_status == ProofStatus.PENDING:
+        elif (len(self.pending) > 0 and not all_stuck_refuted) or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
@@ -207,16 +207,16 @@ class APRProof(Proof):
         return dct
 
     def add_refuted(self, nid: NodeIdLike, proof: RefutationProof) -> None:
-        self.node_refutations[self.kcfg._resolve(nid)] = proof
+        self.node_refutations[self.kcfg._resolve(nid)] = proof  # TODO remove
 
     def remove_refuted(self, nid: NodeIdLike) -> None:
-        del self.node_refutations[self.kcfg._resolve(nid)]
+        del self.node_refutations[self.kcfg._resolve(nid)]  # TODO remove
 
     def add_terminal(self, nid: NodeIdLike) -> None:
-        self._terminal_nodes.append(self.kcfg._resolve(nid))
+        self._terminal_nodes.append(self.kcfg._resolve(nid))  # TODO remove
 
     def remove_terminal(self, nid: NodeIdLike) -> None:
-        self._terminal_nodes.remove(self.kcfg._resolve(nid))
+        self._terminal_nodes.remove(self.kcfg._resolve(nid))  # TODO remove
 
     @property
     def summary(self) -> Iterable[str]:
@@ -238,7 +238,7 @@ class APRProof(Proof):
     def get_refutation_id(self, node_id: int) -> str:
         return f'{self.id}.node-infeasible-{node_id}'
 
-    def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:
+    def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:  # TODO put into prover class
         """Construct an EqualityProof stating that the node's path condition is unsatisfiable"""
         if not node in self.kcfg.nodes:
             raise ValueError(f'No such node {node.id}')
@@ -289,6 +289,8 @@ class APRProof(Proof):
             constraints=[*pre_split_constraints, last_constraint],
             proof_dir=self.proof_dir,
         )
+
+        self.add_subproof(refutation)
         return refutation
 
 
@@ -522,10 +524,6 @@ class APRProver:
 
         self.proof.add_refuted(node.id, refutation)
 
-        if refutation.id in self.proof.subproof_ids:
-            _LOGGER.warning(f'{refutation.id} is already a subproof of {self.proof.id}, overriding.')
-        else:
-            self.proof.add_subproof(refutation.id)
         self.proof.write_proof()
 
         eq_prover = RefutationProver(refutation)

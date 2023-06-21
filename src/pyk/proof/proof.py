@@ -80,13 +80,16 @@ class Proof(ABC):
         else:
             return False
 
-    def add_subproof(self, proof_id: str) -> None:
+    def read_subproof(self, proof_id: str) -> None:
         if self.proof_dir is None:
             raise ValueError(f'Cannot add subproof to the proof {self.id} with no proof_dir')
         assert self.proof_dir
         if not Proof.proof_exists(proof_id, self.proof_dir):
             raise ValueError(f"Cannot find subproof {proof_id} in parent proof's {self.id} proof_dir {self.proof_dir}")
         self._subproofs[proof_id] = self.fetch_subproof(proof_id, force_reread=True)
+
+    def add_subproof(self, proof: Proof) -> None:
+        self._subproofs[proof.id] = proof
 
     def remove_subproof(self, proof_id: str) -> None:
         del self._subproofs[proof_id]

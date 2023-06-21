@@ -141,7 +141,7 @@ def test_apr_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
 
     # When
     eq_proof.write_proof()
-    proof.add_subproof(eq_proof.id)
+    proof.read_subproof(eq_proof.id)
     proof.write_proof()
     assert proof.proof_dir
     proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
@@ -158,9 +158,9 @@ def test_apr_proof_from_dict_nested_subproofs(proof_dir: Path) -> None:
 
     # When
     eq_proof.write_proof()
-    subproof.add_subproof(eq_proof.id)
+    subproof.read_subproof(eq_proof.id)
     subproof.write_proof()
-    proof.add_subproof(subproof.id)
+    proof.read_subproof(subproof.id)
     proof.write_proof()
     assert proof.proof_dir
     proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
@@ -180,9 +180,9 @@ def test_apr_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None:
     sub_proof_1.write_proof()
     sub_proof_2.write_proof()
     sub_proof_3.write_proof()
-    proof.add_subproof(sub_proof_1.id)
-    proof.add_subproof(sub_proof_2.id)
-    proof.add_subproof(sub_proof_3.id)
+    proof.read_subproof(sub_proof_1.id)
+    proof.read_subproof(sub_proof_2.id)
+    proof.read_subproof(sub_proof_3.id)
     proof.write_proof()
     assert proof.proof_dir
     proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
@@ -214,7 +214,7 @@ def test_aprbmc_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
 
     # When
     eq_proof.write_proof()
-    proof.add_subproof(eq_proof.id)
+    proof.read_subproof(eq_proof.id)
     proof.write_proof()
     assert proof.proof_dir
     proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
@@ -231,9 +231,9 @@ def test_aprbmc_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None
 
     # When
     eq_proof.write_proof()
-    subproof.add_subproof(eq_proof.id)
+    subproof.read_subproof(eq_proof.id)
     subproof.write_proof()
-    proof.add_subproof(subproof.id)
+    proof.read_subproof(subproof.id)
     proof.write_proof()
     assert proof.proof_dir
     proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
