@@ -6,7 +6,6 @@
 }
 #behavior {
     height: 1fr;
-    border: solid;
     overflow-x: auto;
     overflow-y: auto;
 }
@@ -25,22 +24,19 @@
 }
 #info-view {
     height: 2fr;
-    border: solid;
+    border: solid dimgrey;
     overflow: auto scroll;
 }
 #term-view {
     height: 15fr;
-    border: solid;
     overflow: auto scroll;
 }
 #constraint-view {
     height: 5fr;
-    border: solid;
     overflow: auto scroll;
 }
 #custom-view {
     height: 15fr;
-    border: solid;
     overflow: auto scroll;
 }
 #info {
@@ -58,4 +54,10 @@
 #custom {
     width: auto;
     height: auto;
+}
+.selected {
+    border: solid white;
+}
+.deselected {
+    border: solid dimgrey;
 }
