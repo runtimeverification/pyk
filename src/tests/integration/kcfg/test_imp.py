@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
 
+    from pytest import TempPathFactory
+
     from pyk.kast.inner import KInner
     from pyk.kast.outer import KDefinition
     from pyk.kcfg import KCFGExplore
@@ -683,46 +685,72 @@ class TestImpProof(KCFGExploreTest):
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
+        tmp_path_factory: TempPathFactory,
     ) -> None:
-        claim = single(
-            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
-        )
+        with tmp_path_factory.mktemp('apr_tmp_proofs') as proof_dir:
+            claim = single(
+                kprove.get_claims(
+                    Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+                )
+            )
 
-        deps = claim.dependencies
+            deps = claim.dependencies
 
-        def qualify(module: str, label: str) -> str:
-            if '.' in label:
-                return label
-            return f'{module}.{label}'
+            def qualify(module: str, label: str) -> str:
+                if '.' in label:
+                    return label
+                return f'{module}.{label}'
 
-        subproof_ids = [qualify(spec_module, dep_id) for dep_id in deps]
-        proof = APRProof.from_claim(
-            kprove.definition, claim, subproof_ids=subproof_ids, circularity=claim.is_circularity, logs={}
-        )
-        _msg_suffix = ' (and is a circularity)' if claim.is_circularity else ''
-        _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(subproof_ids)} dependencies{_msg_suffix}")
+            subproof_ids = [qualify(spec_module, dep_id) for dep_id in deps]
 
-        prover = APRProver(
-            proof,
-            kcfg_explore=kcfg_explore,
-            is_terminal=TestImpProof._is_terminal,
-            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
-        )
+            # < Admit all the dependencies >
+            # We create files for all the subproofs, all tagged as `admitted`.
+            # Later, when creating the proof for the main claim, these get loaded
+            # and their status will be `PASSED`. This is similar to how Coq handles admitted lemmas.
+            # We do all this in order to decouple the tests of "main theorems" from tests of its dependencies.
+            deps_claims = kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=subproof_ids)
 
-        prover.advance_proof(
-            max_iterations=max_iterations,
-            execute_depth=max_depth,
-            cut_point_rules=cut_rules,
-        )
+            deps_proofs = [
+                APRProof.from_claim(kprove.definition, c, subproof_ids=[], logs={}, proof_dir=proof_dir)
+                for c in deps_claims
+            ]
+            for dp in deps_proofs:
+                dp.admit()
+                dp.write_proof()
+            # </Admit all the dependencies >
 
-        kcfg_show = KCFGShow(
-            kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
-        )
-        cfg_lines = kcfg_show.show(proof.kcfg)
-        _LOGGER.info('\n'.join(cfg_lines))
+            proof = APRProof.from_claim(
+                kprove.definition,
+                claim,
+                subproof_ids=subproof_ids,
+                circularity=claim.is_circularity,
+                logs={},
+                proof_dir=proof_dir,
+            )
+            _msg_suffix = ' (and is a circularity)' if claim.is_circularity else ''
+            _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(subproof_ids)} dependencies{_msg_suffix}")
 
-        assert proof.status == proof_status
-        assert leaf_number(proof) == expected_leaf_number
+            prover = APRProver(
+                proof,
+                kcfg_explore=kcfg_explore,
+                is_terminal=TestImpProof._is_terminal,
+                extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+            )
+
+            prover.advance_proof(
+                max_iterations=max_iterations,
+                execute_depth=max_depth,
+                cut_point_rules=cut_rules,
+            )
+
+            kcfg_show = KCFGShow(
+                kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+            )
+            cfg_lines = kcfg_show.show(proof.kcfg)
+            _LOGGER.info('\n'.join(cfg_lines))
+
+            assert proof.status == proof_status
+            assert leaf_number(proof) == expected_leaf_number
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',

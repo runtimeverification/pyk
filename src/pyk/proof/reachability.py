@@ -46,6 +46,7 @@ class APRProof(Proof):
     logs: dict[int, tuple[LogEntry, ...]]
     dependencies: list[APRProof]  # list of dependencies other than self
     circularity: bool
+    admitted: bool
 
     def __init__(
         self,
@@ -58,6 +59,7 @@ class APRProof(Proof):
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
+        admitted: bool = False,
     ):
         super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
         self.kcfg = kcfg
@@ -66,6 +68,10 @@ class APRProof(Proof):
         self.logs = logs
         self.circularity = circularity
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
+        self.admitted = admitted
+
+    def admit(self) -> None:
+        self.admitted = True
 
     @property
     def terminal(self) -> list[KCFG.Node]:
@@ -107,6 +113,8 @@ class APRProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
+        if self.admitted:
+            return ProofStatus.PASSED
         if len(self.failing) > 0 or self.subproofs_status == ProofStatus.FAILED:
             return ProofStatus.FAILED
         elif len(self.pending) > 0 or self.subproofs_status == ProofStatus.PENDING:
@@ -122,6 +130,7 @@ class APRProof(Proof):
         target_node = dct['target']
         id = dct['id']
         circularity = dct.get('circularity', False)
+        admitted = dct.get('admitted', False)
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
@@ -136,6 +145,7 @@ class APRProof(Proof):
             logs=logs,
             terminal_nodes=terminal_nodes,
             circularity=circularity,
+            admitted=admitted,
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
         )
@@ -170,6 +180,7 @@ class APRProof(Proof):
         dct['target'] = self.target
         dct['terminal_nodes'] = self._terminal_nodes
         dct['circularity'] = self.circularity
+        dct['admitted'] = self.admitted
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
