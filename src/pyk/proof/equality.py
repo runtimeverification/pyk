@@ -111,12 +111,15 @@ class EqualityProof(Proof):
             return ProofStatus.PASSED
 
     @classmethod
-    def from_dict(cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> EqualityProof:
+    def from_dict(
+        cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None, admitted: bool = False
+    ) -> EqualityProof:
         id = dct['id']
         lhs_body = KInner.from_dict(dct['lhs_body'])
         rhs_body = KInner.from_dict(dct['rhs_body'])
         sort = KSort.from_dict(dct['sort'])
         constraints = [KInner.from_dict(c) for c in dct['constraints']]
+        admitted = dct.get('admitted', False)
         simplified_constraints = (
             KInner.from_dict(dct['simplified_constraints']) if 'simplified_constraints' in dct else None
         )
@@ -132,6 +135,7 @@ class EqualityProof(Proof):
             simplified_constraints=simplified_constraints,
             simplified_equality=simplified_equality,
             proof_dir=proof_dir,
+            admitted=admitted,
         )
 
     @property

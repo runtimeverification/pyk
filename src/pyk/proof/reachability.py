@@ -117,14 +117,15 @@ class APRProof(Proof):
             return ProofStatus.PASSED
 
     @classmethod
-    def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
+    def from_dict(
+        cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None, admitted: bool = False
+    ) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         init_node = dct['init']
         terminal_nodes = dct['terminal_nodes']
         target_node = dct['target']
         id = dct['id']
         circularity = dct.get('circularity', False)
-        admitted = dct.get('admitted', False)
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
@@ -174,7 +175,6 @@ class APRProof(Proof):
         dct['target'] = self.target
         dct['terminal_nodes'] = self._terminal_nodes
         dct['circularity'] = self.circularity
-        dct['admitted'] = self.admitted
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
@@ -218,9 +218,18 @@ class APRBMCProof(APRProof):
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
+        admitted: bool = False,
     ):
         super().__init__(
-            id, kcfg, init, target, logs, proof_dir=proof_dir, subproof_ids=subproof_ids, circularity=circularity
+            id,
+            kcfg,
+            init,
+            target,
+            logs,
+            proof_dir=proof_dir,
+            subproof_ids=subproof_ids,
+            circularity=circularity,
+            admitted=admitted,
         )
         self.bmc_depth = bmc_depth
         self._bounded_nodes = list(bounded_nodes) if bounded_nodes is not None else []
@@ -255,7 +264,9 @@ class APRBMCProof(APRProof):
         )
 
     @classmethod
-    def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
+    def from_dict(
+        cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None, admitted: bool = False
+    ) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
         init = dct['init']
         target = dct['target']
@@ -281,6 +292,7 @@ class APRBMCProof(APRProof):
             proof_dir=proof_dir,
             circularity=circularity,
             subproof_ids=subproof_ids,
+            admitted=admitted,
         )
 
     @staticmethod
