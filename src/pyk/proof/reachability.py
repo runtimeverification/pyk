@@ -64,6 +64,7 @@ class APRProof(Proof):
         self.target = target
         self.logs = logs
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
+        self.node_refutations = {}
 
         if node_refutations is not None:
             refutations_not_in_subprroofs = set(node_refutations.values()).difference(
