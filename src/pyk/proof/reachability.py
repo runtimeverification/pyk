@@ -54,7 +54,7 @@ class APRProof(Proof):
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
-        node_refutations: dict[NodeIdLike, RefutationProof] | None = None,
+        node_refutations: dict[NodeIdLike, str] | None = None,
         terminal_nodes: Iterable[NodeIdLike] | None = None,
         subproof_ids: Iterable[str] = (),
     ):
@@ -73,7 +73,10 @@ class APRProof(Proof):
                 raise ValueError(
                     f'All node refutations must be included in subproofs, violators are {refutations_not_in_subprroofs}'
                 )
-        self.node_refutations = node_refutations if node_refutations is not None else {}
+            for node_id, proof_id in node_refutations.items():
+                subproof = self._subproofs[proof_id]
+                assert type(subproof) is RefutationProof
+                self.node_refutations[node_id] = subproof
 
     @property
     def terminal(self) -> list[KCFG.Node]:
@@ -196,7 +199,8 @@ class APRProof(Proof):
         dct['init'] = self.init
         dct['target'] = self.target
         dct['terminal_nodes'] = self._terminal_nodes
-        dct['node_refutations'] = self.node_refutations
+        _node_refutations = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
+        dct['node_refutations'] = _node_refutations
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
@@ -304,7 +308,7 @@ class APRBMCProof(APRProof):
         bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
-        node_refutations: dict[NodeIdLike, RefutationProof] | None = None,
+        node_refutations: dict[NodeIdLike, str] | None = None,
     ):
         super().__init__(
             id,
@@ -372,7 +376,6 @@ class APRBMCProof(APRProof):
         dct['type'] = 'APRBMCProof'
         dct['bmc_depth'] = self.bmc_depth
         dct['bounded_nodes'] = self._bounded_nodes
-        dct['node_refutaitons'] = self.node_refutations
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
@@ -392,6 +395,7 @@ class APRBMCProof(APRProof):
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
+            f'    refuted: {len(self.node_refutations.keys())}',
             f'    pending: {len(self.pending)}',
             f'    failing: {len(self.failing)}',
             f'    stuck: {len(self.kcfg.stuck)}',
