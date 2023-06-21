@@ -436,7 +436,7 @@ class APRProver:
         self.proof.write_proof()
         return self.proof.kcfg
 
-    def refute_node(self, kcfg_explore: KCFGExplore, node: KCFG.Node, extra_constraint: KInner | None = None) -> None:
+    def refute_node(self, kcfg_explore: KCFGExplore, node: KCFG.Node, extra_constraint: KInner | None = None) -> RefutationProof:
         _LOGGER.info(f'Attempting to refute node {node.id}')
         refutation = self.construct_node_refutation(node)
         if refutation is None:
@@ -451,14 +451,7 @@ class APRProver:
 
         self.proof.write_proof()
 
-        eq_prover = RefutationProver(refutation)
-        eq_prover.advance_proof(kcfg_explore)
-
-        if eq_prover.proof.csubst is None:
-            _LOGGER.info(f'Successfully refuted node {node.id} by proof {eq_prover.proof.id}')
-        else:
-            _LOGGER.error(f'Failed to refute node {node.id} by proof {eq_prover.proof.id}')
-        self.proof.node_refutations[node.id] = eq_prover.proof
+        return refutation
 
     def unrefute_node(self, node: KCFG.Node) -> None:
         self.proof.remove_subproof(self.proof.get_refutation_id(node.id))

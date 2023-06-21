@@ -10,7 +10,7 @@ from pyk.kcfg import KCFG
 from pyk.prelude.kint import eqInt, gtInt, intToken, leInt
 from pyk.prelude.ml import mlEqualsTrue
 from pyk.proof import APRProof, APRProver, ProofStatus
-from pyk.proof.equality import RefutationProof
+from pyk.proof.equality import RefutationProof, RefutationProver
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -151,7 +151,9 @@ class TestAPRProof(KCFGExploreTest):
         assert prover.proof.status == ProofStatus.FAILED
 
         stuck_node = single(prover.proof.terminal)
-        prover.refute_node(kcfg_explore, stuck_node, extra_constraint=extra_constraint)
+        refutation = prover.refute_node(kcfg_explore, stuck_node, extra_constraint=extra_constraint)
+        refutation_prover = RefutationProver(refutation)
+        refutation_prover.advance_proof(kcfg_explore)
 
         assert len(prover.proof.subproof_ids) == 1
         subproof = single(prover.proof.subproofs)
