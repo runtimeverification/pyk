@@ -116,7 +116,7 @@ class APRProof(Proof):
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
-            self.is_terminal(node_id) or self.kcfg.is_stuck(node_id) or self.is_target(node_id)
+            self.is_terminal(node_id) or self.kcfg.is_stuck(node_id) or self.is_target(node_id) or self.is_refuted(node_id)
         )
 
     def is_init(self, node_id: NodeIdLike) -> bool:
@@ -126,7 +126,7 @@ class APRProof(Proof):
         return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.target)
 
     def is_failing(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg.is_leaf(node_id) and not (self.is_pending(node_id) or self.is_target(node_id))
+        return self.kcfg.is_leaf(node_id) and not (self.is_pending(node_id) or self.is_target(node_id) or self.is_refuted(node_id))
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -141,9 +141,9 @@ class APRProof(Proof):
     def status(self) -> ProofStatus:
         all_stuck_refuted = self.stuck_nodes_refuted
 
-        if (len(self.failing) > 0 and not all_stuck_refuted) or self.subproofs_status == ProofStatus.FAILED:
+        if len(self.failing) > 0 or self.subproofs_status == ProofStatus.FAILED:
             return ProofStatus.FAILED
-        elif (len(self.pending) > 0 and not all_stuck_refuted) or self.subproofs_status == ProofStatus.PENDING:
+        elif len(self.pending) > 0 or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
         else:
             return ProofStatus.PASSED
@@ -206,11 +206,11 @@ class APRProof(Proof):
         dct['logs'] = logs
         return dct
 
-    def add_refuted(self, nid: NodeIdLike, proof: RefutationProof) -> None:
-        self.node_refutations[self.kcfg._resolve(nid)] = proof  # TODO remove
-
-    def remove_refuted(self, nid: NodeIdLike) -> None:
-        del self.node_refutations[self.kcfg._resolve(nid)]  # TODO remove
+#      def add_refuted(self, nid: NodeIdLike, proof: RefutationProof) -> None:
+#          self.node_refutations[self.kcfg._resolve(nid)] = proof  # TODO remove
+#  
+#      def remove_refuted(self, nid: NodeIdLike) -> None:
+#          del self.node_refutations[self.kcfg._resolve(nid)]  # TODO remove
 
     def add_terminal(self, nid: NodeIdLike) -> None:
         self._terminal_nodes.append(self.kcfg._resolve(nid))  # TODO remove
@@ -522,7 +522,7 @@ class APRProver:
             refutation.add_constraint(extra_constraint)
         refutation.write_proof()
 
-        self.proof.add_refuted(node.id, refutation)
+        self.proof.node_refutations[node.id] = refutation
 
         self.proof.write_proof()
 
@@ -536,7 +536,6 @@ class APRProver:
         self.proof.node_refutations[node.id] = eq_prover.proof
 
     def unrefute_node(self, node: KCFG.Node) -> None:
-        self.proof.remove_refuted(node.id)
         self.proof.remove_subproof(self.proof.get_refutation_id(node.id))
         del self.proof.node_refutations[node.id]
         _LOGGER.info(f'Disabled refutation of node {node.id}.')
