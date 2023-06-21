@@ -91,23 +91,6 @@ class APRProof(Proof):
     def failing(self) -> list[KCFG.Node]:
         return [nd for nd in self.kcfg.leaves if self.is_failing(nd.id)]
 
-    #      def read_refutations(self) -> Iterable[tuple[NodeIdLike, RefutationProof]]:
-    #          if len(self.node_refutations) == 0:
-    #              return
-    #          else:
-    #              if self.proof_dir is None:
-    #                  raise ValueError(f'Cannot read refutations proof {self.id} with no proof_dir')
-    #              for node_id, proof_id in self.node_refutations.items():
-    #                  yield node_id, cast('RefutationProof', self.fetch_subproof(proof_id))
-
-    @property
-    def stuck_nodes_refuted(self) -> bool:
-        stuck_nodes = self.kcfg.stuck + self.terminal
-        return all(self.is_refuted(node.id) for node in stuck_nodes)
-
-    #          refutations = dict(self.read_refutations())
-    #          return all(n.id in self.node_refutations.keys() and refutations[n.id].csubst is None for n in stuck_nodes)
-
     def is_refuted(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) in self.node_refutations.keys()
 
@@ -116,7 +99,10 @@ class APRProof(Proof):
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
-            self.is_terminal(node_id) or self.kcfg.is_stuck(node_id) or self.is_target(node_id) or self.is_refuted(node_id)
+            self.is_terminal(node_id)
+            or self.kcfg.is_stuck(node_id)
+            or self.is_target(node_id)
+            or self.is_refuted(node_id)
         )
 
     def is_init(self, node_id: NodeIdLike) -> bool:
@@ -126,7 +112,9 @@ class APRProof(Proof):
         return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.target)
 
     def is_failing(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg.is_leaf(node_id) and not (self.is_pending(node_id) or self.is_target(node_id) or self.is_refuted(node_id))
+        return self.kcfg.is_leaf(node_id) and not (
+            self.is_pending(node_id) or self.is_target(node_id) or self.is_refuted(node_id)
+        )
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -139,8 +127,6 @@ class APRProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
-        all_stuck_refuted = self.stuck_nodes_refuted
-
         if len(self.failing) > 0 or self.subproofs_status == ProofStatus.FAILED:
             return ProofStatus.FAILED
         elif len(self.pending) > 0 or self.subproofs_status == ProofStatus.PENDING:
@@ -205,12 +191,6 @@ class APRProof(Proof):
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
-
-#      def add_refuted(self, nid: NodeIdLike, proof: RefutationProof) -> None:
-#          self.node_refutations[self.kcfg._resolve(nid)] = proof  # TODO remove
-#  
-#      def remove_refuted(self, nid: NodeIdLike) -> None:
-#          del self.node_refutations[self.kcfg._resolve(nid)]  # TODO remove
 
     def add_terminal(self, nid: NodeIdLike) -> None:
         self._terminal_nodes.append(self.kcfg._resolve(nid))  # TODO remove
