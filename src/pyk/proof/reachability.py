@@ -12,7 +12,7 @@ from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KClaim
 from ..kcfg import KCFG
 from ..prelude.ml import mlAnd, mlTop
-from ..utils import hash_str, shorten_hashes, single
+from ..utils import hash_str, shorten_hashes
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -342,7 +342,7 @@ class APRProver:
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
         def build_claim(pf: APRProof) -> KClaim:
-            fr: CTerm = single(pf.kcfg.root).cterm
+            fr: CTerm = pf.kcfg.node(pf.init).cterm
             to: CTerm = pf.kcfg.node(pf.target).cterm
             fr_config_sorted = self.kcfg_explore.kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
             to_config_sorted = self.kcfg_explore.kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
