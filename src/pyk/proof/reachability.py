@@ -12,7 +12,7 @@ from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
 from ..utils import hash_str, keys_to_int, shorten_hashes, single
-from .equality import RefutationProof, RefutationProver
+from .equality import RefutationProof
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -436,7 +436,9 @@ class APRProver:
         self.proof.write_proof()
         return self.proof.kcfg
 
-    def refute_node(self, kcfg_explore: KCFGExplore, node: KCFG.Node, extra_constraint: KInner | None = None) -> RefutationProof:
+    def refute_node(
+        self, kcfg_explore: KCFGExplore, node: KCFG.Node, extra_constraint: KInner | None = None
+    ) -> RefutationProof | None:
         _LOGGER.info(f'Attempting to refute node {node.id}')
         refutation = self.construct_node_refutation(node)
         if refutation is None:

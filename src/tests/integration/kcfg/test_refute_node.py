@@ -152,6 +152,7 @@ class TestAPRProof(KCFGExploreTest):
 
         stuck_node = single(prover.proof.terminal)
         refutation = prover.refute_node(kcfg_explore, stuck_node, extra_constraint=extra_constraint)
+        assert refutation is not None
         refutation_prover = RefutationProver(refutation)
         refutation_prover.advance_proof(kcfg_explore)
 
