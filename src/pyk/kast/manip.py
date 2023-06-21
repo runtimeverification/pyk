@@ -10,7 +10,7 @@ from ..prelude.ml import mlAnd, mlEqualsTrue, mlImplies, mlOr
 from ..utils import find_common_items, hash_str
 from .inner import KApply, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
 from .kast import EMPTY_ATT, KAtt, WithKAtt
-from .outer import KDefinition, KFlatModule, KRuleLike, remove_source_map_from_katt
+from .outer import KDefinition, KFlatModule, KRuleLike
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable
@@ -493,7 +493,7 @@ def minimize_rule(rule: RL, keep_vars: Iterable[str] = ()) -> RL:
 
 
 def remove_source_map(definition: KDefinition) -> KDefinition:
-    return on_attributes(definition, remove_source_map_from_katt)
+    return on_attributes(definition, lambda att: att.drop_source())
 
 
 def remove_attrs(term: KInner) -> KInner:
