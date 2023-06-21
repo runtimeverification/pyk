@@ -45,7 +45,6 @@ class APRProof(Proof):
     _terminal_nodes: list[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
-    admitted: bool
 
     def __init__(
         self,
@@ -60,17 +59,13 @@ class APRProof(Proof):
         circularity: bool = False,
         admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids)
+        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         self.kcfg = kcfg
         self.init = init
         self.target = target
         self.logs = logs
         self.circularity = circularity
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
-        self.admitted = admitted
-
-    def admit(self) -> None:
-        self.admitted = True
 
     @property
     def terminal(self) -> list[KCFG.Node]:
@@ -193,6 +188,7 @@ class APRProof(Proof):
         yield from [
             f'APRProof: {self.id}',
             f'    status: {self.status}',
+            f'    admitted: {self.admitted}',
             f'    nodes: {len(self.kcfg.nodes)}',
             f'    pending: {len(self.pending)}',
             f'    failing: {len(self.failing)}',

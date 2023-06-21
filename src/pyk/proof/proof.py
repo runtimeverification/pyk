@@ -31,9 +31,17 @@ class Proof(ABC):
     id: str
     proof_dir: Path | None
     _subproofs: dict[str, Proof]
+    admitted: bool
 
-    def __init__(self, id: str, proof_dir: Path | None = None, subproof_ids: Iterable[str] = ()) -> None:
+    def __init__(
+        self,
+        id: str,
+        proof_dir: Path | None = None,
+        subproof_ids: Iterable[str] = (),
+        admitted: bool = False,
+    ) -> None:
         self.id = id
+        self.admitted = admitted
         self.proof_dir = proof_dir
         self._subproofs = {}
         if self.proof_dir is None and len(list(subproof_ids)) > 0:
@@ -41,6 +49,9 @@ class Proof(ABC):
         if len(list(subproof_ids)) > 0:
             for proof_id in subproof_ids:
                 self.fetch_subproof(proof_id, force_reread=True)
+
+    def admit(self) -> None:
+        self.admitted = True
 
     @property
     def subproof_ids(self) -> list[str]:

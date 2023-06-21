@@ -45,8 +45,9 @@ class EqualityProof(Proof):
         simplified_constraints: KInner | None = None,
         simplified_equality: KInner | None = None,
         proof_dir: Path | None = None,
+        admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir)
+        super().__init__(id, proof_dir=proof_dir, admitted=admitted)
         self.lhs_body = lhs_body
         self.rhs_body = rhs_body
         self.sort = sort
@@ -100,6 +101,8 @@ class EqualityProof(Proof):
 
     @property
     def status(self) -> ProofStatus:
+        if self.admitted:
+            return ProofStatus.PASSED
         if self.simplified_constraints is None or self.simplified_equality is None:
             return ProofStatus.PENDING
         elif self.csubst is None:
@@ -170,6 +173,7 @@ class EqualityProof(Proof):
         return [
             f'EqualityProof: {self.id}',
             f'  status: {self.status}',
+            f'    admitted: {self.admitted}',
         ]
 
 
