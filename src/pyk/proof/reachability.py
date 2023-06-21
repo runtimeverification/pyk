@@ -205,7 +205,7 @@ class APRProof(Proof):
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    nodes: {len(self.kcfg.nodes)}',
-            f'    refuted: {len(self.node_refutations.keys())}',
+            f'    refuted: {len(self.node_refutations)}',
             f'    pending: {len(self.pending)}',
             f'    failing: {len(self.failing)}',
             f'    stuck: {len(self.kcfg.stuck)}',
