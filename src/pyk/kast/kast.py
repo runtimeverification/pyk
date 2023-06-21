@@ -137,7 +137,7 @@ class KAtt(KAst, Mapping[str, Any]):
         new_atts = {
             key: value
             for key, value in self.atts.items()
-            if key != 'org.kframework.attributes.Source' and key != 'org.kframework.attributes.Location'
+            if key != self.SOURCE and key != self.LOCATION
         }
         return KAtt(atts=new_atts)
 
