@@ -8,7 +8,7 @@ from ..kast.inner import KInner, KSort, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlTop
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -94,7 +94,7 @@ class EqualityProof(Proof):
     def status(self) -> ProofStatus:
         if self.simplified_constraints is None or self.simplified_equality is None:
             return ProofStatus.PENDING
-        elif self.csubst is None:
+        elif self.csubst is not None:
             return ProofStatus.FAILED
         else:
             return ProofStatus.PASSED
@@ -166,30 +166,38 @@ class EqualityProof(Proof):
 
 
 class RefutationProof(Proof):
+    sort: KSort
+    pre_constraints: Iterable[KInner]
+    last_constraint: KInner
+    csubst: CSubst | None
+    simplified_constraints: KInner | None
+
     def __init__(
         self,
         id: str,
         sort: KSort,
-        constraints: Iterable[KInner] = (),
+        pre_constraints: Iterable[KInner],
+        last_constraint: KInner,
         csubst: CSubst | None = None,
         simplified_constraints: KInner | None = None,
         proof_dir: Path | None = None,
     ):
         super().__init__(id, proof_dir=proof_dir)
         self.sort = sort
-        self.constraints = tuple(constraints)
+        self.pre_constraints = tuple(pre_constraints)
+        self.last_constraint = last_constraint
         self.csubst = csubst
         self.simplified_constraints = simplified_constraints
         _LOGGER.warning(
             'Building a RefutationProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
         )
 
-    @property
-    def constraint(self) -> KInner:
-        return mlAnd(self.constraints)
+    #      @property
+    #      def constraint(self) -> KInner:
+    #          return mlAnd(self.constraints)
 
-    def add_constraint(self, new_constraint: KInner) -> None:
-        self.constraints = (*self.constraints, new_constraint)
+    #      def add_constraint(self, new_constraint: KInner) -> None:
+    #          self.constraints = (*self.constraints, new_constraint)
 
     def set_simplified_constraints(self, simplified: KInner) -> None:
         self.simplified_constraints = simplified
@@ -212,7 +220,8 @@ class RefutationProof(Proof):
             'type': 'RefutationProof',
             'id': self.id,
             'sort': self.sort.to_dict(),
-            'constraints': [c.to_dict() for c in self.constraints],
+            'pre_constraints': [c.to_dict() for c in self.pre_constraints],
+            'last_constraint': self.last_constraint.to_dict(),
         }
         if self.simplified_constraints is not None:
             dct['simplified_constraints'] = self.simplified_constraints.to_dict()
@@ -224,7 +233,8 @@ class RefutationProof(Proof):
     def from_dict(cls: type[RefutationProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> RefutationProof:
         id = dct['id']
         sort = KSort.from_dict(dct['sort'])
-        constraints = [KInner.from_dict(c) for c in dct['constraints']]
+        pre_constraints = [KInner.from_dict(c) for c in dct['pre_constraints']]
+        last_constraint = KInner.from_dict(dct['last_constraint'])
         simplified_constraints = (
             KInner.from_dict(dct['simplified_constraints']) if 'simplified_constraints' in dct else None
         )
@@ -232,7 +242,8 @@ class RefutationProof(Proof):
         return RefutationProof(
             id=id,
             sort=sort,
-            constraints=constraints,
+            pre_constraints=pre_constraints,
+            last_constraint=last_constraint,
             csubst=csubst,
             simplified_constraints=simplified_constraints,
             proof_dir=proof_dir,
@@ -247,7 +258,8 @@ class RefutationProof(Proof):
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
         lines = [
-            f'Constraints: {kprint.pretty_print(mlAnd(self.constraints))}',
+            f'Constraints: {kprint.pretty_print(mlAnd(self.pre_constraints))}',
+            f'Last constraint: {kprint.pretty_print(self.last_constraint)}',
         ]
         if self.csubst is not None:
             lines.append(f'Implication csubst: {self.csubst}')
@@ -315,9 +327,10 @@ class RefutationProver:
             _LOGGER.info(f'RefutationProof finished {self.proof.id}: {self.proof.status}')
             return
 
-        consequent_kast = self.proof.constraint
+        antecedent_kast = mlAnd(self.proof.pre_constraints)
+        consequent_kast = mlEqualsFalse(self.proof.last_constraint)
 
-        antecedent_simplified_kast = mlTop()
+        antecedent_simplified_kast, _ = kcfg_explore.kast_simplify(antecedent_kast)
         consequent_simplified_kast, _ = kcfg_explore.kast_simplify(consequent_kast)
         self.proof.set_simplified_constraints(consequent_simplified_kast)
         _LOGGER.info(f'Simplified constraints: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
