@@ -695,27 +695,12 @@ class TestImpProof(KCFGExploreTest):
                 return label
             return f'{module}.{label}'
 
-        deps_claims = kprove.get_claims(
-            Path(spec_file),
-            spec_module_name=spec_module,
-            claim_labels=[qualify(spec_module, dep_id) for dep_id in deps],
-        )
-
-        deps_proofs = [
-            # APRProof(c.label, KCFG.from_claim(kprove.definition, c), dependencies=[], logs={}) for c in deps_claims
-            APRProof.from_claim(kprove.definition, c, dependencies=[], logs={})
-            for c in deps_claims
-        ]
-
-        # kcfg = KCFG.from_claim(kprove.definition, claim)
+        subproof_ids = [qualify(spec_module, dep_id) for dep_id in deps]
         proof = APRProof.from_claim(
-            kprove.definition, claim, dependencies=deps_proofs, circularity=claim.is_circularity, logs={}
+            kprove.definition, claim, subproof_ids=subproof_ids, circularity=claim.is_circularity, logs={}
         )
-        # proof = APRProof(
-        #    f'{spec_module}.{claim_id}', kcfg, dependencies=deps_proofs, circularity=claim.is_circularity, logs={}
-        # )
         _msg_suffix = ' (and is a circularity)' if claim.is_circularity else ''
-        _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(deps_claims)} dependencies{_msg_suffix}")
+        _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(subproof_ids)} dependencies{_msg_suffix}")
 
         prover = APRProver(
             proof,
