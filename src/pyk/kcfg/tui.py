@@ -57,35 +57,6 @@ class GraphChunk(Static):
         click.stop()
 
 
-class BehaviorView(Widget):
-    _kcfg: KCFG
-    _kprint: KPrint
-    _minimize: bool
-    _node_printer: NodePrinter | None
-    _kcfg_nodes: Iterable[GraphChunk]
-
-    def __init__(
-        self,
-        kcfg: KCFG,
-        kprint: KPrint,
-        minimize: bool = True,
-        node_printer: NodePrinter | None = None,
-        id: str = '',
-    ):
-        super().__init__(id=id)
-        self._kcfg = kcfg
-        self._kprint = kprint
-        self._minimize = minimize
-        self._node_printer = node_printer
-        self._kcfg_nodes = []
-        kcfg_show = KCFGShow(kprint, node_printer=node_printer)
-        for lseg_id, node_lines in kcfg_show.pretty_segments(self._kcfg, minimize=self._minimize):
-            self._kcfg_nodes.append(GraphChunk(lseg_id, node_lines))
-
-    def compose(self) -> ComposeResult:
-        return self._kcfg_nodes
-
-
 class NodeView(Widget):
     _kprint: KPrint
     _custom_view: Callable[[KCFGElem], Iterable[str]] | None
@@ -358,14 +329,7 @@ class KCFGViewer(App):
         return None
 
     def compose(self) -> ComposeResult:
-        yield Horizontal(
-            ScrollableContainer(
-                BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
-                id='navigation',
-            ),
-            ScrollableContainer(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
-        )
-        yield Footer()
+        ...
 
     def _resolve_any(self, kcfg_id: str) -> KCFGElem:
         if kcfg_id.startswith('node_'):
@@ -465,7 +429,7 @@ class KCFGViewer(App):
 
     def center_from_node(self) -> None:
         sel_node = self.query_one(f'#{self._selected_chunk}', GraphChunk)
-        bv = self.query_one('#behavior', BehaviorView)
+        bv = self.query_one('#behavior')
 
         central_point = Offset(
             0,

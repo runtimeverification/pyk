@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, ScrollableContainer
 from textual.widget import Widget
 from textual.widgets import Footer
 
@@ -67,10 +67,10 @@ class APRProofViewer(KCFGViewer):
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
-            Vertical(
+            ScrollableContainer(
                 APRProofBehaviorView(self._proof, self._kprint, node_printer=self._node_printer, id='behavior'),
                 id='navigation',
             ),
-            Vertical(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
+            ScrollableContainer(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
         )
         yield Footer()
