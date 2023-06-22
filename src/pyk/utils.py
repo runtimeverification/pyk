@@ -369,6 +369,10 @@ def compare_short_hashes(lhs: str, rhs: str) -> bool:
     return (l0.startswith(r0) or r0.startswith(l0)) and (l1.endswith(r1) or r1.endswith(l1))
 
 
+def keys_to_int(d: dict) -> dict:
+    return {int(k): v for (k, v) in d.items()}
+
+
 def run_process(
     args: str | Iterable[str],
     *,
