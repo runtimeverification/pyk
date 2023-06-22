@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kore.parser import KoreParser
-from pyk.kore.prelude import BOOL, INT, TRUE, int_dv
+from pyk.kore.prelude import BOOL, INT, TRUE, and_bool, eq_int, gt_int, int_dv, le_int
 from pyk.kore.rpc import (
     BranchingResult,
     CutPointResult,
@@ -20,7 +20,7 @@ from pyk.kore.rpc import (
     UnknownResult,
     UnsatResult,
 )
-from pyk.kore.syntax import And, App, Bottom, Equals, EVar, Implies, Module, Top
+from pyk.kore.syntax import And, Bottom, Equals, EVar, Implies, Module, Top
 from pyk.testing import KoreClientTest
 
 from ..utils import K_FILES
@@ -35,22 +35,6 @@ if TYPE_CHECKING:
 int_top = Top(INT)
 int_bottom = Bottom(INT)
 x, y = (EVar(v, INT) for v in ['x', 'y'])
-
-
-def and_bool(left: Pattern, right: Pattern) -> Pattern:
-    return App("Lbl'Unds'andBool'Unds'", (), (left, right))
-
-
-def eq_int(left: Pattern, right: Pattern) -> Pattern:
-    return App("Lbl'UndsEqlsEqls'Int'Unds'", (), (left, right))
-
-
-def gt_int(left: Pattern, right: Pattern) -> Pattern:
-    return App("Lbl'Unds-GT-'Int'Unds'", (), (left, right))
-
-
-def le_int(left: Pattern, right: Pattern) -> Pattern:
-    return App("Lbl'Unds-LT-Eqls'Int'Unds'", (), (left, right))
 
 
 def term(n: int) -> Pattern:
