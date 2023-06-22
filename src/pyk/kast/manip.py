@@ -4,22 +4,11 @@ import logging
 from collections import Counter
 from typing import TYPE_CHECKING
 
-from ..prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
+from ..prelude.k import DOTS, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
 from ..prelude.ml import mlAnd, mlEqualsTrue, mlImplies, mlOr
 from ..utils import find_common_items, hash_str
-from .inner import (
-    KApply,
-    KRewrite,
-    KSequence,
-    KToken,
-    KVariable,
-    Subst,
-    bottom_up,
-    is_empty_k,
-    top_down,
-    var_occurrences,
-)
+from .inner import KApply, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
 from .kast import EMPTY_ATT, KAtt, WithKAtt
 from .outer import KDefinition, KFlatModule, KRuleLike
 
@@ -159,21 +148,12 @@ def simplify_bool(k: KInner) -> KInner:
     return new_k
 
 
-def remove_empty_k(term: KInner) -> KInner:
-    def cleanup(_term: KApply) -> KInner:
-        if is_empty_k(_term):
-            return KSequence()
-        return _term
-
-    return top_down(if_ktype(KApply, cleanup), term)
-
-
 def extract_lhs(term: KInner) -> KInner:
-    return remove_empty_k(top_down(if_ktype(KRewrite, lambda rw: rw.lhs), term))
+    return top_down(if_ktype(KRewrite, lambda rw: rw.lhs), term)
 
 
 def extract_rhs(term: KInner) -> KInner:
-    return remove_empty_k(top_down(if_ktype(KRewrite, lambda rw: rw.rhs), term))
+    return top_down(if_ktype(KRewrite, lambda rw: rw.rhs), term)
 
 
 def extract_subst(term: KInner) -> tuple[Subst, KInner]:
@@ -354,7 +334,7 @@ def push_down_rewrites(kast: KInner) -> KInner:
                 and type(rhs) is KVariable
                 and lhs.items[-1] == rhs
             ):
-                return KSequence([KRewrite(KSequence(lhs.items[0:-1]), EMPTY_K), rhs])
+                return KSequence([KRewrite(KSequence(lhs.items[0:-1]), KSequence([])), rhs])
         return _kast
 
     return top_down(_push_down_rewrites, kast)
