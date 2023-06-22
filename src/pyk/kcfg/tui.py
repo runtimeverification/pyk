@@ -4,7 +4,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Union
 
 from textual.app import App
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Horizontal, ScrollableContainer
 from textual.geometry import Offset, Region
 from textual.message import Message
 from textual.widget import Widget
@@ -269,6 +269,11 @@ class MoveKind(Enum):
     BOUND = auto()
 
 
+class MovementMode(Enum):
+    SCROLL = auto()
+    WINDOW = auto()
+
+
 class KCFGViewer(App):
     CSS_PATH = 'style.css'
 
@@ -283,7 +288,7 @@ class KCFGViewer(App):
     _hidden_chunks: list[str]
     _selected_chunk: str
 
-    _buffer: list[str]
+    _mode: MovementMode = MovementMode.SCROLL
     _node_idx: dict[int, int]
     _last_idx: int
 
@@ -305,7 +310,6 @@ class KCFGViewer(App):
         self._custom_view = custom_view
         self._minimize = minimize
         self._hidden_chunks = []
-        self._buffer = []
 
         self._kcfg_nodes = []
         kcfg_show = KCFGShow(kprint)
@@ -355,11 +359,11 @@ class KCFGViewer(App):
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
-            VerticalScroll(
+            ScrollableContainer(
                 BehaviorView(self._kcfg, self._kprint, node_printer=self._node_printer, id='behavior'),
                 id='navigation',
             ),
-            VerticalScroll(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
+            ScrollableContainer(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
         )
         yield Footer()
 
@@ -560,10 +564,9 @@ class KCFGViewer(App):
         if key in ['h', 'j', 'k', 'l']:
             dir = Direction.dir_of(key)
             if dir is not None:
-                if self._buffer and self._buffer[-1] == 'change-window':
-                    self.change_window(dir)
-                else:
-                    self.move(dir, MoveKind.SINGLE)
+                match self._mode:
+                    case MovementMode.SCROLL: self.move(dir, MoveKind.SINGLE)
+                    case MovementMode.WINDOW: self.change_window(dir)
         elif key == 'g':
             self.move(Direction.UP, MoveKind.BOUND)
         elif key == 'G':
