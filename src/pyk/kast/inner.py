@@ -701,6 +701,19 @@ def build_cons(unit: KInner, label: str | KLabel, terms: Iterable[KInner]) -> KI
 
 
 def fold(folder: Callable[[KInner, list[A]], A], to_fold: KInner) -> A:
+    """Takes a KInner and summarizes (folds) it by folding its children and combining the results.
+
+    Given a KInner, this will summarize its children, then it will call 'folder'
+    to combine the children's summaries with the current node and produce
+    the current node summary.
+
+    The intent is to transform a KInner[KInner] (a KInner with children of type
+    KInner) into a KInner[A], then use `folder` to transform that into an A.
+
+    This is similar to a fold/cata in Haskell's recursion schemes, although it
+    looks somewhat uglier because KInner is not implemented as a Recursive.
+    https://hackage.haskell.org/package/recursion-schemes-5.2.2.4/docs/Data-Functor-Foldable.html#v:fold
+    """
     def child_collect(children: list[A], child: KInner) -> KInner:
         children.append(fold(folder, child))
         return child
@@ -711,12 +724,33 @@ def fold(folder: Callable[[KInner, list[A]], A], to_fold: KInner) -> A:
 
 
 def unzip(l: list[tuple[A, B]]) -> tuple[list[A], list[B]]:
-    return ([a for a, _ in l], [b for _, b in l])
+    return zip(*l, strict=True)#([a for a, _ in l], [b for _, b in l])
 
 
 def fold_transform(
-    folder: Callable[[KInner, list[A]], A], transformer: Callable[[KInner, A], tuple[KInner, A]], to_fold: KInner
+    folder: Callable[[KInner, list[A]], A],
+    transformer: Callable[[KInner, A], tuple[KInner, A]],
+    to_fold: KInner
 ) -> tuple[KInner, A]:
+    """Takes a KInner and transforms it, while also computing a summary.
+
+    This does a recursive processing of a KInner, with the help of 'folder' and
+    'transformer', which are functions that operate on a single level of a
+    KInner.
+    
+    Let KI be the current node of type KInner.
+
+    fold_transform will compute some information of type 'A' for each child of
+    KI, then it will apply 'folder' to combine this information with KI,
+    producing the 'A' information for KI.
+
+    fold_transform also transforms each child of KI, replacing KI's children
+    with their newer versions, then uses 'transformer' to combine the newer KI
+    with the KI's 'A' information, producing the final vesion of KI.
+
+    This is similar to a special type of fold in Haskell, see the 'fold'
+    docstring for more details.
+    """
     def fold_term(term: KInner, children: list[tuple[KInner, A]]) -> tuple[KInner, A]:
         (child_terms, child_values) = unzip(children)
         child_index = 0
