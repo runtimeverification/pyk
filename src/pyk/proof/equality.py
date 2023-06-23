@@ -192,7 +192,6 @@ class RefutationProof(Proof):
             'Building a RefutationProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
         )
 
-
     def set_simplified_constraints(self, simplified: KInner) -> None:
         self.simplified_constraints = simplified
 

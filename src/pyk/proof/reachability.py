@@ -11,7 +11,7 @@ from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
-from ..utils import hash_str, keys_to_int, shorten_hashes, single
+from ..utils import hash_str, shorten_hashes, single
 from .equality import RefutationProof
 from .proof import Proof, ProofStatus
 
@@ -54,7 +54,7 @@ class APRProof(Proof):
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
-        node_refutations: dict[NodeIdLike, str] | None = None,
+        node_refutations: dict[int, str] | None = None,
         terminal_nodes: Iterable[NodeIdLike] | None = None,
         subproof_ids: Iterable[str] = (),
     ):
@@ -142,7 +142,9 @@ class APRProof(Proof):
         target_node = dct['target']
         id = dct['id']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
-        node_refutations = keys_to_int(dct['node_refutations']) if 'node_refutations' in dct else {}
+        node_refutations: dict[int, str] = {}
+        if 'node_refutation' in dct:
+            node_refutations = {cfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
@@ -235,7 +237,7 @@ class APRBMCProof(APRProof):
         bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
-        node_refutations: dict[NodeIdLike, str] | None = None,
+        node_refutations: dict[int, str] | None = None,
     ):
         super().__init__(
             id,
@@ -278,7 +280,9 @@ class APRBMCProof(APRProof):
         bounded_nodes = dct['bounded_nodes']
         bmc_depth = dct['bmc_depth']
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
-        node_refutations = keys_to_int(dct['node_refutations']) if 'node_refutations' in dct else {}
+        node_refutations: dict[int, str] = {}
+        if 'node_refutation' in dct:
+            node_refutations = {cfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
         id = dct['id']
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
