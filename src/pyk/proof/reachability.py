@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from ..kast.outer import KDefinition
     from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
+    from ..ktool.kprint import KPrint
 
     T = TypeVar('T', bound='Proof')
 
@@ -150,6 +151,18 @@ class APRProof(Proof):
     ) -> APRProof:
         cfg, init_node, target_node = KCFG.from_claim(defn, claim)
         return APRProof(claim.label, cfg, init=init_node, target=target_node, logs=logs, **kwargs)
+
+    def as_claim(self, kprint: KPrint) -> KClaim:
+        fr: CTerm = self.kcfg.node(self.init).cterm
+        to: CTerm = self.kcfg.node(self.target).cterm
+        fr_config_sorted = kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
+        to_config_sorted = kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
+        kc = KClaim(
+            body=KRewrite(fr_config_sorted, to_config_sorted),
+            requires=ml_pred_to_bool(mlAnd(fr.constraints)),
+            ensures=ml_pred_to_bool(mlAnd(to.constraints)),
+        )
+        return kc
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
         path = self.kcfg.shortest_path_between(self.init, final_node_id)
@@ -356,18 +369,6 @@ class APRProver:
         self._abstract_node = abstract_node
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
-        def build_claim(pf: APRProof) -> KClaim:
-            fr: CTerm = pf.kcfg.node(pf.init).cterm
-            to: CTerm = pf.kcfg.node(pf.target).cterm
-            fr_config_sorted = self.kcfg_explore.kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
-            to_config_sorted = self.kcfg_explore.kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
-            kc = KClaim(
-                body=KRewrite(fr_config_sorted, to_config_sorted),
-                requires=ml_pred_to_bool(mlAnd(fr.constraints)),
-                ensures=ml_pred_to_bool(mlAnd(to.constraints)),
-            )
-            return kc
-
         subproofs: list[Proof] = (
             [Proof.read_proof(i, proof_dir=proof.proof_dir) for i in proof.subproof_ids]
             if proof.proof_dir is not None
@@ -376,7 +377,7 @@ class APRProver:
 
         apr_subproofs: list[APRProof] = [pf for pf in subproofs if type(pf) is APRProof]
 
-        dependencies_as_claims: list[KClaim] = [build_claim(d) for d in apr_subproofs]
+        dependencies_as_claims: list[KClaim] = [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
 
         self.some_dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
         self.kcfg_explore.add_dependencies_module(
@@ -389,7 +390,7 @@ class APRProver:
         self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
             self.all_dependencies_module_name,
-            dependencies_as_claims + ([build_claim(proof)] if proof.circularity else []),
+            dependencies_as_claims + ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []),
             priority=1,
         )
 
