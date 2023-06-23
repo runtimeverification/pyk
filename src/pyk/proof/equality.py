@@ -138,14 +138,13 @@ class EqualityProof(Proof):
 
     @property
     def dict(self) -> dict[str, Any]:
-        dct = {
-            'type': 'EqualityProof',
-            'id': self.id,
-            'lhs_body': self.lhs_body.to_dict(),
-            'rhs_body': self.rhs_body.to_dict(),
-            'sort': self.sort.to_dict(),
-            'constraints': [c.to_dict() for c in self.constraints],
-        }
+        dct = super().dict
+        dct['type'] = 'EqualityProof'
+        dct['lhs_body'] = self.lhs_body.to_dict()
+        dct['rhs_body'] = self.rhs_body.to_dict()
+        dct['sort'] = self.sort.to_dict()
+        dct['constraints'] = [c.to_dict() for c in self.constraints]
+
         if self.simplified_constraints is not None:
             dct['simplified_constraints'] = self.simplified_constraints.to_dict()
         if self.simplified_equality is not None:
