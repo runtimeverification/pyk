@@ -724,7 +724,7 @@ def fold(folder: Callable[[KInner, list[A]], A], to_fold: KInner) -> A:
 
 
 def unzip(l: list[tuple[A, B]]) -> tuple[list[A], list[B]]:
-    return zip(*l, strict=True)#([a for a, _ in l], [b for _, b in l])
+    return ([a for a, _ in l], [b for _, b in l])
 
 
 def fold_transform(
