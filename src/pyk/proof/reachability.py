@@ -97,6 +97,11 @@ class APRProof(Proof):
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (self.is_pending(node_id) or self.is_target(node_id))
 
+    def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
+        spb = self.kcfg.shortest_path_between(self.init, node_id)
+        assert spb is not None
+        return spb
+
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
         proof_path = proof_dir / f'{hash_str(id)}.json'
@@ -165,9 +170,7 @@ class APRProof(Proof):
         return kc
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
-        path = self.kcfg.shortest_path_between(self.init, final_node_id)
-        if path is None:
-            raise ValueError(f'No path found to specified node: {final_node_id}')
+        path = self.shortest_path_to(final_node_id)
         curr_constraint: KInner = mlTop()
         for edge in reversed(path):
             if type(edge) is KCFG.Split:
@@ -404,10 +407,7 @@ class APRProver:
         return False
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
-        init = self.proof.kcfg.node(self.proof.init)
-        p = self.proof.kcfg.shortest_path_between(init.id, node.id)
-        if p is None:
-            return False
+        p = self.proof.shortest_path_to(node.id)
         return KCFG.path_length(p) > 0
 
     def _check_subsume(self, node: KCFG.Node) -> bool:
