@@ -375,7 +375,7 @@ class APRProver:
             else []
         )
 
-        apr_subproofs: list[APRProof] = [pf for pf in subproofs if type(pf) is APRProof]
+        apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
 
         dependencies_as_claims: list[KClaim] = [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
 
