@@ -186,8 +186,7 @@ class APRProof(Proof):
         dct['init'] = self.init
         dct['target'] = self.target
         dct['terminal_nodes'] = self._terminal_nodes
-        _node_refutations = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
-        dct['node_refutations'] = _node_refutations
+        dct['node_refutations'] = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
