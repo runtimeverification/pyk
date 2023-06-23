@@ -351,8 +351,8 @@ class APRProver:
     _abstract_node: Callable[[CTerm], CTerm] | None
 
     main_module_name: str
-    some_dependencies_module_name: str
-    all_dependencies_module_name: str
+    dependencies_module_name: str
+    circularities_module_name: str
 
     def __init__(
         self,
@@ -379,17 +379,17 @@ class APRProver:
 
         dependencies_as_claims: list[KClaim] = [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
 
-        self.some_dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
+        self.dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
         self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
-            self.some_dependencies_module_name,
+            self.dependencies_module_name,
             dependencies_as_claims,
             priority=1,
         )
-        self.all_dependencies_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'
+        self.circularities_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'
         self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
-            self.all_dependencies_module_name,
+            self.circularities_module_name,
             dependencies_as_claims + ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []),
             priority=1,
         )
@@ -472,9 +472,7 @@ class APRProver:
                     continue
 
             module_name = (
-                self.all_dependencies_module_name
-                if self.nonzero_depth(curr_node)
-                else self.some_dependencies_module_name
+                self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
             )
             self.kcfg_explore.extend(
                 self.proof.kcfg,
