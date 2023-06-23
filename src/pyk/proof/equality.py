@@ -111,9 +111,7 @@ class EqualityProof(Proof):
             return ProofStatus.PASSED
 
     @classmethod
-    def from_dict(
-        cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None, admitted: bool = False
-    ) -> EqualityProof:
+    def from_dict(cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> EqualityProof:
         id = dct['id']
         lhs_body = KInner.from_dict(dct['lhs_body'])
         rhs_body = KInner.from_dict(dct['rhs_body'])

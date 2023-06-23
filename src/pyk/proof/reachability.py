@@ -117,15 +117,14 @@ class APRProof(Proof):
             return ProofStatus.PASSED
 
     @classmethod
-    def from_dict(
-        cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None, admitted: bool = False
-    ) -> APRProof:
+    def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         init_node = dct['init']
         terminal_nodes = dct['terminal_nodes']
         target_node = dct['target']
         id = dct['id']
         circularity = dct.get('circularity', False)
+        admitted = dct.get('admitted', False)
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         if 'logs' in dct:
             logs = {k: tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
@@ -264,14 +263,13 @@ class APRBMCProof(APRProof):
         )
 
     @classmethod
-    def from_dict(
-        cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None, admitted: bool = False
-    ) -> APRBMCProof:
+    def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
         init = dct['init']
         target = dct['target']
         bounded_nodes = dct['bounded_nodes']
 
+        admitted = dct.get('admitted', False)
         circularity = dct.get('circularity', False)
         bmc_depth = dct['bmc_depth']
         id = dct['id']

@@ -145,9 +145,7 @@ class Proof(ABC):
 
     @classmethod
     @abstractmethod
-    def from_dict(
-        cls: type[Proof], dct: Mapping[str, Any], proof_dir: Path | None = None, admitted: bool = False
-    ) -> Proof:
+    def from_dict(cls: type[Proof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> Proof:
         ...
 
     @classmethod
