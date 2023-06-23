@@ -90,13 +90,10 @@ class TestAPRProof(KCFGExploreTest):
         proof = APRProof(
             f'{spec_module}.{claim_id}', kcfg_pre, init=init_node, target=target_node, logs={}, proof_dir=proof_dir
         )
-        prover = APRProver(proof, extract_branches=TestAPRProof._extract_branches)
+        prover = APRProver(proof, kcfg_explore, extract_branches=TestAPRProof._extract_branches)
 
         # When
-        prover.advance_proof(
-            kcfg_explore,
-            max_iterations=1,
-        )
+        prover.advance_proof(max_iterations=1)
         frontier_nodes = prover.proof.pending
         assert prover.proof.status == ProofStatus.PENDING
 
@@ -105,9 +102,7 @@ class TestAPRProof(KCFGExploreTest):
         prover.refute_node(kcfg_explore, frontier_node)
         prover.unrefute_node(frontier_node)
 
-        prover.advance_proof(
-            kcfg_explore,
-        )
+        prover.advance_proof()
 
         # Then
         assert prover.proof.status == ProofStatus.PASSED
@@ -139,13 +134,11 @@ class TestAPRProof(KCFGExploreTest):
             f'{spec_module}.{claim_id}', kcfg_pre, init=init_node, target=target_node, logs={}, proof_dir=proof_dir
         )
         prover = APRProver(
-            proof, is_terminal=TestAPRProof._is_terminal, extract_branches=TestAPRProof._extract_branches
+            proof, kcfg_explore, is_terminal=TestAPRProof._is_terminal, extract_branches=TestAPRProof._extract_branches
         )
 
         # When
-        prover.advance_proof(
-            kcfg_explore,
-        )
+        prover.advance_proof()
 
         assert prover.proof.status == ProofStatus.FAILED
 
