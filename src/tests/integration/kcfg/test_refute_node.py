@@ -31,24 +31,6 @@ if TYPE_CHECKING:
 
 REFUTE_NODE_TEST_DATA: Iterable[tuple[str, Iterable[KInner], ProofStatus]] = (
     ('refute-node-fail', (mlEqualsTrue(leInt(KVariable('N'), intToken(0))),), ProofStatus.FAILED),
-    #      (
-    #          'refute-node-success-concrete-N',
-    #          mlEqualsTrue(eqInt(KVariable('N'), intToken(1))),
-    #          (
-    #              mlEqualsTrue(leInt(KVariable('N'), intToken(0))),
-    #              mlEqualsTrue(eqInt(KVariable('N'), intToken(1))),
-    #          ),
-    #          ProofStatus.PASSED,
-    #      ),
-    #      (
-    #          'refute-node-success-range-N',
-    #          mlEqualsTrue(gtInt(KVariable('N'), intToken(10))),
-    #          (
-    #              mlEqualsTrue(leInt(KVariable('N'), intToken(0))),
-    #              mlEqualsTrue(gtInt(KVariable('N'), intToken(10))),
-    #          ),
-    #          ProofStatus.PASSED,
-    #      ),
 )
 
 
