@@ -161,7 +161,7 @@ class Proof(ABC):
             admitted = proof_dict.get('admitted', False)
             _LOGGER.info(f'Reading {proof_type} from file {id}: {proof_path}')
             if proof_type in Proof._PROOF_TYPES:
-                return locals()[proof_type].from_dict(proof_dict, proof_dir, admitted=admitted)
+                return locals()[proof_type].from_dict(proof_dict, proof_dir)
 
         raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
 
