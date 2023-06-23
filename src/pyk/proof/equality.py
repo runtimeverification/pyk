@@ -216,13 +216,11 @@ class RefutationProof(Proof):
 
     @property
     def dict(self) -> dict[str, Any]:
-        dct = {
-            'type': 'RefutationProof',
-            'id': self.id,
-            'sort': self.sort.to_dict(),
-            'pre_constraints': [c.to_dict() for c in self.pre_constraints],
-            'last_constraint': self.last_constraint.to_dict(),
-        }
+        dct = super().dict
+        dct['type'] = 'RefutationProof'
+        dct['sort'] = self.sort.to_dict()
+        dct['pre_constraints'] = [c.to_dict() for c in self.pre_constraints]
+        dct['last_constraint'] = self.last_constraint.to_dict()
         if self.simplified_constraints is not None:
             dct['simplified_constraints'] = self.simplified_constraints.to_dict()
         if self.csubst is not None:
