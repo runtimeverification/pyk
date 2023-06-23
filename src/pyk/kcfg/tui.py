@@ -4,11 +4,11 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Union
 
 from textual.app import App
-from textual.containers import Horizontal, ScrollableContainer
+from textual.containers import Container, Horizontal, ScrollableContainer, VerticalScroll, HorizontalScroll
 from textual.geometry import Offset, Region
 from textual.message import Message
 from textual.widget import Widget
-from textual.widgets import Footer, Static
+from textual.widgets import Static
 
 from ..cterm import CTerm
 from ..kast.inner import KApply, KRewrite
@@ -57,7 +57,75 @@ class GraphChunk(Static):
         click.stop()
 
 
-class NodeView(Widget):
+class Info(Widget):
+    _info_text: str
+
+    def __init__(self, _info_text):
+        self._info_text = _info_text
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        yield Static(self._info_text, id='info')
+
+
+class Term(ScrollableContainer):
+    _term_on: bool
+
+    class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
+    def __init__(self, _term_on: bool):
+        self._term_on = _term_on
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        yield Static('Term', id='term', classes=('' if self._term_on else 'hidden'))
+
+    def on_click(self, click: Click) -> None:
+        self.post_message(Term.Selected())
+        click.stop()
+
+
+class Constraint(ScrollableContainer):
+    _constraint_on: bool
+
+    class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
+    def __init__(self, _constraint_on: bool):
+        self._constraint_on = _constraint_on
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        yield Static('Constraint', id='constraint', classes=('' if self._constraint_on else 'hidden'))
+
+    def on_click(self, click: Click) -> None:
+        self.post_message(Constraint.Selected())
+        click.stop()
+
+
+class Custom(ScrollableContainer):
+    _custom_on: bool
+
+    class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
+    def __init__(self, _custom_on: bool):
+        self._custom_on = _custom_on
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        yield Static('Custom', id='custom', classes=('' if self._custom_on else 'hidden'))
+
+    def on_click(self, click: Click) -> None:
+        self.post_message(Custom.Selected())
+        click.stop()
+
+
+class NodeView(VerticalScroll):
     _kprint: KPrint
     _custom_view: Callable[[KCFGElem], Iterable[str]] | None
 
@@ -102,14 +170,11 @@ class NodeView(Widget):
         return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
-        yield Horizontal(Static(self._info_text(), id='info'), id='info-view')
-        yield Horizontal(Static('Term', id='term'), id='term-view', classes=('' if self._term_on else 'hidden'))
-        yield Horizontal(
-            Static('Constraint', id='constraint'),
-            id='constraint-view',
-            classes=('' if self._constraint_on else 'hidden'),
-        )
-        yield Horizontal(Static('Custom', id='custom'), id='custom-view', classes=('' if self._custom_on else 'hidden'))
+        yield Container(Info(self._info_text()), id='info-view')
+        with HorizontalScroll(id='term-view'):
+            yield Term(self._term_on) 
+        yield Horizontal(Constraint(self._constraint_on), id='constraint-view')
+        yield Horizontal(Custom(self._custom_on), id='custom-view')
 
     def toggle_option(self, field: str) -> bool:
         assert field in ['minimize', 'term_on', 'constraint_on', 'custom_on']
@@ -127,9 +192,9 @@ class NodeView(Widget):
     def toggle_view(self, field: str) -> None:
         assert field in ['term', 'constraint', 'custom']
         if self.toggle_option(f'{field}_on'):
-            self.query_one(f'#{field}-view', Horizontal).remove_class('hidden')
+            self.query_one(f'#{field}-view').remove_class('hidden')
         else:
-            self.query_one(f'#{field}-view', Horizontal).add_class('hidden')
+            self.query_one(f'#{field}-view').add_class('hidden')
 
     def update(self, element: KCFGElem) -> None:
         self._element = element
@@ -329,7 +394,7 @@ class KCFGViewer(App):
         return None
 
     def compose(self) -> ComposeResult:
-        ...
+        return []
 
     def _resolve_any(self, kcfg_id: str) -> KCFGElem:
         if kcfg_id.startswith('node_'):
@@ -371,11 +436,21 @@ class KCFGViewer(App):
             self.query_one('#node-view', NodeView).update(self._resolve_any(next_node))
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
+        self.focus_window(Window.BEHAVIOR)
         self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
         kcfg_elem = self._resolve_any(message.chunk_id)
         self._selected_chunk = message.chunk_id
         self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
         self.query_one('#node-view', NodeView).update(kcfg_elem)
+
+    def on_term_selected(self) -> None:
+        self.focus_window(Window.TERM)
+
+    def on_constraint_selected(self) -> None:
+        self.focus_window(Window.CONSTRAINT)
+
+    def on_custom_selected(self) -> None:
+        self.focus_window(Window.CUSTOM)
 
     BINDINGS = [
         ('f', 'keystroke("f")', 'Fold node'),
@@ -402,10 +477,13 @@ class KCFGViewer(App):
     def focus_window(self, to: Window) -> None:
         curr_win = self._curr_win
         self._last_win = curr_win
-        self.query_one(f'#{curr_win.value}').set_class(False, 'selected')
-        self.query_one(f'#{curr_win.value}').set_class(True, 'deselected')
-        self.query_one(f'#{to.value}').set_class(False, 'deselected')
-        self.query_one(f'#{to.value}').set_class(True, 'selected')
+        last_win = self.query_one(f'#{curr_win.value}')
+        last_win.set_class(False, 'selected')
+        last_win.set_class(True, 'deselected')
+        new_win = self.query_one(f'#{to.value}')
+        new_win.set_class(False, 'deselected')
+        new_win.set_class(True, 'selected')
+        new_win.focus()
         self._curr_win = to
 
     def select_node(self, node: str | None) -> None:
@@ -475,14 +553,14 @@ class KCFGViewer(App):
                 if self._curr_win == Window.BEHAVIOR:
                     self.goto_prev_node()
                 else:
-                    self.query_one(f'#{self._curr_win.value}', Horizontal).scroll_up(animate=False)
+                    self.query_one(f'#{self._curr_win.value}').scroll_up(animate=False)
             case MoveKind.PAGE:
                 self.query_one(f'#{self._curr_win.value}').scroll_page_up(animate=False)
             case MoveKind.BOUND:
                 if self._curr_win == Window.BEHAVIOR:
                     self.goto_first_node()
                 else:
-                    self.query_one(f'#{self._curr_win.value}', Horizontal).scroll_home(animate=False)
+                    self.query_one(f'#{self._curr_win.value}').scroll_home(animate=False)
 
     def go_right(self, kind: MoveKind) -> None:
         match kind:
@@ -529,8 +607,10 @@ class KCFGViewer(App):
             dir = Direction.dir_of(key)
             if dir is not None:
                 match self._mode:
-                    case MovementMode.SCROLL: self.move(dir, MoveKind.SINGLE)
-                    case MovementMode.WINDOW: self.change_window(dir)
+                    case MovementMode.SCROLL:
+                        self.move(dir, MoveKind.SINGLE)
+                    case MovementMode.WINDOW:
+                        self.change_window(dir)
         elif key == 'g':
             self.move(Direction.UP, MoveKind.BOUND)
         elif key == 'G':
@@ -564,7 +644,6 @@ class KCFGViewer(App):
         elif key == 'q':
             await self.action_quit()
 
-        self._buffer = []
-
+        self._mode = MovementMode.SCROLL
         if key == 'change-window':
-            self._buffer.append(key)
+            self._mode = MovementMode.WINDOW

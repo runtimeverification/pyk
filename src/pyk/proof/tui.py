@@ -50,7 +50,7 @@ class APRProofBehaviorView(Widget):
 
 
 class APRProofViewer(KCFGViewer):
-    CSS_PATH = 'style.css'
+    CSS_PATH = '../kcfg/style.css'
 
     _proof: APRProof
 
@@ -71,6 +71,7 @@ class APRProofViewer(KCFGViewer):
                 APRProofBehaviorView(self._proof, self._kprint, node_printer=self._node_printer, id='behavior'),
                 id='navigation',
             ),
-            ScrollableContainer(NodeView(self._kprint, custom_view=self._custom_view, id='node-view'), id='display'),
+            NodeView(self._kprint, custom_view=self._custom_view, id='node-view'),
+            id='display',
         )
         yield Footer()
