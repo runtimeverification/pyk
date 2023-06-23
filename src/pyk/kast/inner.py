@@ -714,6 +714,7 @@ def fold(folder: Callable[[KInner, list[A]], A], to_fold: KInner) -> A:
     looks somewhat uglier because KInner is not implemented as a Recursive.
     https://hackage.haskell.org/package/recursion-schemes-5.2.2.4/docs/Data-Functor-Foldable.html#v:fold
     """
+
     def child_collect(children: list[A], child: KInner) -> KInner:
         children.append(fold(folder, child))
         return child
@@ -728,16 +729,14 @@ def unzip(l: list[tuple[A, B]]) -> tuple[list[A], list[B]]:
 
 
 def fold_transform(
-    folder: Callable[[KInner, list[A]], A],
-    transformer: Callable[[KInner, A], tuple[KInner, A]],
-    to_fold: KInner
+    folder: Callable[[KInner, list[A]], A], transformer: Callable[[KInner, A], tuple[KInner, A]], to_fold: KInner
 ) -> tuple[KInner, A]:
     """Takes a KInner and transforms it, while also computing a summary.
 
     This does a recursive processing of a KInner, with the help of 'folder' and
     'transformer', which are functions that operate on a single level of a
     KInner.
-    
+
     Let KI be the current node of type KInner.
 
     fold_transform will compute some information of type 'A' for each child of
@@ -751,6 +750,7 @@ def fold_transform(
     This is similar to a special type of fold in Haskell, see the 'fold'
     docstring for more details.
     """
+
     def fold_term(term: KInner, children: list[tuple[KInner, A]]) -> tuple[KInner, A]:
         (child_terms, child_values) = unzip(children)
         child_index = 0
