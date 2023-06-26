@@ -763,6 +763,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         source_id = self._resolve(source_id)
         target_id = self._resolve(target_id)
 
+        if source_id == target_id:
+            return [()]
+
         source_successors = list(self.successors(source_id))
         assert len(source_successors) <= 1
         if len(source_successors) == 0:
