@@ -531,12 +531,21 @@ class APRBMCProver(APRProver):
 
             for f in self.proof.pending:
                 if f.id not in self._checked_nodes:
+                    _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {f.id}')
                     self._checked_nodes.append(f.id)
-                    prior_loops = [
-                        nd.id
-                        for nd in self.proof.kcfg.reachable_nodes(f.id, reverse=True)
-                        if nd.id != f.id and self._same_loop(nd.cterm, f.cterm)
+                    _prior_loops = [
+                        succ.source.id
+                        for succ in self.proof.shortest_path_to(f.id)
+                        if self._same_loop(succ.source.cterm, f.cterm)
                     ]
+                    prior_loops: list[NodeIdLike] = []
+                    for _pl in _prior_loops:
+                        if not (
+                            self.proof.kcfg.zero_depth_between(_pl, f.id)
+                            or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+                        ):
+                            prior_loops.append(_pl)
+                    _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(f.id, prior_loops)}')
                     if len(prior_loops) > self.proof.bmc_depth:
                         self.proof.add_bounded(f.id)
 
