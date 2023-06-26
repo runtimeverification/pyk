@@ -68,7 +68,7 @@ class Info(Widget):
         yield Static(self._info_text, id='info')
 
 
-class Term(ScrollableContainer):
+class Term(Widget, can_focus=True):
     _term_on: bool
 
     class Selected(Message):
@@ -87,7 +87,7 @@ class Term(ScrollableContainer):
         click.stop()
 
 
-class Constraint(ScrollableContainer):
+class Constraint(Widget, can_focus=True):
     _constraint_on: bool
 
     class Selected(Message):
@@ -106,7 +106,7 @@ class Constraint(ScrollableContainer):
         click.stop()
 
 
-class Custom(ScrollableContainer):
+class Custom(Widget, can_focus=True):
     _custom_on: bool
 
     class Selected(Message):
@@ -171,10 +171,10 @@ class NodeView(VerticalScroll):
 
     def compose(self) -> ComposeResult:
         yield Container(Info(self._info_text()), id='info-view')
-        with HorizontalScroll(id='term-view'):
-            yield Term(self._term_on) 
-        yield Horizontal(Constraint(self._constraint_on), id='constraint-view')
-        yield Horizontal(Custom(self._custom_on), id='custom-view')
+        with ScrollableContainer(id='term-view'):
+            yield Term(self._term_on)
+        yield ScrollableContainer(Constraint(self._constraint_on), id='constraint-view')
+        yield ScrollableContainer(Custom(self._custom_on), id='custom-view')
 
     def toggle_option(self, field: str) -> bool:
         assert field in ['minimize', 'term_on', 'constraint_on', 'custom_on']
