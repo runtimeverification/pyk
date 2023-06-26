@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from abc import abstractmethod
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
@@ -1137,26 +1138,18 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 raise ValueError(f"Expected a quantifier's first child to be a variable, got {type(var)}.")
             return var
 
-        def add_var_to_dict(var: KVariable, occurrences: dict[str, list[KVariable]]) -> None:
-            if var.name not in occurrences:
-                occurrences[var.name] = [var]
-            else:
-                occurrences[var.name].append(var)
-
         def fold_vars(term: KInner, occurrences_list: list[dict[str, list[KVariable]]]) -> dict[str, list[KVariable]]:
-            result: dict[str, list[KVariable]] = {}
+            result: dict[str, list[KVariable]] = defaultdict(list)
             for occurrences in occurrences_list:
                 assert isinstance(occurrences, dict), type(occurrences)
                 for key, value in occurrences.items():
-                    if key not in result:
-                        result[key] = []
                     result[key] += value
             if isinstance(term, KVariable):
-                add_var_to_dict(term, result)
+                result[term.name].append(term)
             elif isinstance(term, KApply):
                 if term.label.name in ML_QUANTIFIERS:
                     var = get_quantifier_variable(term)
-                    add_var_to_dict(var, result)
+                    result[var.name].append(var)
             return result
 
         def add_var_to_subst(vname: str, vars: list[KVariable], subst: dict[str, KVariable]) -> None:
