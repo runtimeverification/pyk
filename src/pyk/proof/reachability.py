@@ -407,8 +407,7 @@ class APRProver:
         return False
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
-        p = self.proof.shortest_path_to(node.id)
-        return KCFG.path_length(p) > 0
+        return not self.proof.kcfg.zero_depth_between(self.proof.init, node.id)
 
     def _check_subsume(self, node: KCFG.Node) -> bool:
         target_node = self.proof.kcfg.node(self.proof.target)
