@@ -10,6 +10,7 @@ import tarfile
 import time
 from collections.abc import Mapping
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
@@ -511,3 +512,13 @@ class BugReport:
             arcname = Path('kompiled') / f'{self._defn_id:03}_defn'
             self.add_file(defn_path, arcname)
             self._defn_id += 1
+
+
+class Kernel(Enum):
+    LINUX = 'Linux'
+    DARWIN = 'Darwin'
+
+    @staticmethod
+    def get() -> Kernel:
+        uname = run_process(('uname', '-s'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
+        return Kernel(uname)

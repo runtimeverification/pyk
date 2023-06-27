@@ -18,7 +18,7 @@ from ..kast.manip import (
 )
 from ..kast.outer import KRule
 from ..konvert import krule_to_kore
-from ..kore.rpc import KoreClient, KoreServer, StopReason
+from ..kore.rpc import BoosterServer, KoreClient, KoreServer, StopReason
 from ..kore.syntax import Import, Module
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude import k
@@ -100,18 +100,33 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
         if not self._kore_server:
-            self._kore_server = KoreServer(
-                self.kprint.definition_dir,
-                self.kprint.main_module,
-                port=self._port,
-                bug_report=self._bug_report,
-                command=self._kore_rpc_command,
-                smt_timeout=self._smt_timeout,
-                smt_retry_limit=self._smt_retry_limit,
-                haskell_log_format=self._haskell_log_format,
-                haskell_log_entries=self._haskell_log_entries,
-                log_axioms_file=self._log_axioms_file,
-            )
+            if self.kprint.llvm_definition_dir:
+                self._kore_server = BoosterServer(
+                    self.kprint.definition_dir,
+                    self.kprint.llvm_definition_dir,
+                    self.kprint.main_module,
+                    port=self._port,
+                    bug_report=self._bug_report,
+                    command=self._kore_rpc_command,
+                    smt_timeout=self._smt_timeout,
+                    smt_retry_limit=self._smt_retry_limit,
+                    haskell_log_format=self._haskell_log_format,
+                    haskell_log_entries=self._haskell_log_entries,
+                    log_axioms_file=self._log_axioms_file,
+                )
+            else:
+                self._kore_server = KoreServer(
+                    self.kprint.definition_dir,
+                    self.kprint.main_module,
+                    port=self._port,
+                    bug_report=self._bug_report,
+                    command=self._kore_rpc_command,
+                    smt_timeout=self._smt_timeout,
+                    smt_retry_limit=self._smt_retry_limit,
+                    haskell_log_format=self._haskell_log_format,
+                    haskell_log_entries=self._haskell_log_entries,
+                    log_axioms_file=self._log_axioms_file,
+                )
         if not self._kore_client:
             self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
         return (self._kore_server, self._kore_client)
