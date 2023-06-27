@@ -315,8 +315,8 @@ class ImpliesProver(Prover):
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
             dummy_config = self.kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
             result = self.kcfg_explore.cterm_implies(
-                antecedent=CTerm(config=dummy_config, constraints=[self._antecedent_kast]),
-                consequent=CTerm(config=dummy_config, constraints=[self._consequent_kast]),
+                antecedent=CTerm(config=dummy_config, constraints=[self.simplified_antecedent]),
+                consequent=CTerm(config=dummy_config, constraints=[self.simplified_consequent]),
             )
             if result is not None:
                 self.proof.set_csubst(result)
