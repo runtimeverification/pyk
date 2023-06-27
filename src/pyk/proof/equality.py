@@ -263,13 +263,21 @@ class RefutationProof(Proof):
         return lines
 
 
-class EqualityProver:
+class Prover:
+    kcfg_explore: KCFGExplore
+
+    def __init__(self, kcfg_explore: KCFGExplore):
+        self.kcfg_explore = kcfg_explore
+
+
+class EqualityProver(Prover):
     proof: EqualityProof
 
-    def __init__(self, proof: EqualityProof) -> None:
+    def __init__(self, proof: EqualityProof, kcfg_explore: KCFGExplore) -> None:
+        super().__init__(kcfg_explore)
         self.proof = proof
 
-    def advance_proof(self, kcfg_explore: KCFGExplore) -> None:
+    def advance_proof(self) -> None:
         _LOGGER.info(f'Attempting EqualityProof {self.proof.id}')
 
         if self.proof.status is not ProofStatus.PENDING:
@@ -281,12 +289,12 @@ class EqualityProver:
         antecedent_kast = self.proof.constraint
         consequent_kast = self.proof.equality
 
-        antecedent_simplified_kast, _ = kcfg_explore.kast_simplify(antecedent_kast)
-        consequent_simplified_kast, _ = kcfg_explore.kast_simplify(consequent_kast)
+        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(antecedent_kast)
+        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(consequent_kast)
         self.proof.set_simplified_constraints(antecedent_simplified_kast)
         self.proof.set_simplified_equality(consequent_simplified_kast)
-        _LOGGER.info(f'Simplified antecedent: {kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
-        _LOGGER.info(f'Simplified consequent: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
+        _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
+        _LOGGER.info(f'Simplified consequent: {self.kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
 
         if is_bottom(antecedent_simplified_kast):
             _LOGGER.warning(f'Antecedent of implication (proof constraints) simplifies to #Bottom {self.proof.id}')
@@ -298,8 +306,8 @@ class EqualityProver:
 
         else:
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
-            dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-            result = kcfg_explore.cterm_implies(
+            dummy_config = self.kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
+            result = self.kcfg_explore.cterm_implies(
                 antecedent=CTerm(config=dummy_config, constraints=[antecedent_kast]),
                 consequent=CTerm(config=dummy_config, constraints=[consequent_kast]),
             )
@@ -310,13 +318,14 @@ class EqualityProver:
         self.proof.write_proof()
 
 
-class RefutationProver:
+class RefutationProver(Prover):
     proof: RefutationProof
 
-    def __init__(self, proof: RefutationProof) -> None:
+    def __init__(self, proof: RefutationProof, kcfg_explore: KCFGExplore) -> None:
+        super().__init__(kcfg_explore)
         self.proof = proof
 
-    def advance_proof(self, kcfg_explore: KCFGExplore) -> None:
+    def advance_proof(self) -> None:
         _LOGGER.info(f'Attempting RefutationProof {self.proof.id}')
 
         if self.proof.status is not ProofStatus.PENDING:
@@ -326,18 +335,18 @@ class RefutationProver:
         antecedent_kast = mlAnd(self.proof.pre_constraints)
         consequent_kast = mlEqualsFalse(self.proof.last_constraint)
 
-        antecedent_simplified_kast, _ = kcfg_explore.kast_simplify(antecedent_kast)
-        consequent_simplified_kast, _ = kcfg_explore.kast_simplify(consequent_kast)
+        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(antecedent_kast)
+        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(consequent_kast)
         self.proof.set_simplified_constraints(consequent_simplified_kast)
-        _LOGGER.info(f'Simplified constraints: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
+        _LOGGER.info(f'Simplified constraints: {self.kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
 
         if is_top(consequent_simplified_kast):
             _LOGGER.warning(f'Consequent of implication (proof equality) simplifies to #Top {self.proof.id}')
             self.proof.set_csubst(CSubst(Subst({}), ()))
         else:
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
-            dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-            result = kcfg_explore.cterm_implies(
+            dummy_config = self.kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
+            result = self.kcfg_explore.cterm_implies(
                 antecedent=CTerm(config=dummy_config, constraints=[antecedent_simplified_kast]),
                 consequent=CTerm(config=dummy_config, constraints=[consequent_simplified_kast]),
             )
