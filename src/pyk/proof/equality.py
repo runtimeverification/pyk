@@ -26,6 +26,8 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class ImpliesProof(Proof):
+    simplified_antecedent: KInner
+    simplified_consequent: KInner
     csubst: CSubst | None
 
     def __init__(
@@ -275,8 +277,6 @@ class ImpliesProver(Prover):
     proof: ImpliesProof
     _antecedent_kast: KInner
     _consequent_kast: KInner
-    simplified_antecedent: KInner
-    simplified_consequent: KInner
 
     def __init__(
         self, kcfg_explore: KCFGExplore, proof: ImpliesProof, antecedent_kast: KInner, consequent_kast: KInner
@@ -298,8 +298,8 @@ class ImpliesProver(Prover):
         # "LHS equals RHS under these constraints"
         antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self._antecedent_kast)
         consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self._consequent_kast)
-        self.simplified_antecedent = antecedent_simplified_kast
-        self.simplified_consequent = consequent_simplified_kast
+        self.proof.simplified_antecedent = antecedent_simplified_kast
+        self.proof.simplified_consequent = consequent_simplified_kast
         _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
         _LOGGER.info(f'Simplified consequent: {self.kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
 
@@ -315,8 +315,8 @@ class ImpliesProver(Prover):
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
             dummy_config = self.kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
             result = self.kcfg_explore.cterm_implies(
-                antecedent=CTerm(config=dummy_config, constraints=[self.simplified_antecedent]),
-                consequent=CTerm(config=dummy_config, constraints=[self.simplified_consequent]),
+                antecedent=CTerm(config=dummy_config, constraints=[self.proof.simplified_antecedent]),
+                consequent=CTerm(config=dummy_config, constraints=[self.proof.simplified_consequent]),
             )
             if result is not None:
                 self.proof.set_csubst(result)
@@ -334,8 +334,8 @@ class EqualityProver(ImpliesProver):
     def advance_proof(self) -> None:
         super().advance_proof()
         assert type(self.proof) is EqualityProof
-        self.proof.set_simplified_constraints(self.simplified_antecedent)
-        self.proof.set_simplified_equality(self.simplified_consequent)
+        self.proof.set_simplified_constraints(self.proof.simplified_antecedent)
+        self.proof.set_simplified_equality(self.proof.simplified_consequent)
 
 
 class RefutationProver(ImpliesProver):
@@ -350,4 +350,4 @@ class RefutationProver(ImpliesProver):
     def advance_proof(self) -> None:
         super().advance_proof()
         assert type(self.proof) is RefutationProof
-        self.proof.set_simplified_constraints(self.simplified_consequent)
+        self.proof.set_simplified_constraints(self.proof.simplified_consequent)
