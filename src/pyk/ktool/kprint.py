@@ -176,6 +176,7 @@ def _build_arg_list(
 
 class KPrint:
     definition_dir: Path
+    llvm_definition_dir: Path | None
     use_directory: Path | None
     main_module: str
     backend: str
@@ -187,12 +188,17 @@ class KPrint:
     def __init__(
         self,
         definition_dir: Path,
+        llvm_definition_dir: Path | None = None,
         use_directory: Path | None = None,
         bug_report: BugReport | None = None,
         extra_unparsing_modules: Iterable[KFlatModule] = (),
         patch_symbol_table: Callable[[SymbolTable], None] | None = None,
     ) -> None:
         self.definition_dir = definition_dir
+
+        if llvm_definition_dir:
+            check_dir_path(llvm_definition_dir)
+        self.llvm_definition_dir = llvm_definition_dir
 
         if use_directory:
             check_dir_path(use_directory)
@@ -209,6 +215,8 @@ class KPrint:
         self._bug_report = bug_report
         if self._bug_report:
             self._bug_report.add_definition(self.definition_dir)
+            if self.llvm_definition_dir:
+                self._bug_report.add_definition(self.llvm_definition_dir)
 
     @contextmanager
     def _temp_file(self, suffix: str | None = None) -> Iterator[_TemporaryFileWrapper]:
