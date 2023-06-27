@@ -644,6 +644,21 @@ class KSequence(KInner, Sequence[KInner]):
         return None
 
 
+def bottom_up_with_summary(
+    f: Callable[[KInner, list[A]], tuple[KInner, A]], kinner: KInner
+) -> tuple[KInner, A]:
+    child_summaries = []
+
+    def map_child(child: KInner) -> KInner:
+        nonlocal child_summaries
+        (mapped_child, summarized_child) = bottom_up_with_summary(f, child)
+        child_summaries.append(summarized_child)
+        return mapped_child
+
+    mapped = kinner.map_inner(map_child)
+    return f(mapped, child_summaries)
+
+
 # TODO make method of KInner
 def bottom_up(f: Callable[[KInner], KInner], kinner: KInner) -> KInner:
     return f(kinner.map_inner(lambda _kinner: bottom_up(f, _kinner)))
@@ -698,74 +713,3 @@ def build_cons(unit: KInner, label: str | KLabel, terms: Iterable[KInner]) -> KI
         return KApply(label, (fst, build_cons(unit, label, it)))
     except StopIteration:
         return unit
-
-
-def fold(folder: Callable[[KInner, list[A]], A], to_fold: KInner) -> A:
-    """Takes a KInner and summarizes (folds) it by folding its children and combining the results.
-
-    Given a KInner, this will summarize its children, then it will call 'folder'
-    to combine the children's summaries with the current node and produce
-    the current node summary.
-
-    The intent is to transform a KInner[KInner] (a KInner with children of type
-    KInner) into a KInner[A], then use `folder` to transform that into an A.
-
-    This is similar to a fold/cata in Haskell's recursion schemes, although it
-    looks somewhat uglier because KInner is not implemented as a Recursive.
-    https://hackage.haskell.org/package/recursion-schemes-5.2.2.4/docs/Data-Functor-Foldable.html#v:fold
-    """
-
-    def child_collect(children: list[A], child: KInner) -> KInner:
-        children.append(fold(folder, child))
-        return child
-
-    children: list[A] = []
-    to_fold.map_inner(lambda c: child_collect(children, c))
-    return folder(to_fold, children)
-
-
-def unzip(l: list[tuple[A, B]]) -> tuple[list[A], list[B]]:
-    return ([a for a, _ in l], [b for _, b in l])
-
-
-def fold_transform(
-    folder: Callable[[KInner, list[A]], A], transformer: Callable[[KInner, A], tuple[KInner, A]], to_fold: KInner
-) -> tuple[KInner, A]:
-    """Takes a KInner and transforms it, while also computing a summary.
-
-    This does a recursive processing of a KInner, with the help of 'folder' and
-    'transformer', which are functions that operate on a single level of a
-    KInner.
-
-    Let KI be the current node of type KInner.
-
-    fold_transform will compute some information of type 'A' for each child of
-    KI, then it will apply 'folder' to combine this information with KI,
-    producing the 'A' information for KI.
-
-    fold_transform also transforms each child of KI, replacing KI's children
-    with their newer versions, then uses 'transformer' to combine the newer KI
-    with the KI's 'A' information, producing the final vesion of KI.
-
-    This is similar to a special type of fold in Haskell, see the 'fold'
-    docstring for more details.
-    """
-
-    def fold_term(term: KInner, children: list[tuple[KInner, A]]) -> tuple[KInner, A]:
-        (child_terms, child_values) = unzip(children)
-        child_index = 0
-
-        def get_child(_: KInner) -> KInner:
-            nonlocal child_index
-
-            retv = child_terms[child_index]
-            child_index += 1
-            return retv
-
-        new_term = term.map_inner(get_child)
-        if child_index != len(child_terms):
-            raise ValueError(f'Expected {len(child_terms)} children, but got {child_index}.')
-        new_value = folder(new_term, child_values)
-        return transformer(new_term, new_value)
-
-    return fold(fold_term, to_fold)

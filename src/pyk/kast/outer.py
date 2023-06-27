@@ -13,20 +13,7 @@ from typing import TYPE_CHECKING, final
 from ..prelude.kbool import TRUE
 from ..prelude.ml import ML_QUANTIFIERS
 from ..utils import filter_none, single, unique
-from .inner import (
-    KApply,
-    KInner,
-    KLabel,
-    KRewrite,
-    KSequence,
-    KSort,
-    KToken,
-    KVariable,
-    Subst,
-    bottom_up,
-    fold_transform,
-    top_down,
-)
+from .inner import KApply, KInner, KLabel, KRewrite, KSequence, KSort, KToken, KVariable, Subst, bottom_up, bottom_up_with_summary, top_down
 from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt, kast_term
 
 if TYPE_CHECKING:
@@ -1149,7 +1136,9 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 raise ValueError(f"Expected a quantifier's first child to be a variable, got {type(var)}.")
             return var
 
-        def fold_vars(term: KInner, occurrences_list: list[dict[str, list[KVariable]]]) -> dict[str, list[KVariable]]:
+        def merge_variables(
+            term: KInner, occurrences_list: list[dict[str, list[KVariable]]]
+        ) -> dict[str, list[KVariable]]:
             result: dict[str, list[KVariable]] = defaultdict(list)
             for occurrences in occurrences_list:
                 assert isinstance(occurrences, dict), type(occurrences)
@@ -1175,8 +1164,10 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 subst[vname] = KVariable(vname, sort=vsort)
 
         def transform(
-            term: KInner, occurrences: dict[str, list[KVariable]]
+            term: KInner, child_variables: list[dict[str, list[KVariable]]]
         ) -> tuple[KInner, dict[str, list[KVariable]]]:
+            occurrences = merge_variables(term, child_variables)
+
             if isinstance(term, KApply):
                 if term.label.name in ML_QUANTIFIERS:
                     var = get_quantifier_variable(term)
@@ -1199,7 +1190,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                     occurrences[last_a.name].append(last_a.let_sort(KSort('K')))
             return (term, occurrences)
 
-        (new_term, var_occurrences) = fold_transform(fold_vars, transform, kast)
+        (new_term, var_occurrences) = bottom_up_with_summary(transform, kast)
 
         subst: dict[str, KVariable] = {}
         for vname, occurrences in var_occurrences.items():
