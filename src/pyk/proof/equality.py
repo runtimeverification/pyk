@@ -287,7 +287,7 @@ class ImpliesProver(Prover):
         self._consequent_kast = consequent_kast
 
     def advance_proof(self) -> None:
-        proof_type = str(type(self.proof))
+        proof_type = type(self.proof).__name__
         _LOGGER.info(f'Attempting {proof_type} {self.proof.id}')
 
         if self.proof.status is not ProofStatus.PENDING:
