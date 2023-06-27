@@ -644,9 +644,7 @@ class KSequence(KInner, Sequence[KInner]):
         return None
 
 
-def bottom_up_with_summary(
-    f: Callable[[KInner, list[A]], tuple[KInner, A]], kinner: KInner
-) -> tuple[KInner, A]:
+def bottom_up_with_summary(f: Callable[[KInner, list[A]], tuple[KInner, A]], kinner: KInner) -> tuple[KInner, A]:
     child_summaries = []
 
     def map_child(child: KInner) -> KInner:

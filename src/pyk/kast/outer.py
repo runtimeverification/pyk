@@ -13,7 +13,20 @@ from typing import TYPE_CHECKING, final
 from ..prelude.kbool import TRUE
 from ..prelude.ml import ML_QUANTIFIERS
 from ..utils import filter_none, single, unique
-from .inner import KApply, KInner, KLabel, KRewrite, KSequence, KSort, KToken, KVariable, Subst, bottom_up, bottom_up_with_summary, top_down
+from .inner import (
+    KApply,
+    KInner,
+    KLabel,
+    KRewrite,
+    KSequence,
+    KSort,
+    KToken,
+    KVariable,
+    Subst,
+    bottom_up,
+    bottom_up_with_summary,
+    top_down,
+)
 from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt, kast_term
 
 if TYPE_CHECKING:
