@@ -744,6 +744,7 @@ class KoreServer(ContextManager['KoreServer']):
         self._proc.wait()
         _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
 
+
 class BoosterServer(KoreServer):
     def __init__(
         self,
