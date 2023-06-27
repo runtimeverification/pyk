@@ -221,7 +221,8 @@ class KProve(KPrint):
         env['KORE_EXEC_OPTS'] = kore_exec_opts
 
         if haskell_rts_args:
-            ghc_rts = ' '.join(list(haskell_rts_args))
+            existing = os.getenv('GHCRTS')
+            ghc_rts = ' '.join(list(haskell_rts_args + ([existing] if existing else [])))
             _LOGGER.debug(f'export GHCRTS={ghc_rts!r}')
             env['GHCRTS'] = ghc_rts
 
