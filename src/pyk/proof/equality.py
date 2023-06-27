@@ -9,7 +9,7 @@ from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
-from .proof import Proof, ProofStatus
+from .proof import Proof, ProofStatus, Prover
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -269,13 +269,6 @@ class RefutationProof(ImpliesProof):
             lines.append(f'Implication csubst: {self.csubst}')
         lines.append(f'Status: {self.status}')
         return lines
-
-
-class Prover:
-    kcfg_explore: KCFGExplore
-
-    def __init__(self, kcfg_explore: KCFGExplore):
-        self.kcfg_explore = kcfg_explore
 
 
 class ImpliesProver(Prover):
