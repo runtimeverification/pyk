@@ -26,6 +26,8 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class ImpliesProof(Proof):
+    _antecedent_kast: KInner
+    _consequent_kast: KInner
     simplified_antecedent: KInner
     simplified_consequent: KInner
     csubst: CSubst | None
@@ -275,16 +277,14 @@ class RefutationProof(ImpliesProof):
 
 class ImpliesProver(Prover):
     proof: ImpliesProof
-    _antecedent_kast: KInner
-    _consequent_kast: KInner
 
     def __init__(
         self, kcfg_explore: KCFGExplore, proof: ImpliesProof, antecedent_kast: KInner, consequent_kast: KInner
     ):
         super().__init__(kcfg_explore)
         self.proof = proof
-        self._antecedent_kast = antecedent_kast
-        self._consequent_kast = consequent_kast
+        self.proof._antecedent_kast = antecedent_kast
+        self.proof._consequent_kast = consequent_kast
 
     def advance_proof(self) -> None:
         proof_type = type(self.proof).__name__
@@ -296,8 +296,8 @@ class ImpliesProver(Prover):
 
         # to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.
         # "LHS equals RHS under these constraints"
-        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self._antecedent_kast)
-        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self._consequent_kast)
+        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._antecedent_kast)
+        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._consequent_kast)
         self.proof.simplified_antecedent = antecedent_simplified_kast
         self.proof.simplified_consequent = consequent_simplified_kast
         _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
