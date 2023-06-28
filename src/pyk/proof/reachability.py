@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
+from ..cterm import CTerm
 from ..kast.inner import KRewrite, KSort
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KClaim
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    from ..cterm import CTerm
     from ..kast.inner import KInner
     from ..kast.outer import KDefinition
     from ..kcfg import KCFGExplore
@@ -586,6 +586,49 @@ class APRProver(Prover):
 
         self.proof.add_subproof(refutation)
         return refutation
+
+    def failure_info(self) -> list[str]:
+        target = self.proof.kcfg.node(self.proof.target)
+
+        res_lines: list[str] = []
+
+        num_pending = len(self.proof.pending)
+        num_failing = len(self.proof.failing)
+        res_lines.append(
+            f'{num_pending + num_failing} Failure nodes. ({num_pending} pending and {num_failing} failing)'
+        )
+        if num_pending > 0:
+            res_lines.append('')
+            res_lines.append('Pending nodes:')
+            for node in self.proof.pending:
+                res_lines.append('')
+                res_lines.append(f'ID: {node.id}:')
+        if num_failing > 0:
+            res_lines.append('')
+            res_lines.append('Failing nodes:')
+            for node in self.proof.failing:
+                res_lines.append('')
+                res_lines.append(f'  Node id: {str(node.id)}')
+
+                simplified_node, _ = self.kcfg_explore.cterm_simplify(node.cterm)
+                simplified_target, _ = self.kcfg_explore.cterm_simplify(target.cterm)
+
+                node_cterm = CTerm.from_kast(simplified_node)
+                target_cterm = CTerm.from_kast(simplified_target)
+
+                res_lines.append('  Failure reason:')
+                _, reason = self.kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
+                res_lines += [f'    {line}' for line in reason.split('\n')]
+
+                res_lines.append('  Path condition:')
+                res_lines += [f'    {self.kcfg_explore.kprint.pretty_print(self.proof.path_constraints(node.id))}']
+
+                res_lines.append('')
+                res_lines.append(
+                    'Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN'
+                )
+
+        return res_lines
 
 
 class APRBMCProver(APRProver):

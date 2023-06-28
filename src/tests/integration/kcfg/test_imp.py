@@ -18,7 +18,7 @@ from pyk.proof.show import APRBMCProofNodePrinter, APRProofNodePrinter
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
-from ..utils import K_FILES
+from ..utils import K_FILES, TEST_DATA_DIR
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -579,6 +579,15 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
+FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str]] = (
+    (
+        'failing-if',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'failing-if',
+    ),
+)
+
 
 def leaf_number(proof: APRProof) -> int:
     non_target_leaves = [nd for nd in proof.kcfg.leaves if not proof.is_target(nd.id)]
@@ -911,3 +920,50 @@ class TestImpProof(KCFGExploreTest):
 
         assert proof.status == proof_status
         assert leaf_number(proof) == expected_leaf_number
+
+    @pytest.mark.parametrize(
+        'test_id,spec_file,spec_module,claim_id',
+        FAILURE_INFO_TEST_DATA,
+        ids=[test_id for test_id, *_ in FAILURE_INFO_TEST_DATA],
+    )
+    def test_failure_info(
+        self,
+        kprove: KProve,
+        update_expected_output: bool,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        spec_file: str,
+        spec_module: str,
+        claim_id: str,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
+        )
+
+        proof = APRProof.from_claim(kprove.definition, claim, logs={})
+        kcfg_explore.simplify(proof.kcfg, {})
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            is_terminal=TestImpProof._is_terminal,
+        )
+        prover.advance_proof()
+
+        res = prover.failure_info()
+        assert_or_update_failure_info(
+            res,
+            TEST_DATA_DIR / f'{spec_module}.{claim_id}.failure-info.expected',
+            update=update_expected_output,
+        )
+
+
+def assert_or_update_failure_info(show_res: list[str], expected_file: Path, update: bool = False) -> None:
+    assert expected_file.is_file()
+
+    actual_text = '\n'.join(show_res) + '\n'
+    expected_text = expected_file.read_text()
+
+    if update:
+        expected_file.write_text(actual_text)
+    else:
+        assert actual_text == expected_text
