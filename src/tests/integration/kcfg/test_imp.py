@@ -18,7 +18,7 @@ from pyk.proof.show import APRBMCProofNodePrinter, APRProofNodePrinter
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
-from ..utils import K_FILES, TEST_DATA_DIR
+from ..utils import K_FILES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -950,6 +950,8 @@ class TestImpProof(KCFGExploreTest):
 
         res = prover.failure_info()
         actual_text = '\n'.join(res) + '\n'
+
+        expected_file = K_FILES / f'{spec_module}.{claim_id}.failure-info.expected'
 
         assert expected_file.is_file()
         expected_text = expected_file.read_text()
