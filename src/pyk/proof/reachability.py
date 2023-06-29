@@ -587,47 +587,57 @@ class APRProver(Prover):
         self.proof.add_subproof(refutation)
         return refutation
 
-    def failure_info(self) -> list[str]:
-        target = self.proof.kcfg.node(self.proof.target)
+    def failure_info(self) -> APRFailureInfo:
+        return APRFailureInfo(self.proof, self.kcfg_explore)
 
+
+class APRFailureInfo:
+    failing_nodes: dict[int, tuple[str, str]]
+    pending_nodes: list[int]
+
+    def __init__(self, proof: APRProof, kcfg_explore: KCFGExplore):
+        target = proof.kcfg.node(proof.target)
+        self.pending_nodes = [node.id for node in proof.pending]
+        self.failing_nodes = {}
+        for node in proof.failing:
+            simplified_node, _ = kcfg_explore.cterm_simplify(node.cterm)
+            simplified_target, _ = kcfg_explore.cterm_simplify(target.cterm)
+            node_cterm = CTerm.from_kast(simplified_node)
+            target_cterm = CTerm.from_kast(simplified_target)
+            _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
+            path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
+            self.failing_nodes[node.id] = (reason, path_condition)
+
+    def print(self) -> list[str]:
         res_lines: list[str] = []
 
-        num_pending = len(self.proof.pending)
-        num_failing = len(self.proof.failing)
+        num_pending = len(self.pending_nodes)
+        num_failing = len(self.failing_nodes)
         res_lines.append(
             f'{num_pending + num_failing} Failure nodes. ({num_pending} pending and {num_failing} failing)'
         )
+
         if num_pending > 0:
             res_lines.append('')
-            res_lines.append('Pending nodes:')
-            for node in self.proof.pending:
-                res_lines.append('')
-                res_lines.append(f'ID: {node.id}:')
+            res_lines.append(f'Pending nodes: {self.pending_nodes}')
+
         if num_failing > 0:
             res_lines.append('')
             res_lines.append('Failing nodes:')
-            for node in self.proof.failing:
+            for node_id, (reason, path_condition) in self.failing_nodes.items():
                 res_lines.append('')
-                res_lines.append(f'  Node id: {str(node.id)}')
-
-                simplified_node, _ = self.kcfg_explore.cterm_simplify(node.cterm)
-                simplified_target, _ = self.kcfg_explore.cterm_simplify(target.cterm)
-
-                node_cterm = CTerm.from_kast(simplified_node)
-                target_cterm = CTerm.from_kast(simplified_target)
+                res_lines.append(f'  Node id: {str(node_id)}')
 
                 res_lines.append('  Failure reason:')
-                _, reason = self.kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
                 res_lines += [f'    {line}' for line in reason.split('\n')]
 
                 res_lines.append('  Path condition:')
-                res_lines += [f'    {self.kcfg_explore.kprint.pretty_print(self.proof.path_constraints(node.id))}']
+                res_lines += [f'    {path_condition}']
 
                 res_lines.append('')
                 res_lines.append(
                     'Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN'
                 )
-
         return res_lines
 
 
