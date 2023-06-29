@@ -929,7 +929,6 @@ class TestImpProof(KCFGExploreTest):
     def test_failure_info(
         self,
         kprove: KProve,
-        update_expected_output: bool,
         kcfg_explore: KCFGExplore,
         test_id: str,
         spec_file: str,
@@ -950,20 +949,9 @@ class TestImpProof(KCFGExploreTest):
         prover.advance_proof()
 
         res = prover.failure_info()
-        assert_or_update_failure_info(
-            res,
-            TEST_DATA_DIR / f'{spec_module}.{claim_id}.failure-info.expected',
-            update=update_expected_output,
-        )
+        actual_text = '\n'.join(res) + '\n'
 
+        assert expected_file.is_file()
+        expected_text = expected_file.read_text()
 
-def assert_or_update_failure_info(show_res: list[str], expected_file: Path, update: bool = False) -> None:
-    assert expected_file.is_file()
-
-    actual_text = '\n'.join(show_res) + '\n'
-    expected_text = expected_file.read_text()
-
-    if update:
-        expected_file.write_text(actual_text)
-    else:
         assert actual_text == expected_text
