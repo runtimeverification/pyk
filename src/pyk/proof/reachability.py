@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from itertools import chain
 from typing import TYPE_CHECKING
 
@@ -14,7 +15,7 @@ from ..kast.outer import KClaim
 from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
-from ..utils import hash_str, shorten_hashes, single
+from ..utils import FrozenDict, hash_str, shorten_hashes, single
 from .equality import Prover, RefutationProof
 from .proof import Proof, ProofStatus
 
@@ -588,17 +589,19 @@ class APRProver(Prover):
         return refutation
 
     def failure_info(self) -> APRFailureInfo:
-        return APRFailureInfo(self.proof, self.kcfg_explore)
+        return APRFailureInfo.from_proof(self.proof, self.kcfg_explore)
 
 
+@dataclass(frozen=True)
 class APRFailureInfo:
-    failing_nodes: dict[int, tuple[str, str]]
-    pending_nodes: list[int]
+    failing_nodes: FrozenDict[int, tuple[str, str]]
+    pending_nodes: frozenset[int]
 
-    def __init__(self, proof: APRProof, kcfg_explore: KCFGExplore):
+    @staticmethod
+    def from_proof(proof: APRProof, kcfg_explore: KCFGExplore) -> APRFailureInfo:
         target = proof.kcfg.node(proof.target)
-        self.pending_nodes = [node.id for node in proof.pending]
-        self.failing_nodes = {}
+        pending_nodes = {node.id for node in proof.pending}
+        failing_nodes = {}
         for node in proof.failing:
             simplified_node, _ = kcfg_explore.cterm_simplify(node.cterm)
             simplified_target, _ = kcfg_explore.cterm_simplify(target.cterm)
@@ -606,7 +609,8 @@ class APRFailureInfo:
             target_cterm = CTerm.from_kast(simplified_target)
             _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
             path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
-            self.failing_nodes[node.id] = (reason, path_condition)
+            failing_nodes[node.id] = (reason, path_condition)
+        return APRFailureInfo(failing_nodes=FrozenDict(failing_nodes), pending_nodes=frozenset(pending_nodes))
 
     def print(self) -> list[str]:
         res_lines: list[str] = []
