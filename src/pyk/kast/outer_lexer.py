@@ -135,11 +135,14 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
     state = State.DEFAULT
 
     while True:
-        if not la:
-            yield _EOF_TOKEN
-            return
+        if state == State.DEFAULT:
+            token, la = _default(la, it)
+            yield token
+            if token.type == TokenType.EOF:
+                return
+            state = _DEFAULT_NEXT_STATE.get(token.type, State.DEFAULT)
 
-        if state == State.BUBBLE:
+        elif state == State.BUBBLE:
             bubble, token, la = _bubble(la, it)
             if bubble:
                 yield bubble
@@ -147,6 +150,82 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
             if token.type == TokenType.EOF:
                 return
             state = _BUBBLE_NEXT_STATE[token.type]
+
+        else:
+            raise RuntimeError('TODO')
+
+
+_DEFAULT_KEYWORDS: Final = {
+    'claim',
+    'configuration',
+    'context',
+    'endmodule',
+    'import',
+    'imports',
+    'left',
+    'lexical',
+    'List',
+    'module',
+    'NeList',
+    'non-assoc',
+    'priorities',
+    'priority',
+    'require',
+    'requires',
+    'right',
+    'rule',
+    'syntax',
+}
+_DEFAULT_NEXT_STATE: Final = {
+    TokenType.KW_CLAIM: State.BUBBLE,
+    TokenType.KW_CONFIG: State.BUBBLE,
+    TokenType.KW_CONTEXT: State.CONTEXT,
+    TokenType.KW_IMPORT: State.MODNAME,
+    TokenType.KW_IMPORTS: State.MODNAME,
+    TokenType.KW_MODULE: State.MODNAME,
+    TokenType.KW_PRIORITIES: State.KLABEL,
+    TokenType.KW_PRIORITY: State.KLABEL,
+    TokenType.KW_RULE: State.BUBBLE,
+}
+
+
+def _default(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    while True:
+        if la in _WHITESPACE:
+            la = next(it, '')
+        elif la == '/':
+            is_comment, consumed, la = _maybe_comment(la, it)
+            if not is_comment:
+                raise ValueError(f'Unexpected character sequence: {consumed}')
+            la = next(it, '')
+        elif not la:
+            return _EOF_TOKEN, la
+        else:
+            break
+
+    if la in _SIMPLE_CHARS:
+        return _simple_char(la, it)
+
+    elif la == '"':
+        return _string(la, it)
+
+    elif la == 'r':
+        return _regex_or_lower_id_or_keyword(la, it)
+
+    elif la in _DIGIT:
+        return _nat(la, it)
+
+    elif la in _ALNUM:
+        return _id_or_keyword(la, it)
+
+    elif la == '#':
+        return _hash_id(la, it)
+
+    elif la == ':':
+        return _colon_or_dcoloneq(la, it)
+
+    else:
+        raise ValueError(f'Unexpected character: {la}')
 
 
 _BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
@@ -158,6 +237,127 @@ _BUBBLE_NEXT_STATE: Final = {
     TokenType.KW_CONFIG: State.BUBBLE,
     TokenType.KW_CONTEXT: State.CONTEXT,
 }
+
+
+def _simple_char(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    # assert la in _SIMPLE_CHARS
+
+    token = _SIMPLE_CHARS[la]
+    la = next(it, '')
+    return token, la
+
+
+def _nat(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    # assert la in _DIGIT
+
+    consumed = []
+    while la in _DIGIT:
+        consumed.append(la)
+        la = next(it, '')
+    text = ''.join(consumed)
+    return Token(text, TokenType.NAT), la
+
+
+def _id_or_keyword(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    # assert la in _ALPHA
+
+    if la in _LOWER:
+        token_type = TokenType.ID_LOWER
+    else:
+        token_type = TokenType.ID_UPPER
+
+    consumed = []
+    while la in _ALNUM:
+        consumed.append(la)
+        la = next(it, '')
+    text = ''.join(consumed)
+    if text in _DEFAULT_KEYWORDS:
+        return _KEYWORDS[text], la
+    return Token(text, token_type), la
+
+
+def _hash_id(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    # assert la == '#'
+
+    consumed = [la]
+    la = next(it, '')
+
+    if la in _LOWER:
+        token_type = TokenType.ID_LOWER
+    elif la in _UPPER:
+        token_type = TokenType.ID_UPPER
+    else:
+        raise ValueError(f'Unexpected character: {la}')  # TODO extract function that handles '' properly
+
+    while la in _ALNUM:
+        consumed.append(la)
+        la = next(it, '')
+    text = ''.join(consumed)
+    return Token(text, token_type), la
+
+
+def _colon_or_dcoloneq(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    # assert la == ':'
+
+    la = next(it, '')
+    if la != ':':
+        return _COLON_TOKEN, la
+    la = next(it, '')
+    if la != '=':
+        raise ValueError(f'Unexpected character: {la}')  # Could return [":", ":"], but that never parses
+    la = next(it, '')
+    return _DCOLONEQ_TOKEN, la
+
+
+def _string(la: str, it: Iterator) -> tuple[Token, str]:
+    # assert la == '"'
+    consumed: list[str] = []
+    la = _consume_string(consumed, la, it)
+    return Token(''.join(consumed), TokenType.STRING), la
+
+
+def _regex_or_lower_id_or_keyword(la: str, it: Iterator) -> tuple[Token, str]:
+    # assert la == 'r'
+    consumed = [la]
+    la = next(it, '')
+
+    if la == '"':
+        la = _consume_string(consumed, la, it)
+        return Token(''.join(consumed), TokenType.REGEX), la
+
+    while la in _ALNUM:
+        consumed.append(la)
+        la = next(it, '')
+    text = ''.join(consumed)
+    if text in _DEFAULT_KEYWORDS:
+        return _KEYWORDS[text], la
+    return Token(text, TokenType.ID_LOWER), la
+
+
+def _consume_string(consumed: list[str], la: str, it: Iterator[str]) -> str:
+    # assert la == '"'
+    consumed.append(la)  # ['"']
+
+    la = next(it, '')
+    while la not in {'"', '\n', ''}:
+        consumed.append(la)  # ['"', ..., X]
+        if la == '\\':
+            la = next(it, '')
+            if not la:
+                raise ValueError('Unexpected end of file')
+            if la not in {'\\', '"', 'n', 'r', 't'}:
+                raise ValueError(f'Unexpected character: {la!r}')
+            consumed.append(la)  # ['"', ..., '//', X]
+        la = next(it, '')
+
+    if la == '\n':
+        raise ValueError(f'Unexpected character: {la!r}')
+    if not la:
+        raise ValueError('Unexpected end of file')  # TODO extract function
+
+    consumed.append(la)  # ['"', ..., '"']
+    la = next(it, '')
+    return la
 
 
 def _bubble(la: str, it: Iterator) -> tuple[Token | None, Token, str]:

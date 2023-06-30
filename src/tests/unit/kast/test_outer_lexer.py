@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.outer_lexer import Token, TokenType, _bubble, _maybe_comment
+from pyk.kast.outer_lexer import Token, TokenType, _bubble, _default, _maybe_comment, outer_lexer
 
 if TYPE_CHECKING:
     from typing import Final
@@ -115,3 +115,92 @@ def test_bubble(
     assert actual_bubble == expected_bubble
     assert actual_terminal == expected_terminal
     assert actual_remaining == expected_remaining
+
+
+DEFAULT_TEST_DATA: Final = (
+    ('', Token('', TokenType.EOF), ''),
+    (' ', Token('', TokenType.EOF), ''),
+    ('// comment', Token('', TokenType.EOF), ''),
+    ('/* comment */', Token('', TokenType.EOF), ''),
+    (' //', Token('', TokenType.EOF), ''),
+    ('0', Token('0', TokenType.NAT), ''),
+    ('01', Token('01', TokenType.NAT), ''),
+    ('012abc', Token('012', TokenType.NAT), 'abc'),
+    ('abc012', Token('abc012', TokenType.ID_LOWER), ''),
+    ('#abc012', Token('#abc012', TokenType.ID_LOWER), ''),
+    ('Abc012', Token('Abc012', TokenType.ID_UPPER), ''),
+    ('#Abc012', Token('#Abc012', TokenType.ID_UPPER), ''),
+    (':', Token(':', TokenType.COLON), ''),
+    ('::=', Token('::=', TokenType.DCOLONEQ), ''),
+    ('""', Token('""', TokenType.STRING), ''),
+    ('"a"', Token('"a"', TokenType.STRING), ''),
+    (r'"\n"', Token(r'"\n"', TokenType.STRING), ''),
+    (r'"\""', Token(r'"\""', TokenType.STRING), ''),
+    (r'"\\"', Token(r'"\\"', TokenType.STRING), ''),
+    ('r', Token('r', TokenType.ID_LOWER), ''),
+    ('r1', Token('r1', TokenType.ID_LOWER), ''),
+    ('r""', Token('r""', TokenType.REGEX), ''),
+    (r'r"\n"', Token(r'r"\n"', TokenType.REGEX), ''),
+    (r'r"\""', Token(r'r"\""', TokenType.REGEX), ''),
+    (r'r"\\"', Token(r'r"\\"', TokenType.REGEX), ''),
+    ('rule', Token('rule', TokenType.KW_RULE), ''),
+    ('rule0', Token('rule0', TokenType.ID_LOWER), ''),
+    ('rulerule', Token('rulerule', TokenType.ID_LOWER), ''),
+)
+
+
+@pytest.mark.parametrize(
+    'text,expected_token,expected_remaining',
+    DEFAULT_TEST_DATA,
+    ids=[text for text, *_ in DEFAULT_TEST_DATA],
+)
+def test_default(text: str, expected_token: Token, expected_remaining: str) -> None:
+    # Given
+    it = iter(text)
+    la = next(it, '')
+
+    # When
+    actual_token, la = _default(la, it)
+    actual_remaining = la + ''.join(it)
+
+    # Then
+    assert actual_token == expected_token
+    assert actual_remaining == expected_remaining
+
+
+LEXER_TEST_DATA: Final = (
+    ('', [Token('', TokenType.EOF)]),
+    ('1', [Token('1', TokenType.NAT), Token('', TokenType.EOF)]),
+    ('1 11', [Token('1', TokenType.NAT), Token('11', TokenType.NAT), Token('', TokenType.EOF)]),
+    ('1 /**/ 11', [Token('1', TokenType.NAT), Token('11', TokenType.NAT), Token('', TokenType.EOF)]),
+    (
+        'rule program text',
+        [Token('rule', TokenType.KW_RULE), Token('program text', TokenType.BUBBLE), Token('', TokenType.EOF)],
+    ),
+    (
+        'rule /* */ program /* */ text // ',
+        [Token('rule', TokenType.KW_RULE), Token('program /* */ text', TokenType.BUBBLE), Token('', TokenType.EOF)],
+    ),
+    (
+        'rule /* */ program /* */ text /* */ /* */ // ',
+        [Token('rule', TokenType.KW_RULE), Token('program /* */ text', TokenType.BUBBLE), Token('', TokenType.EOF)],
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    'text,expected',
+    LEXER_TEST_DATA,
+    ids=[text for text, _ in LEXER_TEST_DATA],
+)
+def test_lexer(text: str, expected: list[Token]) -> None:
+    # Given
+    it = iter(text)
+
+    # When
+    actual = list(outer_lexer(it))
+    remaining = ''.join(it)
+
+    # Then
+    assert actual == expected
+    assert not remaining
