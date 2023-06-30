@@ -182,13 +182,13 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _, kore_client = self._kore_rpc
         result = kore_client.get_model(kore, module_name=module_name)
         if type(result) is UnknownResult:
-            _LOGGER.debug(f'Result is Unknown')
+            _LOGGER.debug('Result is Unknown')
             return None
         elif type(result) is UnsatResult:
-            _LOGGER.debug(f'Result is UNSAT')
+            _LOGGER.debug('Result is UNSAT')
             return None
         elif type(result) is SatResult:
-            _LOGGER.debug(f'Result is SAT')
+            _LOGGER.debug('Result is SAT')
             model_subst = self.kprint.kore_to_kast(result.model)
             _subst: dict[str, KInner] = {}
             for subst_pred in flatten_label('#And', model_subst):
