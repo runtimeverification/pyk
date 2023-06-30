@@ -597,6 +597,10 @@ class APRFailureInfo:
     failing_nodes: FrozenDict[int, tuple[str, str]]
     pending_nodes: frozenset[int]
 
+    def __init__(self, failing_nodes: Mapping[int, tuple[str, str]], pending_nodes: Iterable[int]):
+        object.__setattr__(self, 'failing_nodes', FrozenDict(failing_nodes))
+        object.__setattr__(self, 'pending_nodes', frozenset(pending_nodes))
+
     @staticmethod
     def from_proof(proof: APRProof, kcfg_explore: KCFGExplore) -> APRFailureInfo:
         target = proof.kcfg.node(proof.target)
@@ -610,7 +614,7 @@ class APRFailureInfo:
             _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
             path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
             failing_nodes[node.id] = (reason, path_condition)
-        return APRFailureInfo(failing_nodes=FrozenDict(failing_nodes), pending_nodes=frozenset(pending_nodes))
+        return APRFailureInfo(failing_nodes=failing_nodes, pending_nodes=pending_nodes)
 
     def print(self) -> list[str]:
         res_lines: list[str] = []
@@ -623,12 +627,15 @@ class APRFailureInfo:
 
         if num_pending > 0:
             res_lines.append('')
-            res_lines.append(f'Pending nodes: {self.pending_nodes}')
+            res_lines.append(f'Pending nodes: {sorted(list(self.pending_nodes))}')
 
         if num_failing > 0:
             res_lines.append('')
             res_lines.append('Failing nodes:')
-            for node_id, (reason, path_condition) in self.failing_nodes.items():
+            print(self.failing_nodes)
+            for (node_id, info) in self.failing_nodes.items():
+                print(info)
+                (reason, path_condition) = info
                 res_lines.append('')
                 res_lines.append(f'  Node id: {str(node_id)}')
 
@@ -638,10 +645,10 @@ class APRFailureInfo:
                 res_lines.append('  Path condition:')
                 res_lines += [f'    {path_condition}']
 
-                res_lines.append('')
-                res_lines.append(
-                    'Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN'
-                )
+            res_lines.append('')
+            res_lines.append(
+                'Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN'
+            )
         return res_lines
 
 
