@@ -49,7 +49,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     kprint: KPrint
     id: str
     _port: int | None
-    _kore_rpc_command: str | Iterable[str]
+    _kore_rpc_command: str | Iterable[str] | None
+    _llvm_definition_dir: Path | None
     _smt_timeout: int | None
     _smt_retry_limit: int | None
     _bug_report: BugReport | None
@@ -65,7 +66,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         *,
         id: str | None = None,
         port: int | None = None,
-        kore_rpc_command: str | Iterable[str] = 'kore-rpc',
+        kore_rpc_command: str | Iterable[str] | None = None,
+        llvm_definition_dir: Path | None = None,
         smt_timeout: int | None = None,
         smt_retry_limit: int | None = None,
         bug_report: BugReport | None = None,
@@ -78,6 +80,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self.id = id if id is not None else 'NO ID'
         self._port = port
         self._kore_rpc_command = kore_rpc_command
+        self._llvm_definition_dir = llvm_definition_dir
         self._smt_timeout = smt_timeout
         self._smt_retry_limit = smt_retry_limit
         self._bug_report = bug_report
@@ -100,10 +103,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
         if not self._kore_server:
-            if self.kprint.llvm_definition_dir:
+            if self._llvm_definition_dir:
                 self._kore_server = BoosterServer(
                     self.kprint.definition_dir,
-                    self.kprint.llvm_definition_dir,
+                    self._llvm_definition_dir,
                     self.kprint.main_module,
                     port=self._port,
                     bug_report=self._bug_report,

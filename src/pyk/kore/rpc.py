@@ -652,7 +652,7 @@ class KoreServer(ContextManager['KoreServer']):
         smt_timeout: int | None = None,
         smt_retry_limit: int | None = None,
         smt_reset_interval: int | None = None,
-        command: str | Iterable[str] = 'kore-rpc',
+        command: str | Iterable[str] | None = None,
         bug_report: BugReport | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
@@ -668,7 +668,9 @@ class KoreServer(ContextManager['KoreServer']):
         self._check_none_or_positive(smt_retry_limit, 'smt_retry_limit')
         self._check_none_or_positive(smt_reset_interval, 'smt_reset_interval')
 
-        if type(command) is str:
+        if not command:
+            command = ('kore-rpc',)
+        elif type(command) is str:
             command = (command,)
 
         args = list(command)
@@ -756,7 +758,7 @@ class BoosterServer(KoreServer):
         smt_timeout: int | None = None,
         smt_retry_limit: int | None = None,
         smt_reset_interval: int | None = None,
-        command: str | Iterable[str] = 'kore-rpc-booster',
+        command: str | Iterable[str] | None,
         bug_report: BugReport | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
@@ -775,7 +777,9 @@ class BoosterServer(KoreServer):
         self._check_none_or_positive(smt_retry_limit, 'smt_retry_limit')
         self._check_none_or_positive(smt_reset_interval, 'smt_reset_interval')
 
-        if type(command) is str:
+        if not command:
+            command = ('kore-rpc-booster',)
+        elif type(command) is str:
             command = (command,)
 
         args = list(command)
