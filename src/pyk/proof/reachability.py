@@ -627,13 +627,13 @@ class APRFailureInfo:
 
         if num_pending > 0:
             res_lines.append('')
-            res_lines.append(f'Pending nodes: {sorted(list(self.pending_nodes))}')
+            res_lines.append(f'Pending nodes: {sorted(self.pending_nodes)}')
 
         if num_failing > 0:
             res_lines.append('')
             res_lines.append('Failing nodes:')
             print(self.failing_nodes)
-            for (node_id, info) in self.failing_nodes.items():
+            for node_id, info in self.failing_nodes.items():
                 print(info)
                 (reason, path_condition) = info
                 res_lines.append('')
@@ -646,9 +646,7 @@ class APRFailureInfo:
                 res_lines += [f'    {path_condition}']
 
             res_lines.append('')
-            res_lines.append(
-                'Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN'
-            )
+            res_lines.append('Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN')
         return res_lines
 
 

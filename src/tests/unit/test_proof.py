@@ -9,7 +9,7 @@ from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import intToken
 from pyk.proof.equality import EqualityProof
 from pyk.proof.proof import Proof
-from pyk.proof.reachability import APRBMCProof, APRProof, APRFailureInfo
+from pyk.proof.reachability import APRBMCProof, APRFailureInfo, APRProof
 
 from .test_kcfg import node, node_dicts
 
@@ -240,6 +240,7 @@ def test_aprbmc_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None
 
     # Then
     assert proof.dict == proof_from_disk.dict
+
 
 def test_print_failure_info() -> None:
     failing_nodes: dict[int, tuple[str, str]] = {}
