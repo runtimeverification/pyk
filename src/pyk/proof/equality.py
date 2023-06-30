@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING
 
@@ -9,9 +8,8 @@ from ..kast.inner import KInner, KSort, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals
-from ..utils import hash_str
-from .proof import Proof, ProofStatus
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
+from .proof import Proof, ProofStatus, Prover
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -27,12 +25,31 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class EqualityProof(Proof):
+class ImpliesProof(Proof):
+    _antecedent_kast: KInner
+    _consequent_kast: KInner
+    simplified_antecedent: KInner
+    simplified_consequent: KInner
+    csubst: CSubst | None
+
+    def __init__(
+        self,
+        id: str,
+        proof_dir: Path | None = None,
+        subproof_ids: Iterable[str] = (),
+        admitted: bool = False,
+    ):
+        super().__init__(id=id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
+
+    def set_csubst(self, csubst: CSubst) -> None:
+        self.csubst = csubst
+
+
+class EqualityProof(ImpliesProof):
     lhs_body: KInner
     rhs_body: KInner
     sort: KSort
     constraints: tuple[KInner, ...]
-    csubst: CSubst | None
 
     def __init__(
         self,
@@ -55,6 +72,9 @@ class EqualityProof(Proof):
         self.csubst = csubst
         self.simplified_constraints = simplified_constraints
         self.simplified_equality = simplified_equality
+        _LOGGER.warning(
+            'Building an EqualityProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
+        )
 
     @staticmethod
     def from_claim(claim: KClaim, defn: KDefinition, proof_dir: Path | None = None) -> EqualityProof:
@@ -81,23 +101,11 @@ class EqualityProof(Proof):
     def set_satisfiable(self, satisfiable: bool) -> None:
         self.satisfiable = satisfiable
 
-    def set_csubst(self, csubst: CSubst) -> None:
-        self.csubst = csubst
-
     def set_simplified_constraints(self, simplified: KInner) -> None:
         self.simplified_constraints = simplified
 
     def set_simplified_equality(self, simplified: KInner) -> None:
         self.simplified_equality = simplified
-
-    @staticmethod
-    def read_proof(id: str, proof_dir: Path) -> EqualityProof:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
-        if EqualityProof.proof_exists(id, proof_dir):
-            proof_dict = json.loads(proof_path.read_text())
-            _LOGGER.info(f'Reading EqualityProof from file {id}: {proof_path}')
-            return EqualityProof.from_dict(proof_dict, proof_dir=proof_dir)
-        raise ValueError(f'Could not load EqualityProof from file {id}: {proof_path}')
 
     @property
     def status(self) -> ProofStatus:
@@ -173,35 +181,127 @@ class EqualityProof(Proof):
     def summary(self) -> Iterable[str]:
         return [
             f'EqualityProof: {self.id}',
-            f'  status: {self.status}',
+            f'    status: {self.status}',
             f'    admitted: {self.admitted}',
         ]
 
 
-class EqualityProver:
-    proof: EqualityProof
+class RefutationProof(ImpliesProof):
+    sort: KSort
+    pre_constraints: Iterable[KInner]
+    last_constraint: KInner
+    simplified_constraints: KInner | None
 
-    def __init__(self, proof: EqualityProof) -> None:
+    def __init__(
+        self,
+        id: str,
+        sort: KSort,
+        pre_constraints: Iterable[KInner],
+        last_constraint: KInner,
+        csubst: CSubst | None = None,
+        simplified_constraints: KInner | None = None,
+        proof_dir: Path | None = None,
+    ):
+        super().__init__(id, proof_dir=proof_dir)
+        self.sort = sort
+        self.pre_constraints = tuple(pre_constraints)
+        self.last_constraint = last_constraint
+        self.csubst = csubst
+        self.simplified_constraints = simplified_constraints
+        _LOGGER.warning(
+            'Building a RefutationProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
+        )
+
+    def set_simplified_constraints(self, simplified: KInner) -> None:
+        self.simplified_constraints = simplified
+
+    @property
+    def status(self) -> ProofStatus:
+        if self.simplified_constraints is None:
+            return ProofStatus.PENDING
+        elif self.csubst is None:
+            return ProofStatus.FAILED
+        else:
+            return ProofStatus.PASSED
+
+    @property
+    def dict(self) -> dict[str, Any]:
+        dct = super().dict
+        dct['type'] = 'RefutationProof'
+        dct['sort'] = self.sort.to_dict()
+        dct['pre_constraints'] = [c.to_dict() for c in self.pre_constraints]
+        dct['last_constraint'] = self.last_constraint.to_dict()
+        if self.simplified_constraints is not None:
+            dct['simplified_constraints'] = self.simplified_constraints.to_dict()
+        if self.csubst is not None:
+            dct['csubst'] = self.csubst.to_dict()
+        return dct
+
+    @classmethod
+    def from_dict(cls: type[RefutationProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> RefutationProof:
+        id = dct['id']
+        sort = KSort.from_dict(dct['sort'])
+        pre_constraints = [KInner.from_dict(c) for c in dct['pre_constraints']]
+        last_constraint = KInner.from_dict(dct['last_constraint'])
+        simplified_constraints = (
+            KInner.from_dict(dct['simplified_constraints']) if 'simplified_constraints' in dct else None
+        )
+        csubst = CSubst.from_dict(dct['csubst']) if 'csubst' in dct else None
+        return RefutationProof(
+            id=id,
+            sort=sort,
+            pre_constraints=pre_constraints,
+            last_constraint=last_constraint,
+            csubst=csubst,
+            simplified_constraints=simplified_constraints,
+            proof_dir=proof_dir,
+        )
+
+    @property
+    def summary(self) -> Iterable[str]:
+        return [
+            f'RefutationProof: {self.id}',
+            f'    status: {self.status}',
+        ]
+
+    def pretty(self, kprint: KPrint) -> Iterable[str]:
+        lines = [
+            f'Constraints: {kprint.pretty_print(mlAnd(self.pre_constraints))}',
+            f'Last constraint: {kprint.pretty_print(self.last_constraint)}',
+        ]
+        if self.csubst is not None:
+            lines.append(f'Implication csubst: {self.csubst}')
+        lines.append(f'Status: {self.status}')
+        return lines
+
+
+class ImpliesProver(Prover):
+    proof: ImpliesProof
+
+    def __init__(
+        self, kcfg_explore: KCFGExplore, proof: ImpliesProof, antecedent_kast: KInner, consequent_kast: KInner
+    ):
+        super().__init__(kcfg_explore)
         self.proof = proof
+        self.proof._antecedent_kast = antecedent_kast
+        self.proof._consequent_kast = consequent_kast
 
-    def advance_proof(self, kcfg_explore: KCFGExplore) -> None:
-        _LOGGER.info(f'Attempting EqualityProof {self.proof.id}')
+    def advance_proof(self) -> None:
+        proof_type = type(self.proof).__name__
+        _LOGGER.info(f'Attempting {proof_type} {self.proof.id}')
 
         if self.proof.status is not ProofStatus.PENDING:
-            _LOGGER.info(f'EqualityProof finished {self.proof.id}: {self.proof.status}')
+            _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
             return
 
         # to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.
         # "LHS equals RHS under these constraints"
-        antecedent_kast = self.proof.constraint
-        consequent_kast = self.proof.equality
-
-        antecedent_simplified_kast, _ = kcfg_explore.kast_simplify(antecedent_kast)
-        consequent_simplified_kast, _ = kcfg_explore.kast_simplify(consequent_kast)
-        self.proof.set_simplified_constraints(antecedent_simplified_kast)
-        self.proof.set_simplified_equality(consequent_simplified_kast)
-        _LOGGER.info(f'Simplified antecedent: {kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
-        _LOGGER.info(f'Simplified consequent: {kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
+        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._antecedent_kast)
+        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._consequent_kast)
+        self.proof.simplified_antecedent = antecedent_simplified_kast
+        self.proof.simplified_consequent = consequent_simplified_kast
+        _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
+        _LOGGER.info(f'Simplified consequent: {self.kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
 
         if is_bottom(antecedent_simplified_kast):
             _LOGGER.warning(f'Antecedent of implication (proof constraints) simplifies to #Bottom {self.proof.id}')
@@ -213,13 +313,41 @@ class EqualityProver:
 
         else:
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
-            dummy_config = kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-            result = kcfg_explore.cterm_implies(
-                antecedent=CTerm(config=dummy_config, constraints=[antecedent_kast]),
-                consequent=CTerm(config=dummy_config, constraints=[consequent_kast]),
+            dummy_config = self.kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
+            result = self.kcfg_explore.cterm_implies(
+                antecedent=CTerm(config=dummy_config, constraints=[self.proof.simplified_antecedent]),
+                consequent=CTerm(config=dummy_config, constraints=[self.proof.simplified_consequent]),
             )
             if result is not None:
                 self.proof.set_csubst(result)
 
-        _LOGGER.info(f'EqualityProof finished {self.proof.id}: {self.proof.status}')
+        _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
         self.proof.write_proof()
+
+
+class EqualityProver(ImpliesProver):
+    def __init__(self, proof: EqualityProof, kcfg_explore: KCFGExplore) -> None:
+        super().__init__(
+            kcfg_explore=kcfg_explore, proof=proof, antecedent_kast=proof.constraint, consequent_kast=proof.equality
+        )
+
+    def advance_proof(self) -> None:
+        super().advance_proof()
+        assert type(self.proof) is EqualityProof
+        self.proof.set_simplified_constraints(self.proof.simplified_antecedent)
+        self.proof.set_simplified_equality(self.proof.simplified_consequent)
+
+
+class RefutationProver(ImpliesProver):
+    def __init__(self, proof: RefutationProof, kcfg_explore: KCFGExplore) -> None:
+        super().__init__(
+            kcfg_explore,
+            proof=proof,
+            antecedent_kast=mlAnd(proof.pre_constraints),
+            consequent_kast=mlEqualsFalse(proof.last_constraint),
+        )
+
+    def advance_proof(self) -> None:
+        super().advance_proof()
+        assert type(self.proof) is RefutationProof
+        self.proof.set_simplified_constraints(self.proof.simplified_consequent)

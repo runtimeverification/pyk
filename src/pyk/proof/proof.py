@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
+    from pyk.kcfg.explore import KCFGExplore
+
     T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ class ProofStatus(Enum):
 
 
 class Proof(ABC):
-    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof'}
+    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof', 'RefutationProof'}
 
     id: str
     proof_dir: Path | None
@@ -91,13 +93,16 @@ class Proof(ABC):
         else:
             return False
 
-    def add_subproof(self, proof_id: str) -> None:
+    def read_subproof(self, proof_id: str) -> None:
         if self.proof_dir is None:
             raise ValueError(f'Cannot add subproof to the proof {self.id} with no proof_dir')
         assert self.proof_dir
         if not Proof.proof_exists(proof_id, self.proof_dir):
             raise ValueError(f"Cannot find subproof {proof_id} in parent proof's {self.id} proof_dir {self.proof_dir}")
         self._subproofs[proof_id] = self.fetch_subproof(proof_id, force_reread=True)
+
+    def add_subproof(self, proof: Proof) -> None:
+        self._subproofs[proof.id] = proof
 
     def remove_subproof(self, proof_id: str) -> None:
         del self._subproofs[proof_id]
@@ -151,7 +156,7 @@ class Proof(ABC):
     @classmethod
     def read_proof(cls: type[Proof], id: str, proof_dir: Path) -> Proof:
         # these local imports allow us to call .to_dict() based on the proof type we read from JSON
-        from .equality import EqualityProof  # noqa
+        from .equality import EqualityProof, RefutationProof  # noqa
         from .reachability import APRBMCProof, APRProof  # noqa
 
         proof_path = proof_dir / f'{hash_str(id)}.json'
@@ -173,3 +178,10 @@ class Proof(ABC):
     def summary(self) -> Iterable[str]:
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
         return chain([f'Proof: {self.id}', f'    status: {self.status}'], *subproofs_summaries)
+
+
+class Prover:
+    kcfg_explore: KCFGExplore
+
+    def __init__(self, kcfg_explore: KCFGExplore):
+        self.kcfg_explore = kcfg_explore
