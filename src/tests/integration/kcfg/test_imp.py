@@ -723,7 +723,7 @@ class TestImpProof(KCFGExploreTest):
     )
     def test_get_model(
         self,
-        kcfg_explore: KCFGExplore, 
+        kcfg_explore: KCFGExplore,
         cterm: CTerm,
         test_id: str,
         expected: Subst | None,
