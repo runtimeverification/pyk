@@ -199,6 +199,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 else:
                     raise AssertionError(f'Received a non-substitution from get-model endpoint: {subst_pred}')
             return Subst(_subst)
+        else:
+            raise AssertionError('Received an invalid response from get-model endpoint')
 
     def cterm_implies(
         self,
