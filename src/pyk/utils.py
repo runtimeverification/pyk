@@ -13,7 +13,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar, cast, overload
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Iterator
@@ -518,7 +518,11 @@ class Kernel(Enum):
     LINUX = 'Linux'
     DARWIN = 'Darwin'
 
-    @staticmethod
-    def get() -> Kernel:
-        uname = run_process(('uname', '-s'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
-        return Kernel(uname)
+    cached: ClassVar[Kernel | None] = None
+
+    @classmethod
+    def get(cls) -> Kernel:
+        if cls.cached is None:
+            uname = run_process(('uname', '-s'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
+            cls.cached = Kernel(uname)
+        return cls.cached
