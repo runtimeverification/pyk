@@ -197,6 +197,10 @@ class CSubst:
         _kast = self.subst(cterm.kast)
         return CTerm(_kast, [self.constraint])
 
+    @property
+    def ml_pred(self) -> KInner:
+        return mlAnd(flatten_label('#And', self.subst.ml_pred) + list(self.constraints))
+
 
 def remove_useless_constraints(cterm: CTerm, keep_vars: Iterable[str] = ()) -> CTerm:
     used_vars = free_vars(cterm.config) + list(keep_vars)
