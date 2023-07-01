@@ -587,6 +587,28 @@ class APRProver(Prover):
         self.proof.add_subproof(refutation)
         return refutation
 
+    def specialize_target_node(self) -> None:
+        target_subsumed = self.proof.kcfg.predecessors(self.proof.target)
+        if len(target_subsumed) < 2:
+            _LOGGER.info(
+                f'Found less than 2 nodes subsumed into target, not specializing target node {self.proof.id}: {target_subsumed}'
+            )
+            return
+        target_subsumed_covers: list[KCFG.Cover] = []
+        for ts in target_subsumed:
+            if type(ts) is KCFG.Cover:
+                target_subsumed_covers.append(ts)
+            else:
+                _LOGGER.info(
+                    f'Found non-cover predecessor into target node, not specializing target node {self.proof.id}: {ts}'
+                )
+                return
+        for tsc in target_subsumed_covers:
+            self.proof.kcfg.remove_cover(tsc.source.id, tsc.target.id)
+        merge_id = self.proof.kcfg.create_merge([cover.source.id for cover in target_subsumed_covers])
+        self.proof.kcfg.create_cover(merge_id, self.proof.target)
+        _LOGGER.info(f'Created specialized target subsumed node {self.proof.id}: {merge_id}')
+
 
 class APRBMCProver(APRProver):
     proof: APRBMCProof
