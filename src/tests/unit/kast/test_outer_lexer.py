@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.outer_lexer import Token, TokenType, _bubble, _default, _maybe_comment, outer_lexer
+from pyk.kast.outer_lexer import Token, TokenType, _bubble, _default, _maybe_comment, _modname, outer_lexer
 
 if TYPE_CHECKING:
     from typing import Final
@@ -61,8 +61,10 @@ BUBBLE_TEST_DATA: Final = (
     ('abc', 'abc', Token('', TokenType.EOF), ''),
     ('abc //', 'abc', Token('', TokenType.EOF), ''),
     ('abc /* */ //', 'abc', Token('', TokenType.EOF), ''),
+    ('X /* Y', 'X /* Y', Token('', TokenType.EOF), ''),
     ('rule', None, Token('rule', TokenType.KW_RULE), ''),
     ('a rule', 'a', Token('rule', TokenType.KW_RULE), ''),
+    ('program text // comment\nendmodule', 'program text', Token('endmodule', TokenType.KW_ENDMODULE), ''),
     ('Hyrule', 'Hyrule', Token('', TokenType.EOF), ''),
     ('Hy/**/rule', 'Hy', Token('rule', TokenType.KW_RULE), ''),
     ('Hy/* comment */rule', 'Hy', Token('rule', TokenType.KW_RULE), ''),
@@ -168,6 +170,41 @@ def test_default(text: str, expected_token: Token, expected_remaining: str) -> N
     assert actual_remaining == expected_remaining
 
 
+MODNAME_TEST_DATA: Final = (
+    ('private', Token('private', TokenType.KW_PRIVATE), ''),
+    ('private MODULE', Token('private', TokenType.KW_PRIVATE), ' MODULE'),
+    ('public', Token('public', TokenType.KW_PUBLIC), ''),
+    ('module', Token('module', TokenType.MODNAME), ''),
+    ('module ', Token('module', TokenType.MODNAME), ' '),
+    ('MODULE', Token('MODULE', TokenType.MODNAME), ''),
+    ('#module', Token('#module', TokenType.MODNAME), ''),
+    ('#module#module', Token('#module', TokenType.MODNAME), '#module'),
+    ('mo-du-le', Token('mo-du-le', TokenType.MODNAME), ''),
+    ('m0-DU_l3', Token('m0-DU_l3', TokenType.MODNAME), ''),
+    ('TEST-MODULE', Token('TEST-MODULE', TokenType.MODNAME), ''),
+    ('TEST_MODULE', Token('TEST_MODULE', TokenType.MODNAME), ''),
+)
+
+
+@pytest.mark.parametrize(
+    'text,expected_token,expected_remaining',
+    MODNAME_TEST_DATA,
+    ids=[text for text, *_ in MODNAME_TEST_DATA],
+)
+def test_modname(text: str, expected_token: Token, expected_remaining: str) -> None:
+    # Given
+    it = iter(text)
+    la = next(it, '')
+
+    # When
+    actual_token, la = _modname(la, it)
+    actual_remaining = la + ''.join(it)
+
+    # Then
+    assert actual_token == expected_token
+    assert actual_remaining == expected_remaining
+
+
 LEXER_TEST_DATA: Final = (
     ('', [Token('', TokenType.EOF)]),
     ('1', [Token('1', TokenType.NAT), Token('', TokenType.EOF)]),
@@ -184,6 +221,26 @@ LEXER_TEST_DATA: Final = (
     (
         'rule /* */ program /* */ text /* */ /* */ // ',
         [Token('rule', TokenType.KW_RULE), Token('program /* */ text', TokenType.BUBBLE), Token('', TokenType.EOF)],
+    ),
+    (
+        'module TEST endmodule',
+        [
+            Token('module', TokenType.KW_MODULE),
+            Token('TEST', TokenType.MODNAME),
+            Token('endmodule', TokenType.KW_ENDMODULE),
+            Token('', TokenType.EOF),
+        ],
+    ),
+    (
+        'module TEST rule /* comment */ X => Y /* comment */ endmodule',
+        [
+            Token('module', TokenType.KW_MODULE),
+            Token('TEST', TokenType.MODNAME),
+            Token('rule', TokenType.KW_RULE),
+            Token('X => Y', TokenType.BUBBLE),
+            Token('endmodule', TokenType.KW_ENDMODULE),
+            Token('', TokenType.EOF),
+        ],
     ),
 )
 

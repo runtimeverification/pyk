@@ -142,6 +142,12 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
                 return
             state = _DEFAULT_NEXT_STATE.get(token.type, State.DEFAULT)
 
+        elif state == State.MODNAME:
+            token, la = _modname(la, it)
+            yield token
+            # should not be EOF
+            state = _MODNAME_NEXT_STATE.get(token.type, State.MODNAME)
+
         elif state == State.BUBBLE:
             bubble, token, la = _bubble(la, it)
             if bubble:
@@ -190,20 +196,12 @@ _DEFAULT_NEXT_STATE: Final = {
 
 
 def _default(la: str, it: Iterator[str]) -> tuple[Token, str]:
-    while True:
-        if la in _WHITESPACE:
-            la = next(it, '')
-        elif la == '/':
-            is_comment, consumed, la = _maybe_comment(la, it)
-            if not is_comment:
-                raise ValueError(f'Unexpected character sequence: {consumed}')
-            la = next(it, '')
-        elif not la:
-            return _EOF_TOKEN, la
-        else:
-            break
+    la = _skip_ws_and_comments(la, it)
 
-    if la in _SIMPLE_CHARS:
+    if not la:
+        return _EOF_TOKEN, la
+
+    elif la in _SIMPLE_CHARS:
         return _simple_char(la, it)
 
     elif la == '"':
@@ -228,15 +226,18 @@ def _default(la: str, it: Iterator[str]) -> tuple[Token, str]:
         raise ValueError(f'Unexpected character: {la}')
 
 
-_BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
-_BUBBLE_NEXT_STATE: Final = {
-    TokenType.KW_SYNTAX: State.DEFAULT,
-    TokenType.KW_ENDMODULE: State.DEFAULT,
-    TokenType.KW_RULE: State.BUBBLE,
-    TokenType.KW_CLAIM: State.BUBBLE,
-    TokenType.KW_CONFIG: State.BUBBLE,
-    TokenType.KW_CONTEXT: State.CONTEXT,
-}
+def _skip_ws_and_comments(la: str, it: Iterator[str]) -> str:
+    while True:
+        if la in _WHITESPACE:
+            la = next(it, '')
+        elif la == '/':
+            is_comment, consumed, la = _maybe_comment(la, it)
+            if not is_comment:
+                raise ValueError(f'Unexpected character sequence: {consumed}')
+            la = next(it, '')
+        else:
+            break
+    return la
 
 
 def _simple_char(la: str, it: Iterator[str]) -> tuple[Token, str]:
@@ -360,6 +361,48 @@ def _consume_string(consumed: list[str], la: str, it: Iterator[str]) -> str:
     return la
 
 
+_MODNAME_KEYWORDS: Final = {'private', 'public'}
+_MODNAME_CHARS: Final = {'-', '_'}.union(_ALNUM)
+_MODNAME_NEXT_STATE: Final = {TokenType.MODNAME: State.DEFAULT}
+
+
+def _modname(la: str, it: Iterator) -> tuple[Token, str]:
+    la = _skip_ws_and_comments(la, it)
+
+    consumed = []
+
+    if la == '#':
+        consumed.append(la)
+        la = next(it, '')
+
+    if not la:
+        raise ValueError('Unexpected end of file')
+
+    allow_dash = False
+    while la in _MODNAME_CHARS:
+        if la == '-' and not allow_dash:
+            raise ValueError(f'Unexpected character: {la}')
+        allow_dash = la != '-'
+        consumed.append(la)
+        la = next(it, '')
+
+    text = ''.join(consumed)
+    if text in _MODNAME_KEYWORDS:
+        return _KEYWORDS[text], la
+    return Token(text, TokenType.MODNAME), la
+
+
+_BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
+_BUBBLE_NEXT_STATE: Final = {
+    TokenType.KW_SYNTAX: State.DEFAULT,
+    TokenType.KW_ENDMODULE: State.DEFAULT,
+    TokenType.KW_RULE: State.BUBBLE,
+    TokenType.KW_CLAIM: State.BUBBLE,
+    TokenType.KW_CONFIG: State.BUBBLE,
+    TokenType.KW_CONTEXT: State.CONTEXT,
+}
+
+
 def _bubble(la: str, it: Iterator) -> tuple[Token | None, Token, str]:
     bubble: list[str] = []  # text that belongs to the bubble
     pending: list[str] = []  # text that belongs to the bubble iff preceded and followed by bubble text
@@ -381,6 +424,7 @@ def _bubble(la: str, it: Iterator) -> tuple[Token | None, Token, str]:
             else:
                 if not la:  # unterminated block comment
                     bubble += pending if bubble else []
+                    bubble += consumed
                     return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _EOF_TOKEN, la
                 else:  # /X
                     bubble += pending if bubble else []
@@ -450,7 +494,7 @@ def _maybe_comment(la: str, it: Iterator[str]) -> tuple[bool, list[str], str]:
     elif la == '/':
         consumed.append(la)  # ['/', '/']
         la = next(it, '')
-        while la and la != '/n':
+        while la and la != '\n':
             consumed.append(la)  # ['/', '/', ..., X]
             la = next(it, '')
         return True, consumed, la
