@@ -20,7 +20,7 @@ from pyk.kore.rpc import (
     UnknownResult,
     UnsatResult,
 )
-from pyk.kore.syntax import And, Bottom, Equals, EVar, Implies, Module, Top
+from pyk.kore.syntax import And, App, Bottom, Equals, EVar, Implies, Module, Top
 from pyk.testing import KoreClientTest
 
 from ..utils import K_FILES
@@ -268,3 +268,22 @@ class TestKoreClient(KoreClientTest):
         module: Module,
     ) -> None:
         kore_client.add_module(module)
+
+class TestKoreClientWithSMTLemmas(KoreClientTest):
+    KOMPILE_MAIN_FILE = K_FILES / 'smt.k'
+    KORE_MODULE_NAME = 'SMT'
+
+    def test_get_model_with_smt(
+        self,
+        kore_client: KoreClient,
+    ) -> None:
+        # When           
+        pattern = And(INT, Equals(BOOL, INT, TRUE, eq_int(App("Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int", (), (EVar('x', INT),)), EVar('x', INT))), 
+                      Equals(BOOL, INT, TRUE, eq_int(EVar('x', INT), int_dv(1))))
+
+        actual = kore_client.get_model(pattern, None)
+
+        expected = SatResult(Equals(INT, INT, x, int_dv(1)))
+
+        # Then
+        assert actual == expected
