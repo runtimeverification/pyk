@@ -161,9 +161,16 @@ GET_MODEL_WITH_SMT_TEST_DATA: Final = (
     (
         'sat-chop-single-int',
         # chop(x) == x && x == 1
-        And(INT, Equals(BOOL, INT, TRUE, eq_int(App("Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int", (), (EVar('x', INT),)),
-                                                EVar('x', INT))), 
-                 Equals(BOOL, INT, TRUE, eq_int(EVar('x', INT), int_dv(1)))),
+        And(
+            INT,
+            Equals(
+                BOOL,
+                INT,
+                TRUE,
+                eq_int(App("Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int", (), (EVar('x', INT),)), EVar('x', INT)),
+            ),
+            Equals(BOOL, INT, TRUE, eq_int(EVar('x', INT), int_dv(1))),
+        ),
         None,
         # x == 1
         SatResult(Equals(INT, INT, x, int_dv(1))),
@@ -171,13 +178,34 @@ GET_MODEL_WITH_SMT_TEST_DATA: Final = (
     (
         'sat-chop-sub-ints',
         # chop(1 - x) == 0
-        Equals(BOOL, INT, TRUE, eq_int(App("Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int", (),
-                                           (App("Lbl'Unds'-Int'Unds'", (), (int_dv(1), EVar('x', INT),)),)), int_dv(0))),
+        Equals(
+            BOOL,
+            INT,
+            TRUE,
+            eq_int(
+                App(
+                    "Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int",
+                    (),
+                    (
+                        App(
+                            "Lbl'Unds'-Int'Unds'",
+                            (),
+                            (
+                                int_dv(1),
+                                EVar('x', INT),
+                            ),
+                        ),
+                    ),
+                ),
+                int_dv(0),
+            ),
+        ),
         None,
         # x == 1
         SatResult(Equals(INT, INT, x, int_dv(1))),
     ),
 )
+
 
 class TestKoreClient(KoreClientTest):
     KOMPILE_MAIN_FILE = K_FILES / 'kore-rpc-test.k'
@@ -289,6 +317,7 @@ class TestKoreClient(KoreClientTest):
         module: Module,
     ) -> None:
         kore_client.add_module(module)
+
 
 class TestKoreClientWithSMTLemmas(KoreClientTest):
     KOMPILE_MAIN_FILE = K_FILES / 'smt.k'
