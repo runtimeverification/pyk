@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.outer_lexer import Token, TokenType, _bubble, _default, _maybe_comment, _modname, outer_lexer
+from pyk.kast.outer_lexer import Token, TokenType, _bubble_or_context, _default, _maybe_comment, _modname, outer_lexer
 
 if TYPE_CHECKING:
     from typing import Final
@@ -90,6 +90,8 @@ BUBBLE_TEST_DATA: Final = (
         Token('', TokenType.EOF),
         '',
     ),  # the comment is not terminated, hence it's part of the bubble
+    ('alias', 'alias', Token('', TokenType.EOF), ''),
+    ('bubble alias', 'bubble alias', Token('', TokenType.EOF), ''),
 )
 
 
@@ -110,7 +112,39 @@ def test_bubble(
     expected_bubble = Token(expected_bubble_text, TokenType.BUBBLE) if expected_bubble_text is not None else None
 
     # When
-    actual_bubble, actual_terminal, la = _bubble(la, it)
+    actual_bubble, actual_terminal, la = _bubble_or_context(la, it)
+    actual_remaining = la + ''.join(it)
+
+    # Then
+    assert actual_bubble == expected_bubble
+    assert actual_terminal == expected_terminal
+    assert actual_remaining == expected_remaining
+
+
+CONTEXT_TEST_DATA: Final = (
+    ('alias', None, Token('alias', TokenType.KW_ALIAS), ''),
+    ('bubble alias', 'bubble', Token('alias', TokenType.KW_ALIAS), ''),
+)
+
+
+@pytest.mark.parametrize(
+    'text,expected_bubble_text,expected_terminal,expected_remaining',
+    CONTEXT_TEST_DATA,
+    ids=[text for text, *_ in CONTEXT_TEST_DATA],
+)
+def test_context(
+    text: str,
+    expected_bubble_text: str | None,
+    expected_terminal: Token,
+    expected_remaining: str,
+) -> None:
+    # Given
+    it = iter(text)
+    la = next(it, '')
+    expected_bubble = Token(expected_bubble_text, TokenType.BUBBLE) if expected_bubble_text is not None else None
+
+    # When
+    actual_bubble, actual_terminal, la = _bubble_or_context(la, it, context=True)
     actual_remaining = la + ''.join(it)
 
     # Then
@@ -239,6 +273,23 @@ LEXER_TEST_DATA: Final = (
             Token('rule', TokenType.KW_RULE),
             Token('X => Y', TokenType.BUBBLE),
             Token('endmodule', TokenType.KW_ENDMODULE),
+            Token('', TokenType.EOF),
+        ],
+    ),
+    (
+        'context foo',
+        [
+            Token('context', TokenType.KW_CONTEXT),
+            Token('foo', TokenType.BUBBLE),
+            Token('', TokenType.EOF),
+        ],
+    ),
+    (
+        'context alias foo',
+        [
+            Token('context', TokenType.KW_CONTEXT),
+            Token('alias', TokenType.KW_ALIAS),
+            Token('foo', TokenType.BUBBLE),
             Token('', TokenType.EOF),
         ],
     ),

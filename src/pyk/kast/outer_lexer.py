@@ -135,27 +135,28 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
     state = State.DEFAULT
 
     while True:
-        if state == State.DEFAULT:
+        if state is State.DEFAULT:
             token, la = _default(la, it)
             yield token
             if token.type == TokenType.EOF:
                 return
             state = _DEFAULT_NEXT_STATE.get(token.type, State.DEFAULT)
 
-        elif state == State.MODNAME:
+        elif state is State.MODNAME:
             token, la = _modname(la, it)
             yield token
             # should not be EOF
             state = _MODNAME_NEXT_STATE.get(token.type, State.MODNAME)
 
-        elif state == State.BUBBLE:
-            bubble, token, la = _bubble(la, it)
+        elif state in {State.BUBBLE, State.CONTEXT}:
+            bubble, token, la = _bubble_or_context(la, it, context=state is State.CONTEXT)
             if bubble:
                 yield bubble
             yield token
             if token.type == TokenType.EOF:
                 return
-            state = _BUBBLE_NEXT_STATE[token.type]
+            next_state = _BUBBLE_NEXT_STATE if state is State.BUBBLE else _CONTEXT_NEXT_STATE
+            state = next_state[token.type]
 
         else:
             raise RuntimeError('TODO')
@@ -393,6 +394,8 @@ def _modname(la: str, it: Iterator) -> tuple[Token, str]:
 
 
 _BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
+_CONTEXT_KEYWORDS: Final = {'alias', 'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
+
 _BUBBLE_NEXT_STATE: Final = {
     TokenType.KW_SYNTAX: State.DEFAULT,
     TokenType.KW_ENDMODULE: State.DEFAULT,
@@ -401,9 +404,15 @@ _BUBBLE_NEXT_STATE: Final = {
     TokenType.KW_CONFIG: State.BUBBLE,
     TokenType.KW_CONTEXT: State.CONTEXT,
 }
+_CONTEXT_NEXT_STATE: Final = {
+    TokenType.KW_ALIAS: State.BUBBLE,
+    **_BUBBLE_NEXT_STATE,
+}
 
 
-def _bubble(la: str, it: Iterator) -> tuple[Token | None, Token, str]:
+def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple[Token | None, Token, str]:
+    keywords = _CONTEXT_KEYWORDS if context else _BUBBLE_KEYWORDS
+
     bubble: list[str] = []  # text that belongs to the bubble
     pending: list[str] = []  # text that belongs to the bubble iff preceded and followed by bubble text
 
@@ -438,7 +447,7 @@ def _bubble(la: str, it: Iterator) -> tuple[Token | None, Token, str]:
             while True:
                 if not la or la in _WHITESPACE:
                     current_str = ''.join(current)
-                    if current_str in _BUBBLE_KEYWORDS:
+                    if current_str in keywords:
                         token = _KEYWORDS[current_str]
                         return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, token, la
                     else:
@@ -451,7 +460,7 @@ def _bubble(la: str, it: Iterator) -> tuple[Token | None, Token, str]:
                     is_comment, consumed, la = _maybe_comment(la, it)
                     if is_comment:
                         current_str = ''.join(current)
-                        if current_str in _BUBBLE_KEYWORDS:
+                        if current_str in keywords:
                             token = _KEYWORDS[current_str]
                             return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, token, la
                         else:
