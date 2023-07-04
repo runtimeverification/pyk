@@ -58,74 +58,86 @@ class GraphChunk(Static):
 
 
 class Info(Widget):
-    _info_text: str
+    _text: str = 'Info'
 
-    def __init__(self, _info_text):
-        self._info_text = _info_text
-        super().__init__()
+    def __init__(self, text: str):
+        self._text = text
+        super().__init__(id='info')
+
+    def update(self, text: str) -> None:
+        self._text = text
 
     def compose(self) -> ComposeResult:
-        yield Static(self._info_text, id='info')
+        yield Horizontal(Static(self._text))
 
 
-class Term(Widget, can_focus=True):
-    _term_on: bool
+class Term(ScrollableContainer, can_focus=True):
+    _text: str = 'Term'
 
     class Selected(Message):
         def __init__(self) -> None:
             super().__init__()
 
-    def __init__(self, _term_on: bool):
-        self._term_on = _term_on
-        super().__init__()
-
-    def compose(self) -> ComposeResult:
-        yield Static('Term', id='term', classes=('' if self._term_on else 'hidden'))
+    def __init__(self, text: str):
+        self._text = text
+        super().__init__(id='term')
 
     def on_click(self, click: Click) -> None:
         self.post_message(Term.Selected())
         click.stop()
 
+    def update(self, text: str) -> None:
+        self._text = text
 
-class Constraint(Widget, can_focus=True):
-    _constraint_on: bool
+    def compose(self) -> ComposeResult:
+        yield Horizontal(Static(self._text))
+
+
+class Constraint(ScrollableContainer, can_focus=True):
+    _text: str
 
     class Selected(Message):
         def __init__(self) -> None:
             super().__init__()
 
-    def __init__(self, _constraint_on: bool):
-        self._constraint_on = _constraint_on
-        super().__init__()
-
-    def compose(self) -> ComposeResult:
-        yield Static('Constraint', id='constraint', classes=('' if self._constraint_on else 'hidden'))
+    def __init__(self, text: str):
+        self._text = text
+        super().__init__(id='constraint')
 
     def on_click(self, click: Click) -> None:
         self.post_message(Constraint.Selected())
         click.stop()
 
+    def update(self, text: str) -> None:
+        self._text = text
 
-class Custom(Widget, can_focus=True):
-    _custom_on: bool
+    def compose(self) -> ComposeResult:
+        yield Horizontal(Static(self._text))
+
+
+class Custom(ScrollableContainer, can_focus=True):
+    _text: str
 
     class Selected(Message):
         def __init__(self) -> None:
             super().__init__()
 
-    def __init__(self, _custom_on: bool):
-        self._custom_on = _custom_on
-        super().__init__()
-
-    def compose(self) -> ComposeResult:
-        yield Static('Custom', id='custom', classes=('' if self._custom_on else 'hidden'))
+    def __init__(self, text: str):
+        self._text = text
+        super().__init__(id='custom')
 
     def on_click(self, click: Click) -> None:
         self.post_message(Custom.Selected())
         click.stop()
 
+    def update(self, text: str) -> None:
+        self._text = text
 
-class NodeView(VerticalScroll):
+    def compose(self) -> ComposeResult:
+        yield Horizontal(Static(self._text))
+
+
+class NodeView(ScrollableContainer):
     _kprint: KPrint
     _custom_view: Callable[[KCFGElem], Iterable[str]] | None
 
@@ -135,6 +147,9 @@ class NodeView(VerticalScroll):
     _term_on: bool
     _constraint_on: bool
     _custom_on: bool
+    _term_text: str = 'Term'
+    _constraint_text: str = 'Constraint'
+    _custom_text: str = 'Custom'
 
     def __init__(
         self,
@@ -155,6 +170,7 @@ class NodeView(VerticalScroll):
         self._custom_on = custom_on or custom_view is not None
         self._custom_view = custom_view
 
+    @property
     def _info_text(self) -> str:
         term_str = '✅' if self._term_on else '❌'
         constraint_str = '✅' if self._constraint_on else '❌'
@@ -170,11 +186,10 @@ class NodeView(VerticalScroll):
         return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
-        yield Container(Info(self._info_text()), id='info-view')
-        with ScrollableContainer(id='term-view'):
-            yield Term(self._term_on)
-        yield ScrollableContainer(Constraint(self._constraint_on), id='constraint-view')
-        yield ScrollableContainer(Custom(self._custom_on), id='custom-view')
+        yield Horizontal(Info(self._info_text))
+        yield Horizontal(Term(self._term_text))
+        yield Horizontal(Constraint(self._constraint_text))
+        yield Horizontal(Custom(self._custom_text))
 
     def toggle_option(self, field: str) -> bool:
         assert field in ['minimize', 'term_on', 'constraint_on', 'custom_on']
@@ -185,16 +200,16 @@ class NodeView(VerticalScroll):
         if field == 'custom_on' and self._custom_view is None:
             new_value = False
         setattr(self, field_attr, new_value)
-        self.query_one('#info', Static).update(self._info_text())
+        # self.query_one('#info', Info).update(self._info_text())
         self._update()
         return new_value
 
     def toggle_view(self, field: str) -> None:
         assert field in ['term', 'constraint', 'custom']
         if self.toggle_option(f'{field}_on'):
-            self.query_one(f'#{field}-view').remove_class('hidden')
+            self.query_one(f'#{field}').remove_class('hidden')
         else:
-            self.query_one(f'#{field}-view').add_class('hidden')
+            self.query_one(f'#{field}').add_class('hidden')
 
     def update(self, element: KCFGElem) -> None:
         self._element = element
@@ -264,17 +279,20 @@ class NodeView(VerticalScroll):
                 elif type(self._element) is KCFG.Successor:
                     custom_str = '\n'.join(self._custom_view(self._element))
 
-        self.query_one('#info', Static).update(self._info_text())
-        self.query_one('#term', Static).update(term_str)
-        self.query_one('#constraint', Static).update(constraint_str)
-        self.query_one('#custom', Static).update(custom_str)
+        # self.query_one('#info', Info).update(self._info_text())
+        # self.query_one('#term', Term).update(term_str)
+        # self.query_one('#constraint', Constraint).update(constraint_str)
+        # self.query_one('#custom', Custom).update(custom_str)
+        self._term_text = term_str
+        self._constraint_text = constraint_str
+        self._custom_text = custom_str
 
 
 class Window(Enum):
     BEHAVIOR = 'behavior'
-    TERM = 'term-view'
-    CONSTRAINT = 'constraint-view'
-    CUSTOM = 'custom-view'
+    TERM = 'term'
+    CONSTRAINT = 'constraint'
+    CUSTOM = 'custom'
 
 
 class Direction(Enum):
@@ -443,13 +461,13 @@ class KCFGViewer(App):
         self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
         self.query_one('#node-view', NodeView).update(kcfg_elem)
 
-    def on_term_selected(self) -> None:
+    def on_term_selected(self, message: Term.Selected) -> None:
         self.focus_window(Window.TERM)
 
-    def on_constraint_selected(self) -> None:
+    def on_constraint_selected(self, message: Constraint.Selected) -> None:
         self.focus_window(Window.CONSTRAINT)
 
-    def on_custom_selected(self) -> None:
+    def on_custom_selected(self, message: Custom.Selected) -> None:
         self.focus_window(Window.CUSTOM)
 
     BINDINGS = [
@@ -483,14 +501,14 @@ class KCFGViewer(App):
         new_win = self.query_one(f'#{to.value}')
         new_win.set_class(False, 'deselected')
         new_win.set_class(True, 'selected')
-        new_win.focus()
+        new_win.focus(scroll_visible=False)
         self._curr_win = to
 
     def select_node(self, node: str | None) -> None:
         if node is not None:
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border: none;')
+            self.query_one(f'#{self._selected_chunk}').set_styles('border: none;')
             self._selected_chunk = node
-            self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
+            self.query_one(f'#{self._selected_chunk}').set_styles('border-left: double red;')
             self.query_one('#node-view', NodeView).update(self._resolve_any(node))
 
     def goto_prev_node(self) -> None:
@@ -624,12 +642,12 @@ class KCFGViewer(App):
                 node_id = self._selected_chunk[5:]
                 self._hidden_chunks.append(self._selected_chunk)
                 self.query_one(f'#{self._selected_chunk}', GraphChunk).add_class('hidden')
-                self.query_one('#info', Static).update(f'HIDDEN: node({shorten_hashes(node_id)})')
+                # self.query_one('#info', Info).update(f'HIDDEN: node({shorten_hashes(node_id)})')
         elif key == 'F':
             for hc in self._hidden_chunks:
                 self.query_one(f'#{hc}', GraphChunk).remove_class('hidden')
             node_ids = [nid[5:] for nid in self._hidden_chunks]
-            self.query_one('#info', Static).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
+            # self.query_one('#info', Info).update(f'UNHIDDEN: nodes({shorten_hashes(node_ids)})')
             self._hidden_chunks = []
         elif key in ['term', 'constraint', 'custom']:
             self.query_one('#node-view', NodeView).toggle_view(key)

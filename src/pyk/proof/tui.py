@@ -5,14 +5,16 @@ from typing import TYPE_CHECKING
 from textual.containers import Horizontal, ScrollableContainer
 from textual.widget import Widget
 from textual.widgets import Footer
+from textual.message import Message
 
-from ..kcfg.tui import GraphChunk, KCFGViewer, NodeView
+from ..kcfg.tui import GraphChunk, KCFGViewer, NodeView, Window
 from .show import APRProofShow
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     from textual.app import ComposeResult
+    from textual.events import Click
 
     from ..kcfg.show import NodePrinter
     from ..kcfg.tui import KCFGElem
@@ -20,12 +22,16 @@ if TYPE_CHECKING:
     from .reachability import APRProof
 
 
-class APRProofBehaviorView(Widget):
+class APRProofBehaviorView(ScrollableContainer, can_focus=True):
     _proof: APRProof
     _kprint: KPrint
     _minimize: bool
     _node_printer: NodePrinter | None
     _proof_nodes: Iterable[GraphChunk]
+
+    class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
 
     def __init__(
         self,
@@ -44,6 +50,10 @@ class APRProofBehaviorView(Widget):
         proof_show = APRProofShow(kprint, node_printer=node_printer)
         for lseg_id, node_lines in proof_show.pretty_segments(self._proof, minimize=self._minimize):
             self._proof_nodes.append(GraphChunk(lseg_id, node_lines))
+
+    def on_click(self, click: Click) -> None:
+        self.post_message(APRProofBehaviorView.Selected())
+        click.stop()
 
     def compose(self) -> ComposeResult:
         return self._proof_nodes
@@ -64,6 +74,9 @@ class APRProofViewer(KCFGViewer):
     ) -> None:
         super().__init__(proof.kcfg, kprint, node_printer=node_printer, custom_view=custom_view, minimize=minimize)
         self._proof = proof
+
+    def on_apr_proof_behavior_view_selected(self, message: APRProofBehaviorView.Selected) -> None:
+        self.focus_window(Window.BEHAVIOR)
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
