@@ -136,6 +136,21 @@ class Subst(Mapping[str, KInner]):
             ml_term = KApply('#And', [ml_term, _i])
         return ml_term
 
+    @property
+    def pred(self) -> KInner:
+        items = []
+        for k in self:
+            val = self[k]
+            if type(val) is not KVariable or val.name != KVariable(k).name:
+                items.append(KApply('_==K_', [KVariable(k), val]))
+
+        if len(items) == 0:
+            return KToken('true', 'Bool')
+        term = items[0]
+        for _i in items[1:]:
+            term = KApply('_andBool_', [term, _i])
+        return term
+
 
 @final
 @dataclass(frozen=True)
