@@ -108,7 +108,7 @@ _KEYWORDS: Final = {
     'requires': Token('requires', TokenType.KW_REQUIRES),
     'right': Token('right', TokenType.KW_RIGHT),
     'rule': Token('rule', TokenType.KW_RULE),
-    'syntax': Token('sytnax', TokenType.KW_SYNTAX),
+    'syntax': Token('syntax', TokenType.KW_SYNTAX),
 }
 
 _WHITESPACE: Final = {' ', '\t', '\n', '\r'}
@@ -125,7 +125,6 @@ class State(Enum):
     CONTEXT = auto()
     KLABEL = auto()
     ATTR = auto()
-    TAG = auto()
     MODNAME = auto()
 
 
@@ -141,6 +140,13 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
             if token.type == TokenType.EOF:
                 return
             state = _DEFAULT_NEXT_STATE.get(token.type, State.DEFAULT)
+
+        elif state is State.KLABEL:
+            token, la = _klabel(la, it)
+            yield token
+            if token.type == TokenType.EOF:
+                return
+            state = _KLABEL_NEXT_STATE.get(token.type, State.KLABEL)
 
         elif state is State.MODNAME:
             token, la = _modname(la, it)
@@ -391,6 +397,40 @@ def _modname(la: str, it: Iterator) -> tuple[Token, str]:
     if text in _MODNAME_KEYWORDS:
         return _KEYWORDS[text], la
     return Token(text, TokenType.MODNAME), la
+
+
+_KLABEL_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
+_KLABEL_NEXT_STATE: Final = {
+    TokenType.KW_SYNTAX: State.DEFAULT,
+    TokenType.KW_ENDMODULE: State.DEFAULT,
+    TokenType.KW_RULE: State.BUBBLE,
+    TokenType.KW_CLAIM: State.BUBBLE,
+    TokenType.KW_CONFIG: State.BUBBLE,
+    TokenType.KW_CONTEXT: State.CONTEXT,
+}
+
+
+def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    la = _skip_ws_and_comments(la, it)
+
+    if not la:
+        return _EOF_TOKEN, la
+
+    if la == '>':
+        la = next(it, '')
+        return _SIMPLE_CHARS['>'], la
+
+    consumed: list[str] = []
+    while la and la not in _WHITESPACE:
+        consumed.append(la)
+        la = next(it, '')
+
+    text = ''.join(consumed)
+    if text in _KLABEL_KEYWORDS:
+        token = _KEYWORDS[text]
+    else:
+        token = Token(text, TokenType.KLABEL)
+    return token, la
 
 
 _BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}

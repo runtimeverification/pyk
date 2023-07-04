@@ -4,7 +4,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.outer_lexer import Token, TokenType, _bubble_or_context, _default, _maybe_comment, _modname, outer_lexer
+from pyk.kast.outer_lexer import (
+    Token,
+    TokenType,
+    _bubble_or_context,
+    _default,
+    _klabel,
+    _maybe_comment,
+    _modname,
+    outer_lexer,
+)
 
 if TYPE_CHECKING:
     from typing import Final
@@ -239,6 +248,34 @@ def test_modname(text: str, expected_token: Token, expected_remaining: str) -> N
     assert actual_remaining == expected_remaining
 
 
+KLABEL_TEST_DATA: Final = (
+    ('syntax', Token('syntax', TokenType.KW_SYNTAX), ''),
+    ('syntaxx', Token('syntaxx', TokenType.KLABEL), ''),
+    ('<foo()>', Token('<foo()>', TokenType.KLABEL), ''),
+    ('>', Token('>', TokenType.GT), ''),
+    ('> a', Token('>', TokenType.GT), ' a'),
+)
+
+
+@pytest.mark.parametrize(
+    'text,expected_token,expected_remaining',
+    KLABEL_TEST_DATA,
+    ids=[text for text, *_ in KLABEL_TEST_DATA],
+)
+def test_klabel(text: str, expected_token: Token, expected_remaining: str) -> None:
+    # Given
+    it = iter(text)
+    la = next(it, '')
+
+    # When
+    actual_token, la = _klabel(la, it)
+    actual_remaining = la + ''.join(it)
+
+    # Then
+    assert actual_token == expected_token
+    assert actual_remaining == expected_remaining
+
+
 LEXER_TEST_DATA: Final = (
     ('', [Token('', TokenType.EOF)]),
     ('1', [Token('1', TokenType.NAT), Token('', TokenType.EOF)]),
@@ -290,6 +327,18 @@ LEXER_TEST_DATA: Final = (
             Token('context', TokenType.KW_CONTEXT),
             Token('alias', TokenType.KW_ALIAS),
             Token('foo', TokenType.BUBBLE),
+            Token('', TokenType.EOF),
+        ],
+    ),
+    (
+        'syntax priorities foo bar > baz',
+        [
+            Token('syntax', TokenType.KW_SYNTAX),
+            Token('priorities', TokenType.KW_PRIORITIES),
+            Token('foo', TokenType.KLABEL),
+            Token('bar', TokenType.KLABEL),
+            Token('>', TokenType.GT),
+            Token('baz', TokenType.KLABEL),
             Token('', TokenType.EOF),
         ],
     ),
