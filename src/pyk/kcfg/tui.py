@@ -57,84 +57,43 @@ class GraphChunk(Static):
         click.stop()
 
 
-class Info(Widget):
-    _text: str = 'Info'
-
-    def __init__(self, text: str):
-        self._text = text
-        super().__init__(id='info')
-
-    def update(self, text: str) -> None:
-        self._text = text
-
-    def compose(self) -> ComposeResult:
-        yield Horizontal(Static(self._text))
-
-
 class Term(ScrollableContainer, can_focus=True):
-    _text: str = 'Term'
-
     class Selected(Message):
         def __init__(self) -> None:
             super().__init__()
 
-    def __init__(self, text: str):
-        self._text = text
+    def __init__(self):
         super().__init__(id='term')
 
     def on_click(self, click: Click) -> None:
         self.post_message(Term.Selected())
         click.stop()
 
-    def update(self, text: str) -> None:
-        self._text = text
-
-    def compose(self) -> ComposeResult:
-        yield Horizontal(Static(self._text))
-
 
 class Constraint(ScrollableContainer, can_focus=True):
-    _text: str
-
     class Selected(Message):
         def __init__(self) -> None:
             super().__init__()
 
-    def __init__(self, text: str):
-        self._text = text
+    def __init__(self):
         super().__init__(id='constraint')
 
     def on_click(self, click: Click) -> None:
         self.post_message(Constraint.Selected())
         click.stop()
 
-    def update(self, text: str) -> None:
-        self._text = text
-
-    def compose(self) -> ComposeResult:
-        yield Horizontal(Static(self._text))
-
 
 class Custom(ScrollableContainer, can_focus=True):
-    _text: str
-
     class Selected(Message):
         def __init__(self) -> None:
             super().__init__()
 
-    def __init__(self, text: str):
-        self._text = text
+    def __init__(self):
         super().__init__(id='custom')
 
     def on_click(self, click: Click) -> None:
         self.post_message(Custom.Selected())
         click.stop()
-
-    def update(self, text: str) -> None:
-        self._text = text
-
-    def compose(self) -> ComposeResult:
-        yield Horizontal(Static(self._text))
 
 
 class NodeView(ScrollableContainer):
@@ -147,9 +106,10 @@ class NodeView(ScrollableContainer):
     _term_on: bool
     _constraint_on: bool
     _custom_on: bool
-    _term_text: str = 'Term'
-    _constraint_text: str = 'Constraint'
-    _custom_text: str = 'Custom'
+    _info_text: str = ''
+    _term_text: str = ''
+    _constraint_text: str = ''
+    _custom_text: str = ''
 
     def __init__(
         self,
@@ -170,8 +130,7 @@ class NodeView(ScrollableContainer):
         self._custom_on = custom_on or custom_view is not None
         self._custom_view = custom_view
 
-    @property
-    def _info_text(self) -> str:
+    def info_text(self) -> str:
         term_str = '✅' if self._term_on else '❌'
         constraint_str = '✅' if self._constraint_on else '❌'
         custom_str = '✅' if self._custom_on else '❌'
@@ -186,10 +145,13 @@ class NodeView(ScrollableContainer):
         return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
-        yield Horizontal(Info(self._info_text))
-        yield Horizontal(Term(self._term_text))
-        yield Horizontal(Constraint(self._constraint_text))
-        yield Horizontal(Custom(self._custom_text))
+        yield Horizontal(Static(self._info_text, id="info"))
+        with Term():
+            yield Horizontal(Static(self._term_text))
+        with Constraint():
+            yield Horizontal(Static(self._constraint_text))
+        with Custom():
+            yield Horizontal(Static(self._custom_text))
 
     def toggle_option(self, field: str) -> bool:
         assert field in ['minimize', 'term_on', 'constraint_on', 'custom_on']
@@ -201,6 +163,7 @@ class NodeView(ScrollableContainer):
             new_value = False
         setattr(self, field_attr, new_value)
         # self.query_one('#info', Info).update(self._info_text())
+        self._info_text = self.info_text()
         self._update()
         return new_value
 
@@ -279,10 +242,6 @@ class NodeView(ScrollableContainer):
                 elif type(self._element) is KCFG.Successor:
                     custom_str = '\n'.join(self._custom_view(self._element))
 
-        # self.query_one('#info', Info).update(self._info_text())
-        # self.query_one('#term', Term).update(term_str)
-        # self.query_one('#constraint', Constraint).update(constraint_str)
-        # self.query_one('#custom', Custom).update(custom_str)
         self._term_text = term_str
         self._constraint_text = constraint_str
         self._custom_text = custom_str
@@ -461,13 +420,13 @@ class KCFGViewer(App):
         self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
         self.query_one('#node-view', NodeView).update(kcfg_elem)
 
-    def on_term_selected(self, message: Term.Selected) -> None:
+    def on_term_selected(self) -> None:
         self.focus_window(Window.TERM)
 
-    def on_constraint_selected(self, message: Constraint.Selected) -> None:
+    def on_constraint_selected(self) -> None:
         self.focus_window(Window.CONSTRAINT)
 
-    def on_custom_selected(self, message: Custom.Selected) -> None:
+    def on_custom_selected(self) -> None:
         self.focus_window(Window.CUSTOM)
 
     BINDINGS = [
