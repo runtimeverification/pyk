@@ -22,17 +22,22 @@
 #display {
     layout: vertical;
 }
-#info {
+#info-content {
     width: auto;
     height: 2fr;
     border: solid dimgrey;
     overflow: auto scroll;
 }
-#term {
+#term-content {
     width: auto;
     height: 15fr;
     overflow: auto scroll;
 }
+/* #term { */
+/*     width: auto; */
+/*     height: 15fr; */
+/*     overflow: auto scroll; */
+/* } */
 #constraint {
     width: auto;
     height: 5fr;

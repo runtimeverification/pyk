@@ -95,8 +95,11 @@ class Custom(ScrollableContainer, can_focus=True):
         self.post_message(Custom.Selected())
         click.stop()
 
+    def render(self) -> str:
+        return 'I\'m going to bang my head'
 
-class NodeView(ScrollableContainer):
+
+class NodeView(Widget):
     _kprint: KPrint
     _custom_view: Callable[[KCFGElem], Iterable[str]] | None
 
@@ -145,13 +148,14 @@ class NodeView(ScrollableContainer):
         return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
-        yield Horizontal(Static(self._info_text, id="info"))
+        # yield Horizontal(Static(self.info_text(), id='info-content'), id='info')
+        yield Horizontal(Static('Info', id='info-content'), id='info')
         with Term():
-            yield Horizontal(Static(self._term_text))
+            yield Horizontal(Static(self._term_text, id='term-content'))
         with Constraint():
-            yield Horizontal(Static(self._constraint_text))
+            yield Horizontal(Static(self._constraint_text, id='constraint-content'))
         with Custom():
-            yield Horizontal(Static(self._custom_text))
+            yield Horizontal(Static(self._custom_text, id='custom-content'))
 
     def toggle_option(self, field: str) -> bool:
         assert field in ['minimize', 'term_on', 'constraint_on', 'custom_on']
@@ -162,8 +166,8 @@ class NodeView(ScrollableContainer):
         if field == 'custom_on' and self._custom_view is None:
             new_value = False
         setattr(self, field_attr, new_value)
-        # self.query_one('#info', Info).update(self._info_text())
         self._info_text = self.info_text()
+        self.query_one('#info-content', Static).update(self._info_text)
         self._update()
         return new_value
 
@@ -242,9 +246,13 @@ class NodeView(ScrollableContainer):
                 elif type(self._element) is KCFG.Successor:
                     custom_str = '\n'.join(self._custom_view(self._element))
 
-        self._term_text = term_str
-        self._constraint_text = constraint_str
-        self._custom_text = custom_str
+        # self._term_text = term_str
+        # self._constraint_text = constraint_str
+        # self._custom_text = custom_str
+
+        self.query_one('#term-content', Static).update(term_str)
+        self.query_one('#constraint-content', Static).update(constraint_str)
+        self.query_one('#custom-content', Static).update(custom_str)
 
 
 class Window(Enum):
