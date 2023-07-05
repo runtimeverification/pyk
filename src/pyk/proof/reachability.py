@@ -4,8 +4,8 @@ import json
 import logging
 from dataclasses import dataclass
 from itertools import chain
-from typing import TYPE_CHECKING
 from multiprocessing.pool import ThreadPool as Pool
+from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
@@ -512,7 +512,6 @@ class APRProver(Prover):
                 terminal_rules=terminal_rules,
             )
 
-
         while self.proof.pending:
             self.proof.write_proof()
 
@@ -524,7 +523,6 @@ class APRProver(Prover):
             curr_nodes = [node.id for ni, node in enumerate(self.proof.pending) if ni < max_workers]
             pool = Pool(processes=max_workers)
             pool.map(_advance_from_node, curr_nodes)
-
 
         self.proof.write_proof()
         return self.proof.kcfg
@@ -687,6 +685,7 @@ class APRBMCProver(APRProver):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
+        max_workers: int = 1,
     ) -> KCFG:
         iterations = 0
 
