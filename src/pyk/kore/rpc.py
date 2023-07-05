@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import socket
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -10,7 +11,6 @@ from enum import Enum
 from pathlib import Path
 from signal import SIGINT
 from subprocess import Popen
-import threading
 from time import sleep
 from typing import TYPE_CHECKING, ContextManager, final
 

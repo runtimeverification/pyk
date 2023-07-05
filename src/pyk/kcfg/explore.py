@@ -111,7 +111,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             self._kore_clients.append(client)
             client._lock.acquire()
         else:
-            (i, client) = next((i, client) for i, client in enumerate(self._kore_clients) if not client._busy)
+            (i, client) = next((i, client) for i, client in enumerate(self._kore_clients) if client._busy is False)
             client._lock.acquire()
             server = self._kore_servers[i]
         return (server, client)
@@ -126,7 +126,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if self._kore_clients[i]._lock.acquire(timeout=5):
                 return (self._kore_servers[i], self._kore_clients[i])
 
-            i = (i  + 1) % len(self._kore_clients)
+            i = (i + 1) % len(self._kore_clients)
 
     # TODO: don't use the same defined port for the KoreServer but a new one
     def _new_server(self) -> tuple[KoreServer, KoreClient]:
@@ -143,7 +143,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             log_axioms_file=self._log_axioms_file,
         )
         client = KoreClient('localhost', server._port, bug_report=self._bug_report)
-        return(server, client)
+        return (server, client)
 
     def close(self) -> None:
         self._rpc_closed = True
