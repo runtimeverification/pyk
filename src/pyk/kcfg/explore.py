@@ -55,9 +55,11 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _bug_report: BugReport | None
 
     _kore_server: KoreServer | None
+    _kore_servers: list[KoreServer] = []
     _kore_clients: list[KoreClient] = []
     _rpc_closed: bool
     _trace_rewrites: bool
+    _max_clients: int
 
     def __init__(
         self,
@@ -73,6 +75,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         trace_rewrites: bool = False,
+        _max_clients: int = 1,
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
@@ -88,6 +91,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._kore_client = None
         self._rpc_closed = False
         self._trace_rewrites = trace_rewrites
+        self._max_clients = _max_clients
 
     def __enter__(self) -> KCFGExplore:
         return self
@@ -99,22 +103,44 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
-        if not self._kore_server:
-            self._kore_server = KoreServer(
-                self.kprint.definition_dir,
-                self.kprint.main_module,
-                port=self._port,
-                bug_report=self._bug_report,
-                command=self._kore_rpc_command,
-                smt_timeout=self._smt_timeout,
-                smt_retry_limit=self._smt_retry_limit,
-                haskell_log_format=self._haskell_log_format,
-                haskell_log_entries=self._haskell_log_entries,
-                log_axioms_file=self._log_axioms_file,
-            )
-        if not self._kore_clients or not any(not client._busy for client in self._kore_clients):
-            self._kore_clients.append(KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report))
-        return (self._kore_server, next(client for client in self._kore_clients if not client._busy))
+        if self._rpc_busy:
+            (server, client) = self._next_available_server()
+        elif not self._kore_servers or all(client._busy for client in self._kore_clients):
+            (server, client) = self._new_server()
+            self._kore_servers.append(server)
+            self._kore_clients.append(client)
+        else:
+            (i, client) = next((i, client) for i, client in enumerate(self._kore_clients) if not client._busy)
+            server = self._kore_servers[i]
+        return (server, client)
+
+    @property
+    def _rpc_busy(self) -> bool:
+        return len(self._kore_clients) >= self._max_clients and all(client._busy for client in self._kore_clients)
+
+    def _next_available_server(self) -> tuple[KoreServer, KoreClient]:
+        i = 0
+        while True:
+
+
+            i = i % self._max_clients + 1
+
+    # TODO: don't use the same defined port for the KoreServer but a new one
+    def _new_server(self) -> tuple[KoreServer, KoreClient]:
+        server = KoreServer(
+            self.kprint.definition_dir,
+            self.kprint.main_module,
+            port=self._port,
+            bug_report=self._bug_report,
+            command=self._kore_rpc_command,
+            smt_timeout=self._smt_timeout,
+            smt_retry_limit=self._smt_retry_limit,
+            haskell_log_format=self._haskell_log_format,
+            haskell_log_entries=self._haskell_log_entries,
+            log_axioms_file=self._log_axioms_file,
+        )
+        client = KoreClient('localhost', server._port, bug_report=self._bug_report)
+        return(server, client)
 
     def close(self) -> None:
         self._rpc_closed = True

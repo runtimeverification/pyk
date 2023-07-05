@@ -10,6 +10,7 @@ from enum import Enum
 from pathlib import Path
 from signal import SIGINT
 from subprocess import Popen
+import threading
 from time import sleep
 from typing import TYPE_CHECKING, ContextManager, final
 
@@ -527,10 +528,11 @@ class KoreClient(ContextManager['KoreClient']):
 
     _client: JsonRpcClient
 
-    _busy: bool = False
+    _lock: threading.Lock
 
     def __init__(self, host: str, port: int, *, timeout: int | None = None, bug_report: BugReport | None = None):
         self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report)
+        self._lock = threading.Lock()
 
     def __enter__(self) -> KoreClient:
         return self
@@ -541,14 +543,17 @@ class KoreClient(ContextManager['KoreClient']):
     def close(self) -> None:
         self._client.close()
 
+    def _busy(self) -> bool:
+        return self._lock.locked()
+
     def _request(self, method: str, **params: Any) -> dict[str, Any]:
-        self._busy = True
+        self._lock.acquire()
         try:
             res = self._client.request(method, **params)
-            self._busy = False
+            self._lock.release()
             return res
         except JsonRpcError as err:
-            self._busy = False
+            self._lock.release()
             assert err.code not in {-32601, -32602}, 'Malformed Kore-RPC request'
             raise KoreClientError(message=err.message, code=err.code, data=err.data) from err
 
