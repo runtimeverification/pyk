@@ -55,7 +55,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _bug_report: BugReport | None
 
     _kore_server: KoreServer | None
-    _kore_client: KoreClient | None
+    _kore_clients: list[KoreClient] = []
     _rpc_closed: bool
     _trace_rewrites: bool
 
@@ -112,18 +112,18 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 haskell_log_entries=self._haskell_log_entries,
                 log_axioms_file=self._log_axioms_file,
             )
-        if not self._kore_client:
-            self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
-        return (self._kore_server, self._kore_client)
+        if not self._kore_clients or not any(not client._busy for client in self._kore_clients):
+            self._kore_clients.append(KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report))
+        return (self._kore_server, next(client for client in self._kore_clients if not client._busy))
 
     def close(self) -> None:
         self._rpc_closed = True
         if self._kore_server is not None:
             self._kore_server.close()
             self._kore_server = None
-        if self._kore_client is not None:
-            self._kore_client.close()
-            self._kore_client = None
+        while self._kore_clients:
+            client = self._kore_clients.pop()
+            client.close()
 
     def cterm_execute(
         self,
