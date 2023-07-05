@@ -55,7 +55,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _bug_report: BugReport | None
 
     _kore_server: KoreServer | None
-    _kore_clients: list[KoreClient]
+    _kore_clients: list[KoreClient] = []
     _rpc_closed: bool
     _trace_rewrites: bool
 
