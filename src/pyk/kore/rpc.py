@@ -547,13 +547,10 @@ class KoreClient(ContextManager['KoreClient']):
         return self._lock.locked()
 
     def _request(self, method: str, **params: Any) -> dict[str, Any]:
-        self._lock.acquire()
         try:
             res = self._client.request(method, **params)
-            self._lock.release()
             return res
         except JsonRpcError as err:
-            self._lock.release()
             assert err.code not in {-32601, -32602}, 'Malformed Kore-RPC request'
             raise KoreClientError(message=err.message, code=err.code, data=err.data) from err
 
@@ -593,6 +590,7 @@ class KoreClient(ContextManager['KoreClient']):
         )
 
         result = self._request('execute', **params)
+        self._lock.release()
         return ExecuteResult.from_dict(result)
 
     def implies(
@@ -612,6 +610,7 @@ class KoreClient(ContextManager['KoreClient']):
         )
 
         result = self._request('implies', **params)
+        self._lock.release()
         return ImpliesResult.from_dict(result)
 
     def simplify(
@@ -629,6 +628,7 @@ class KoreClient(ContextManager['KoreClient']):
         )
 
         result = self._request('simplify', **params)
+        self._lock.release()
         logs = tuple(LogEntry.from_dict(l) for l in result['logs']) if 'logs' in result else ()
         return kore_term(result['state'], Pattern), logs  # type: ignore # https://github.com/python/mypy/issues/4717
 
@@ -641,10 +641,12 @@ class KoreClient(ContextManager['KoreClient']):
         )
 
         result = self._request('get-model', **params)
+        self._lock.release()
         return GetModelResult.from_dict(result)
 
     def add_module(self, module: Module) -> None:
         result = self._request('add-module', module=module.text)
+        self._lock.release()
         assert result == []
 
 

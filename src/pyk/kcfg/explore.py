@@ -109,8 +109,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             (server, client) = self._new_server()
             self._kore_servers.append(server)
             self._kore_clients.append(client)
+            client._lock.acquire()
         else:
             (i, client) = next((i, client) for i, client in enumerate(self._kore_clients) if not client._busy)
+            client._lock.acquire()
             server = self._kore_servers[i]
         return (server, client)
 
@@ -121,9 +123,10 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def _next_available_server(self) -> tuple[KoreServer, KoreClient]:
         i = 0
         while True:
+            if self._kore_clients[i]._lock.acquire(timeout=5):
+                return (self._kore_servers[i], self._kore_clients[i])
 
-
-            i = i % self._max_clients + 1
+            i = (i  + 1) % len(self._kore_clients)
 
     # TODO: don't use the same defined port for the KoreServer but a new one
     def _new_server(self) -> tuple[KoreServer, KoreClient]:
