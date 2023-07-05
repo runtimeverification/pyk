@@ -103,29 +103,35 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
-        if self._rpc_busy:
-            (server, client) = self._next_available_server()
-        elif not self._kore_servers or all(client._busy for client in self._kore_clients):
+        curr_server = self._curr_server # need interim because of lock
+        if self._kore_clients and curr_server is not None:
+            (server, client) = curr_server
+        elif len(self._kore_clients) < self._max_clients:
             (server, client) = self._new_server()
+            client._lock.acquire(blocking=True)
             self._kore_servers.append(server)
             self._kore_clients.append(client)
-            client._lock.acquire()
         else:
-            (i, client) = next((i, client) for i, client in enumerate(self._kore_clients) if client._busy is False)
-            client._lock.acquire()
-            server = self._kore_servers[i]
+            (server, client) = self._next_available_server()
+        print(client._client._port)
         return (server, client)
 
     @property
     def _rpc_busy(self) -> bool:
         return len(self._kore_clients) >= self._max_clients and all(client._busy for client in self._kore_clients)
 
+    @property
+    def _curr_server(self) -> tuple[KoreServer, KoreClient] | None:
+        i, client = next(((i, client) for i, client in enumerate(self._kore_clients) if self._kore_clients[i]._lock.acquire(blocking=False)), (0, None))
+        if client is not None:
+            return (self._kore_servers[i], self._kore_clients[i])
+        return None
+
     def _next_available_server(self) -> tuple[KoreServer, KoreClient]:
         i = 0
         while True:
             if self._kore_clients[i]._lock.acquire(timeout=5):
                 return (self._kore_servers[i], self._kore_clients[i])
-
             i = (i + 1) % len(self._kore_clients)
 
     # TODO: don't use the same defined port for the KoreServer but a new one
