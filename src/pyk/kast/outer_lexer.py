@@ -55,8 +55,8 @@ class TokenType(Enum):
     ID_UPPER = auto()
     MODNAME = auto()
     KLABEL = auto()
-    KEY = auto()
-    TAG = auto()
+    ATTR_KEY = auto()
+    ATTR_CONTENT = auto()
     BUBBLE = auto()
 
 
@@ -141,6 +141,11 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
                 return
             state = _DEFAULT_NEXT_STATE.get(token.type, State.DEFAULT)
 
+        elif state is State.ATTR:
+            tokens, la = _attr(la, it)
+            yield from tokens
+            state = State.DEFAULT
+
         elif state is State.KLABEL:
             token, la = _klabel(la, it)
             yield token
@@ -199,6 +204,7 @@ _DEFAULT_NEXT_STATE: Final = {
     TokenType.KW_PRIORITIES: State.KLABEL,
     TokenType.KW_PRIORITY: State.KLABEL,
     TokenType.KW_RULE: State.BUBBLE,
+    TokenType.LBRACK: State.ATTR,
 }
 
 
@@ -518,6 +524,117 @@ def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple
                 else:
                     current.append(la)
                     la = next(it, '')
+
+
+def _attr(la: str, it: Iterator[str]) -> tuple[list[Token], str]:
+    tokens: list[Token] = []
+
+    la = _skip_ws_and_comments(la, it)
+    if not la:
+        raise ValueError('Unexpected end of file')
+
+    while True:
+        key, la = _attr_key(la, it)
+        tokens.append(key)
+        la = _skip_ws_and_comments(la, it)
+
+        if la == '(':  # TAG_STATE
+            tokens.append(_SIMPLE_CHARS[la])  # TODO eliminate dict lookup
+            la = next(it, '')
+
+            tag, la = _attr_tag(la, it)
+            assert la == ')'
+            tokens.append(tag)
+            tokens.append(_SIMPLE_CHARS[la])
+            la = next(it, '')
+            la = _skip_ws_and_comments(la, it)
+
+        if la != ',':
+            break
+
+        tokens.append(_SIMPLE_CHARS[la])
+        la = next(it, '')
+        la = _skip_ws_and_comments(la, it)
+
+    if la != ']':
+        raise ValueError(f'Unexpected character: {la}')
+
+    tokens.append(_SIMPLE_CHARS[la])
+    la = next(it, '')
+
+    return tokens, la
+
+
+def _attr_key(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    # ["a"-"z","1"-"9"](["A"-"Z", "a"-"z", "-", "0"-"9"])*("<" (["A"-"Z", "a"-"z", "-", "0"-"9"])+ ">")?
+
+    consumed: list[str] = []
+    if la not in _LOWER and la not in _DIGIT:
+        raise ValueError(f'Unexpected character: {la}')
+
+    consumed.append(la)
+    la = next(it, '')
+
+    while la in _ALNUM or la == '-':
+        consumed.append(la)
+        la = next(it, '')
+
+    if la == '<':
+        consumed.append(la)
+        la = next(it, '')
+
+        if not la in _ALNUM and la != '-':
+            raise ValueError(f'Unexpected character: {la}')
+
+        consumed.append(la)
+        la = next(it, '')
+
+        while la in _ALNUM or la == '-':
+            consumed.append(la)
+            la = next(it, '')
+
+        if la != '>':
+            raise ValueError(f'Unexpected character: {la}')
+
+        consumed.append(la)
+        la = next(it, '')
+
+    attr_key = ''.join(consumed)
+    return Token(attr_key, TokenType.ATTR_KEY), la
+
+
+_ATTR_CONTENT_FORBIDDEN: Final = {'\n', '\r', '"'}
+
+
+def _attr_tag(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    if la == '"':
+        return _string(la, it)
+
+    consumed: list[str] = []
+    open_parens = 0
+
+    while la and la not in _ATTR_CONTENT_FORBIDDEN:
+        if la == ')':
+            if not open_parens:
+                break
+            open_parens -= 1
+
+        elif la == '(':
+            open_parens += 1
+
+        consumed.append(la)
+        la = next(it, '')
+
+    if not la or la in _ATTR_CONTENT_FORBIDDEN:
+        raise ValueError(f'Unexpected character: {la}')
+
+    if not consumed:
+        raise ValueError('Unexpected empty attribute tag content')
+
+    # assert la == ')'
+
+    attr_tag = ''.join(consumed)
+    return Token(attr_tag, TokenType.ATTR_CONTENT), la
 
 
 def _maybe_comment(la: str, it: Iterator[str]) -> tuple[bool, list[str], str]:

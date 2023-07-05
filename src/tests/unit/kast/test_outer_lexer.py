@@ -7,6 +7,7 @@ import pytest
 from pyk.kast.outer_lexer import (
     Token,
     TokenType,
+    _attr,
     _bubble_or_context,
     _default,
     _klabel,
@@ -276,6 +277,93 @@ def test_klabel(text: str, expected_token: Token, expected_remaining: str) -> No
     assert actual_remaining == expected_remaining
 
 
+ATTR_TEST_DATA: Final = (
+    ('a]', [Token('a', TokenType.ATTR_KEY), Token(']', TokenType.RBRACK)], ''),
+    (' a ] ', [Token('a', TokenType.ATTR_KEY), Token(']', TokenType.RBRACK)], ' '),
+    ('a<b>]', [Token('a<b>', TokenType.ATTR_KEY), Token(']', TokenType.RBRACK)], ''),
+    ('1a-B<-->]', [Token('1a-B<-->', TokenType.ATTR_KEY), Token(']', TokenType.RBRACK)], ''),
+    (
+        'a("hello")]',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('"hello"', TokenType.STRING),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        '',
+    ),
+    (
+        'a( tag content (()) () )]',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token(' tag content (()) () ', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        '',
+    ),
+    (
+        'a,b,c]',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token(',', TokenType.COMMA),
+            Token('b', TokenType.ATTR_KEY),
+            Token(',', TokenType.COMMA),
+            Token('c', TokenType.ATTR_KEY),
+            Token(']', TokenType.RBRACK),
+        ],
+        '',
+    ),
+    (
+        ' /* 1 */ a /* 2 */ , b /* 3 */ ]',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token(',', TokenType.COMMA),
+            Token('b', TokenType.ATTR_KEY),
+            Token(']', TokenType.RBRACK),
+        ],
+        '',
+    ),
+    (
+        'a<A>("hello"), b(foo(bar(%), baz))]',
+        [
+            Token('a<A>', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('"hello"', TokenType.STRING),
+            Token(')', TokenType.RPAREN),
+            Token(',', TokenType.COMMA),
+            Token('b', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('foo(bar(%), baz)', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        '',
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    'text,expected_tokens,expected_remaining',
+    ATTR_TEST_DATA,
+    ids=[text for text, *_ in ATTR_TEST_DATA],
+)
+def test_attr(text: str, expected_tokens: list[Token], expected_remaining: str) -> None:
+    # Given
+    it = iter(text)
+    la = next(it, '')
+
+    # When
+    actual_tokens, la = _attr(la, it)
+    actual_remaining = la + ''.join(it)
+
+    # Then
+    assert actual_tokens == expected_tokens
+    assert actual_remaining == expected_remaining
+
+
 LEXER_TEST_DATA: Final = (
     ('', [Token('', TokenType.EOF)]),
     ('1', [Token('1', TokenType.NAT), Token('', TokenType.EOF)]),
@@ -339,6 +427,25 @@ LEXER_TEST_DATA: Final = (
             Token('bar', TokenType.KLABEL),
             Token('>', TokenType.GT),
             Token('baz', TokenType.KLABEL),
+            Token('', TokenType.EOF),
+        ],
+    ),
+    (
+        'syntax Foo ::= "bar" | Baz [group(foo)] syntax',
+        [
+            Token('syntax', TokenType.KW_SYNTAX),
+            Token('Foo', TokenType.ID_UPPER),
+            Token('::=', TokenType.DCOLONEQ),
+            Token('"bar"', TokenType.STRING),
+            Token('|', TokenType.VBAR),
+            Token('Baz', TokenType.ID_UPPER),
+            Token('[', TokenType.LBRACK),
+            Token('group', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('foo', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+            Token('syntax', TokenType.KW_SYNTAX),
             Token('', TokenType.EOF),
         ],
     ),
