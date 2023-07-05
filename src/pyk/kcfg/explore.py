@@ -103,7 +103,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
-        curr_server = self._curr_server # need interim because of lock
+        curr_server = self._curr_server  # need interim because of lock
         if self._kore_clients and curr_server is not None:
             (server, client) = curr_server
         elif len(self._kore_clients) < self._max_clients:
@@ -122,7 +122,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
     @property
     def _curr_server(self) -> tuple[KoreServer, KoreClient] | None:
-        i, client = next(((i, client) for i, client in enumerate(self._kore_clients) if self._kore_clients[i]._lock.acquire(blocking=False)), (0, None))
+        i, client = next(
+            (
+                (i, client)
+                for i, client in enumerate(self._kore_clients)
+                if self._kore_clients[i]._lock.acquire(blocking=False)
+            ),
+            (0, None),
+        )
         if client is not None:
             return (self._kore_servers[i], self._kore_clients[i])
         return None
