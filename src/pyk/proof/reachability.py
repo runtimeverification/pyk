@@ -722,7 +722,7 @@ class APRBMCProver(APRProver):
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
                 implication_every_block=implication_every_block,
-                max_workers=max_workers
+                max_workers=max_workers,
             )
 
         self.proof.write_proof()
