@@ -543,9 +543,6 @@ class KoreClient(ContextManager['KoreClient']):
     def close(self) -> None:
         self._client.close()
 
-    def _busy(self) -> bool:
-        return self._lock.locked()
-
     def _request(self, method: str, **params: Any) -> dict[str, Any]:
         try:
             res = self._client.request(method, **params)
