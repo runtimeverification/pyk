@@ -4,8 +4,8 @@ import json
 import logging
 from dataclasses import dataclass
 from itertools import chain
-from multiprocessing.pool import ThreadPool as Pool
 from typing import TYPE_CHECKING
+from multiprocessing.pool import ThreadPool as Pool
 
 from pyk.kore.rpc import LogEntry
 
@@ -482,34 +482,39 @@ class APRProver(Prover):
     ) -> KCFG:
         iterations = 0
 
-        def _advance_from_node(nid: NodeIdLike) -> None:
-            node = self.proof.kcfg.node(nid)
-            if self._check_subsume(node):
+        def _advance_from_node(node: NodeIdLike) -> None:
+            curr_node = self.proof.kcfg.node(node)
+            if self._check_subsume(curr_node):
                 return
 
-            if self._check_terminal(node):
+            if self._check_terminal(curr_node):
                 return
 
-            if self._check_abstract(node):
+            if self._check_abstract(curr_node):
                 return
 
-            if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=nid)) == 0:
-                branches = list(self._extract_branches(node.cterm))
+            if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=curr_node.id)) == 0:
+                branches = list(self._extract_branches(curr_node.cterm))
                 if len(branches) > 0:
-                    self.proof.kcfg.split_on_constraints(nid, branches)
+                    self.proof.kcfg.split_on_constraints(curr_node.id, branches)
                     _LOGGER.info(
-                        f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(nid)}: {[self.kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
+                        f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[self.kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
                     )
                     return
 
+            module_name = (
+                self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
+            )
             self.kcfg_explore.extend(
                 self.proof.kcfg,
-                node,
+                curr_node,
                 self.proof.logs,
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
+                module_name=module_name,
             )
+
 
         while self.proof.pending:
             self.proof.write_proof()
@@ -521,7 +526,8 @@ class APRProver(Prover):
 
             curr_nodes = [node.id for ni, node in enumerate(self.proof.pending) if ni < max_workers]
             pool = Pool(processes=max_workers)
-            pool.map(_advance_from_node, curr_nodes)
+            res = pool.map_async(_advance_from_node, curr_nodes)
+            res.wait()
 
         self.proof.write_proof()
         return self.proof.kcfg
@@ -684,7 +690,6 @@ class APRBMCProver(APRProver):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
-        max_workers: int = 1,
     ) -> KCFG:
         iterations = 0
 
@@ -722,7 +727,6 @@ class APRBMCProver(APRProver):
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
                 implication_every_block=implication_every_block,
-                max_workers=max_workers,
             )
 
         self.proof.write_proof()

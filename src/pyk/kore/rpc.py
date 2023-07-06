@@ -95,6 +95,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
     def close(self) -> None:
         self._file.close()
+        self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
 
     def request(self, method: str, **params: Any) -> dict[str, Any]:

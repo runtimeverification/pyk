@@ -101,16 +101,30 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
         curr_server = self._curr_server()  # need interim because of lock
-        if self._kore_clients and curr_server is not None:
+        if curr_server is not None:
             (server, client) = curr_server
         elif len(self._kore_clients) < self._max_clients:
             (server, client) = self._new_server()
-            client._lock.acquire(blocking=True)
+            client._lock.acquire()
             self._kore_servers.append(server)
             self._kore_clients.append(client)
         else:
             (server, client) = self._next_available_server()
         return (server, client)
+
+    @property
+    def _kore_rpcs(self) -> list[tuple[KoreServer, KoreClient]]:
+        if self._rpc_closed:
+            raise ValueError('RPC server already closed!')
+        res = self._all_servers()
+        new_servers = []
+        while len(self._kore_servers) < self._max_clients:
+            (server, client) = self._new_server()
+            client._lock.acquire()
+            self._kore_servers.append(server)
+            self._kore_clients.append(client)
+            new_servers.append((server, client))
+        return res + new_servers
 
     def _curr_server(self) -> tuple[KoreServer, KoreClient] | None:
         i, client = next(
@@ -131,6 +145,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             if self._kore_clients[i]._lock.acquire(timeout=5):
                 return (self._kore_servers[i], self._kore_clients[i])
             i = (i + 1) % len(self._kore_clients)
+
+    def _all_servers(self) -> list[tuple[KoreServer, KoreClient]]:
+        acquired = []
+        while len(acquired) < len(self._kore_servers):
+            acquired.append(self._next_available_server())
+        return acquired
 
     # TODO: don't use the same defined port for the KoreServer but a new one
     def _new_server(self) -> tuple[KoreServer, KoreClient]:
@@ -532,9 +552,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             for c in dependencies
         ]
         kore_axioms: list[Sentence] = [krule_to_kore(self.kprint.kompiled_kore, r) for r in kast_rules]
-        _, kore_client = self._kore_rpc
-        sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
-        sentences = sentences + kore_axioms
-        m = Module(name=new_module_name, sentences=sentences)
-        _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
-        kore_client.add_module(m)
+        for _, kore_client in self._kore_rpcs:
+            sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
+            sentences = sentences + kore_axioms
+            m = Module(name=new_module_name, sentences=sentences)
+            _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
+            kore_client.add_module(m)
