@@ -147,7 +147,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             i = (i + 1) % len(self._kore_clients)
 
     def _all_servers(self) -> list[tuple[KoreServer, KoreClient]]:
-        acquired = []
+        acquired: list[tuple[KoreServer, KoreClient]] = []
         while len(acquired) < len(self._kore_servers):
             acquired.append(self._next_available_server())
         return acquired

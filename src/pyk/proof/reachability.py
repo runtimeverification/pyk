@@ -4,8 +4,8 @@ import json
 import logging
 from dataclasses import dataclass
 from itertools import chain
-from typing import TYPE_CHECKING
 from multiprocessing.pool import ThreadPool as Pool
+from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
@@ -515,7 +515,6 @@ class APRProver(Prover):
                 module_name=module_name,
             )
 
-
         while self.proof.pending:
             self.proof.write_proof()
 
@@ -690,6 +689,7 @@ class APRBMCProver(APRProver):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
+        max_workers: int = 1,
     ) -> KCFG:
         iterations = 0
 
@@ -727,6 +727,7 @@ class APRBMCProver(APRProver):
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
                 implication_every_block=implication_every_block,
+                max_workers=max_workers,
             )
 
         self.proof.write_proof()
