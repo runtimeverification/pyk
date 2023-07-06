@@ -483,7 +483,6 @@ class APRProver(Prover):
         iterations = 0
 
         def _advance_from_node(nid: NodeIdLike) -> None:
-            _LOGGER.info(f'advancing on node {nid}')
             node = self.proof.kcfg.node(nid)
             if self._check_subsume(node):
                 return
@@ -723,6 +722,7 @@ class APRBMCProver(APRProver):
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
                 implication_every_block=implication_every_block,
+                max_workers=max_workers
             )
 
         self.proof.write_proof()

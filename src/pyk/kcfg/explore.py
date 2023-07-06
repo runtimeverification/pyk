@@ -54,7 +54,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _smt_retry_limit: int | None
     _bug_report: BugReport | None
 
-    _kore_server: KoreServer | None
     _kore_servers: list[KoreServer] = []
     _kore_clients: list[KoreClient] = []
     _rpc_closed: bool
@@ -75,7 +74,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         trace_rewrites: bool = False,
-        _max_clients: int = 1,
+        max_clients: int = 1,
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
@@ -87,11 +86,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._haskell_log_format = haskell_log_format
         self._haskell_log_entries = haskell_log_entries
         self._log_axioms_file = log_axioms_file
-        self._kore_server = None
-        self._kore_client = None
         self._rpc_closed = False
         self._trace_rewrites = trace_rewrites
-        self._max_clients = _max_clients
+        self._max_clients = max_clients
 
     def __enter__(self) -> KCFGExplore:
         return self
@@ -154,9 +151,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
     def close(self) -> None:
         self._rpc_closed = True
-        if self._kore_server is not None:
-            self._kore_server.close()
-            self._kore_server = None
+        while self._kore_servers:
+            server = self._kore_servers.pop()
+            server.close()
         while self._kore_clients:
             client = self._kore_clients.pop()
             client.close()
