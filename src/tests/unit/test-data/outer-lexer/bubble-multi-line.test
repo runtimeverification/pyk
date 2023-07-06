@@ -1,0 +1,23 @@
+rule <a> A        </a>
+     <b> b1 => b2 </b>
+
+rule
+  <a> a1 => a2 </a>
+  <b> B        </b>
+===
+KW_RULE
+rule
+
+BUBBLE
+<a> A        </a>
+     <b> b1 => b2 </b>
+
+KW_RULE
+rule
+
+BUBBLE
+<a> a1 => a2 </a>
+  <b> B        </b>
+
+EOF
+

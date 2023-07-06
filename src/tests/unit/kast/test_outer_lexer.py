@@ -16,7 +16,11 @@ from pyk.kast.outer_lexer import (
     outer_lexer,
 )
 
+from ..utils import TEST_DATA_DIR
+
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from pathlib import Path
     from typing import Final
 
 
@@ -364,107 +368,84 @@ def test_attr(text: str, expected_tokens: list[Token], expected_remaining: str) 
     assert actual_remaining == expected_remaining
 
 
-LEXER_TEST_DATA: Final = (
-    ('', [Token('', TokenType.EOF)]),
-    ('1', [Token('1', TokenType.NAT), Token('', TokenType.EOF)]),
-    ('1 11', [Token('1', TokenType.NAT), Token('11', TokenType.NAT), Token('', TokenType.EOF)]),
-    ('1 /**/ 11', [Token('1', TokenType.NAT), Token('11', TokenType.NAT), Token('', TokenType.EOF)]),
-    (
-        'rule program text',
-        [Token('rule', TokenType.KW_RULE), Token('program text', TokenType.BUBBLE), Token('', TokenType.EOF)],
-    ),
-    (
-        'rule /* */ program /* */ text // ',
-        [Token('rule', TokenType.KW_RULE), Token('program /* */ text', TokenType.BUBBLE), Token('', TokenType.EOF)],
-    ),
-    (
-        'rule /* */ program /* */ text /* */ /* */ // ',
-        [Token('rule', TokenType.KW_RULE), Token('program /* */ text', TokenType.BUBBLE), Token('', TokenType.EOF)],
-    ),
-    (
-        'module TEST endmodule',
-        [
-            Token('module', TokenType.KW_MODULE),
-            Token('TEST', TokenType.MODNAME),
-            Token('endmodule', TokenType.KW_ENDMODULE),
-            Token('', TokenType.EOF),
-        ],
-    ),
-    (
-        'module TEST rule /* comment */ X => Y /* comment */ endmodule',
-        [
-            Token('module', TokenType.KW_MODULE),
-            Token('TEST', TokenType.MODNAME),
-            Token('rule', TokenType.KW_RULE),
-            Token('X => Y', TokenType.BUBBLE),
-            Token('endmodule', TokenType.KW_ENDMODULE),
-            Token('', TokenType.EOF),
-        ],
-    ),
-    (
-        'context foo',
-        [
-            Token('context', TokenType.KW_CONTEXT),
-            Token('foo', TokenType.BUBBLE),
-            Token('', TokenType.EOF),
-        ],
-    ),
-    (
-        'context alias foo',
-        [
-            Token('context', TokenType.KW_CONTEXT),
-            Token('alias', TokenType.KW_ALIAS),
-            Token('foo', TokenType.BUBBLE),
-            Token('', TokenType.EOF),
-        ],
-    ),
-    (
-        'syntax priorities foo bar > baz',
-        [
-            Token('syntax', TokenType.KW_SYNTAX),
-            Token('priorities', TokenType.KW_PRIORITIES),
-            Token('foo', TokenType.KLABEL),
-            Token('bar', TokenType.KLABEL),
-            Token('>', TokenType.GT),
-            Token('baz', TokenType.KLABEL),
-            Token('', TokenType.EOF),
-        ],
-    ),
-    (
-        'syntax Foo ::= "bar" | Baz [group(foo)] syntax',
-        [
-            Token('syntax', TokenType.KW_SYNTAX),
-            Token('Foo', TokenType.ID_UPPER),
-            Token('::=', TokenType.DCOLONEQ),
-            Token('"bar"', TokenType.STRING),
-            Token('|', TokenType.VBAR),
-            Token('Baz', TokenType.ID_UPPER),
-            Token('[', TokenType.LBRACK),
-            Token('group', TokenType.ATTR_KEY),
-            Token('(', TokenType.LPAREN),
-            Token('foo', TokenType.ATTR_CONTENT),
-            Token(')', TokenType.RPAREN),
-            Token(']', TokenType.RBRACK),
-            Token('syntax', TokenType.KW_SYNTAX),
-            Token('', TokenType.EOF),
-        ],
-    ),
-)
+LEXER_TEST_DATA_DIR: Final = TEST_DATA_DIR / 'outer-lexer'
+LEXER_TEST_DATA: Final = tuple(LEXER_TEST_DATA_DIR.glob('*.test'))
+assert LEXER_TEST_DATA
 
 
 @pytest.mark.parametrize(
-    'text,expected',
+    'test_file',
     LEXER_TEST_DATA,
-    ids=[text for text, _ in LEXER_TEST_DATA],
+    ids=[test_file.stem for test_file in LEXER_TEST_DATA],
 )
-def test_lexer(text: str, expected: list[Token]) -> None:
+def test_lexer(test_file: Path) -> None:
     # Given
+    text, expected_tokens = _parse(test_file)
     it = iter(text)
 
     # When
-    actual = list(outer_lexer(it))
-    remaining = ''.join(it)
+    actual_tokens = list(outer_lexer(it))
+    remaining = next(it, None)
 
     # Then
-    assert actual == expected
-    assert not remaining
+    assert actual_tokens == expected_tokens
+    assert remaining is None
+
+
+def _parse(path: Path) -> tuple[str, list[Token]]:
+    def _text(lines: Iterator[str]) -> str:
+        text_lines: list[str] = []
+
+        while True:
+            line = next(lines)
+            if line == '===':
+                break
+            text_lines.append(line)
+
+        return '\n'.join(text_lines)
+
+    def _tokens(lines: Iterator[str]) -> list[Token]:
+        tokens: list[Token] = []
+
+        line = next(lines)
+        eof = False
+        while not eof:
+            token_lines: list[str] = []
+            token_type = TokenType[line]
+
+            line = next(lines)
+            token_lines.append(line)
+
+            maybe_type = False
+            while True:
+                opt_line = next(lines, None)
+                if opt_line is None:
+                    eof = True
+                    break
+
+                line = opt_line
+
+                if line == '':
+                    if maybe_type:
+                        token_lines.append('')
+                    maybe_type = True
+                    continue
+
+                if maybe_type:
+                    if line in TokenType.__members__:
+                        break
+
+                    token_lines.append('')
+                    maybe_type = False
+
+                token_lines.append(line)
+
+            tokens.append(Token('\n'.join(token_lines), token_type))
+
+        return tokens
+
+    lines = path.read_text().splitlines()
+    it = iter(lines)
+    text = _text(it)
+    tokens = _tokens(it)
+    return text, tokens
