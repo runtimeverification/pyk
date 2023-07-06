@@ -143,7 +143,6 @@ class Subst(Mapping[str, KInner]):
             val = self[k]
             if type(val) is not KVariable or val.name != KVariable(k).name:
                 items.append(KApply('_==K_', [KVariable(k), val]))
-
         if len(items) == 0:
             return KToken('true', 'Bool')
         term = items[0]
