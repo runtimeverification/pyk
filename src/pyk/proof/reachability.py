@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 from itertools import chain
 from typing import TYPE_CHECKING
+from multiprocessing.pool import ThreadPool as Pool
 
 from pyk.kore.rpc import LogEntry
 
@@ -477,26 +478,20 @@ class APRProver(Prover):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
+        max_workers: int = 1,
     ) -> KCFG:
         iterations = 0
 
-        while self.proof.pending:
-            self.proof.write_proof()
-
-            if max_iterations is not None and max_iterations <= iterations:
-                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
-                break
-            iterations += 1
-            curr_node = self.proof.pending[0]
-
+        def _advance_from_node(node: NodeIdLike) -> None:
+            curr_node = self.proof.kcfg.node(node)
             if self._check_subsume(curr_node):
-                continue
+                return
 
             if self._check_terminal(curr_node):
-                continue
+                return
 
             if self._check_abstract(curr_node):
-                continue
+                return
 
             if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=curr_node.id)) == 0:
                 branches = list(self._extract_branches(curr_node.cterm))
@@ -505,7 +500,7 @@ class APRProver(Prover):
                     _LOGGER.info(
                         f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[self.kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
                     )
-                    continue
+                    return
 
             module_name = (
                 self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
@@ -519,6 +514,20 @@ class APRProver(Prover):
                 terminal_rules=terminal_rules,
                 module_name=module_name,
             )
+
+
+        while self.proof.pending:
+            self.proof.write_proof()
+
+            if max_iterations is not None and max_iterations <= iterations:
+                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
+                break
+            iterations += 1
+
+            curr_nodes = [node.id for ni, node in enumerate(self.proof.pending) if ni < max_workers]
+            pool = Pool(processes=max_workers)
+            res = pool.map_async(_advance_from_node, curr_nodes)
+            res.wait()
 
         self.proof.write_proof()
         return self.proof.kcfg

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import socket
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -94,6 +95,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
     def close(self) -> None:
         self._file.close()
+        self._sock.shutdown(socket.SHUT_RDWR)
         self._sock.close()
 
     def request(self, method: str, **params: Any) -> dict[str, Any]:
@@ -527,8 +529,11 @@ class KoreClient(ContextManager['KoreClient']):
 
     _client: JsonRpcClient
 
+    _lock: threading.Lock
+
     def __init__(self, host: str, port: int, *, timeout: int | None = None, bug_report: BugReport | None = None):
         self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report)
+        self._lock = threading.Lock()
 
     def __enter__(self) -> KoreClient:
         return self
@@ -539,10 +544,19 @@ class KoreClient(ContextManager['KoreClient']):
     def close(self) -> None:
         self._client.close()
 
+    def _try_release(self) -> None:
+        try:
+            self._lock.release()
+        except RuntimeError:
+            pass
+
     def _request(self, method: str, **params: Any) -> dict[str, Any]:
         try:
-            return self._client.request(method, **params)
+            res = self._client.request(method, **params)
+            self._try_release()
+            return res
         except JsonRpcError as err:
+            self._try_release()
             assert err.code not in {-32601, -32602}, 'Malformed Kore-RPC request'
             raise KoreClientError(message=err.message, code=err.code, data=err.data) from err
 

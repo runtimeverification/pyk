@@ -54,10 +54,11 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _smt_retry_limit: int | None
     _bug_report: BugReport | None
 
-    _kore_server: KoreServer | None
-    _kore_client: KoreClient | None
+    _kore_servers: list[KoreServer] = []
+    _kore_clients: list[KoreClient] = []
     _rpc_closed: bool
     _trace_rewrites: bool
+    _max_clients: int
 
     def __init__(
         self,
@@ -73,6 +74,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         trace_rewrites: bool = False,
+        max_clients: int = 1,
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
@@ -84,10 +86,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._haskell_log_format = haskell_log_format
         self._haskell_log_entries = haskell_log_entries
         self._log_axioms_file = log_axioms_file
-        self._kore_server = None
-        self._kore_client = None
         self._rpc_closed = False
         self._trace_rewrites = trace_rewrites
+        self._max_clients = max_clients
 
     def __enter__(self) -> KCFGExplore:
         return self
@@ -99,31 +100,83 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
-        if not self._kore_server:
-            self._kore_server = KoreServer(
-                self.kprint.definition_dir,
-                self.kprint.main_module,
-                port=self._port,
-                bug_report=self._bug_report,
-                command=self._kore_rpc_command,
-                smt_timeout=self._smt_timeout,
-                smt_retry_limit=self._smt_retry_limit,
-                haskell_log_format=self._haskell_log_format,
-                haskell_log_entries=self._haskell_log_entries,
-                log_axioms_file=self._log_axioms_file,
-            )
-        if not self._kore_client:
-            self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
-        return (self._kore_server, self._kore_client)
+        curr_server = self._curr_server()  # need interim because of lock
+        if curr_server is not None:
+            (server, client) = curr_server
+        elif len(self._kore_clients) < self._max_clients:
+            (server, client) = self._new_server()
+            client._lock.acquire()
+            self._kore_servers.append(server)
+            self._kore_clients.append(client)
+        else:
+            (server, client) = self._next_available_server()
+        return (server, client)
+
+    @property
+    def _kore_rpcs(self) -> list[tuple[KoreServer, KoreClient]]:
+        if self._rpc_closed:
+            raise ValueError('RPC server already closed!')
+        res = self._all_servers()
+        new_servers = []
+        while len(self._kore_servers) < self._max_clients:
+            (server, client) = self._new_server()
+            client._lock.acquire()
+            self._kore_servers.append(server)
+            self._kore_clients.append(client)
+            new_servers.append((server, client))
+        return res + new_servers
+
+    def _curr_server(self) -> tuple[KoreServer, KoreClient] | None:
+        i, client = next(
+            (
+                (i, client)
+                for i, client in enumerate(self._kore_clients)
+                if self._kore_clients[i]._lock.acquire(blocking=False)
+            ),
+            (0, None),
+        )
+        if client is not None:
+            return (self._kore_servers[i], self._kore_clients[i])
+        return None
+
+    def _next_available_server(self) -> tuple[KoreServer, KoreClient]:
+        i = 0
+        while True:
+            if self._kore_clients[i]._lock.acquire(timeout=5):
+                return (self._kore_servers[i], self._kore_clients[i])
+            i = (i + 1) % len(self._kore_clients)
+
+    def _all_servers(self) -> list[tuple[KoreServer, KoreClient]]:
+        acquired = []
+        while len(acquired) < len(self._kore_servers):
+            acquired.append(self._next_available_server())
+        return acquired
+
+    # TODO: don't use the same defined port for the KoreServer but a new one
+    def _new_server(self) -> tuple[KoreServer, KoreClient]:
+        server = KoreServer(
+            self.kprint.definition_dir,
+            self.kprint.main_module,
+            port=self._port,
+            bug_report=self._bug_report,
+            command=self._kore_rpc_command,
+            smt_timeout=self._smt_timeout,
+            smt_retry_limit=self._smt_retry_limit,
+            haskell_log_format=self._haskell_log_format,
+            haskell_log_entries=self._haskell_log_entries,
+            log_axioms_file=self._log_axioms_file,
+        )
+        client = KoreClient('localhost', server._port, bug_report=self._bug_report)
+        return (server, client)
 
     def close(self) -> None:
         self._rpc_closed = True
-        if self._kore_server is not None:
-            self._kore_server.close()
-            self._kore_server = None
-        if self._kore_client is not None:
-            self._kore_client.close()
-            self._kore_client = None
+        while self._kore_servers:
+            server = self._kore_servers.pop()
+            server.close()
+        while self._kore_clients:
+            client = self._kore_clients.pop()
+            client.close()
 
     def cterm_execute(
         self,
@@ -499,9 +552,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             for c in dependencies
         ]
         kore_axioms: list[Sentence] = [krule_to_kore(self.kprint.kompiled_kore, r) for r in kast_rules]
-        _, kore_client = self._kore_rpc
-        sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
-        sentences = sentences + kore_axioms
-        m = Module(name=new_module_name, sentences=sentences)
-        _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
-        kore_client.add_module(m)
+        for _, kore_client in self._kore_rpcs:
+            sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
+            sentences = sentences + kore_axioms
+            m = Module(name=new_module_name, sentences=sentences)
+            _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
+            kore_client.add_module(m)
