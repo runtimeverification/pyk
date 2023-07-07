@@ -164,17 +164,12 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
 
 @final
-@dataclass(frozen=True)
+@dataclass()
 class KoreClientError(Exception):  # TODO refine
-    message: str
-    code: int
-    data: Any
-
-    def __init__(self, message: str, code: int, data: Any = None):
-        object.__setattr__(self, 'code', code)
-        object.__setattr__(self, 'message', message)
-        object.__setattr__(self, 'data', data)
+    def __init__(self, message: str = '', code: int = 1, data: Any = None):
         super().__init__(message)
+        self.code = code
+        self.data = data
 
 
 class StopReason(str, Enum):
