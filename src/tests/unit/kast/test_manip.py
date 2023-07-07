@@ -393,3 +393,41 @@ def test_anti_unify_with_constraints() -> None:
     )
 
     assert expected == constraints
+
+def test_anti_unify_with_constraints_subst_true() -> None:
+    cterm1 = mlAnd(
+        [
+            KApply(
+                '<generatedTop>',
+                [
+                    KApply('<k>', KToken('1', 'Int')),
+                    KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
+                ],
+            ),
+            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
+        ]
+    )
+    cterm2 = mlAnd(
+        [
+            KApply(
+                '<generatedTop>',
+                [
+                    KApply('<k>', KToken('1', 'Int')),
+                    KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
+                ],
+            ),
+            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
+        ]
+    )
+
+    anti_unifier = anti_unify_with_constraints(cterm1, cterm2, abstracted_disjunct=True)
+
+    config, constraints = split_config_and_constraints(anti_unifier)
+
+    expected = mlAnd(
+        [
+            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
+        ]
+    )
+
+    assert expected == constraints
