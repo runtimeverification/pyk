@@ -129,6 +129,48 @@ class State(Enum):
     MODNAME = auto()
 
 
+_NEXT_STATE: Final = {
+    # (state, token_type): state'
+    (State.BUBBLE, TokenType.KW_CLAIM): State.BUBBLE,
+    (State.BUBBLE, TokenType.KW_CONFIG): State.BUBBLE,
+    (State.BUBBLE, TokenType.KW_CONTEXT): State.CONTEXT,
+    (State.BUBBLE, TokenType.KW_ENDMODULE): State.DEFAULT,
+    (State.BUBBLE, TokenType.KW_RULE): State.BUBBLE,
+    (State.BUBBLE, TokenType.KW_SYNTAX): State.SYNTAX,
+    (State.CONTEXT, TokenType.KW_ALIAS): State.BUBBLE,
+    (State.CONTEXT, TokenType.KW_CLAIM): State.BUBBLE,
+    (State.CONTEXT, TokenType.KW_CONFIG): State.BUBBLE,
+    (State.CONTEXT, TokenType.KW_CONTEXT): State.CONTEXT,
+    (State.CONTEXT, TokenType.KW_ENDMODULE): State.DEFAULT,
+    (State.CONTEXT, TokenType.KW_RULE): State.BUBBLE,
+    (State.CONTEXT, TokenType.KW_SYNTAX): State.SYNTAX,
+    (State.DEFAULT, TokenType.KW_CLAIM): State.BUBBLE,
+    (State.DEFAULT, TokenType.KW_CONFIG): State.BUBBLE,
+    (State.DEFAULT, TokenType.KW_CONTEXT): State.CONTEXT,
+    (State.DEFAULT, TokenType.KW_IMPORTS): State.MODNAME,
+    (State.DEFAULT, TokenType.KW_IMPORT): State.MODNAME,
+    (State.DEFAULT, TokenType.KW_MODULE): State.MODNAME,
+    (State.DEFAULT, TokenType.KW_RULE): State.BUBBLE,
+    (State.DEFAULT, TokenType.KW_SYNTAX): State.SYNTAX,
+    (State.DEFAULT, TokenType.LBRACK): State.ATTR,
+    (State.KLABEL, TokenType.KW_CLAIM): State.BUBBLE,
+    (State.KLABEL, TokenType.KW_CONFIG): State.BUBBLE,
+    (State.KLABEL, TokenType.KW_CONTEXT): State.CONTEXT,
+    (State.KLABEL, TokenType.KW_ENDMODULE): State.DEFAULT,
+    (State.KLABEL, TokenType.KW_RULE): State.BUBBLE,
+    (State.KLABEL, TokenType.KW_SYNTAX): State.SYNTAX,
+    (State.MODNAME, TokenType.MODNAME): State.DEFAULT,
+    (State.SYNTAX, TokenType.ID_UPPER): State.DEFAULT,
+    (State.SYNTAX, TokenType.KW_LEFT): State.KLABEL,
+    (State.SYNTAX, TokenType.KW_LEXICAL): State.DEFAULT,
+    (State.SYNTAX, TokenType.KW_NONASSOC): State.KLABEL,
+    (State.SYNTAX, TokenType.KW_PRIORITIES): State.KLABEL,
+    (State.SYNTAX, TokenType.KW_PRIORITY): State.KLABEL,
+    (State.SYNTAX, TokenType.KW_RIGHT): State.KLABEL,
+    (State.SYNTAX, TokenType.LBRACE): State.DEFAULT,
+}
+
+
 def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
     it = iter(it)
     la = next(it, '')
@@ -140,32 +182,23 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
             yield token
             if token.type == TokenType.EOF:
                 return
-            state = _DEFAULT_NEXT_STATE.get(token.type, State.DEFAULT)
 
         elif state is State.SYNTAX:
             token, la = _syntax(la, it)
             yield token
             if token.type == TokenType.EOF:
                 return
-            state = _SYNTAX_NEXT_STATE[token.type]
-
-        elif state is State.ATTR:
-            tokens, la = _attr(la, it)
-            yield from tokens
-            state = State.DEFAULT
 
         elif state is State.KLABEL:
             token, la = _klabel(la, it)
             yield token
             if token.type == TokenType.EOF:
                 return
-            state = _KLABEL_NEXT_STATE.get(token.type, State.KLABEL)
 
         elif state is State.MODNAME:
             token, la = _modname(la, it)
             yield token
             # should not be EOF
-            state = _MODNAME_NEXT_STATE.get(token.type, State.MODNAME)
 
         elif state in {State.BUBBLE, State.CONTEXT}:
             bubble, token, la = _bubble_or_context(la, it, context=state is State.CONTEXT)
@@ -174,11 +207,17 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
             yield token
             if token.type == TokenType.EOF:
                 return
-            next_state = _BUBBLE_NEXT_STATE if state is State.BUBBLE else _CONTEXT_NEXT_STATE
-            state = next_state[token.type]
+
+        elif state is State.ATTR:
+            tokens, la = _attr(la, it)
+            yield from tokens
+            state = State.DEFAULT
+            continue
 
         else:
             raise RuntimeError('TODO')
+
+        state = _NEXT_STATE.get((state, token.type), state)
 
 
 _DEFAULT_KEYWORDS: Final = {
@@ -198,19 +237,6 @@ _DEFAULT_KEYWORDS: Final = {
     'right',
     'rule',
     'syntax',
-}
-_DEFAULT_NEXT_STATE: Final = {
-    TokenType.KW_CLAIM: State.BUBBLE,
-    TokenType.KW_CONFIG: State.BUBBLE,
-    TokenType.KW_CONTEXT: State.CONTEXT,
-    TokenType.KW_IMPORT: State.MODNAME,
-    TokenType.KW_IMPORTS: State.MODNAME,
-    TokenType.KW_MODULE: State.MODNAME,
-    TokenType.KW_PRIORITIES: State.KLABEL,
-    TokenType.KW_PRIORITY: State.KLABEL,
-    TokenType.KW_RULE: State.BUBBLE,
-    TokenType.KW_SYNTAX: State.SYNTAX,
-    TokenType.LBRACK: State.ATTR,
 }
 
 
@@ -388,16 +414,6 @@ _SYNTAX_KEYWORDS: Final = {
     'priority',
     'right',
 }
-_SYNTAX_NEXT_STATE: Final = {
-    TokenType.LBRACE: State.DEFAULT,
-    TokenType.ID_UPPER: State.DEFAULT,
-    TokenType.KW_LEFT: State.KLABEL,
-    TokenType.KW_LEXICAL: State.DEFAULT,
-    TokenType.KW_NONASSOC: State.KLABEL,
-    TokenType.KW_PRIORITIES: State.KLABEL,
-    TokenType.KW_PRIORITY: State.KLABEL,
-    TokenType.KW_RIGHT: State.KLABEL,
-}
 
 
 def _syntax(la: str, it: Iterator[str]) -> tuple[Token, str]:
@@ -468,7 +484,6 @@ def _hash_upper_id(la: str, it: Iterator[str]) -> tuple[Token, str]:
 
 _MODNAME_KEYWORDS: Final = {'private', 'public'}
 _MODNAME_CHARS: Final = {'-', '_'}.union(_ALNUM)
-_MODNAME_NEXT_STATE: Final = {TokenType.MODNAME: State.DEFAULT}
 
 
 def _modname(la: str, it: Iterator) -> tuple[Token, str]:
@@ -498,14 +513,6 @@ def _modname(la: str, it: Iterator) -> tuple[Token, str]:
 
 
 _KLABEL_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
-_KLABEL_NEXT_STATE: Final = {
-    TokenType.KW_SYNTAX: State.DEFAULT,
-    TokenType.KW_ENDMODULE: State.DEFAULT,
-    TokenType.KW_RULE: State.BUBBLE,
-    TokenType.KW_CLAIM: State.BUBBLE,
-    TokenType.KW_CONFIG: State.BUBBLE,
-    TokenType.KW_CONTEXT: State.CONTEXT,
-}
 
 
 def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
@@ -532,20 +539,7 @@ def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
 
 
 _BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
-_CONTEXT_KEYWORDS: Final = {'alias', 'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
-
-_BUBBLE_NEXT_STATE: Final = {
-    TokenType.KW_SYNTAX: State.DEFAULT,
-    TokenType.KW_ENDMODULE: State.DEFAULT,
-    TokenType.KW_RULE: State.BUBBLE,
-    TokenType.KW_CLAIM: State.BUBBLE,
-    TokenType.KW_CONFIG: State.BUBBLE,
-    TokenType.KW_CONTEXT: State.CONTEXT,
-}
-_CONTEXT_NEXT_STATE: Final = {
-    TokenType.KW_ALIAS: State.BUBBLE,
-    **_BUBBLE_NEXT_STATE,
-}
+_CONTEXT_KEYWORDS: Final = {'alias'}.union(_BUBBLE_KEYWORDS)
 
 
 def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple[Token | None, Token, str]:
