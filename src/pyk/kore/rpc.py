@@ -519,8 +519,6 @@ class KoreClient(ContextManager['KoreClient']):
 
     _client: JsonRpcClient
 
-    _busy: bool = False
-
     def __init__(self, host: str, port: int, *, timeout: int | None = None, bug_report: BugReport | None = None):
         self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report)
 
@@ -534,13 +532,9 @@ class KoreClient(ContextManager['KoreClient']):
         self._client.close()
 
     def _request(self, method: str, **params: Any) -> dict[str, Any]:
-        self._busy = True
         try:
-            res = self._client.request(method, **params)
-            self._busy = False
-            return res
+            return self._client.request(method, **params)
         except JsonRpcError as err:
-            self._busy = False
             assert err.code not in {-32601, -32602}, 'Malformed Kore-RPC request'
             raise KoreClientError(message=err.message, code=err.code, data=err.data) from err
 
