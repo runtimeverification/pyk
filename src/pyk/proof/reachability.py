@@ -111,6 +111,7 @@ class APRProof(Proof):
             or self.kcfg.is_stuck(node_id)
             or self.is_target(node_id)
             or self.is_refuted(node_id)
+            or self.kcfg.is_vacuous(node_id)
         )
 
     def is_init(self, node_id: NodeIdLike) -> bool:
@@ -121,7 +122,10 @@ class APRProof(Proof):
 
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
-            self.is_pending(node_id) or self.is_target(node_id) or self.is_refuted(node_id)
+            self.is_pending(node_id)
+            or self.is_target(node_id)
+            or self.is_refuted(node_id)
+            or self.kcfg.is_vacuous(node_id)
         )
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
@@ -386,6 +390,7 @@ class APRBMCProof(APRProof):
 class APRProver(Prover):
     proof: APRProof
     _is_terminal: Callable[[CTerm], bool] | None
+    _is_vacuous: Callable[[CTerm], bool] | None
     _extract_branches: Callable[[CTerm], Iterable[KInner]] | None
     _abstract_node: Callable[[CTerm], CTerm] | None
 
@@ -398,6 +403,7 @@ class APRProver(Prover):
         proof: APRProof,
         kcfg_explore: KCFGExplore,
         is_terminal: Callable[[CTerm], bool] | None = None,
+        is_vacuous: Callable[[CTerm], bool] | None = None,
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
         abstract_node: Callable[[CTerm], CTerm] | None = None,
     ) -> None:
@@ -405,6 +411,7 @@ class APRProver(Prover):
         self.proof = proof
         self.kcfg_explore = kcfg_explore
         self._is_terminal = is_terminal
+        self._is_vacuous = is_vacuous
         self._extract_branches = extract_branches
         self._abstract_node = abstract_node
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
@@ -447,6 +454,8 @@ class APRProver(Prover):
         return not self.proof.kcfg.zero_depth_between(self.proof.init, node.id)
 
     def _check_subsume(self, node: KCFG.Node) -> bool:
+        if self.proof.kcfg.is_vacuous(node.id):
+            return False
         target_node = self.proof.kcfg.node(self.proof.target)
         _LOGGER.info(
             f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, target_node.id))}'
@@ -517,6 +526,7 @@ class APRProver(Prover):
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
+                is_vacuous=self._is_vacuous,
                 module_name=module_name,
             )
 
@@ -661,6 +671,7 @@ class APRBMCProver(APRProver):
         kcfg_explore: KCFGExplore,
         same_loop: Callable[[CTerm, CTerm], bool],
         is_terminal: Callable[[CTerm], bool] | None = None,
+        is_vacuous: Callable[[CTerm], bool] | None = None,
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
         abstract_node: Callable[[CTerm], CTerm] | None = None,
     ) -> None:
@@ -668,6 +679,7 @@ class APRBMCProver(APRProver):
             proof,
             kcfg_explore=kcfg_explore,
             is_terminal=is_terminal,
+            is_vacuous=is_vacuous,
             extract_branches=extract_branches,
             abstract_node=abstract_node,
         )

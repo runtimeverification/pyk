@@ -29,7 +29,7 @@ from ..utils import shorten_hashes, single
 from .kcfg import KCFG
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from pathlib import Path
     from typing import Any, Final
 
@@ -419,7 +419,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-        stuck_rules: Iterable[KInner] = (),
+        is_vacuous: Callable[[CTerm], bool] | None = None,
         module_name: str | None = None,
     ) -> None:
         if not kcfg.is_leaf(node.id):
@@ -447,8 +447,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         # Stuck
         elif len(next_cterms) == 0:
-            if any(node.cterm.cell('K_CELL').match(rule) for rule in stuck_rules):
-                _LOGGER.warning(f'Did not stuck node {self.id}: {shorten_hashes(node.id)}')
+            if is_vacuous is not None and is_vacuous(node.cterm):
+                kcfg.add_vacuous(node.id)
+                _LOGGER.warning(f'Found vacuous node {self.id}: {shorten_hashes(node.id)}')
             else:
                 kcfg.add_stuck(node.id)
                 _LOGGER.info(f'Found stuck node {self.id}: {shorten_hashes(node.id)}')

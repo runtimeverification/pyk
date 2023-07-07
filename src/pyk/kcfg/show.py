@@ -64,6 +64,8 @@ class NodePrinter:
             attrs.append('leaf')
         if kcfg.is_split(node.id):
             attrs.append('split')
+        if kcfg.is_vacuous(node.id):
+            attrs.append('vacuous')
         attrs.extend(['@' + alias for alias in sorted(kcfg.aliases(node.id))])
         return attrs
 
