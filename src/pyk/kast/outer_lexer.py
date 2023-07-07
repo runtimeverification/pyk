@@ -121,9 +121,10 @@ _ALNUM: Final = set(_ALPHA).union(_DIGIT)
 
 class State(Enum):
     DEFAULT = auto()
+    SYNTAX = auto()
+    KLABEL = auto()
     BUBBLE = auto()
     CONTEXT = auto()
-    KLABEL = auto()
     ATTR = auto()
     MODNAME = auto()
 
@@ -140,6 +141,13 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
             if token.type == TokenType.EOF:
                 return
             state = _DEFAULT_NEXT_STATE.get(token.type, State.DEFAULT)
+
+        elif state is State.SYNTAX:
+            token, la = _syntax(la, it)
+            yield token
+            if token.type == TokenType.EOF:
+                return
+            state = _SYNTAX_NEXT_STATE[token.type]
 
         elif state is State.ATTR:
             tokens, la = _attr(la, it)
@@ -181,13 +189,10 @@ _DEFAULT_KEYWORDS: Final = {
     'import',
     'imports',
     'left',
-    'lexical',
     'List',
     'module',
     'NeList',
     'non-assoc',
-    'priorities',
-    'priority',
     'require',
     'requires',
     'right',
@@ -204,6 +209,7 @@ _DEFAULT_NEXT_STATE: Final = {
     TokenType.KW_PRIORITIES: State.KLABEL,
     TokenType.KW_PRIORITY: State.KLABEL,
     TokenType.KW_RULE: State.BUBBLE,
+    TokenType.KW_SYNTAX: State.SYNTAX,
     TokenType.LBRACK: State.ATTR,
 }
 
@@ -372,6 +378,92 @@ def _consume_string(consumed: list[str], la: str, it: Iterator[str]) -> str:
     consumed.append(la)  # ['"', ..., '"']
     la = next(it, '')
     return la
+
+
+_SYNTAX_KEYWORDS: Final = {
+    'left',
+    'lexical',
+    'non-assoc',
+    'priorities',
+    'priority',
+    'right',
+}
+_SYNTAX_NEXT_STATE: Final = {
+    TokenType.LBRACE: State.DEFAULT,
+    TokenType.ID_UPPER: State.DEFAULT,
+    TokenType.KW_LEFT: State.KLABEL,
+    TokenType.KW_LEXICAL: State.DEFAULT,
+    TokenType.KW_NONASSOC: State.KLABEL,
+    TokenType.KW_PRIORITIES: State.KLABEL,
+    TokenType.KW_PRIORITY: State.KLABEL,
+    TokenType.KW_RIGHT: State.KLABEL,
+}
+
+
+def _syntax(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    la = _skip_ws_and_comments(la, it)
+
+    if not la:
+        return _EOF_TOKEN, la
+
+    elif la == '{':
+        return _simple_char(la, it)
+
+    elif la in _LOWER:
+        return _syntax_keyword(la, it)
+
+    elif la in _UPPER:
+        return _upper_id(la, it)
+
+    elif la == '#':
+        return _hash_upper_id(la, it)
+
+    else:
+        raise ValueError(f'Unexpected character: {la}')
+
+
+def _syntax_keyword(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    if la not in _LOWER:
+        raise ValueError(f'Unexpected character: {la}')
+
+    consumed = []
+    while la in _ALNUM:
+        consumed.append(la)
+        la = next(it, '')
+    text = ''.join(consumed)
+
+    if text not in _SYNTAX_KEYWORDS:
+        raise ValueError(f'Unexpected token: {text}')
+
+    return _KEYWORDS[text], la
+
+
+def _upper_id(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    if la not in _UPPER:
+        raise ValueError(f'Unexpected character: {la}')
+
+    consumed = []
+    while la in _ALNUM:
+        consumed.append(la)
+        la = next(it, '')
+    text = ''.join(consumed)
+    return Token(text, TokenType.ID_UPPER), la
+
+
+def _hash_upper_id(la: str, it: Iterator[str]) -> tuple[Token, str]:
+    # assert la == '#'
+
+    consumed = [la]
+    la = next(it, '')
+
+    if la not in _UPPER:
+        raise ValueError(f'Unexpected character: {la}')
+
+    while la in _ALNUM:
+        consumed.append(la)
+        la = next(it, '')
+    text = ''.join(consumed)
+    return Token(text, TokenType.ID_UPPER), la
 
 
 _MODNAME_KEYWORDS: Final = {'private', 'public'}
