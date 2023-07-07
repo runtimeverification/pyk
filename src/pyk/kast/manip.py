@@ -604,12 +604,6 @@ def anti_unify_with_constraints(
     constraint_disjunct: bool = False,
     abstracted_disjunct: bool = False,
 ) -> KInner:
-    def disjunction_from_substs(substs: list[Subst]) -> KInner:
-        term = substs[0].pred
-        for _i in substs[1:]:
-            term = KApply('_orBool_', [term, _i.pred])
-        return mlEqualsTrue(term)
-
     state1, constraint1 = split_config_and_constraints(constrained_term_1)
     state2, constraint2 = split_config_and_constraints(constrained_term_2)
     constraints1 = flatten_label('#And', constraint1)
@@ -623,7 +617,7 @@ def anti_unify_with_constraints(
     implication2 = mlImplies(constraint2, subst2.ml_pred)
 
     if abstracted_disjunct:
-        constraints.append(disjunction_from_substs([subst1, subst2]))
+        constraints.append(mlEqualsTrue(orBool([subst1.pred, subst2.pred])))
 
     if implications:
         constraints.append(implication1)
