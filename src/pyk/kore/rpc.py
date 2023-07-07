@@ -34,17 +34,13 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 @final
-@dataclass(frozen=True)
+@dataclass
 class JsonRpcError(Exception):
-    message: str
-    code: int
-    data: Any
-
     def __init__(self, message: str, code: int, data: Any = None):
-        object.__setattr__(self, 'message', message)
-        object.__setattr__(self, 'code', code)
-        object.__setattr__(self, 'data', data)
         super().__init__(message)
+        self.message = message
+        self.code = code
+        self.data = data
 
 
 class JsonRpcClient(ContextManager['JsonRpcClient']):
@@ -164,10 +160,11 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
 
 @final
-@dataclass()
+@dataclass
 class KoreClientError(Exception):  # TODO refine
-    def __init__(self, message: str = '', code: int = 1, data: Any = None):
+    def __init__(self, message: str, code: int, data: Any = None):
         super().__init__(message)
+        self.message = message
         self.code = code
         self.data = data
 
