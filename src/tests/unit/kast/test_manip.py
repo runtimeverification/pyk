@@ -394,6 +394,7 @@ def test_anti_unify_with_constraints() -> None:
 
     assert expected == constraints
 
+
 def test_anti_unify_with_constraints_subst_true() -> None:
     cterm1 = mlAnd(
         [
