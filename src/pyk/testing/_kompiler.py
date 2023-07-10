@@ -13,6 +13,7 @@ from ..ktool.kompile import Kompile
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
 from ..ktool.krun import KRun
+from ..utils import BugReport
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -24,7 +25,6 @@ if TYPE_CHECKING:
 
     from ..kast.outer import KDefinition
     from ..ktool.kprint import SymbolTable
-    from ..utils import BugReport
 
 
 class Kompiler:
@@ -53,11 +53,11 @@ class KompiledTest:
     KOMPILE_BACKEND: ClassVar[str | None] = None
     KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
 
-    @pytest.fixture(scope='class')
-    def bug_report(self) -> BugReport | None:
-        return None
+    @pytest.fixture
+    def bug_report(self, tmp_path: Path) -> BugReport:
+        # return None
         # Use the following line instead to generate bug reports for tests
-        # return BugReport(Path('bug_report'))
+        return BugReport(tmp_path / 'bug-report')
 
     @pytest.fixture(scope='class')
     def definition_dir(self, kompile: Kompiler) -> Path:
@@ -136,6 +136,21 @@ class KCFGExploreTest(KProveTest):
 
 
 class KoreClientTest(KompiledTest):
+    KOMPILE_BACKEND = 'haskell'
+
+    KORE_MODULE_NAME: ClassVar[str]
+    KORE_CLIENT_TIMEOUT: ClassVar = 1000
+
+    @pytest.fixture
+    def kore_client(self, definition_dir: Path, bug_report: BugReport) -> Iterator[KoreClient]:
+        server = KoreServer(definition_dir, self.KORE_MODULE_NAME, bug_report=bug_report)
+        client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
+        yield client
+        client.close()
+        server.close()
+
+
+class TestKoreClientWithSMTLemmas(KompiledTest):
     KOMPILE_BACKEND = 'haskell'
 
     KORE_MODULE_NAME: ClassVar[str]
