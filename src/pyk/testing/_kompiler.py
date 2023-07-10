@@ -128,7 +128,7 @@ class KProveTest(KompiledTest):
 class KCFGExploreTest(KProveTest):
     @pytest.fixture
     def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
-        server = SingleKoreServer(kprove)
+        server = SingleKoreServer(kprove, bug_report=kprove._bug_report)
         with KCFGExplore(
             server,
             kprove,
