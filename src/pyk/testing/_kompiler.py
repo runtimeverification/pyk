@@ -13,7 +13,6 @@ from ..ktool.kompile import Kompile
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
 from ..ktool.krun import KRun
-from ..utils import BugReport
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -25,6 +24,7 @@ if TYPE_CHECKING:
 
     from ..kast.outer import KDefinition
     from ..ktool.kprint import SymbolTable
+    from ..utils import BugReport
 
 
 class Kompiler:
@@ -54,7 +54,7 @@ class KompiledTest:
     KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
 
     @pytest.fixture
-    def bug_report(self, tmp_path: Path) -> BugReport:
+    def bug_report(self, tmp_path: Path) -> BugReport | None:
         return None
         # Use the following line instead to generate bug reports for tests
         # return BugReport(tmp_path / 'bug-report')
