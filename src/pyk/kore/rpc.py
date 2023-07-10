@@ -835,9 +835,7 @@ class SingleKoreServer(KoreServerBase):
     def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
         if self._rpc_closed:
             raise ValueError('RPC server already closed!')
-        print("server")
         if not self._kore_server:
-            print("no server")
             self._kore_server = KoreServer(
                 self.kprint.definition_dir,
                 self.kprint.main_module,
@@ -850,9 +848,7 @@ class SingleKoreServer(KoreServerBase):
                 haskell_log_entries=self._haskell_log_entries,
                 log_axioms_file=self._log_axioms_file,
             )
-        print("client")
         if not self._kore_client:
-            print("no client")
             self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
         return (self._kore_server, self._kore_client)
 
