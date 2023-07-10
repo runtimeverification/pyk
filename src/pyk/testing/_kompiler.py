@@ -55,9 +55,9 @@ class KompiledTest:
 
     @pytest.fixture
     def bug_report(self, tmp_path: Path) -> BugReport:
-        # return None
+        return None
         # Use the following line instead to generate bug reports for tests
-        return BugReport(tmp_path / 'bug-report')
+        # return BugReport(tmp_path / 'bug-report')
 
     @pytest.fixture(scope='class')
     def definition_dir(self, kompile: Kompiler) -> Path:
