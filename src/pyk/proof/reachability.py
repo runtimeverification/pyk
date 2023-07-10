@@ -516,7 +516,9 @@ class APRProver(Prover):
             )
 
         while self.proof.pending:
+            print("w")
             self.proof.write_proof()
+            print("z")
 
             if max_iterations is not None and max_iterations <= iterations:
                 _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')

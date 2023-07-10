@@ -18,7 +18,7 @@ from ..kast.manip import (
 )
 from ..kast.outer import KRule
 from ..konvert import krule_to_kore
-from ..kore.rpc import KoreClient, KoreServer, SatResult, StopReason, UnknownResult, UnsatResult
+from ..kore.rpc import SatResult, StopReason, UnknownResult, UnsatResult
 from ..kore.syntax import Import, Module
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude import k
@@ -35,10 +35,9 @@ if TYPE_CHECKING:
 
     from ..kast import KInner
     from ..kast.outer import KClaim
-    from ..kore.rpc import LogEntry
+    from ..kore.rpc import KoreServerBase, LogEntry
     from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
-    from ..utils import BugReport
     from .kcfg import NodeIdLike
 
 
@@ -48,47 +47,29 @@ _LOGGER: Final = logging.getLogger(__name__)
 class KCFGExplore(ContextManager['KCFGExplore']):
     kprint: KPrint
     id: str
-    _port: int | None
-    _kore_rpc_command: str | Iterable[str]
-    _smt_timeout: int | None
-    _smt_retry_limit: int | None
-    _bug_report: BugReport | None
 
-    _kore_servers: list[KoreServer] = []
-    _kore_clients: list[KoreClient] = []
-    _rpc_closed: bool
     _trace_rewrites: bool
-    _max_clients: int
+
+    _kore_server: KoreServerBase
 
     def __init__(
         self,
+        kore_server: KoreServerBase,
         kprint: KPrint,
         *,
         id: str | None = None,
-        port: int | None = None,
-        kore_rpc_command: str | Iterable[str] = 'kore-rpc',
-        smt_timeout: int | None = None,
-        smt_retry_limit: int | None = None,
-        bug_report: BugReport | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         trace_rewrites: bool = False,
-        max_clients: int = 1,
     ):
+        self._kore_server = kore_server
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
-        self._port = port
-        self._kore_rpc_command = kore_rpc_command
-        self._smt_timeout = smt_timeout
-        self._smt_retry_limit = smt_retry_limit
-        self._bug_report = bug_report
         self._haskell_log_format = haskell_log_format
         self._haskell_log_entries = haskell_log_entries
         self._log_axioms_file = log_axioms_file
-        self._rpc_closed = False
         self._trace_rewrites = trace_rewrites
-        self._max_clients = max_clients
 
     def __enter__(self) -> KCFGExplore:
         return self
@@ -96,87 +77,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def __exit__(self, *args: Any) -> None:
         self.close()
 
-    @property
-    def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
-        if self._rpc_closed:
-            raise ValueError('RPC server already closed!')
-        curr_server = self._curr_server()  # need interim because of lock
-        if curr_server is not None:
-            (server, client) = curr_server
-        elif len(self._kore_clients) < self._max_clients:
-            (server, client) = self._new_server()
-            client._lock.acquire()
-            self._kore_servers.append(server)
-            self._kore_clients.append(client)
-        else:
-            (server, client) = self._next_available_server()
-        return (server, client)
-
-    @property
-    def _kore_rpcs(self) -> list[tuple[KoreServer, KoreClient]]:
-        if self._rpc_closed:
-            raise ValueError('RPC server already closed!')
-        res = self._all_servers()
-        new_servers = []
-        while len(self._kore_servers) < self._max_clients:
-            (server, client) = self._new_server()
-            client._lock.acquire()
-            self._kore_servers.append(server)
-            self._kore_clients.append(client)
-            new_servers.append((server, client))
-        return res + new_servers
-
-    def _curr_server(self) -> tuple[KoreServer, KoreClient] | None:
-        i, client = next(
-            (
-                (i, client)
-                for i, client in enumerate(self._kore_clients)
-                if self._kore_clients[i]._lock.acquire(blocking=False)
-            ),
-            (0, None),
-        )
-        if client is not None:
-            return (self._kore_servers[i], self._kore_clients[i])
-        return None
-
-    def _next_available_server(self) -> tuple[KoreServer, KoreClient]:
-        i = 0
-        while True:
-            if self._kore_clients[i]._lock.acquire(timeout=5):
-                return (self._kore_servers[i], self._kore_clients[i])
-            i = (i + 1) % len(self._kore_clients)
-
-    def _all_servers(self) -> list[tuple[KoreServer, KoreClient]]:
-        acquired: list[tuple[KoreServer, KoreClient]] = []
-        while len(acquired) < len(self._kore_servers):
-            acquired.append(self._next_available_server())
-        return acquired
-
-    # TODO: don't use the same defined port for the KoreServer but a new one
-    def _new_server(self) -> tuple[KoreServer, KoreClient]:
-        server = KoreServer(
-            self.kprint.definition_dir,
-            self.kprint.main_module,
-            port=self._port,
-            bug_report=self._bug_report,
-            command=self._kore_rpc_command,
-            smt_timeout=self._smt_timeout,
-            smt_retry_limit=self._smt_retry_limit,
-            haskell_log_format=self._haskell_log_format,
-            haskell_log_entries=self._haskell_log_entries,
-            log_axioms_file=self._log_axioms_file,
-        )
-        client = KoreClient('localhost', server._port, bug_report=self._bug_report)
-        return (server, client)
-
     def close(self) -> None:
-        self._rpc_closed = True
-        while self._kore_servers:
-            server = self._kore_servers.pop()
-            server.close()
-        while self._kore_clients:
-            client = self._kore_clients.pop()
-            client.close()
+        self.close()
 
     def cterm_execute(
         self,
@@ -188,7 +90,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     ) -> tuple[int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
+        _, kore_client = self._kore_server._kore_rpc
         er = kore_client.execute(
             kore,
             max_depth=depth,
@@ -216,7 +118,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def cterm_simplify(self, cterm: CTerm) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
+        _, kore_client = self._kore_server._kore_rpc
         kore_simplified, logs = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified, logs
@@ -224,7 +126,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
+        _, kore_client = self._kore_server._kore_rpc
         kore_simplified, logs = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified, logs
@@ -232,7 +134,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def cterm_get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
         _LOGGER.info(f'Getting model: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
+        _, kore_client = self._kore_server._kore_rpc
         result = kore_client.get_model(kore, module_name=module_name)
         if type(result) is UnknownResult:
             _LOGGER.debug('Result is Unknown')
@@ -270,7 +172,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
         consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
+        _, kore_client = self._kore_server._kore_rpc
         result = kore_client.implies(antecedent_kore, consequent_kore)
         if not result.satisfiable:
             if result.substitution is not None:
@@ -379,7 +281,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
+        _, kore_client = self._kore_server._kore_rpc
         kore_simplified, _logs = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
@@ -552,7 +454,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             for c in dependencies
         ]
         kore_axioms: list[Sentence] = [krule_to_kore(self.kprint.kompiled_kore, r) for r in kast_rules]
-        for _, kore_client in self._kore_rpcs:
+        for _, kore_client in self._kore_server._kore_rpcs:
             sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
             sentences = sentences + kore_axioms
             m = Module(name=new_module_name, sentences=sentences)

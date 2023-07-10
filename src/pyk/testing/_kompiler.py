@@ -8,7 +8,7 @@ from ..kast.outer import read_kast_definition
 from ..kcfg import KCFGExplore
 from ..kllvm.compiler import compile_runtime
 from ..kllvm.importer import import_runtime
-from ..kore.rpc import KoreClient, KoreServer
+from ..kore.rpc import KoreClient, KoreServer, SingleKoreServer
 from ..ktool.kompile import Kompile
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
@@ -128,9 +128,10 @@ class KProveTest(KompiledTest):
 class KCFGExploreTest(KProveTest):
     @pytest.fixture
     def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
+        server = SingleKoreServer(kprove)
         with KCFGExplore(
+            server,
             kprove,
-            bug_report=kprove._bug_report,
         ) as kcfg_explore:
             yield kcfg_explore
 

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from typing import Any, ClassVar, Final, TextIO, TypeVar
 
+    from ..ktool.kprint import KPrint
     from ..utils import BugReport
     from .syntax import Module
 
@@ -529,8 +530,6 @@ class KoreClient(ContextManager['KoreClient']):
 
     _client: JsonRpcClient
 
-    _lock: threading.Lock
-
     def __init__(self, host: str, port: int, *, timeout: int | None = None, bug_report: BugReport | None = None):
         self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report)
         self._lock = threading.Lock()
@@ -545,18 +544,12 @@ class KoreClient(ContextManager['KoreClient']):
         self._client.close()
 
     def _try_release(self) -> None:
-        try:
-            self._lock.release()
-        except RuntimeError:
-            pass
+        ...
 
     def _request(self, method: str, **params: Any) -> dict[str, Any]:
         try:
-            res = self._client.request(method, **params)
-            self._try_release()
-            return res
+            return self._client.request(method, **params)
         except JsonRpcError as err:
-            self._try_release()
             assert err.code not in {-32601, -32602}, 'Malformed Kore-RPC request'
             raise KoreClientError(message=err.message, code=err.code, data=err.data) from err
 
@@ -649,6 +642,30 @@ class KoreClient(ContextManager['KoreClient']):
     def add_module(self, module: Module) -> None:
         result = self._request('add-module', module=module.text)
         assert result == []
+
+
+class ParKoreClient(KoreClient):
+    _lock: threading.Lock
+
+    def __init__(self, host: str, port: int, *, timeout: int | None = None, bug_report: BugReport | None = None):
+        super().__init__(host, port, timeout=timeout, bug_report=bug_report)
+        self._lock = threading.Lock()
+
+    def _try_release(self) -> None:
+        try:
+            self._lock.release()
+        except RuntimeError:
+            pass
+
+    def _request(self, method: str, **params: Any) -> dict[str, Any]:
+        try:
+            res = self._client.request(method, **params)
+            self._try_release()
+            return res
+        except JsonRpcError as err:
+            self._try_release()
+            assert err.code not in {-32601, -32602}, 'Malformed Kore-RPC request'
+            raise KoreClientError(message=err.message, code=err.code, data=err.data) from err
 
 
 class KoreServer(ContextManager['KoreServer']):
@@ -757,3 +774,212 @@ class KoreServer(ContextManager['KoreServer']):
         self._proc.send_signal(SIGINT)
         self._proc.wait()
         _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
+
+
+class KoreServerBase(ABC):
+    kprint: KPrint
+    _port: int | None
+    _kore_rpc_command: str | Iterable[str]
+    _smt_timeout: int | None
+    _smt_retry_limit: int | None
+    _bug_report: BugReport | None
+
+    _rpc_closed: bool
+
+    def __init__(
+        self,
+        kprint: KPrint,
+        port: int | None = None,
+        kore_rpc_command: str | Iterable[str] = 'kore-rpc',
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        bug_report: BugReport | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ):
+        self.kprint = kprint
+        self._port = port
+        self._kore_rpc_command = kore_rpc_command
+        self._smt_timeout = smt_timeout
+        self._smt_retry_limit = smt_retry_limit
+        self._bug_report = bug_report
+        self._haskell_log_format = haskell_log_format
+        self._haskell_log_entries = haskell_log_entries
+        self._log_axioms_file = log_axioms_file
+        self._rpc_closed = False
+
+    @property
+    @abstractmethod
+    def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
+        ...
+
+    @property
+    @abstractmethod
+    def _kore_rpcs(self) -> list[tuple[KoreServer, KoreClient]]:
+        ...
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
+    @abstractmethod
+    def close(self) -> None:
+        ...
+
+
+class SingleKoreServer(KoreServerBase):
+    _kore_server: KoreServer | None = None
+    _kore_client: KoreClient | None = None
+
+    @property
+    def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
+        if self._rpc_closed:
+            raise ValueError('RPC server already closed!')
+        print("server")
+        if not self._kore_server:
+            print("no server")
+            self._kore_server = KoreServer(
+                self.kprint.definition_dir,
+                self.kprint.main_module,
+                port=self._port,
+                bug_report=self._bug_report,
+                command=self._kore_rpc_command,
+                smt_timeout=self._smt_timeout,
+                smt_retry_limit=self._smt_retry_limit,
+                haskell_log_format=self._haskell_log_format,
+                haskell_log_entries=self._haskell_log_entries,
+                log_axioms_file=self._log_axioms_file,
+            )
+        print("client")
+        if not self._kore_client:
+            print("no client")
+            self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
+        return (self._kore_server, self._kore_client)
+
+    @property
+    def _kore_rpcs(self) -> list[tuple[KoreServer, KoreClient]]:
+        return [self._kore_rpc]
+
+    def close(self) -> None:
+        self._rpc_closed = True
+        if self._kore_server is not None:
+            self._kore_server.close()
+            self._kore_server = None
+        if self._kore_client is not None:
+            self._kore_client.close()
+            self._kore_client = None
+
+
+class KoreServerPool(KoreServerBase):
+    _kore_server: list[KoreServer] = []
+    _kore_client: list[KoreClient] = []
+
+    _max_clients: int
+
+    def __init__(
+        self,
+        kprint: KPrint,
+        port: int | None = None,
+        kore_rpc_command: str | Iterable[str] = 'kore-rpc',
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        bug_report: BugReport | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+        max_clients: int = 1,
+    ):
+        super().__init__(
+            kprint,
+            port,
+            kore_rpc_command,
+            smt_timeout,
+            smt_retry_limit,
+            bug_report,
+            haskell_log_format,
+            haskell_log_entries,
+            log_axioms_file,
+        )
+        self._max_clients = max_clients
+
+    @property
+    def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
+        if self._rpc_closed:
+            raise ValueError('RPC server already closed!')
+        curr_server = self._curr_server()  # need interim because of lock
+        if curr_server is not None:
+            (server, client) = curr_server
+        elif len(self._kore_client) < self._max_clients:
+            (server, client) = self._new_server()
+            client._lock.acquire()
+            self._kore_server.append(server)
+            self._kore_client.append(client)
+        else:
+            (server, client) = self._next_available_server()
+        return (server, client)
+
+    @property
+    def _kore_rpcs(self) -> list[tuple[KoreServer, KoreClient]]:
+        if self._rpc_closed:
+            raise ValueError('RPC server already closed!')
+        res = self._all_servers()
+        new_servers = []
+        while len(self._kore_server) < self._max_clients:
+            (server, client) = self._new_server()
+            client._lock.acquire()
+            self._kore_server.append(server)
+            self._kore_client.append(client)
+            new_servers.append((server, client))
+        return res + new_servers
+
+    def _curr_server(self) -> tuple[KoreServer, KoreClient] | None:
+        i, client = next(
+            (
+                (i, client)
+                for i, client in enumerate(self._kore_client)
+                if self._kore_client[i]._lock.acquire(blocking=False)
+            ),
+            (0, None),
+        )
+        if client is not None:
+            return (self._kore_server[i], self._kore_client[i])
+        return None
+
+    def _next_available_server(self) -> tuple[KoreServer, KoreClient]:
+        i = 0
+        while True:
+            if self._kore_client[i]._lock.acquire(timeout=5):
+                return (self._kore_server[i], self._kore_client[i])
+            i = (i + 1) % len(self._kore_client)
+
+    def _all_servers(self) -> list[tuple[KoreServer, KoreClient]]:
+        acquired: list[tuple[KoreServer, KoreClient]] = []
+        while len(acquired) < len(self._kore_server):
+            acquired.append(self._next_available_server())
+        return acquired
+
+    # TODO: don't use the same defined port for the KoreServer but a new one
+    def _new_server(self) -> tuple[KoreServer, KoreClient]:
+        server = KoreServer(
+            self.kprint.definition_dir,
+            self.kprint.main_module,
+            port=self._port,
+            bug_report=self._bug_report,
+            command=self._kore_rpc_command,
+            smt_timeout=self._smt_timeout,
+            smt_retry_limit=self._smt_retry_limit,
+            haskell_log_format=self._haskell_log_format,
+            haskell_log_entries=self._haskell_log_entries,
+            log_axioms_file=self._log_axioms_file,
+        )
+        client = ParKoreClient('localhost', server._port, bug_report=self._bug_report)
+        return (server, client)
+
+    def close(self) -> None:
+        self._rpc_closed = True
+        while self._kore_server:
+            server = self._kore_server.pop()
+            server.close()
+        while self._kore_client:
+            client = self._kore_client.pop()
+            client.close()

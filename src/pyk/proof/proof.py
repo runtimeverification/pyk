@@ -67,6 +67,7 @@ class Proof(ABC):
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
             _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
+            print("aft")
         if subproofs:
             for sp in self.subproofs:
                 sp.write_proof(subproofs=subproofs)
