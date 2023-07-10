@@ -524,7 +524,7 @@ class APRProver(Prover):
             iterations += 1
 
             curr_nodes = [node.id for ni, node in enumerate(self.proof.pending) if ni < max_workers]
-            pool = Pool(processes=max_workers)
+            pool = Pool(processes=len(curr_nodes))
             res = pool.map_async(_advance_from_node, curr_nodes)
             res.wait()
 
