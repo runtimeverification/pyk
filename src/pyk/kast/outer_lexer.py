@@ -546,70 +546,57 @@ def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple
     keywords = _CONTEXT_KEYWORDS if context else _BUBBLE_KEYWORDS
 
     bubble: list[str] = []  # text that belongs to the bubble
-    pending: list[str] = []  # text that belongs to the bubble iff preceded and followed by bubble text
-
+    special: list[str] = []  # text that belongs to the bubble iff preceded and followed by bubble text
+    current: list[str] = []  # text that might belong to the bubble or terminate the bubble if keyword
     while True:
-        if not la:
-            return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _EOF_TOKEN, la
+        if not la or la in _WHITESPACE:
+            if current:
+                current_str = ''.join(current)
+                if current_str in keywords:  # <special><keyword><ws>
+                    return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _KEYWORDS[current_str], la
+                else:  # <special><current><ws>
+                    bubble += special if bubble else []
+                    bubble += current
+                    special = []
+                    current = []
 
-        elif la in _WHITESPACE:
-            pending.append(la)
-            la = next(it, '')
-            continue
+            else:  # <special><ws>
+                pass
+
+            while la in _WHITESPACE:
+                special.append(la)
+                la = next(it, '')
+
+            if not la:
+                return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _EOF_TOKEN, la
 
         elif la == '/':
             is_comment, consumed, la = _maybe_comment(la, it)
             if is_comment:
-                pending += consumed
-                continue
-            else:
-                if not la:  # unterminated block comment
-                    bubble += pending if bubble else []
-                    bubble += consumed
-                    return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _EOF_TOKEN, la
-                else:  # /X
-                    bubble += pending if bubble else []
-                    bubble += consumed
-                    pending = []
-                    continue
-
-        else:
-            current = [la]  # text that might belong to the bubble or terminate the bubble if keyword
-            la = next(it, '')
-            while True:
-                if not la or la in _WHITESPACE:
+                if current:
                     current_str = ''.join(current)
-                    if current_str in keywords:
-                        token = _KEYWORDS[current_str]
-                        return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, token, la
-                    else:
-                        bubble += pending if bubble else []
+                    if current_str in keywords:  # <special><keyword><comment>
+                        # Differs from K Frontend behavior, see: https://github.com/runtimeverification/k/issues/3501
+                        return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _KEYWORDS[current_str], la
+                    else:  # <special><current><comment>
+                        bubble += special if bubble else []
                         bubble += current
-                        pending = []
-                        break
+                        special = consumed
+                        current = []
 
-                elif la == '/':
-                    is_comment, consumed, la = _maybe_comment(la, it)
-                    if is_comment:
-                        current_str = ''.join(current)
-                        if current_str in keywords:
-                            token = _KEYWORDS[current_str]
-                            return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, token, la
-                        else:
-                            bubble += pending if bubble else []
-                            bubble += current
-                            pending = consumed
-                            break
-                    else:
-                        bubble += pending if bubble else []
-                        bubble += current
-                        bubble += consumed
-                        pending = []
-                        break
+                else:  # <special><comment>
+                    special += consumed
 
-                else:
-                    current.append(la)
-                    la = next(it, '')
+            else:
+                if len(consumed) > 1:  # Unterminated block comment
+                    # Differs from K Frontend behavior
+                    raise ValueError('Unterminated block comment')
+                current += consumed
+
+        else:  # <special><current>
+            while la and la not in _WHITESPACE and la != '/':
+                current.append(la)
+                la = next(it, '')
 
 
 def _attr(la: str, it: Iterator[str]) -> tuple[list[Token], str]:
@@ -780,6 +767,4 @@ def _maybe_comment(la: str, it: Iterator[str]) -> tuple[bool, list[str], str]:
                 continue
 
     else:
-        consumed.append(la)  # ['/', X]
-        la = next(it, '')
         return False, consumed, la
