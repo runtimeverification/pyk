@@ -177,28 +177,32 @@ GET_MODEL_WITH_SMT_TEST_DATA: Final = (
     ),
     (
         'sat-chop-sub-ints',
-        # chop(1 - x) == 0
-        Equals(
-            BOOL,
+        # chop(1 - x) == 0 && x == 1
+        And(
             INT,
-            TRUE,
-            eq_int(
-                App(
-                    "Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int",
-                    (),
-                    (
-                        App(
-                            "Lbl'Unds'-Int'Unds'",
-                            (),
-                            (
-                                int_dv(1),
-                                EVar('x', INT),
+            Equals(
+                BOOL,
+                INT,
+                TRUE,
+                eq_int(
+                    App(
+                        "Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int",
+                        (),
+                        (
+                            App(
+                                "Lbl'Unds'-Int'Unds'",
+                                (),
+                                (
+                                    int_dv(1),
+                                    EVar('x', INT),
+                                ),
                             ),
                         ),
                     ),
+                    int_dv(0),
                 ),
-                int_dv(0),
             ),
+            Equals(BOOL, INT, TRUE, eq_int(EVar('x', INT), int_dv(1))),
         ),
         None,
         # x == 1
