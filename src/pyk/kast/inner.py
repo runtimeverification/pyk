@@ -433,7 +433,7 @@ class KApply(KInner):
         return KApply(label=label, args=args)
 
     def map_inner(self: KApply, f: Callable[[KInner], KInner]) -> KApply:
-        return self.let(args=[f(arg) for arg in self.args])
+        return self.let(args=tuple(f(arg) for arg in self.args))
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KApply and term.label.name == self.label.name and term.arity == self.arity:
