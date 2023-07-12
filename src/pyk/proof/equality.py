@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, Final, Generic, TypeVar
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KInner, KSort, Subst
@@ -14,13 +15,12 @@ from .proof import Proof, ProofStatus, Prover
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from pathlib import Path
-    from typing import Any, Final, TypeVar
 
     from ..kast.outer import KClaim, KDefinition
     from ..kcfg import KCFGExplore
     from ..ktool.kprint import KPrint
 
-    T = TypeVar('T', bound='Proof')
+T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -179,11 +179,7 @@ class EqualityProof(ImpliesProof):
 
     @property
     def summary(self) -> Iterable[str]:
-        return [
-            f'EqualityProof: {self.id}',
-            f'    status: {self.status}',
-            f'    admitted: {self.admitted}',
-        ]
+        return EqualitySummary.from_proof(self).to_str()
 
 
 class RefutationProof(ImpliesProof):
@@ -259,10 +255,7 @@ class RefutationProof(ImpliesProof):
 
     @property
     def summary(self) -> Iterable[str]:
-        return [
-            f'RefutationProof: {self.id}',
-            f'    status: {self.status}',
-        ]
+        return RefutationSummary.from_proof(self).to_str()
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
         lines = [
@@ -338,6 +331,17 @@ class EqualityProver(ImpliesProver):
         self.proof.set_simplified_equality(self.proof.simplified_consequent)
 
 
+class ProofSummary(Generic[T], ABC):
+    @staticmethod
+    @abstractmethod
+    def from_proof(proof: T) -> ProofSummary[T]:
+        ...
+
+    @abstractmethod
+    def to_str(self) -> Iterable[str]:
+        ...
+
+
 class RefutationProver(ImpliesProver):
     def __init__(self, proof: RefutationProof, kcfg_explore: KCFGExplore) -> None:
         super().__init__(
@@ -351,3 +355,47 @@ class RefutationProver(ImpliesProver):
         super().advance_proof()
         assert type(self.proof) is RefutationProof
         self.proof.set_simplified_constraints(self.proof.simplified_consequent)
+
+
+class EqualitySummary(ProofSummary[EqualityProof]):
+    id: str
+    status: ProofStatus
+    admitted: bool
+
+    def __init__(self, id: str, status: ProofStatus, admitted: bool):
+        self.id = id
+        self.status = status
+        self.admitted = admitted
+
+    @staticmethod
+    def from_proof(proof: EqualityProof) -> EqualitySummary:
+        return EqualitySummary(proof.id, proof.status, proof.admitted)
+
+    def to_str(self) -> Iterable[str]:
+        yield from [
+            f'EqualityProof: {self.id}',
+            f'    status: {self.status}',
+            f'    admitted: {self.admitted}',
+        ]
+
+
+class RefutationSummary(ProofSummary[RefutationProof]):
+    id: str
+    status: ProofStatus
+
+    def __init__(self, id: str, status: ProofStatus):
+        self.id = id
+        self.status = status
+
+    @staticmethod
+    def from_proof(proof: RefutationProof) -> RefutationSummary:
+        return RefutationSummary(
+            proof.id,
+            proof.status,
+        )
+
+    def to_str(self) -> Iterable[str]:
+        yield from [
+            f'RefutationProof: {self.id}',
+            f'    status: {self.status}',
+        ]
