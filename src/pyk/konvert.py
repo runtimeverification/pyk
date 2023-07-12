@@ -95,10 +95,10 @@ def kast_to_kore(
 
 
 # 'krule' should have sorts on variables
-def krule_to_kore(kompiled_kore: KompiledKore, krule: KRule) -> Axiom:
+def krule_to_kore(kast_defn: KDefinition, kompiled_kore: KompiledKore, krule: KRule) -> Axiom:
     krule_body = krule.body
-    krule_lhs = CTerm(extract_lhs(krule_body), [bool_to_ml_pred(krule.requires)])
-    krule_rhs = CTerm(extract_rhs(krule_body), [bool_to_ml_pred(krule.ensures)])
+    krule_lhs = CTerm(extract_lhs(krule_body), [bool_to_ml_pred(kast_defn.sort_vars(krule.requires))])
+    krule_rhs = CTerm(extract_rhs(krule_body), [bool_to_ml_pred(kast_defn.sort_vars(krule.ensures))])
 
     # The backend does not like rewrite rules without a precondition
     if len(krule_lhs.constraints) > 0:
