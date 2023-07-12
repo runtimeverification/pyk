@@ -897,6 +897,7 @@ class TestImpProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -915,7 +916,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim, logs={})
+        proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -944,6 +945,7 @@ class TestImpProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -960,7 +962,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
+        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth, proof_dir=proof_dir)
         kcfg_explore.simplify(proof.kcfg, {})
         prover = APRBMCProver(
             proof,
@@ -993,6 +995,7 @@ class TestImpProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -1005,7 +1008,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim, logs={})
+        proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
         kcfg_explore.simplify(proof.kcfg, {})
         prover = APRProver(
             proof,
@@ -1026,3 +1029,35 @@ class TestImpProof(KCFGExploreTest):
         expected_path_conds = set({kprove.pretty_print(condition) for condition in path_conditions})
 
         assert actual_path_conds == expected_path_conds
+
+    def test_all_path_reachability_prove_read_write_node_data(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(
+                Path(K_FILES / 'imp-simple-spec.k'),
+                spec_module_name='IMP-SIMPLE-SPEC',
+                claim_labels=['IMP-SIMPLE-SPEC.addition-1'],
+            )
+        )
+
+        proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=Path('apr_proofs'))
+        kcfg_explore.simplify(proof.kcfg, {})
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            is_terminal=TestImpProof._is_terminal,
+        )
+        prover.advance_proof()
+
+        kcfg_show = KCFGShow(
+            kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+        )
+        cfg_lines = kcfg_show.show(proof.kcfg)
+        _LOGGER.info('\n'.join(cfg_lines))
+
+
+#          assert proof.status == proof_status
+#          assert leaf_number(proof) == expected_leaf_number

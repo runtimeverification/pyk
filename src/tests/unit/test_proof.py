@@ -12,7 +12,7 @@ from pyk.proof.equality import EqualityProof
 from pyk.proof.proof import Proof
 from pyk.proof.reachability import APRBMCProof, APRFailureInfo, APRProof
 
-from .test_kcfg import node, node_dicts
+from .test_kcfg import node, node_dicts, term
 
 if TYPE_CHECKING:
     from pytest import TempPathFactory
@@ -20,39 +20,30 @@ if TYPE_CHECKING:
 
 @pytest.fixture(scope='function')
 def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
-    return Path('proof_dir')
-
-
-#      return tmp_path_factory.mktemp('proofs')
+    return tmp_path_factory.mktemp('proofs')
 
 
 def apr_proof(i: int, proof_dir: Path) -> APRProof:
-    proof = APRProof(
+    return APRProof(
         id=f'apr_proof_{i}',
         init=node(1).id,
         target=node(1).id,
-        kcfg=KCFG(),
+        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
         logs={},
         proof_dir=proof_dir,
     )
-    for n in range(1, i + 1):
-        proof.kcfg.add_node(node(n))
-    return proof
 
 
 def aprbmc_proof(i: int, proof_dir: Path) -> APRBMCProof:
-    proof = APRBMCProof(
+    return APRBMCProof(
         id=f'aprbmc_proof_{i}',
         init=node(1).id,
         target=node(1).id,
         bmc_depth=i,
-        kcfg=KCFG(),
+        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
         logs={},
         proof_dir=proof_dir,
     )
-    for n in range(1, i + 1):
-        proof.kcfg.add_node(node(n))
-    return proof
 
 
 def equality_proof(i: int, proof_dir: Path) -> EqualityProof:
@@ -63,12 +54,9 @@ def equality_proof(i: int, proof_dir: Path) -> EqualityProof:
 
 class TestProof:
     def test_read_proof_apr(self, proof_dir: Path) -> None:
-        sample_kcfg = KCFG()
-        sample_kcfg.add_node(node(1))
-
         sample_proof = APRProof(
             id='apr_proof_1',
-            kcfg=sample_kcfg,
+            kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
             init=node(1).id,
             target=node(1).id,
             logs={},
@@ -84,24 +72,13 @@ class TestProof:
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
-        print(f'proof_from_disk: {proof_from_disk.dict}')
-        print(proof_from_disk.kcfg._node_digests)
-        print(f'sample_proof: {sample_proof.dict}')
         assert proof_from_disk.dict == sample_proof.dict
 
-        assert type(proof_from_disk) is APRProof
-
-        assert proof_from_disk.kcfg.nodes == sample_proof.kcfg.nodes
-
     def test_read_proof_aprbmc(self, proof_dir: Path) -> None:
-
-        sample_kcfg = KCFG()
-        sample_kcfg.add_node(node(1))
-
         sample_proof = APRBMCProof(
             id='aprbmc_proof_1',
             bmc_depth=1,
-            kcfg=sample_kcfg,
+            kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
             init=node(1).id,
             target=node(1).id,
             logs={},
@@ -143,6 +120,31 @@ class TestProof:
 #### APRProof
 
 
+def test_read_write_proof_data() -> None:
+    proof_dir = Path('proof_dir')
+
+    kcfg = KCFG(Path('proof_dir/apr_proof_1/kcfg'))
+    node1 = kcfg.create_node(term(1))
+    node2 = kcfg.create_node(term(2))
+    kcfg.create_node(term(3))
+    kcfg.create_node(term(4))
+
+    proof = APRProof(
+        id='apr_proof_1',
+        kcfg=kcfg,
+        init=node1.id,
+        target=node2.id,
+        logs={},
+        proof_dir=proof_dir,
+    )
+
+    proof.write_proof_data()
+
+    proof_from_disk = APRProof.read_proof_data(id=proof.id, proof_dir=proof_dir)
+
+    assert proof_from_disk.dict == proof.dict
+
+
 def test_apr_proof_from_dict_no_subproofs(proof_dir: Path) -> None:
     # Given
     proof = apr_proof(1, proof_dir)
@@ -176,22 +178,14 @@ def test_apr_proof_from_dict_nested_subproofs(proof_dir: Path) -> None:
     # Given
     eq_proof = equality_proof(1, proof_dir)
     subproof = apr_proof(2, proof_dir)
-
-    print(subproof.kcfg.nodes)
     proof = apr_proof(1, proof_dir)
 
     # When
-    print('a')
     eq_proof.write_proof()
-    print('b')
     subproof.read_subproof(eq_proof.id)
-    print('c')
     subproof.write_proof()
-    print('d')
     proof.read_subproof(subproof.id)
-    print('e')
     proof.write_proof()
-    print('f')
     assert proof.proof_dir
     proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
