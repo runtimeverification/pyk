@@ -516,16 +516,35 @@ _KLABEL_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuratio
 
 
 def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
-    la = _skip_ws_and_comments(la, it)
+    consumed: list[str]
+    while True:
+        while la in _WHITESPACE:  # TODO la in _WHITESPACE
+            la = next(it, '')
 
-    if not la:
-        return _EOF_TOKEN, la
+        if not la:
+            return _EOF_TOKEN, la
 
-    if la == '>':
+        if la == '/':
+            is_comment, consumed, la = _maybe_comment(la, it)
+
+            if not is_comment and len(consumed) > 1:
+                # Differs from K Frontend
+                raise ValueError('Unterminated block comment')
+
+            if is_comment and (not la or la in _WHITESPACE):
+                continue
+
+            break
+
+        consumed = []
+        break
+
+    if la == '>' and not consumed:
+        consumed.append(la)
         la = next(it, '')
-        return _SIMPLE_CHARS['>'], la
+        if not la or la in _WHITESPACE:
+            return _SIMPLE_CHARS['>'], la
 
-    consumed: list[str] = []
     while la and la not in _WHITESPACE:
         consumed.append(la)
         la = next(it, '')

@@ -253,7 +253,21 @@ KLABEL_TEST_DATA: Final = (
     ('syntaxx', Token('syntaxx', TokenType.KLABEL), ''),
     ('<foo()>', Token('<foo()>', TokenType.KLABEL), ''),
     ('>', Token('>', TokenType.GT), ''),
+    ('>a', Token('>a', TokenType.KLABEL), ''),
     ('> a', Token('>', TokenType.GT), ' a'),
+    ('/**/', Token('', TokenType.EOF), ''),
+    ('a //', Token('a', TokenType.KLABEL), ' //'),
+    ('// a', Token('', TokenType.EOF), ''),
+    ('//a', Token('', TokenType.EOF), ''),
+    ('/ a', Token('/', TokenType.KLABEL), ' a'),
+    ('/a', Token('/a', TokenType.KLABEL), ''),
+    ('/**/ a', Token('a', TokenType.KLABEL), ''),
+    ('a /**/', Token('a', TokenType.KLABEL), ' /**/'),
+    ('a/**/', Token('a/**/', TokenType.KLABEL), ''),
+    ('/**/a', Token('/**/a', TokenType.KLABEL), ''),
+    ('a/*1*//*2*/', Token('a/*1*//*2*/', TokenType.KLABEL), ''),
+    ('/*1*//*2*/a', Token('/*1*//*2*/a', TokenType.KLABEL), ''),
+    ('/*1*/a/*2*/', Token('/*1*/a/*2*/', TokenType.KLABEL), ''),
 )
 
 
