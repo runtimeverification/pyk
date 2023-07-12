@@ -638,7 +638,7 @@ class KSequence(KInner, Sequence[KInner]):
         return KSequence(items=items)
 
     def map_inner(self: KSequence, f: Callable[[KInner], KInner]) -> KSequence:
-        return self.let(items=(tuple(f(item) for item in self.items)))
+        return self.let(items=tuple(f(item) for item in self.items))
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KSequence:
