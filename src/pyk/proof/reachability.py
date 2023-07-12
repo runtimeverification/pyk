@@ -113,6 +113,27 @@ class APRProof(Proof):
             or self.is_refuted(node_id)
         )
 
+    def write_proof(self, subproofs: bool = False) -> None:
+
+        print('in APRProof.write_proof')
+        print(self.kcfg.nodes)
+        for node in self.kcfg.nodes:
+            print(node.digest)
+
+        if not self.proof_dir:
+            return
+
+        self.kcfg.save_nodes(self.proof_dir)
+
+        proof_path = self.proof_dir / f'{hash_str(self.id)}.json'
+        if not self.up_to_date:
+            proof_json = json.dumps(self.dict)
+            proof_path.write_text(proof_json)
+            _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
+        if subproofs:
+            for sp in self.subproofs:
+                sp.write_proof(subproofs=subproofs)
+
     def is_init(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.init)
 
@@ -135,7 +156,9 @@ class APRProof(Proof):
         if APRProof.proof_exists(id, proof_dir):
             proof_dict = json.loads(proof_path.read_text())
             _LOGGER.info(f'Reading APRProof from file {id}: {proof_path}')
-            return APRProof.from_dict(proof_dict, proof_dir=proof_dir)
+            proof = APRProof.from_dict(proof_dict, proof_dir=proof_dir)
+            proof.kcfg.load_nodes(proof_dir)
+            return proof
         raise ValueError(f'Could not load APRProof from file {id}: {proof_path}')
 
     @property
@@ -149,8 +172,9 @@ class APRProof(Proof):
         else:
             return ProofStatus.PASSED
 
-    @classmethod
-    def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
+    @staticmethod
+    def from_dict(dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
+        assert proof_dir is not None
         cfg = KCFG.from_dict(dct['cfg'])
         init_node = dct['init']
         terminal_nodes = dct['terminal_nodes']
@@ -216,7 +240,7 @@ class APRProof(Proof):
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'APRProof'
-        dct['cfg'] = self.kcfg.to_dict()
+        dct['cfg'] = self.kcfg.to_dict_summary()
         dct['init'] = self.init
         dct['target'] = self.target
         dct['terminal_nodes'] = self._terminal_nodes
@@ -310,8 +334,20 @@ class APRBMCProof(APRProof):
             or self.is_target(node_id)
         )
 
-    @classmethod
-    def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
+    @staticmethod
+    def read_proof(id: str, proof_dir: Path) -> APRBMCProof:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if APRBMCProof.proof_exists(id, proof_dir):
+            proof_dict = json.loads(proof_path.read_text())
+            _LOGGER.info(f'Reading APRProof from file {id}: {proof_path}')
+            proof = APRBMCProof.from_dict(proof_dict, proof_dir=proof_dir)
+            proof.kcfg.load_nodes(proof_dir)
+            return proof
+        raise ValueError(f'Could not load APRProof from file {id}: {proof_path}')
+
+    @staticmethod
+    def from_dict(dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
+        assert proof_dir is not None
         cfg = KCFG.from_dict(dct['cfg'])
         init = dct['init']
         target = dct['target']

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..utils import hash_file, hash_str
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
@@ -60,8 +60,12 @@ class Proof(ABC):
         return [sp.id for sp in self._subproofs.values()]
 
     def write_proof(self, subproofs: bool = False) -> None:
+
+        print('in Proof.write_proof')
+
         if not self.proof_dir:
             return
+
         proof_path = self.proof_dir / f'{hash_str(self.id)}.json'
         if not self.up_to_date:
             proof_json = json.dumps(self.dict)
@@ -149,11 +153,6 @@ class Proof(ABC):
         }
 
     @classmethod
-    @abstractmethod
-    def from_dict(cls: type[Proof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> Proof:
-        ...
-
-    @classmethod
     def read_proof(cls: type[Proof], id: str, proof_dir: Path) -> Proof:
         # these local imports allow us to call .to_dict() based on the proof type we read from JSON
         from .equality import EqualityProof, RefutationProof  # noqa
@@ -166,7 +165,7 @@ class Proof(ABC):
             admitted = proof_dict.get('admitted', False)
             _LOGGER.info(f'Reading {proof_type} from file {id}: {proof_path}')
             if proof_type in Proof._PROOF_TYPES:
-                return locals()[proof_type].from_dict(proof_dict, proof_dir)
+                return locals()[proof_type].read_proof(id, proof_dir)
 
         raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
 
