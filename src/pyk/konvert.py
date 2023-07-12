@@ -100,7 +100,7 @@ def krule_to_kore(kast_defn: KDefinition, kompiled_kore: KompiledKore, krule: KR
     krule_lhs = CTerm(extract_lhs(krule_body), [bool_to_ml_pred(krule.requires)])
     krule_rhs = CTerm(extract_rhs(krule_body), [bool_to_ml_pred(krule.ensures)])
 
-    top_level_kore_sort = SortApp(name='SortGeneratedTopCell', sorts=())
+    top_level_kore_sort = SortApp('SortGeneratedTopCell')
     top_level_k_sort = KSort('GeneratedTopCell')
     # The backend does not like rewrite rules without a precondition
     if len(krule_lhs.constraints) > 0:
