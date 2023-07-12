@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -14,37 +15,44 @@ from pyk.proof.reachability import APRBMCProof, APRFailureInfo, APRProof
 from .test_kcfg import node, node_dicts
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from pytest import TempPathFactory
 
 
 @pytest.fixture(scope='function')
 def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp('proofs')
+    return Path('proof_dir')
+
+
+#      return tmp_path_factory.mktemp('proofs')
 
 
 def apr_proof(i: int, proof_dir: Path) -> APRProof:
-    return APRProof(
+    proof = APRProof(
         id=f'apr_proof_{i}',
         init=node(1).id,
         target=node(1).id,
-        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
+        kcfg=KCFG(),
         logs={},
         proof_dir=proof_dir,
     )
+    for n in range(1, i + 1):
+        proof.kcfg.add_node(node(n))
+    return proof
 
 
 def aprbmc_proof(i: int, proof_dir: Path) -> APRBMCProof:
-    return APRBMCProof(
+    proof = APRBMCProof(
         id=f'aprbmc_proof_{i}',
         init=node(1).id,
         target=node(1).id,
         bmc_depth=i,
-        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
+        kcfg=KCFG(),
         logs={},
         proof_dir=proof_dir,
     )
+    for n in range(1, i + 1):
+        proof.kcfg.add_node(node(n))
+    return proof
 
 
 def equality_proof(i: int, proof_dir: Path) -> EqualityProof:
@@ -55,9 +63,12 @@ def equality_proof(i: int, proof_dir: Path) -> EqualityProof:
 
 class TestProof:
     def test_read_proof_apr(self, proof_dir: Path) -> None:
+        sample_kcfg = KCFG()
+        sample_kcfg.add_node(node(1))
+
         sample_proof = APRProof(
             id='apr_proof_1',
-            kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            kcfg=sample_kcfg,
             init=node(1).id,
             target=node(1).id,
             logs={},
@@ -73,13 +84,24 @@ class TestProof:
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
+        print(f'proof_from_disk: {proof_from_disk.dict}')
+        print(proof_from_disk.kcfg._node_digests)
+        print(f'sample_proof: {sample_proof.dict}')
         assert proof_from_disk.dict == sample_proof.dict
 
+        assert type(proof_from_disk) is APRProof
+
+        assert proof_from_disk.kcfg.nodes == sample_proof.kcfg.nodes
+
     def test_read_proof_aprbmc(self, proof_dir: Path) -> None:
+
+        sample_kcfg = KCFG()
+        sample_kcfg.add_node(node(1))
+
         sample_proof = APRBMCProof(
             id='aprbmc_proof_1',
             bmc_depth=1,
-            kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            kcfg=sample_kcfg,
             init=node(1).id,
             target=node(1).id,
             logs={},
@@ -154,14 +176,22 @@ def test_apr_proof_from_dict_nested_subproofs(proof_dir: Path) -> None:
     # Given
     eq_proof = equality_proof(1, proof_dir)
     subproof = apr_proof(2, proof_dir)
+
+    print(subproof.kcfg.nodes)
     proof = apr_proof(1, proof_dir)
 
     # When
+    print('a')
     eq_proof.write_proof()
+    print('b')
     subproof.read_subproof(eq_proof.id)
+    print('c')
     subproof.write_proof()
+    print('d')
     proof.read_subproof(subproof.id)
+    print('e')
     proof.write_proof()
+    print('f')
     assert proof.proof_dir
     proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 

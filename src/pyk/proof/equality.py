@@ -9,7 +9,9 @@ from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
+from ..utils import hash_str
 from .proof import Proof, ProofStatus, Prover
+import json
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -43,7 +45,6 @@ class ImpliesProof(Proof):
 
     def set_csubst(self, csubst: CSubst) -> None:
         self.csubst = csubst
-
 
 class EqualityProof(ImpliesProof):
     lhs_body: KInner
@@ -86,6 +87,16 @@ class EqualityProof(ImpliesProof):
             raise ValueError(f'Cannot convert claim to EqualityProof due to non-trival ensures clause {claim.ensures}')
         constraints = [mlEquals(TRUE, c, arg_sort=BOOL) for c in flatten_label('_andBool_', claim.requires)]
         return EqualityProof(claim.label, lhs_body, rhs_body, sort, constraints=constraints, proof_dir=proof_dir)
+
+    @staticmethod
+    def read_proof(id: str, proof_dir: Path) -> APRBMCProof:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if EqualityProof.proof_exists(id, proof_dir):
+            proof_dict = json.loads(proof_path.read_text())
+            _LOGGER.info(f'Reading EqualityProof from file {id}: {proof_path}')
+            proof = EqualityProof.from_dict(proof_dict, proof_dir=proof_dir)
+            return proof
+        raise ValueError(f'Could not load EqualityProof from file {id}: {proof_path}')
 
     @property
     def equality(self) -> KInner:
@@ -256,6 +267,16 @@ class RefutationProof(ImpliesProof):
             simplified_constraints=simplified_constraints,
             proof_dir=proof_dir,
         )
+
+    @staticmethod
+    def read_proof(id: str, proof_dir: Path) -> APRBMCProof:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        if RefutationProof.proof_exists(id, proof_dir):
+            proof_dict = json.loads(proof_path.read_text())
+            _LOGGER.info(f'Reading RefutationProof from file {id}: {proof_path}')
+            proof = RefutationProof.from_dict(proof_dict, proof_dir=proof_dir)
+            return proof
+        raise ValueError(f'Could not load RefutationProof from file {id}: {proof_path}')
 
     @property
     def summary(self) -> Iterable[str]:

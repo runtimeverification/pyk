@@ -4,6 +4,7 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
+from functools import cached_property
 from threading import RLock
 from typing import TYPE_CHECKING, List, Union, cast, final
 
@@ -21,9 +22,11 @@ from ..kast.manip import (
     sort_ac_collections,
 )
 from ..kast.outer import KFlatModule
+from ..utils import hash_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from pathlib import Path
     from types import TracebackType
     from typing import Any
 
@@ -42,8 +45,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         id: int
         cterm: CTerm
 
+        @cached_property
         def to_dict(self) -> dict[str, Any]:
             return {'id': self.id, 'cterm': self.cterm.to_dict()}
+
+        @cached_property
+        def digest(self) -> str:
+            return hash_str(self.to_dict)
 
     class Successor(ABC):
         source: KCFG.Node
@@ -196,6 +204,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     _node_id: int
     _nodes: dict[int, Node]
+    _node_digests: dict[int, str]
     _edges: dict[int, dict[int, Edge]]
     _covers: dict[int, dict[int, Cover]]
     _splits: dict[int, Split]
@@ -214,6 +223,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._stuck = set()
         self._aliases = {}
         self._lock = RLock()
+        self._node_digests = {}
 
     def __contains__(self, item: object) -> bool:
         if type(item) is KCFG.Node:
@@ -295,8 +305,40 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return _path[0].depth + KCFG.path_length(_path[1:])
         raise ValueError(f'Cannot handle Successor type: {type(_path[0])}')
 
-    def to_dict(self) -> dict[str, Any]:
-        nodes = [node.to_dict() for node in self.nodes]
+    def save_node(self, save_dir: Path, node_id: NodeIdLike) -> None:
+        node_dir = save_dir / 'nodes'
+        if not node_dir.exists():
+            node_dir.mkdir()
+        node = self.get_node(node_id)
+        assert node is not None
+        node_file = node_dir / (node.digest + '.json')
+        if not node_file.exists():
+            node_file.write_text(json.dumps(node.to_dict))
+
+    def load_node(self, save_dir: Path, node_id: NodeIdLike):
+        _node_id = self._resolve(node_id)
+        node_dir = save_dir / 'nodes'
+        node_digest = self._node_digests[_node_id]
+        node_file = node_dir / (node_digest + '.json')
+        node_dict = json.loads(node_file.read_text())
+        cterm = CTerm.from_dict(node_dict['cterm'])
+        node = KCFG.Node(_node_id, cterm)
+        self.add_node(node)
+
+    def save_nodes(self, save_dir: Path) -> None:
+        print('in save_nodes')
+        for node in self.nodes:
+            print(node.digest)
+            if node.id not in self._node_digests or node.digest != self._node_digests[node.id]:
+                print('writing')
+                self.save_node(save_dir, node.id)
+                self._node_digests[node.id] = node.digest
+            else:
+                print(f'node.id={node.id}')
+                print(f'self._node_digests={self._node_digests}')
+                print(f'node.digest={node.digest}')
+
+    def to_dict_summary(self) -> dict[str, Any]:
         edges = [edge.to_dict() for edge in self.edges()]
         covers = [cover.to_dict() for cover in self.covers()]
         splits = [split.to_dict() for split in self.splits()]
@@ -304,6 +346,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         stuck = sorted(self._stuck)
         aliases = dict(sorted(self._aliases.items()))
+
+        nodes = self._node_digests
 
         res = {
             'next': self._node_id,
@@ -317,17 +361,24 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         }
         return {k: v for k, v in res.items() if v}
 
+    def load_nodes(self, save_dir: Path):
+        for node_id in self._node_digests.keys():
+            self.load_node(save_dir, node_id)
+
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> KCFG:
         cfg = KCFG()
 
         max_id = 0
-        for node_dict in dct.get('nodes') or []:
-            node_id = node_dict['id']
-            max_id = max(max_id, node_id)
-            cterm = CTerm.from_dict(node_dict['cterm'])
-            node = KCFG.Node(node_id, cterm)
-            cfg.add_node(node)
+
+        nodes = dct.get('nodes')
+
+        assert type(nodes) is dict
+        for node_id, node_digest in nodes.items() or []:
+            _node_id = int(node_id)
+            cfg._node_digests[_node_id] = node_digest
+            max_id = max(max_id, _node_id)
+#              cfg.add_node(cfg.load_node(save_dir, _node_id))
 
         cfg._node_id = dct.get('next', max_id + 1)
 
@@ -369,11 +420,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return [alias for alias, value in self._aliases.items() if node_id == value]
 
     def to_json(self) -> str:
-        return json.dumps(self.to_dict(), sort_keys=True)
+        return json.dumps(self.to_dict_summary(), sort_keys=True)
 
     @staticmethod
-    def from_json(s: str) -> KCFG:
-        return KCFG.from_dict(json.loads(s))
+    def from_json(save_dir: Path, s: str) -> KCFG:
+        return KCFG.from_dict(save_dir, json.loads(s))
 
     def to_module(
         self,
@@ -388,10 +439,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def _resolve_or_none(self, id_like: NodeIdLike) -> int | None:
         if type(id_like) is int:
-            if id_like in self._nodes:
-                return id_like
+            #              if id_like in self._node_digests.keys():
+            return id_like
 
-            return None
+        #              return None
 
         if type(id_like) is not str:
             raise TypeError(f'Expected int or str for id_like, got: {id_like}')
