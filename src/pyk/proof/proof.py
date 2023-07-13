@@ -35,6 +35,11 @@ class Proof(ABC):
     _subproofs: dict[str, Proof]
     admitted: bool
 
+    @property
+    def proof_subdir(self) -> Path:
+        assert self.proof_dir is not None
+        return self.proof_dir / self.id
+
     def __init__(
         self,
         id: str,
@@ -51,6 +56,10 @@ class Proof(ABC):
         if len(list(subproof_ids)) > 0:
             for proof_id in subproof_ids:
                 self.fetch_subproof(proof_id, force_reread=True)
+        if proof_dir is not None and not proof_dir.exists():
+            proof_dir.mkdir()
+        if self.proof_dir is not None and not self.proof_dir.exists():
+            self.proof_dir.mkdir()
 
     def admit(self) -> None:
         self.admitted = True
@@ -60,9 +69,11 @@ class Proof(ABC):
         return [sp.id for sp in self._subproofs.values()]
 
     def write_proof(self, subproofs: bool = False) -> None:
+        print(self.id)
         if not self.proof_dir:
             return
         proof_path = self.proof_dir / f'{hash_str(self.id)}.json'
+        print(proof_path)
         if not self.up_to_date:
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)

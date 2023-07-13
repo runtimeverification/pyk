@@ -897,6 +897,7 @@ class TestImpProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -915,7 +916,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim, logs={})
+        proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -944,6 +945,7 @@ class TestImpProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -960,7 +962,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
+        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth, proof_dir=proof_dir)
         kcfg_explore.simplify(proof.kcfg, {})
         prover = APRBMCProver(
             proof,
@@ -993,6 +995,7 @@ class TestImpProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -1005,7 +1008,7 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim, logs={})
+        proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
         kcfg_explore.simplify(proof.kcfg, {})
         prover = APRProver(
             proof,
@@ -1026,3 +1029,60 @@ class TestImpProof(KCFGExploreTest):
         expected_path_conds = set({kprove.pretty_print(condition) for condition in path_conditions})
 
         assert actual_path_conds == expected_path_conds
+
+    def test_apr_prove_read_write_node_data(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(
+                Path(K_FILES / 'imp-simple-spec.k'),
+                spec_module_name='IMP-SIMPLE-SPEC',
+                claim_labels=['IMP-SIMPLE-SPEC.addition-1'],
+            )
+        )
+        proofs_dir = Path('apr_proofs')
+
+        proof = APRProof.from_claim(kprove.definition, claim, proof_dir=proofs_dir, logs={})
+        kcfg_explore.simplify(proof.kcfg, {})
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            is_terminal=TestImpProof._is_terminal,
+        )
+        prover.advance_proof(execute_depth=1)
+
+        proof_from_disk = APRProof.read_proof_data(proof_dir=proofs_dir, id=proof.id)
+
+        assert proof.dict == proof_from_disk.dict
+        assert proof.kcfg.nodes == proof_from_disk.kcfg.nodes
+
+    def test_aprbmc_prove_read_write_node_data(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(
+                Path(K_FILES / 'imp-simple-spec.k'),
+                spec_module_name='IMP-SIMPLE-SPEC',
+                claim_labels=['IMP-SIMPLE-SPEC.addition-1'],
+            )
+        )
+        proofs_dir = Path('apr_proofs')
+
+        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, proof_dir=proofs_dir, bmc_depth=3)
+        kcfg_explore.simplify(proof.kcfg, {})
+        prover = APRBMCProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            is_terminal=TestImpProof._is_terminal,
+            same_loop=TestImpProof._same_loop,
+        )
+        prover.advance_proof(execute_depth=1)
+
+        proof_from_disk = APRBMCProof.read_proof_data(proof_dir=proofs_dir, id=proof.id)
+
+        assert proof.dict == proof_from_disk.dict
+        assert proof.kcfg.nodes == proof_from_disk.kcfg.nodes
