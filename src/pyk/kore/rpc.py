@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, ContextManager, final
 from psutil import Process
 
 from ..ktool.kprove import KoreExecLogFormat
-from ..utils import check_dir_path, check_file_path, filter_none
+from ..utils import Kernel, check_dir_path, check_file_path, filter_none
 from .syntax import And, Pattern, SortApp, kore_term
 
 if TYPE_CHECKING:
@@ -645,7 +645,7 @@ class KoreServer(ContextManager['KoreServer']):
         smt_timeout: int | None = None,
         smt_retry_limit: int | None = None,
         smt_reset_interval: int | None = None,
-        command: str | Iterable[str] = 'kore-rpc',
+        command: str | Iterable[str] | None = None,
         bug_report: BugReport | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
@@ -661,7 +661,9 @@ class KoreServer(ContextManager['KoreServer']):
         self._check_none_or_positive(smt_retry_limit, 'smt_retry_limit')
         self._check_none_or_positive(smt_reset_interval, 'smt_reset_interval')
 
-        if type(command) is str:
+        if not command:
+            command = ('kore-rpc',)
+        elif type(command) is str:
             command = (command,)
 
         args = list(command)
@@ -736,3 +738,55 @@ class KoreServer(ContextManager['KoreServer']):
         self._proc.send_signal(SIGINT)
         self._proc.wait()
         _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
+
+
+class BoosterServer(KoreServer):
+    def __init__(
+        self,
+        kompiled_dir: str | Path,
+        llvm_kompiled_dir: str | Path,
+        module_name: str,
+        *,
+        port: int | None = None,
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        smt_reset_interval: int | None = None,
+        command: str | Iterable[str] | None,
+        bug_report: BugReport | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ):
+        llvm_kompiled_dir = Path(llvm_kompiled_dir)
+        check_dir_path(llvm_kompiled_dir)
+
+        kernel = Kernel.get()
+        ext = 'so' if kernel == Kernel.LINUX else 'dylib'
+
+        dylib = llvm_kompiled_dir / f'interpreter.{ext}'
+        check_file_path(dylib)
+
+        self._check_none_or_positive(smt_timeout, 'smt_timeout')
+        self._check_none_or_positive(smt_retry_limit, 'smt_retry_limit')
+        self._check_none_or_positive(smt_reset_interval, 'smt_reset_interval')
+
+        if not command:
+            command = ('kore-rpc-booster',)
+        elif type(command) is str:
+            command = (command,)
+
+        args = list(command)
+        args += ['--llvm-backend-library', str(dylib)]
+        super().__init__(
+            kompiled_dir=kompiled_dir,
+            module_name=module_name,
+            port=port,
+            smt_timeout=smt_timeout,
+            smt_retry_limit=smt_retry_limit,
+            smt_reset_interval=smt_reset_interval,
+            command=args,
+            bug_report=bug_report,
+            haskell_log_format=haskell_log_format,
+            haskell_log_entries=haskell_log_entries,
+            log_axioms_file=log_axioms_file,
+        )
