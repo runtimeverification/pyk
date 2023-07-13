@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING
@@ -175,9 +176,29 @@ class Proof(ABC):
         return json.dumps(self.dict)
 
     @property
-    def summary(self) -> Iterable[str]:
+    def summary(self) -> CompositeSummary:
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
-        return chain([f'Proof: {self.id}', f'    status: {self.status}'], *subproofs_summaries)
+        return CompositeSummary(ProofSummary(self.id, self.status), subproofs_summaries)
+
+
+@dataclass
+class ProofSummary(ABC):
+    id: str
+    status: ProofStatus
+
+    @property
+    def lines(self) -> list[str]:
+        return [f'Proof: {self.id}', f'    status: {self.status}']
+
+    def __str__(self) -> str:
+        return '\n'.join(self.lines)
+
+
+class CompositeSummary:
+    summaries: tuple[ProofSummary]
+
+    def __init__(self, summary: ProofSummary, subproofs_summaries: Iterable[CompositeSummary]):
+        self._summaries = chain([summary], subproofs_summaries)
 
 
 class Prover:
