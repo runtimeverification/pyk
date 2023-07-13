@@ -4,7 +4,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Collection, Iterable, Iterator
     from typing import Final
 
 
@@ -563,7 +563,12 @@ _CONTEXT_KEYWORDS: Final = {'alias'}.union(_BUBBLE_KEYWORDS)
 
 def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple[Token | None, Token, str]:
     keywords = _CONTEXT_KEYWORDS if context else _BUBBLE_KEYWORDS
+    raw_bubble, token, la = _raw_bubble(la, it, keywords)
+    bubble = Token(raw_bubble, TokenType.BUBBLE) if raw_bubble is not None else None
+    return bubble, token, la
 
+
+def _raw_bubble(la: str, it: Iterator[str], keywords: Collection[str]) -> tuple[str | None, Token, str]:
     bubble: list[str] = []  # text that belongs to the bubble
     special: list[str] = []  # text that belongs to the bubble iff preceded and followed by bubble text
     current: list[str] = []  # text that might belong to the bubble or terminate the bubble if keyword
@@ -572,7 +577,7 @@ def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple
             if current:
                 current_str = ''.join(current)
                 if current_str in keywords:  # <special><keyword><ws>
-                    return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _KEYWORDS[current_str], la
+                    return ''.join(bubble) if bubble else None, _KEYWORDS[current_str], la
                 else:  # <special><current><ws>
                     bubble += special if bubble else []
                     bubble += current
@@ -587,7 +592,7 @@ def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple
                 la = next(it, '')
 
             if not la:
-                return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _EOF_TOKEN, la
+                return ''.join(bubble) if bubble else None, _EOF_TOKEN, la
 
         elif la == '/':
             is_comment, consumed, la = _maybe_comment(la, it)
@@ -596,7 +601,7 @@ def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple
                     current_str = ''.join(current)
                     if current_str in keywords:  # <special><keyword><comment>
                         # Differs from K Frontend behavior, see: https://github.com/runtimeverification/k/issues/3501
-                        return Token(''.join(bubble), TokenType.BUBBLE) if bubble else None, _KEYWORDS[current_str], la
+                        return ''.join(bubble) if bubble else None, _KEYWORDS[current_str], la
                     else:  # <special><current><comment>
                         bubble += special if bubble else []
                         bubble += current
