@@ -64,101 +64,119 @@ def test_maybe_comment(
 
 
 BUBBLE_TEST_DATA: Final = (
-    ('', None, Token('', TokenType.EOF), ''),
-    (' ', None, Token('', TokenType.EOF), ''),
-    ('/*1*/', None, Token('', TokenType.EOF), ''),
-    ('/*1*//*2*//*3*/', None, Token('', TokenType.EOF), ''),
-    ('/*1*/ /*2*/ /*3*/rule', None, Token('rule', TokenType.KW_RULE), ''),
-    ('/*1*/hello/*2*/rule', 'hello', Token('rule', TokenType.KW_RULE), ''),
-    ('/*1*/hello/*2*/world/*3*/rule', 'hello/*2*/world', Token('rule', TokenType.KW_RULE), ''),
-    ('/*1*/hello/*2*/world/*3*/rule/*4*/', 'hello/*2*/world', Token('rule', TokenType.KW_RULE), ''),
-    (' /*1*/ hello /*2*/ world /*3*/ rule ', 'hello /*2*/ world', Token('rule', TokenType.KW_RULE), ' '),
-    (' /*1*/ hello /*2*/ world /*3*/ rule /*4*/ ', 'hello /*2*/ world', Token('rule', TokenType.KW_RULE), ' /*4*/ '),
-    ('a //1\n/*2*/ rule', 'a', Token('rule', TokenType.KW_RULE), ''),
-    ('a //1\n/* rule */ rule', 'a', Token('rule', TokenType.KW_RULE), ''),
-    ('a', 'a', Token('', TokenType.EOF), ''),
-    ('a/', 'a/', Token('', TokenType.EOF), ''),
-    ('a/rule', 'a/rule', Token('', TokenType.EOF), ''),
-    ('abc', 'abc', Token('', TokenType.EOF), ''),
-    ('abc //', 'abc', Token('', TokenType.EOF), ''),
-    ('abc /* 1 */ //', 'abc', Token('', TokenType.EOF), ''),
-    ('rule', None, Token('rule', TokenType.KW_RULE), ''),
-    ('rule/', 'rule/', Token('', TokenType.EOF), ''),
-    ('a rule', 'a', Token('rule', TokenType.KW_RULE), ''),
-    ('program text // comment\nendmodule', 'program text', Token('endmodule', TokenType.KW_ENDMODULE), ''),
-    ('Hyrule', 'Hyrule', Token('', TokenType.EOF), ''),
-    ('Hy/**/rule', 'Hy', Token('rule', TokenType.KW_RULE), ''),
-    ('Hy/* comment */rule', 'Hy', Token('rule', TokenType.KW_RULE), ''),
-    ('an other rule', 'an other', Token('rule', TokenType.KW_RULE), ''),
-    ('cash rules everything around me', 'cash rules everything around me', Token('', TokenType.EOF), ''),
-    ('cash rule/**/s everything around me', 'cash', Token('rule', TokenType.KW_RULE), 's everything around me'),
-    ('rule//comment', None, Token('rule', TokenType.KW_RULE), ''),
+    ('', [Token('', TokenType.EOF)], ''),
+    (' ', [Token('', TokenType.EOF)], ''),
+    ('//a', [Token('', TokenType.EOF)], ''),
+    ('/*1*/', [Token('', TokenType.EOF)], ''),
+    ('/*1*//*2*//*3*/', [Token('', TokenType.EOF)], ''),
+    ('/*1*/ /*2*/ /*3*/rule', [Token('rule', TokenType.KW_RULE)], ''),
+    ('/*1*/hello/*2*/rule', [Token('hello', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)], ''),
     (
-        'rule/*1*/',
-        None,
-        Token('rule', TokenType.KW_RULE),
+        '/*1*/hello/*2*/world/*3*/rule',
+        [Token('hello/*2*/world', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)],
         '',
-    ),  # the lexer has to consume the comment to check if it is terminated
-    ('alias', 'alias', Token('', TokenType.EOF), ''),
-    ('bubble alias', 'bubble alias', Token('', TokenType.EOF), ''),
+    ),
+    (
+        '/*1*/hello/*2*/world/*3*/rule/*4*/',
+        [Token('hello/*2*/world', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)],
+        '',
+    ),
+    (
+        ' /*1*/ hello /*2*/ world /*3*/ rule ',
+        [Token('hello /*2*/ world', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)],
+        ' ',
+    ),
+    (
+        ' /*1*/ hello /*2*/ world /*3*/ rule /*4*/ ',
+        [Token('hello /*2*/ world', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)],
+        ' /*4*/ ',
+    ),
+    (
+        'hello world // comment\nendmodule',
+        [Token('hello world', TokenType.BUBBLE), Token('endmodule', TokenType.KW_ENDMODULE)],
+        '',
+    ),
+    ('a //1\n/*2*/ rule', [Token('a', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)], ''),
+    ('a //1\n/* rule */ rule', [Token('a', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)], ''),
+    ('a', [Token('a', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('a/', [Token('a/', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('a/rule', [Token('a/rule', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('abc', [Token('abc', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('abc //', [Token('abc', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('abc /* 1 */ //', [Token('abc', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('rule', [Token('rule', TokenType.KW_RULE)], ''),
+    ('rule/', [Token('rule/', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('rule//comment', [Token('rule', TokenType.KW_RULE)], ''),
+    ('rule/*1*/', [Token('rule', TokenType.KW_RULE)], ''),
+    ('a rule', [Token('a', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)], ''),
+    ('arule', [Token('arule', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('a/**/rule', [Token('a', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)], ''),
+    ('a/* comment */rule', [Token('a', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)], ''),
+    ('an other rule', [Token('an other', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)], ''),
+    (
+        'cash rules everything around me',
+        [Token('cash rules everything around me', TokenType.BUBBLE), Token('', TokenType.EOF)],
+        '',
+    ),
+    (
+        'cash rule/**/s everything around me',
+        [Token('cash', TokenType.BUBBLE), Token('rule', TokenType.KW_RULE)],
+        's everything around me',
+    ),
+    ('alias', [Token('alias', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('bubble alias', [Token('bubble alias', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
 )
 
 
 @pytest.mark.parametrize(
-    'text,expected_bubble_text,expected_terminal,expected_remaining',
+    'text,expected_tokens,expected_remaining',
     BUBBLE_TEST_DATA,
     ids=[text for text, *_ in BUBBLE_TEST_DATA],
 )
 def test_bubble(
     text: str,
-    expected_bubble_text: str | None,
-    expected_terminal: Token,
+    expected_tokens: list[Token],
     expected_remaining: str,
 ) -> None:
     # Given
     it = iter(text)
     la = next(it, '')
-    expected_bubble = Token(expected_bubble_text, TokenType.BUBBLE) if expected_bubble_text is not None else None
 
     # When
-    actual_bubble, actual_terminal, la = _bubble_or_context(la, it)
+    actual_tokens, la = _bubble_or_context(la, it)
     actual_remaining = la + ''.join(it)
 
     # Then
-    assert actual_bubble == expected_bubble
-    assert actual_terminal == expected_terminal
+    assert actual_tokens == expected_tokens
     assert actual_remaining == expected_remaining
 
 
 CONTEXT_TEST_DATA: Final = (
-    ('alias', None, Token('alias', TokenType.KW_ALIAS), ''),
-    ('bubble alias', 'bubble', Token('alias', TokenType.KW_ALIAS), ''),
+    ('alias', [Token('alias', TokenType.KW_ALIAS)], ''),
+    ('bubble alias', [Token('bubble', TokenType.BUBBLE), Token('alias', TokenType.KW_ALIAS)], ''),
 )
 
 
 @pytest.mark.parametrize(
-    'text,expected_bubble_text,expected_terminal,expected_remaining',
+    'text,expected_tokens,expected_remaining',
     CONTEXT_TEST_DATA,
     ids=[text for text, *_ in CONTEXT_TEST_DATA],
 )
 def test_context(
     text: str,
-    expected_bubble_text: str | None,
-    expected_terminal: Token,
+    expected_tokens: list[Token],
     expected_remaining: str,
 ) -> None:
     # Given
     it = iter(text)
     la = next(it, '')
-    expected_bubble = Token(expected_bubble_text, TokenType.BUBBLE) if expected_bubble_text is not None else None
 
     # When
-    actual_bubble, actual_terminal, la = _bubble_or_context(la, it, context=True)
+    actual_tokens, la = _bubble_or_context(la, it, context=True)
     actual_remaining = la + ''.join(it)
 
     # Then
-    assert actual_bubble == expected_bubble
-    assert actual_terminal == expected_terminal
+    assert actual_tokens == expected_tokens
     assert actual_remaining == expected_remaining
 
 

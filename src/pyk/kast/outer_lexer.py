@@ -201,11 +201,9 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
             # should not be EOF
 
         elif state in {State.BUBBLE, State.CONTEXT}:
-            bubble, token, la = _bubble_or_context(la, it, context=state is State.CONTEXT)
-            if bubble:
-                yield bubble
-            yield token
-            if token.type == TokenType.EOF:
+            tokens, la = _bubble_or_context(la, it, context=state is State.CONTEXT)
+            yield from tokens
+            if tokens[-1].type is TokenType.EOF:
                 return
 
         elif state is State.ATTR:
@@ -561,11 +559,23 @@ _BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuratio
 _CONTEXT_KEYWORDS: Final = {'alias'}.union(_BUBBLE_KEYWORDS)
 
 
-def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple[Token | None, Token, str]:
+def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple[list[Token], str]:
     keywords = _CONTEXT_KEYWORDS if context else _BUBBLE_KEYWORDS
-    raw_bubble, token, la = _raw_bubble(la, it, keywords)
-    bubble = Token(raw_bubble, TokenType.BUBBLE) if raw_bubble is not None else None
-    return bubble, token, la
+
+    tokens: list[Token] = []
+
+    bubble, final_token, la = _raw_bubble(la, it, keywords)
+    if bubble is not None:
+        label_tokens, bubble = _strip_bubble_label(bubble)
+        bubble, attr_tokens = _strip_bubble_attr(bubble)
+        bubble_token = Token(bubble, TokenType.BUBBLE)
+
+        tokens = label_tokens
+        tokens += [bubble_token]
+        tokens += attr_tokens
+
+    tokens += [final_token]
+    return tokens, la
 
 
 def _raw_bubble(la: str, it: Iterator[str], keywords: Collection[str]) -> tuple[str | None, Token, str]:
@@ -621,6 +631,14 @@ def _raw_bubble(la: str, it: Iterator[str], keywords: Collection[str]) -> tuple[
             while la and la not in _WHITESPACE and la != '/':
                 current.append(la)
                 la = next(it, '')
+
+
+def _strip_bubble_label(bubble: str) -> tuple[list[Token], str]:
+    return [], bubble
+
+
+def _strip_bubble_attr(bubble: str) -> tuple[str, list[Token]]:
+    return bubble, []
 
 
 def _attr(la: str, it: Iterator[str]) -> tuple[list[Token], str]:
