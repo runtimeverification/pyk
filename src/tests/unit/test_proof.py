@@ -68,7 +68,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -90,7 +90,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -110,7 +110,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -123,20 +123,24 @@ class TestProof:
 def test_read_write_proof_data() -> None:
     proof_dir = Path('proof_dir')
 
+    proof = APRProof(
+        id='apr_proof_1',
+        kcfg=KCFG(),
+        init=0,
+        target=0,
+        logs={},
+        proof_dir=proof_dir,
+    )
+
     kcfg = KCFG(Path('proof_dir/apr_proof_1/kcfg'))
     node1 = kcfg.create_node(term(1))
     node2 = kcfg.create_node(term(2))
     kcfg.create_node(term(3))
     kcfg.create_node(term(4))
 
-    proof = APRProof(
-        id='apr_proof_1',
-        kcfg=kcfg,
-        init=node1.id,
-        target=node2.id,
-        logs={},
-        proof_dir=proof_dir,
-    )
+    proof.kcfg = kcfg
+    proof.init = node1.id
+    proof.target = node2.id
 
     proof.write_proof_data()
 
@@ -162,6 +166,8 @@ def test_apr_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
     # Given
     eq_proof = equality_proof(1, proof_dir)
     proof = apr_proof(1, proof_dir)
+
+    proof_dir = Path('proofs_dir')
 
     # When
     eq_proof.write_proof()
