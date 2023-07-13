@@ -74,7 +74,7 @@ class APRProof(Proof):
         self.circularity = circularity
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
         self.node_refutations = {}
-        self.kcfg.cfg_dir = self.proof_dir / 'kcfg' if self.proof_dir else None
+        self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_dir else None
 
         if self.proof_dir is not None:
             if not self.proof_dir.exists():
@@ -276,10 +276,10 @@ class APRProof(Proof):
 
     @staticmethod
     def read_proof_data(proof_dir: Path, id: str) -> APRProof:
-        proof_dir = proof_dir / id
-        proof_json = proof_dir / 'proof.json'
+        proof_subdir = proof_dir / id
+        proof_json = proof_subdir / 'proof.json'
         proof_dict = json.loads(proof_json.read_text())
-        cfg_dir = proof_dir / 'kcfg'
+        cfg_dir = proof_subdir / 'kcfg'
         kcfg = KCFG.read_cfg_data(cfg_dir, id)
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
@@ -305,10 +305,6 @@ class APRProof(Proof):
         )
 
     def write_proof_data(self, omit_nodes: bool = False) -> None:
-        print('in write_proof_data')
-        print(f'omit_nodes={omit_nodes}')
-        print(''.join(traceback.format_stack()))
-
         assert self.proof_dir is not None
         if not self.proof_dir.exists():
             self.proof_dir.mkdir()
@@ -375,10 +371,10 @@ class APRBMCProof(APRProof):
 
     @staticmethod
     def read_proof_data(proof_dir: Path, id: str) -> APRBMCProof:
-        proof_dir = proof_dir / id
-        proof_json = proof_dir / 'proof.json'
+        proof_subdir = proof_dir / id
+        proof_json = proof_subdir / 'proof.json'
         proof_dict = json.loads(proof_json.read_text())
-        cfg_dir = proof_dir / 'kcfg'
+        cfg_dir = proof_subdir / 'kcfg'
         kcfg = KCFG.read_cfg_data(cfg_dir, id)
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
@@ -510,7 +506,7 @@ class APRBMCProof(APRProof):
         )
 
         assert aprbmc_proof.proof_dir is not None
-        kcfg_dir = aprbmc_proof.proof_dir / 'kcfg'
+        kcfg_dir = aprbmc_proof.proof_subdir / 'kcfg'
 
         cfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
         aprbmc_proof.kcfg = cfg
