@@ -656,6 +656,26 @@ def _strip_bubble_label(bubble: str) -> tuple[list[Token], str]:
 
 
 def _strip_bubble_attr(bubble: str) -> tuple[str, list[Token]]:
+    for i in range(len(bubble) - 1, -1, -1):
+        if bubble[i] != '[':
+            continue
+
+        prefix = bubble[:i]
+        suffix = bubble[i:]
+
+        it = iter(suffix)
+        next(it)  # skip "["
+        la = next(it, '')
+
+        try:
+            attr_tokens, la = _attr(la, it)
+        except ValueError:
+            continue
+
+        if la:
+            continue
+        return prefix.rstrip(' \t\n\r'), [_SIMPLE_CHARS['[']] + attr_tokens
+
     return bubble, []
 
 

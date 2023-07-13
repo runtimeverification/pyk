@@ -151,6 +151,48 @@ BUBBLE_TEST_DATA: Final = (
         ],
         '',
     ),
+    (
+        '[klabel',
+        [Token('[klabel', TokenType.BUBBLE), Token('', TokenType.EOF)],
+        '',
+    ),
+    (
+        '[klabel]',
+        [
+            Token('[', TokenType.LBRACK),
+            Token('klabel', TokenType.ATTR_KEY),
+            Token(']', TokenType.RBRACK),
+            Token('', TokenType.EOF),
+        ],
+        '',
+    ),
+    (
+        '[klabel(hello)]',
+        [
+            Token('[', TokenType.LBRACK),
+            Token('klabel', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('hello', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+            Token('', TokenType.EOF),
+        ],
+        '',
+    ),
+    (
+        'bubble [klabel(hello)]',
+        [
+            Token('bubble', TokenType.BUBBLE),
+            Token('[', TokenType.LBRACK),
+            Token('klabel', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('hello', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+            Token('', TokenType.EOF),
+        ],
+        '',
+    ),
 )
 
 
