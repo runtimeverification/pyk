@@ -491,7 +491,8 @@ class GetModelResult(ABC):  # noqa: B024
             case 'Unsat':
                 return UnsatResult()
             case 'Sat':
-                return SatResult(model=kore_term(dct['substitution'], Pattern) if 'substitution' in dct else None)  # type: ignore
+                substitution = dct.get('substitution')
+                return SatResult(model=kore_term(substitution, Pattern) if substitution else None)  # type: ignore
             case _:
                 raise ValueError(f'Unknown status: {status}')
 
