@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from itertools import chain
 from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
@@ -234,8 +233,22 @@ class APRProof(Proof):
 
     @property
     def summary(self) -> CompositeSummary:
-        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
-        return CompositeSummary(APRSummary(self), subproofs_summaries)
+        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
+        return CompositeSummary(
+            APRSummary(
+                self.id,
+                self.status,
+                self.admitted,
+                len(self.kcfg.nodes),
+                len(self.pending),
+                len(self.failing),
+                len(self.kcfg.stuck),
+                len(self.terminal),
+                len(self.node_refutations),
+                len(self.subproof_ids),
+            ),
+            subproofs_summaries,
+        )
 
     def get_refutation_id(self, node_id: int) -> str:
         return f'{self.id}.node-infeasible-{node_id}'
@@ -352,9 +365,24 @@ class APRBMCProof(APRProof):
         self._bounded_nodes.append(self.kcfg._resolve(nid))
 
     @property
-    def summary(self) -> list[ProofSummary]:
-        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
-        return [APRBMCSummary(self), *subproofs_summaries]
+    def summary(self) -> CompositeSummary:
+        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
+        return CompositeSummary(
+            APRBMCSummary(
+                self.id,
+                self.status,
+                self.bmc_depth,
+                len(self.kcfg.nodes),
+                len(self.pending),
+                len(self.failing),
+                len(self.kcfg.stuck),
+                len(self.terminal),
+                len(self.node_refutations),
+                len(self._bounded_nodes),
+                len(self.subproof_ids),
+            ),
+            subproofs_summaries,
+        )
 
 
 class APRProver(Prover):
@@ -698,6 +726,7 @@ class APRBMCProver(APRProver):
         return self.proof.kcfg
 
 
+@dataclass
 class APRSummary(ProofSummary):
     id: str
     status: ProofStatus
@@ -710,18 +739,7 @@ class APRSummary(ProofSummary):
     refuted: int
     subproofs: int
 
-    def __init__(self, proof: APRProof):
-        self.id = proof.id
-        self.status = proof.status
-        self.admitted = proof.admitted
-        self.nodes = len(proof.kcfg.nodes)
-        self.pending = len(proof.pending)
-        self.failing = len(proof.failing)
-        self.stuck = len(proof.kcfg.stuck)
-        self.terminal = len(proof.terminal)
-        self.refuted = len(proof.node_refutations)
-        self.subproofs = len(proof.subproof_ids)
-
+    @property
     def lines(self) -> list[str]:
         return [
             f'APRProof: {self.id}',
@@ -737,6 +755,7 @@ class APRSummary(ProofSummary):
         ]
 
 
+@dataclass
 class APRBMCSummary(ProofSummary):
     id: str
     bmc_depth: int
@@ -750,19 +769,7 @@ class APRBMCSummary(ProofSummary):
     bounded: int
     subproofs: int
 
-    def __init__(self, proof: APRBMCProof):
-        self.id = proof.id
-        self.bmc_depth = proof.bmc_depth
-        self.status = proof.status
-        self.nodes = len(proof.kcfg.nodes)
-        self.pending = len(proof.pending)
-        self.failing = len(proof.failing)
-        self.stuck = len(proof.kcfg.stuck)
-        self.terminal = len(proof.terminal)
-        self.refuted = len(proof.node_refutations)
-        self.bounded = len(proof._bounded_nodes)
-        self.subproofs = len(proof.subproof_ids)
-
+    @property
     def lines(self) -> list[str]:
         return [
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',

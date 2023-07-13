@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Final, Generic, TypeVar
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Final, TypeVar
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KInner, KSort, Subst
@@ -10,7 +10,7 @@ from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
-from .proof import Proof, ProofStatus, ProofSummary, Prover
+from .proof import CompositeSummary, Proof, ProofStatus, ProofSummary, Prover
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -178,8 +178,12 @@ class EqualityProof(ImpliesProof):
         return lines
 
     @property
-    def summary(self) -> Iterable[str]:
-        return str(EqualitySummary.from_proof(self))
+    def summary(self) -> CompositeSummary:
+        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
+        return CompositeSummary(
+            EqualitySummary(self.id, self.status, self.admitted),
+            subproofs_summaries,
+        )
 
 
 class RefutationProof(ImpliesProof):
@@ -254,8 +258,12 @@ class RefutationProof(ImpliesProof):
         )
 
     @property
-    def summary(self) -> Iterable[str]:
-        return RefutationSummary.from_proof(self).to_str()
+    def summary(self) -> CompositeSummary:
+        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
+        return CompositeSummary(
+            RefutationSummary(self.id, self.status),
+            subproofs_summaries,
+        )
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
         lines = [
@@ -331,7 +339,6 @@ class EqualityProver(ImpliesProver):
         self.proof.set_simplified_equality(self.proof.simplified_consequent)
 
 
-
 class RefutationProver(ImpliesProver):
     def __init__(self, proof: RefutationProof, kcfg_explore: KCFGExplore) -> None:
         super().__init__(
@@ -347,16 +354,13 @@ class RefutationProver(ImpliesProver):
         self.proof.set_simplified_constraints(self.proof.simplified_consequent)
 
 
+@dataclass
 class EqualitySummary(ProofSummary):
     id: str
     status: ProofStatus
     admitted: bool
 
-    def __init__(self, proof: EqualityProof):
-        self.id = proof.id
-        self.status = proof.status
-        self.admitted = proof.admitted
-
+    @property
     def lines(self) -> list[str]:
         return [
             f'EqualityProof: {self.id}',
@@ -365,14 +369,12 @@ class EqualitySummary(ProofSummary):
         ]
 
 
+@dataclass
 class RefutationSummary(ProofSummary):
     id: str
     status: ProofStatus
 
-    def __init__(self, proof: RefutationProof):
-        self.id = proof.id
-        self.status = proof.status
-
+    @property
     def lines(self) -> list[str]:
         return [
             f'RefutationProof: {self.id}',
