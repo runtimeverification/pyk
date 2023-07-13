@@ -125,6 +125,32 @@ BUBBLE_TEST_DATA: Final = (
     ),
     ('alias', [Token('alias', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
     ('bubble alias', [Token('bubble alias', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('[', [Token('[', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('/**/[', [Token('[', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    ('[]', [Token('[]', TokenType.BUBBLE), Token('', TokenType.EOF)], ''),
+    (
+        '[a]:',
+        [
+            Token('[', TokenType.LBRACK),
+            Token('a', TokenType.RULE_LABEL),
+            Token(']', TokenType.RBRACK),
+            Token(':', TokenType.COLON),
+            Token('', TokenType.EOF),
+        ],
+        '',
+    ),
+    (
+        '[a]:b',
+        [
+            Token('[', TokenType.LBRACK),
+            Token('a', TokenType.RULE_LABEL),
+            Token(']', TokenType.RBRACK),
+            Token(':', TokenType.COLON),
+            Token('b', TokenType.BUBBLE),
+            Token('', TokenType.EOF),
+        ],
+        '',
+    ),
 )
 
 

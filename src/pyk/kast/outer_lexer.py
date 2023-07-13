@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -55,6 +56,7 @@ class TokenType(Enum):
     ID_UPPER = auto()
     MODNAME = auto()
     KLABEL = auto()
+    RULE_LABEL = auto()
     ATTR_KEY = auto()
     ATTR_CONTENT = auto()
     BUBBLE = auto()
@@ -568,10 +570,11 @@ def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple
     if bubble is not None:
         label_tokens, bubble = _strip_bubble_label(bubble)
         bubble, attr_tokens = _strip_bubble_attr(bubble)
-        bubble_token = Token(bubble, TokenType.BUBBLE)
 
         tokens = label_tokens
-        tokens += [bubble_token]
+        if bubble:
+            bubble_token = Token(bubble, TokenType.BUBBLE)
+            tokens += [bubble_token]
         tokens += attr_tokens
 
     tokens += [final_token]
@@ -633,8 +636,23 @@ def _raw_bubble(la: str, it: Iterator[str], keywords: Collection[str]) -> tuple[
                 la = next(it, '')
 
 
+RULE_LABEL_PATTERN: Final = re.compile(r'(?s)\s*\[\s*(?P<label>[^\[\]\_\n\r\t ]+)\s*\]\s*:\s*(?P<rest>.*)')
+
+
 def _strip_bubble_label(bubble: str) -> tuple[list[Token], str]:
-    return [], bubble
+    match = RULE_LABEL_PATTERN.fullmatch(bubble)
+    if not match:
+        return [], bubble
+
+    return (
+        [
+            _SIMPLE_CHARS['['],
+            Token(match['label'], TokenType.RULE_LABEL),
+            _SIMPLE_CHARS[']'],
+            _COLON_TOKEN,
+        ],
+        match['rest'],
+    )
 
 
 def _strip_bubble_attr(bubble: str) -> tuple[str, list[Token]]:
