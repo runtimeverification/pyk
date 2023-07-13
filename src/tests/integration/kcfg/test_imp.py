@@ -20,6 +20,12 @@ from pyk.utils import single
 
 from ..utils import K_FILES
 
+
+@pytest.fixture(scope='function')
+def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp('proofs')
+
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
