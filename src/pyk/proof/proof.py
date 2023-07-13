@@ -1,10 +1,10 @@
 from __future__ import annotations
+from itertools import chain
 
 import json
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum
-from itertools import chain
 from typing import TYPE_CHECKING
 
 from ..utils import hash_file, hash_str
@@ -174,10 +174,34 @@ class Proof(ABC):
     def json(self) -> str:
         return json.dumps(self.dict)
 
+    # @property
+    # @abstractmethod
+    # def summary(self) -> CompositeSummary:
+    #     """Return a short summary of the proof containing informations related to it"""
+    #     ...
+
     @property
-    def summary(self) -> Iterable[str]:
+    def summary(self) -> CompositeSummary:
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
         return chain([f'Proof: {self.id}', f'    status: {self.status}'], *subproofs_summaries)
+
+class ProofSummary(ABC):
+    id: str
+    status: ProofStatus
+
+    @property
+    @abstractmethod
+    def lines(self) -> list[str]:
+        ...
+
+    def __str__(self) -> str:
+        return '\n'.join(self.lines)
+
+class CompositeSummary:
+    _summaries: Iterable[ProofSummary]
+
+    def __init__(self, summary: ProofSummary, subproofs_summaries: Iterable[ProofSummary]):
+        self._summaries = chain([summary], subproofs_summaries)
 
 
 class Prover:
@@ -185,3 +209,4 @@ class Prover:
 
     def __init__(self, kcfg_explore: KCFGExplore):
         self.kcfg_explore = kcfg_explore
+

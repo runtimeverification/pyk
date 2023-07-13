@@ -17,7 +17,7 @@ from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
 from ..utils import FrozenDict, hash_str, shorten_hashes, single
 from .equality import ProofSummary, RefutationProof
-from .proof import Proof, ProofStatus, Prover
+from .proof import CompositeSummary, Proof, ProofStatus, Prover
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -233,11 +233,9 @@ class APRProof(Proof):
         self._terminal_nodes.remove(self.kcfg._resolve(nid))  # TODO remove
 
     @property
-    def summary(self) -> Iterable[str]:
+    def summary(self) -> CompositeSummary:
         subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
-        yield from APRSummary.from_proof(self).to_str()
-        for summary in subproofs_summaries:
-            yield from summary
+        return CompositeSummary(APRSummary(self), subproofs_summaries)
 
     def get_refutation_id(self, node_id: int) -> str:
         return f'{self.id}.node-infeasible-{node_id}'
@@ -354,11 +352,9 @@ class APRBMCProof(APRProof):
         self._bounded_nodes.append(self.kcfg._resolve(nid))
 
     @property
-    def summary(self) -> Iterable[str]:
+    def summary(self) -> list[ProofSummary]:
         subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
-        yield from APRBMCSummary.from_proof(self).to_str()
-        for summary in subproofs_summaries:
-            yield from summary
+        return [APRBMCSummary(self), *subproofs_summaries]
 
 
 class APRProver(Prover):
@@ -702,7 +698,7 @@ class APRBMCProver(APRProver):
         return self.proof.kcfg
 
 
-class APRSummary(ProofSummary[APRProof]):
+class APRSummary(ProofSummary):
     id: str
     status: ProofStatus
     admitted: bool
@@ -714,47 +710,20 @@ class APRSummary(ProofSummary[APRProof]):
     refuted: int
     subproofs: int
 
-    def __init__(
-        self,
-        id: str,
-        status: ProofStatus,
-        admitted: bool,
-        nodes: int,
-        pending: int,
-        failing: int,
-        stuck: int,
-        terminal: int,
-        refuted: int,
-        subproofs: int,
-    ):
-        self.id = id
-        self.status = status
-        self.admitted = admitted
-        self.nodes = nodes
-        self.pending = pending
-        self.failing = failing
-        self.stuck = stuck
-        self.terminal = terminal
-        self.refuted = refuted
-        self.subproofs = subproofs
+    def __init__(self, proof: APRProof):
+        self.id = proof.id
+        self.status = proof.status
+        self.admitted = proof.admitted
+        self.nodes = len(proof.kcfg.nodes)
+        self.pending = len(proof.pending)
+        self.failing = len(proof.failing)
+        self.stuck = len(proof.kcfg.stuck)
+        self.terminal = len(proof.terminal)
+        self.refuted = len(proof.node_refutations)
+        self.subproofs = len(proof.subproof_ids)
 
-    @staticmethod
-    def from_proof(proof: APRProof) -> APRSummary:
-        return APRSummary(
-            proof.id,
-            proof.status,
-            proof.admitted,
-            len(proof.kcfg.nodes),
-            len(proof.pending),
-            len(proof.failing),
-            len(proof.kcfg.stuck),
-            len(proof.terminal),
-            len(proof.node_refutations),
-            len(proof.subproof_ids),
-        )
-
-    def to_str(self) -> Iterable[str]:
-        yield from [
+    def lines(self) -> list[str]:
+        return [
             f'APRProof: {self.id}',
             f'    status: {self.status}',
             f'    admitted: {self.admitted}',
@@ -768,7 +737,7 @@ class APRSummary(ProofSummary[APRProof]):
         ]
 
 
-class APRBMCSummary(ProofSummary[APRBMCProof]):
+class APRBMCSummary(ProofSummary):
     id: str
     bmc_depth: int
     status: ProofStatus
@@ -781,50 +750,21 @@ class APRBMCSummary(ProofSummary[APRBMCProof]):
     bounded: int
     subproofs: int
 
-    def __init__(
-        self,
-        id: str,
-        bmc_depth: int,
-        status: ProofStatus,
-        nodes: int,
-        pending: int,
-        failing: int,
-        stuck: int,
-        terminal: int,
-        refuted: int,
-        bounded: int,
-        subproofs: int,
-    ):
-        self.id = id
-        self.bmc_depth = bmc_depth
-        self.status = status
-        self.nodes = nodes
-        self.pending = pending
-        self.failing = failing
-        self.stuck = stuck
-        self.terminal = terminal
-        self.refuted = refuted
-        self.bounded = bounded
-        self.subproofs = subproofs
+    def __init__(self, proof: APRBMCProof):
+        self.id = proof.id
+        self.bmc_depth = proof.bmc_depth
+        self.status = proof.status
+        self.nodes = len(proof.kcfg.nodes)
+        self.pending = len(proof.pending)
+        self.failing = len(proof.failing)
+        self.stuck = len(proof.kcfg.stuck)
+        self.terminal = len(proof.terminal)
+        self.refuted = len(proof.node_refutations)
+        self.bounded = len(proof._bounded_nodes)
+        self.subproofs = len(proof.subproof_ids)
 
-    @staticmethod
-    def from_proof(proof: APRBMCProof) -> APRBMCSummary:
-        return APRBMCSummary(
-            proof.id,
-            proof.bmc_depth,
-            proof.status,
-            proof.admitted,
-            len(proof.kcfg.nodes),
-            len(proof.pending),
-            len(proof.failing),
-            len(proof.kcfg.stuck),
-            len(proof.terminal),
-            len(proof.node_refutations),
-            len(proof.subproof_ids),
-        )
-
-    def to_str(self) -> Iterable[str]:
-        yield from [
+    def lines(self) -> list[str]:
+        return [
             f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
             f'    status: {self.status}',
             f'    nodes: {self.nodes}',

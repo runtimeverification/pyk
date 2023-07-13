@@ -10,7 +10,7 @@ from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
-from .proof import Proof, ProofStatus, Prover
+from .proof import Proof, ProofStatus, ProofSummary, Prover
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -179,7 +179,7 @@ class EqualityProof(ImpliesProof):
 
     @property
     def summary(self) -> Iterable[str]:
-        return EqualitySummary.from_proof(self).to_str()
+        return str(EqualitySummary.from_proof(self))
 
 
 class RefutationProof(ImpliesProof):
@@ -331,16 +331,6 @@ class EqualityProver(ImpliesProver):
         self.proof.set_simplified_equality(self.proof.simplified_consequent)
 
 
-class ProofSummary(Generic[T], ABC):
-    @staticmethod
-    @abstractmethod
-    def from_proof(proof: T) -> ProofSummary[T]:
-        ...
-
-    @abstractmethod
-    def to_str(self) -> Iterable[str]:
-        ...
-
 
 class RefutationProver(ImpliesProver):
     def __init__(self, proof: RefutationProof, kcfg_explore: KCFGExplore) -> None:
@@ -357,45 +347,34 @@ class RefutationProver(ImpliesProver):
         self.proof.set_simplified_constraints(self.proof.simplified_consequent)
 
 
-class EqualitySummary(ProofSummary[EqualityProof]):
+class EqualitySummary(ProofSummary):
     id: str
     status: ProofStatus
     admitted: bool
 
-    def __init__(self, id: str, status: ProofStatus, admitted: bool):
-        self.id = id
-        self.status = status
-        self.admitted = admitted
+    def __init__(self, proof: EqualityProof):
+        self.id = proof.id
+        self.status = proof.status
+        self.admitted = proof.admitted
 
-    @staticmethod
-    def from_proof(proof: EqualityProof) -> EqualitySummary:
-        return EqualitySummary(proof.id, proof.status, proof.admitted)
-
-    def to_str(self) -> Iterable[str]:
-        yield from [
+    def lines(self) -> list[str]:
+        return [
             f'EqualityProof: {self.id}',
             f'    status: {self.status}',
             f'    admitted: {self.admitted}',
         ]
 
 
-class RefutationSummary(ProofSummary[RefutationProof]):
+class RefutationSummary(ProofSummary):
     id: str
     status: ProofStatus
 
-    def __init__(self, id: str, status: ProofStatus):
-        self.id = id
-        self.status = status
+    def __init__(self, proof: RefutationProof):
+        self.id = proof.id
+        self.status = proof.status
 
-    @staticmethod
-    def from_proof(proof: RefutationProof) -> RefutationSummary:
-        return RefutationSummary(
-            proof.id,
-            proof.status,
-        )
-
-    def to_str(self) -> Iterable[str]:
-        yield from [
+    def lines(self) -> list[str]:
+        return [
             f'RefutationProof: {self.id}',
             f'    status: {self.status}',
         ]
