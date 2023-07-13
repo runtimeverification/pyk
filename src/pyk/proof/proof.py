@@ -176,7 +176,7 @@ class Proof(ABC):
         return json.dumps(self.dict)
 
     @property
-    def summary(self) -> CompositeSummary:
+    def summary(self) -> ProofSummary:
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
         return CompositeSummary(ProofSummary(self.id, self.status), subproofs_summaries)
 
@@ -194,11 +194,19 @@ class ProofSummary(ABC):
         return '\n'.join(self.lines)
 
 
-class CompositeSummary:
-    summaries: tuple[ProofSummary]
+@dataclass
+class CompositeSummary(ProofSummary):
+    id: str
+    status: ProofStatus
+    summaries: tuple[ProofSummary, ...]
 
-    def __init__(self, summary: ProofSummary, subproofs_summaries: Iterable[CompositeSummary]):
-        self._summaries = chain([summary], subproofs_summaries)
+    def __init__(self, summary: ProofSummary, subproofs_summaries: Iterable[ProofSummary]):
+        self.id = summary.id
+        self.status = summary.status
+        self.summaries = tuple(chain([summary], subproofs_summaries))
+
+    def __str__(self) -> str:
+        return '\n'.join(str(summary) for summary in self.summaries)
 
 
 class Prover:

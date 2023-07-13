@@ -10,7 +10,7 @@ from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
-from .proof import CompositeSummary, Proof, ProofStatus, ProofSummary, Prover
+from .proof import Proof, ProofStatus, ProofSummary, Prover
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -178,12 +178,26 @@ class EqualityProof(ImpliesProof):
         return lines
 
     @property
-    def summary(self) -> CompositeSummary:
-        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
-        return CompositeSummary(
-            EqualitySummary(self.id, self.status, self.admitted),
-            subproofs_summaries,
-        )
+    def summary(self) -> EqualitySummary:
+        return EqualitySummary(self.id, self.status, self.admitted)
+
+
+@dataclass
+class EqualitySummary(ProofSummary):
+    id: str
+    status: ProofStatus
+    admitted: bool
+
+    @property
+    def lines(self) -> list[str]:
+        return [
+            f'EqualityProof: {self.id}',
+            f'    status: {self.status}',
+            f'    admitted: {self.admitted}',
+        ]
+
+    def __str__(self) -> str:
+        return '\n'.join(self.lines)
 
 
 class RefutationProof(ImpliesProof):
@@ -258,12 +272,8 @@ class RefutationProof(ImpliesProof):
         )
 
     @property
-    def summary(self) -> CompositeSummary:
-        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
-        return CompositeSummary(
-            RefutationSummary(self.id, self.status),
-            subproofs_summaries,
-        )
+    def summary(self) -> RefutationSummary:
+        return RefutationSummary(self.id, self.status)
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
         lines = [
@@ -274,6 +284,19 @@ class RefutationProof(ImpliesProof):
             lines.append(f'Implication csubst: {self.csubst}')
         lines.append(f'Status: {self.status}')
         return lines
+
+
+@dataclass
+class RefutationSummary(ProofSummary):
+    id: str
+    status: ProofStatus
+
+    @property
+    def lines(self) -> list[str]:
+        return [
+            f'RefutationProof: {self.id}',
+            f'    status: {self.status}',
+        ]
 
 
 class ImpliesProver(Prover):
@@ -352,31 +375,3 @@ class RefutationProver(ImpliesProver):
         super().advance_proof()
         assert type(self.proof) is RefutationProof
         self.proof.set_simplified_constraints(self.proof.simplified_consequent)
-
-
-@dataclass
-class EqualitySummary(ProofSummary):
-    id: str
-    status: ProofStatus
-    admitted: bool
-
-    @property
-    def lines(self) -> list[str]:
-        return [
-            f'EqualityProof: {self.id}',
-            f'    status: {self.status}',
-            f'    admitted: {self.admitted}',
-        ]
-
-
-@dataclass
-class RefutationSummary(ProofSummary):
-    id: str
-    status: ProofStatus
-
-    @property
-    def lines(self) -> list[str]:
-        return [
-            f'RefutationProof: {self.id}',
-            f'    status: {self.status}',
-        ]
