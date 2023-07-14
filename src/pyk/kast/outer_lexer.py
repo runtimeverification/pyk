@@ -505,7 +505,7 @@ _KLABEL_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuratio
 def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
     consumed: list[str]
     while True:
-        while la in _WHITESPACE:  # TODO la in _WHITESPACE
+        while la in _WHITESPACE:
             la = next(it, '')
 
         if not la:
