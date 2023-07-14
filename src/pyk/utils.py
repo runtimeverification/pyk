@@ -10,9 +10,10 @@ import tarfile
 import time
 from collections.abc import Mapping
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar, cast, overload
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable, Iterator
@@ -506,8 +507,16 @@ class BugReport:
         self.add_file_contents(shebang + ' '.join(remapped_args) + '\n', arcname)
         self._command_id += 1
 
-    def add_definition(self, defn_path: Path) -> None:
-        if str(defn_path) not in self._file_remap:
-            arcname = Path('kompiled') / f'{self._defn_id:03}_defn'
-            self.add_file(defn_path, arcname)
-            self._defn_id += 1
+
+class Kernel(Enum):
+    LINUX = 'Linux'
+    DARWIN = 'Darwin'
+
+    cached: ClassVar[Kernel | None] = None
+
+    @classmethod
+    def get(cls) -> Kernel:
+        if cls.cached is None:
+            uname = run_process(('uname', '-s'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
+            cls.cached = Kernel(uname)
+        return cls.cached
