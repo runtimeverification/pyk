@@ -70,18 +70,24 @@ class Token(NamedTuple):
 _EOF_TOKEN: Final = Token('', TokenType.EOF)
 _COLON_TOKEN: Final = Token(':', TokenType.COLON)
 _DCOLONEQ_TOKEN: Final = Token('::=', TokenType.DCOLONEQ)
+_COMMA_TOKEN: Final = Token(',', TokenType.COMMA)
+_LPAREN_TOKEN: Final = Token('(', TokenType.LPAREN)
+_RPAREN_TOKEN: Final = Token(')', TokenType.RPAREN)
+_LBRACK_TOKEN: Final = Token('[', TokenType.LBRACK)
+_RBRACK_TOKEN: Final = Token(']', TokenType.RBRACK)
+_GT_TOKEN: Final = Token('>', TokenType.GT)
 
 _SIMPLE_CHARS: Final = {
-    ',': Token(',', TokenType.COMMA),
-    '(': Token('(', TokenType.LPAREN),
-    ')': Token(')', TokenType.RPAREN),
+    ',': _COMMA_TOKEN,
+    '(': _LPAREN_TOKEN,
+    ')': _RPAREN_TOKEN,
+    '[': _LBRACK_TOKEN,
+    ']': _RBRACK_TOKEN,
+    '>': _GT_TOKEN,
     '{': Token('{', TokenType.LBRACE),
     '}': Token('}', TokenType.RBRACE),
-    '[': Token('[', TokenType.LBRACK),
-    ']': Token(']', TokenType.RBRACK),
     '|': Token('|', TokenType.VBAR),
     '=': Token('=', TokenType.EQ),
-    '>': Token('>', TokenType.GT),
     '+': Token('+', TokenType.PLUS),
     '*': Token('*', TokenType.TIMES),
     '?': Token('?', TokenType.QUESTION),
@@ -543,7 +549,7 @@ def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
         consumed.append(la)
         la = next(it, '')
         if not la or la in _WHITESPACE:
-            return _SIMPLE_CHARS['>'], la
+            return _GT_TOKEN, la
 
     while la and la not in _WHITESPACE:
         consumed.append(la)
@@ -646,9 +652,9 @@ def _strip_bubble_label(bubble: str) -> tuple[list[Token], str]:
 
     return (
         [
-            _SIMPLE_CHARS['['],
+            _LBRACK_TOKEN,
             Token(match['label'], TokenType.RULE_LABEL),
-            _SIMPLE_CHARS[']'],
+            _RBRACK_TOKEN,
             _COLON_TOKEN,
         ],
         match['rest'],
@@ -674,7 +680,10 @@ def _strip_bubble_attr(bubble: str) -> tuple[str, list[Token]]:
 
         if la:
             continue
-        return prefix.rstrip(' \t\n\r'), [_SIMPLE_CHARS['[']] + attr_tokens
+
+        tokens = [_LBRACK_TOKEN]
+        tokens += attr_tokens
+        return prefix.rstrip(' \t\n\r'), tokens
 
     return bubble, []
 
@@ -692,27 +701,27 @@ def _attr(la: str, it: Iterator[str]) -> tuple[list[Token], str]:
         la = _skip_ws_and_comments(la, it)
 
         if la == '(':  # TAG_STATE
-            tokens.append(_SIMPLE_CHARS[la])  # TODO eliminate dict lookup
+            tokens.append(_LPAREN_TOKEN)
             la = next(it, '')
 
             tag, la = _attr_tag(la, it)
             assert la == ')'
             tokens.append(tag)
-            tokens.append(_SIMPLE_CHARS[la])
+            tokens.append(_RPAREN_TOKEN)
             la = next(it, '')
             la = _skip_ws_and_comments(la, it)
 
         if la != ',':
             break
 
-        tokens.append(_SIMPLE_CHARS[la])
+        tokens.append(_COMMA_TOKEN)
         la = next(it, '')
         la = _skip_ws_and_comments(la, it)
 
     if la != ']':
         raise ValueError(f'Unexpected character: {la}')
 
-    tokens.append(_SIMPLE_CHARS[la])
+    tokens.append(_RBRACK_TOKEN)
     la = next(it, '')
 
     return tokens, la
