@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, ContextManager, final
 from psutil import Process
 
 from ..ktool.kprove import KoreExecLogFormat
-from ..utils import Kernel, check_dir_path, check_file_path, filter_none
+from ..utils import Kernel, check_dir_path, check_file_path, filter_none, run_process
 from .syntax import And, Pattern, SortApp, kore_term
 
 if TYPE_CHECKING:
@@ -668,14 +668,14 @@ class KoreServer(ContextManager['KoreServer']):
 
         args = list(command)
         args += [str(definition_file)]
-        args += ['--module', module_name]
-        args += ['--server-port', str(port or 0)]
+        server_args = ['--module', module_name, '--server-port', str(port or 0)]
+        smt_server_args = []
         if smt_timeout:
-            args += ['--smt-timeout', str(smt_timeout)]
+            smt_server_args += ['--smt-timeout', str(smt_timeout)]
         if smt_retry_limit:
-            args += ['--smt-retry-limit', str(smt_retry_limit)]
+            smt_server_args += ['--smt-retry-limit', str(smt_retry_limit)]
         if smt_reset_interval:
-            args += ['--smt-reset-interval', str(smt_reset_interval)]
+            smt_server_args += ['--smt-reset-interval', str(smt_reset_interval)]
 
         haskell_log_args = (
             [
@@ -689,11 +689,25 @@ class KoreServer(ContextManager['KoreServer']):
             if log_axioms_file
             else []
         )
+        args += server_args
+        args += smt_server_args
         args += haskell_log_args
 
+        if bug_report:
+            bug_report.add_file(definition_file, Path('definition.kore'))
+            command = list(command)
+
+            version_info = run_process((command[0], '--version'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
+            bug_report.add_file_contents(version_info, Path('server_version.txt'))
+            server_instance = {
+                'exe': command[0],
+                'module': module_name,
+                'extra_args': command[1:] + smt_server_args + haskell_log_args,
+            }
+            bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
+
         _LOGGER.info(f'Starting KoreServer: {" ".join(args)}')
-        if bug_report is not None:
-            bug_report.add_command(args)
+
         self._proc = Popen(args)
         self._pid = self._proc.pid
         self._host, self._port = self._get_host_and_port(self._pid)
@@ -765,6 +779,14 @@ class BoosterServer(KoreServer):
 
         dylib = llvm_kompiled_dir / f'interpreter.{ext}'
         check_file_path(dylib)
+        llvm_definition = llvm_kompiled_dir / 'definition.kore'
+        check_file_path(llvm_definition)
+        llvm_dt = llvm_kompiled_dir / 'dt'
+        check_dir_path(llvm_dt)
+
+        if bug_report:
+            bug_report.add_file(llvm_definition, Path('llvm_definition/definition.kore'))
+            bug_report.add_file(llvm_dt, Path('llvm_definition/dt'))
 
         self._check_none_or_positive(smt_timeout, 'smt_timeout')
         self._check_none_or_positive(smt_retry_limit, 'smt_retry_limit')

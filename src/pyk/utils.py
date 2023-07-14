@@ -507,12 +507,6 @@ class BugReport:
         self.add_file_contents(shebang + ' '.join(remapped_args) + '\n', arcname)
         self._command_id += 1
 
-    def add_definition(self, defn_path: Path) -> None:
-        if str(defn_path) not in self._file_remap:
-            arcname = Path('kompiled') / f'{self._defn_id:03}_defn'
-            self.add_file(defn_path, arcname)
-            self._defn_id += 1
-
 
 class Kernel(Enum):
     LINUX = 'Linux'
