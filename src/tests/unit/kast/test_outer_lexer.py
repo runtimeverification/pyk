@@ -453,9 +453,16 @@ def test_attr(text: str, expected_tokens: list[Token], expected_remaining: str) 
     # Given
     it = iter(text)
     la = next(it, '')
+    attr_tokens = _attr(la, it)
 
     # When
-    actual_tokens, la = _attr(la, it)
+    actual_tokens: list[Token] = []
+    try:
+        while True:
+            actual_tokens.append(next(attr_tokens))
+    except StopIteration as err:
+        la = err.value
+
     actual_remaining = la + ''.join(it)
 
     # Then

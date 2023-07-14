@@ -5,7 +5,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Iterable, Iterator
+    from collections.abc import Collection, Generator, Iterable, Iterator
     from typing import Final
 
 
@@ -178,6 +178,8 @@ _NEXT_STATE: Final = {
     (State.SYNTAX, TokenType.LBRACE): State.DEFAULT,
 }
 
+_BUBBLY_STATES: Final = {State.BUBBLE, State.CONTEXT}
+
 
 def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
     it = iter(it)
@@ -185,45 +187,27 @@ def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
     state = State.DEFAULT
 
     while True:
-        if state is State.DEFAULT:
-            token, la = _default(la, it)
+        if state in _SIMPLE_STATES:
+            token, la = _SIMPLE_STATES[state](la, it)
             yield token
-            if token.type == TokenType.EOF:
-                return
+            last_token = token
 
-        elif state is State.SYNTAX:
-            token, la = _syntax(la, it)
-            yield token
-            if token.type == TokenType.EOF:
-                return
-
-        elif state is State.KLABEL:
-            token, la = _klabel(la, it)
-            yield token
-            if token.type == TokenType.EOF:
-                return
-
-        elif state is State.MODNAME:
-            token, la = _modname(la, it)
-            yield token
-            # should not be EOF
-
-        elif state in {State.BUBBLE, State.CONTEXT}:
+        elif state in _BUBBLY_STATES:
             tokens, la = _bubble_or_context(la, it, context=state is State.CONTEXT)
             yield from tokens
-            if tokens[-1].type is TokenType.EOF:
-                return
+            last_token = tokens[-1]
 
         elif state is State.ATTR:
-            tokens, la = _attr(la, it)
-            yield from tokens
+            la = yield from _attr(la, it)
             state = State.DEFAULT
             continue
 
         else:
-            raise RuntimeError('TODO')
+            raise AssertionError()
 
-        state = _NEXT_STATE.get((state, token.type), state)
+        if last_token.type is TokenType.EOF:
+            return
+        state = _NEXT_STATE.get((state, last_token.type), state)
 
 
 _DEFAULT_KEYWORDS: Final = {
@@ -563,6 +547,14 @@ def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
     return token, la
 
 
+_SIMPLE_STATES: Final = {
+    State.DEFAULT: _default,
+    State.SYNTAX: _syntax,
+    State.MODNAME: _modname,
+    State.KLABEL: _klabel,
+}
+
+
 _BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
 _CONTEXT_KEYWORDS: Final = {'alias'}.union(_BUBBLE_KEYWORDS)
 
@@ -673,58 +665,60 @@ def _strip_bubble_attr(bubble: str) -> tuple[str, list[Token]]:
         next(it)  # skip "["
         la = next(it, '')
 
+        tokens = [_LBRACK_TOKEN]
+        attr_tokens = _attr(la, it)
         try:
-            attr_tokens, la = _attr(la, it)
+            while True:
+                tokens.append(next(attr_tokens))
         except ValueError:
             continue
+        except StopIteration as err:
+            la = err.value
 
         if la:
             continue
 
-        tokens = [_LBRACK_TOKEN]
-        tokens += attr_tokens
         return prefix.rstrip(' \t\n\r'), tokens
 
     return bubble, []
 
 
-def _attr(la: str, it: Iterator[str]) -> tuple[list[Token], str]:
-    tokens: list[Token] = []
-
+def _attr(la: str, it: Iterator[str]) -> Generator[Token, None, str]:
     la = _skip_ws_and_comments(la, it)
     if not la:
         raise ValueError('Unexpected end of file')
 
     while True:
         key, la = _attr_key(la, it)
-        tokens.append(key)
+        yield key
+
         la = _skip_ws_and_comments(la, it)
 
         if la == '(':  # TAG_STATE
-            tokens.append(_LPAREN_TOKEN)
+            yield _LPAREN_TOKEN
             la = next(it, '')
 
             tag, la = _attr_tag(la, it)
             assert la == ')'
-            tokens.append(tag)
-            tokens.append(_RPAREN_TOKEN)
+            yield tag
+            yield _RPAREN_TOKEN
             la = next(it, '')
             la = _skip_ws_and_comments(la, it)
 
         if la != ',':
             break
 
-        tokens.append(_COMMA_TOKEN)
+        yield _COMMA_TOKEN
         la = next(it, '')
         la = _skip_ws_and_comments(la, it)
 
     if la != ']':
         raise ValueError(f'Unexpected character: {la}')
 
-    tokens.append(_RBRACK_TOKEN)
+    yield _RBRACK_TOKEN
     la = next(it, '')
 
-    return tokens, la
+    return la  # noqa: B901
 
 
 def _attr_key(la: str, it: Iterator[str]) -> tuple[Token, str]:
@@ -857,3 +851,10 @@ def _maybe_comment(la: str, it: Iterator[str]) -> tuple[bool, list[str], str]:
 
     else:
         return False, consumed, la
+
+
+def _unexpected_character(la: str) -> ValueError:
+    if la:
+        return ValueError(f'Unexpected character: {la!r}')
+
+    return ValueError('Unexpected end of file')
