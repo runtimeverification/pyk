@@ -430,7 +430,7 @@ def _syntax_keyword(la: str, it: Iterator[str]) -> tuple[Token, str]:
         raise _unexpected_character(la)
 
     consumed = []
-    while la in _ALNUM:
+    while la in _ALNUM or la == '-':
         consumed.append(la)
         la = next(it, '')
     text = ''.join(consumed)
