@@ -382,6 +382,27 @@ ATTR_TEST_DATA: Final = (
     ('a<b>]', [Token('a<b>', TokenType.ATTR_KEY), Token(']', TokenType.RBRACK)], ''),
     ('1a-B<-->]', [Token('1a-B<-->', TokenType.ATTR_KEY), Token(']', TokenType.RBRACK)], ''),
     (
+        'a()] ',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        ' ',
+    ),
+    (
+        'a("")]',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('""', TokenType.STRING),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        '',
+    ),
+    (
         'a("hello")]',
         [
             Token('a', TokenType.ATTR_KEY),
@@ -391,6 +412,50 @@ ATTR_TEST_DATA: Final = (
             Token(']', TokenType.RBRACK),
         ],
         '',
+    ),
+    (
+        'a( )] ',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token(' ', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        ' ',
+    ),
+    (
+        'a(())] ',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('()', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        ' ',
+    ),
+    (
+        'a(/*)] ',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('/*', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        ' ',
+    ),
+    (
+        'a(()())] ',
+        [
+            Token('a', TokenType.ATTR_KEY),
+            Token('(', TokenType.LPAREN),
+            Token('()()', TokenType.ATTR_CONTENT),
+            Token(')', TokenType.RPAREN),
+            Token(']', TokenType.RBRACK),
+        ],
+        ' ',
     ),
     (
         'a( tag content (()) () )]',

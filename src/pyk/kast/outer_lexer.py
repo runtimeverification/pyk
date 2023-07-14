@@ -258,17 +258,18 @@ def _default(la: str, it: Iterator[str]) -> tuple[Token, str]:
         return _colon_or_dcoloneq(la, it)
 
     else:
-        raise ValueError(f'Unexpected character: {la}')
+        raise _unexpected_character(la)
 
 
 def _skip_ws_and_comments(la: str, it: Iterator[str]) -> str:
+    # Only use in states where "/" can only be lexed as comment
     while True:
         if la in _WHITESPACE:
             la = next(it, '')
         elif la == '/':
             is_comment, consumed, la = _maybe_comment(la, it)
             if not is_comment:
-                raise ValueError(f'Unexpected character sequence: {consumed}')
+                raise _unexpected_character(la)
             la = next(it, '')
         else:
             break
@@ -323,7 +324,7 @@ def _hash_id(la: str, it: Iterator[str]) -> tuple[Token, str]:
     elif la in _UPPER:
         token_type = TokenType.ID_UPPER
     else:
-        raise ValueError(f'Unexpected character: {la}')  # TODO extract function that handles '' properly
+        raise _unexpected_character(la)
 
     while la in _ALNUM:
         consumed.append(la)
@@ -340,7 +341,7 @@ def _colon_or_dcoloneq(la: str, it: Iterator[str]) -> tuple[Token, str]:
         return _COLON_TOKEN, la
     la = next(it, '')
     if la != '=':
-        raise ValueError(f'Unexpected character: {la}')  # Could return [":", ":"], but that never parses
+        raise _unexpected_character(la)  # Could return [":", ":"], but that never parses
     la = next(it, '')
     return _DCOLONEQ_TOKEN, la
 
@@ -379,17 +380,13 @@ def _consume_string(consumed: list[str], la: str, it: Iterator[str]) -> str:
         consumed.append(la)  # ['"', ..., X]
         if la == '\\':
             la = next(it, '')
-            if not la:
-                raise ValueError('Unexpected end of file')
-            if la not in {'\\', '"', 'n', 'r', 't'}:
-                raise ValueError(f'Unexpected character: {la!r}')
+            if not la or la not in {'\\', '"', 'n', 'r', 't'}:
+                raise _unexpected_character(la)
             consumed.append(la)  # ['"', ..., '//', X]
         la = next(it, '')
 
-    if la == '\n':
-        raise ValueError(f'Unexpected character: {la!r}')
-    if not la:
-        raise ValueError('Unexpected end of file')  # TODO extract function
+    if not la or la == '\n':
+        raise _unexpected_character(la)
 
     consumed.append(la)  # ['"', ..., '"']
     la = next(it, '')
@@ -425,12 +422,12 @@ def _syntax(la: str, it: Iterator[str]) -> tuple[Token, str]:
         return _hash_upper_id(la, it)
 
     else:
-        raise ValueError(f'Unexpected character: {la}')
+        raise _unexpected_character(la)
 
 
 def _syntax_keyword(la: str, it: Iterator[str]) -> tuple[Token, str]:
     if la not in _LOWER:
-        raise ValueError(f'Unexpected character: {la}')
+        raise _unexpected_character(la)
 
     consumed = []
     while la in _ALNUM:
@@ -446,7 +443,7 @@ def _syntax_keyword(la: str, it: Iterator[str]) -> tuple[Token, str]:
 
 def _upper_id(la: str, it: Iterator[str]) -> tuple[Token, str]:
     if la not in _UPPER:
-        raise ValueError(f'Unexpected character: {la}')
+        raise _unexpected_character(la)
 
     consumed = []
     while la in _ALNUM:
@@ -463,7 +460,7 @@ def _hash_upper_id(la: str, it: Iterator[str]) -> tuple[Token, str]:
     la = next(it, '')
 
     if la not in _UPPER:
-        raise ValueError(f'Unexpected character: {la}')
+        raise _unexpected_character(la)
 
     while la in _ALNUM:
         consumed.append(la)
@@ -486,12 +483,12 @@ def _modname(la: str, it: Iterator) -> tuple[Token, str]:
         la = next(it, '')
 
     if not la:
-        raise ValueError('Unexpected end of file')
+        raise _unexpected_character(la)
 
     allow_dash = False
     while la in _MODNAME_CHARS:
         if la == '-' and not allow_dash:
-            raise ValueError(f'Unexpected character: {la}')
+            raise _unexpected_character(la)
         allow_dash = la != '-'
         consumed.append(la)
         la = next(it, '')
@@ -686,7 +683,7 @@ def _strip_bubble_attr(bubble: str) -> tuple[str, list[Token]]:
 def _attr(la: str, it: Iterator[str]) -> Generator[Token, None, str]:
     la = _skip_ws_and_comments(la, it)
     if not la:
-        raise ValueError('Unexpected end of file')
+        raise _unexpected_character(la)
 
     while True:
         key, la = _attr_key(la, it)
@@ -698,10 +695,20 @@ def _attr(la: str, it: Iterator[str]) -> Generator[Token, None, str]:
             yield _LPAREN_TOKEN
             la = next(it, '')
 
-            tag, la = _attr_tag(la, it)
-            assert la == ')'
-            yield tag
+            if la == '"':
+                token, la = _string(la, it)
+                yield token
+            else:
+                content, la = _attr_content(la, it)
+                if content:
+                    # allows 'key()'
+                    yield Token(content, TokenType.ATTR_CONTENT)
+
+            if la != ')':
+                raise _unexpected_character(la)
+
             yield _RPAREN_TOKEN
+
             la = next(it, '')
             la = _skip_ws_and_comments(la, it)
 
@@ -713,7 +720,7 @@ def _attr(la: str, it: Iterator[str]) -> Generator[Token, None, str]:
         la = _skip_ws_and_comments(la, it)
 
     if la != ']':
-        raise ValueError(f'Unexpected character: {la}')
+        raise _unexpected_character(la)
 
     yield _RBRACK_TOKEN
     la = next(it, '')
@@ -726,7 +733,7 @@ def _attr_key(la: str, it: Iterator[str]) -> tuple[Token, str]:
 
     consumed: list[str] = []
     if la not in _LOWER and la not in _DIGIT:
-        raise ValueError(f'Unexpected character: {la}')
+        raise _unexpected_character(la)
 
     consumed.append(la)
     la = next(it, '')
@@ -740,7 +747,7 @@ def _attr_key(la: str, it: Iterator[str]) -> tuple[Token, str]:
         la = next(it, '')
 
         if not la in _ALNUM and la != '-':
-            raise ValueError(f'Unexpected character: {la}')
+            raise _unexpected_character(la)
 
         consumed.append(la)
         la = next(it, '')
@@ -750,7 +757,7 @@ def _attr_key(la: str, it: Iterator[str]) -> tuple[Token, str]:
             la = next(it, '')
 
         if la != '>':
-            raise ValueError(f'Unexpected character: {la}')
+            raise _unexpected_character(la)
 
         consumed.append(la)
         la = next(it, '')
@@ -759,17 +766,14 @@ def _attr_key(la: str, it: Iterator[str]) -> tuple[Token, str]:
     return Token(attr_key, TokenType.ATTR_KEY), la
 
 
-_ATTR_CONTENT_FORBIDDEN: Final = {'\n', '\r', '"'}
+_ATTR_CONTENT_FORBIDDEN: Final = {'', '\n', '\r', '"'}
 
 
-def _attr_tag(la: str, it: Iterator[str]) -> tuple[Token, str]:
-    if la == '"':
-        return _string(la, it)
-
+def _attr_content(la: str, it: Iterator[str]) -> tuple[str, str]:
     consumed: list[str] = []
     open_parens = 0
 
-    while la and la not in _ATTR_CONTENT_FORBIDDEN:
+    while la not in _ATTR_CONTENT_FORBIDDEN:
         if la == ')':
             if not open_parens:
                 break
@@ -781,16 +785,13 @@ def _attr_tag(la: str, it: Iterator[str]) -> tuple[Token, str]:
         consumed.append(la)
         la = next(it, '')
 
-    if not la or la in _ATTR_CONTENT_FORBIDDEN:
-        raise ValueError(f'Unexpected character: {la}')
-
-    if not consumed:
-        raise ValueError('Unexpected empty attribute tag content')
+    if la in _ATTR_CONTENT_FORBIDDEN:
+        raise _unexpected_character(la)
 
     # assert la == ')'
 
-    attr_tag = ''.join(consumed)
-    return Token(attr_tag, TokenType.ATTR_CONTENT), la
+    attr_content = ''.join(consumed)
+    return attr_content, la
 
 
 def _maybe_comment(la: str, it: Iterator[str]) -> tuple[bool, list[str], str]:
