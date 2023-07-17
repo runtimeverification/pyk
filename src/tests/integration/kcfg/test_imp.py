@@ -707,11 +707,13 @@ class TestImpProof(KCFGExploreTest):
     # Default configuration comparator
     @staticmethod
     def _default_config_comparator() -> KInner:
-        return ml_pred_to_bool(mlAnd(
-            [
-                mlEquals(KVariable('K_CELL_1'), KVariable('K_CELL_2')),
-                mlEquals(KVariable('STATE_CELL_1'), KVariable('STATE_CELL_2')),
-            ])
+        return ml_pred_to_bool(
+            mlAnd(
+                [
+                    mlEquals(KVariable('K_CELL_1'), KVariable('K_CELL_2')),
+                    mlEquals(KVariable('STATE_CELL_1'), KVariable('STATE_CELL_2')),
+                ]
+            )
         )
 
     @staticmethod
@@ -1153,8 +1155,7 @@ class TestImpProof(KCFGExploreTest):
                 # Both proofs have been completed
                 print('Both proofs have been completed.')
                 assert (
-                    pc_stuck == SubsumptionCheckResult.EQUIVALENT
-                    and pc_frontier == SubsumptionCheckResult.EQUIVALENT
+                    pc_stuck == SubsumptionCheckResult.EQUIVALENT and pc_frontier == SubsumptionCheckResult.EQUIVALENT
                 )
             elif status_2 == ProofStatus.PENDING:
                 # Only second proof has not been completed
@@ -1175,7 +1176,4 @@ class TestImpProof(KCFGExploreTest):
             # The following check means the two proofs are done in lock-step,
             # but this need not be the case in general
             print('Neither proof has been completed.')
-            assert (
-                pc_stuck == SubsumptionCheckResult.EQUIVALENT
-                and pc_frontier == SubsumptionCheckResult.EQUIVALENT
-            )
+            assert pc_stuck == SubsumptionCheckResult.EQUIVALENT and pc_frontier == SubsumptionCheckResult.EQUIVALENT
