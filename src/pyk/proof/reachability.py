@@ -7,6 +7,7 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
+from pyk.proof.kcfg import KCFGProof, KCFGProver
 
 from ..cterm import CTerm
 from ..kast.inner import KRewrite, KSort
@@ -16,7 +17,7 @@ from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
 from ..utils import FrozenDict, hash_str, shorten_hashes, single
-from .equality import Prover, RefutationProof
+from .equality import RefutationProof
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class APRProof(Proof):
+class APRProof(KCFGProof):
     """APRProof and APRProver implement all-path reachability logic,
     as introduced by A. Stefanescu and others in their paper 'All-Path Reachability Logic':
     https://doi.org/10.23638/LMCS-15(2:5)2019
@@ -43,13 +44,8 @@ class APRProof(Proof):
     as CTL/CTL*'s `phi -> AF psi`, since reachability logic ignores infinite traces.
     """
 
-    kcfg: KCFG
     node_refutations: dict[NodeIdLike, RefutationProof]  # TODO _node_refutatations
-    init: NodeIdLike
     target: NodeIdLike
-    _terminal_nodes: list[NodeIdLike]
-    logs: dict[int, tuple[LogEntry, ...]]
-    circularity: bool
 
     def __init__(
         self,
@@ -65,13 +61,9 @@ class APRProof(Proof):
         circularity: bool = False,
         admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
-        self.kcfg = kcfg
+        super().__init__(id, kcfg, logs, False, proof_dir, terminal_nodes, subproof_ids, circularity, admitted)
         self.init = init
         self.target = target
-        self.logs = logs
-        self.circularity = circularity
-        self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
         self.node_refutations = {}
 
         if node_refutations is not None:
@@ -384,15 +376,8 @@ class APRBMCProof(APRProof):
             yield from summary
 
 
-class APRProver(Prover):
+class APRProver(KCFGProver):
     proof: APRProof
-    _is_terminal: Callable[[CTerm], bool] | None
-    _extract_branches: Callable[[CTerm], Iterable[KInner]] | None
-    _abstract_node: Callable[[CTerm], CTerm] | None
-
-    main_module_name: str
-    dependencies_module_name: str
-    circularities_module_name: str
 
     def __init__(
         self,
@@ -402,39 +387,8 @@ class APRProver(Prover):
         extract_branches: Callable[[CTerm], Iterable[KInner]] | None = None,
         abstract_node: Callable[[CTerm], CTerm] | None = None,
     ) -> None:
-        super().__init__(kcfg_explore)
+        super().__init__(kcfg_explore, proof, is_terminal, extract_branches, abstract_node)
         self.proof = proof
-        self.kcfg_explore = kcfg_explore
-        self._is_terminal = is_terminal
-        self._extract_branches = extract_branches
-        self._abstract_node = abstract_node
-        self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
-
-        subproofs: list[Proof] = (
-            [Proof.read_proof(i, proof_dir=proof.proof_dir) for i in proof.subproof_ids]
-            if proof.proof_dir is not None
-            else []
-        )
-
-        dependencies_as_claims: list[KClaim] = [
-            d for d in [d.as_claim(self.kcfg_explore.kprint) for d in subproofs] if d is not None
-        ]
-
-        self.dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
-        self.kcfg_explore.add_dependencies_module(
-            self.main_module_name,
-            self.dependencies_module_name,
-            dependencies_as_claims,
-            priority=1,
-        )
-        self.circularities_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'
-        self.kcfg_explore.add_dependencies_module(
-            self.main_module_name,
-            self.circularities_module_name,
-            dependencies_as_claims
-            + [c for c in ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []) if c is not None],
-            priority=1,
-        )
 
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
         if self._is_terminal is not None:

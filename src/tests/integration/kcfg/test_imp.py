@@ -1086,13 +1086,11 @@ class TestImpProof(KCFGExploreTest):
     ) -> None:
         configuration_1 = self.config(kcfg_explore.kprint, *config_1)
         kcfg_1 = KCFG()
-        init_state_1 = kcfg_1.create_node(configuration_1)
-        kcfg_1.add_node(init_state_1)
+        _ = kcfg_1.create_node(configuration_1)
 
         configuration_2 = self.config(kcfg_explore.kprint, *config_2)
         kcfg_2 = KCFG()
-        init_state_2 = kcfg_2.create_node(configuration_2)
-        kcfg_2.add_node(init_state_2)
+        _ = kcfg_2.create_node(configuration_2)
 
         proof = EquivalenceProof('eq_1', kcfg_1, {}, 'eq_2', kcfg_2, {})
         prover = EquivalenceProver(
