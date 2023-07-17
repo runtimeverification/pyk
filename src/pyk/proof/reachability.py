@@ -188,9 +188,10 @@ class APRProof(Proof):
         cfg, init_node, target_node = KCFG.from_claim(defn, claim)
         return APRProof(claim.label, cfg, init=init_node, target=target_node, logs=logs, **kwargs)
 
-    def as_claim(self, kprint: KPrint) -> KClaim:
-        fr: CTerm = self.kcfg.node(self.init).cterm
-        to: CTerm = self.kcfg.node(self.target).cterm
+    @classmethod
+    def as_claim(cls, kprint: KPrint) -> KClaim | None:
+        fr: CTerm = cls.kcfg.node(cls.init).cterm
+        to: CTerm = cls.kcfg.node(cls.target).cterm
         fr_config_sorted = kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
         to_config_sorted = kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
         kc = KClaim(
@@ -415,9 +416,9 @@ class APRProver(Prover):
             else []
         )
 
-        apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
-
-        dependencies_as_claims: list[KClaim] = [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
+        dependencies_as_claims: list[KClaim] = [
+            d for d in [d.as_claim(self.kcfg_explore.kprint) for d in subproofs] if d is not None
+        ]
 
         self.dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
         self.kcfg_explore.add_dependencies_module(
@@ -430,7 +431,8 @@ class APRProver(Prover):
         self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
             self.circularities_module_name,
-            dependencies_as_claims + ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []),
+            dependencies_as_claims
+            + [c for c in ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []) if c is not None],
             priority=1,
         )
 

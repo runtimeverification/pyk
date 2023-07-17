@@ -87,6 +87,11 @@ class EqualityProof(ImpliesProof):
         constraints = [mlEquals(TRUE, c, arg_sort=BOOL) for c in flatten_label('_andBool_', claim.requires)]
         return EqualityProof(claim.label, lhs_body, rhs_body, sort, constraints=constraints, proof_dir=proof_dir)
 
+    # TODO: How should this be handled?
+    @classmethod
+    def as_claim(cls, kprint: KPrint) -> KClaim | None:
+        return None
+
     @property
     def equality(self) -> KInner:
         return mlEquals(self.lhs_body, self.rhs_body, arg_sort=self.sort, sort=GENERATED_TOP_CELL)
@@ -273,6 +278,11 @@ class RefutationProof(ImpliesProof):
             lines.append(f'Implication csubst: {self.csubst}')
         lines.append(f'Status: {self.status}')
         return lines
+
+    # TODO: How should this be handled?
+    @classmethod
+    def as_claim(cls, kprint: KPrint) -> KClaim | None:
+        return None
 
 
 class ImpliesProver(Prover):

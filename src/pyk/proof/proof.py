@@ -14,7 +14,9 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
+    from pyk.kast.outer import KClaim
     from pyk.kcfg.explore import KCFGExplore
+    from pyk.ktool.kprint import KPrint
 
     T = TypeVar('T', bound='Proof')
 
@@ -25,12 +27,14 @@ class ProofStatus(Enum):
     PASSED = 'passed'
     FAILED = 'failed'
     PENDING = 'pending'
+    COMPLETED = 'completed'
 
 
 class Proof(ABC):
     _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof', 'RefutationProof'}
 
     id: str
+    has_target: bool
     proof_dir: Path | None
     _subproofs: dict[str, Proof]
     admitted: bool
@@ -178,6 +182,11 @@ class Proof(ABC):
     def summary(self) -> Iterable[str]:
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
         return chain([f'Proof: {self.id}', f'    status: {self.status}'], *subproofs_summaries)
+
+    @classmethod
+    @abstractmethod
+    def as_claim(cls, kprint: KPrint) -> KClaim | None:
+        ...
 
 
 class Prover:
