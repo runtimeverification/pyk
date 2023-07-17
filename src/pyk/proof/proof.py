@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING
@@ -175,9 +176,52 @@ class Proof(ABC):
         return json.dumps(self.dict)
 
     @property
-    def summary(self) -> Iterable[str]:
+    def summary(self) -> ProofSummary:
+        @dataclass
+        class _BaseSummary(ProofSummary):
+            id: str
+            status: ProofStatus
+
+            @property
+            def lines(self) -> list[str]:
+                return [f'Proof: {self.id}', f'    status: {self.status}']
+
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
-        return chain([f'Proof: {self.id}', f'    status: {self.status}'], *subproofs_summaries)
+        return CompositeSummary([_BaseSummary(self.id, self.status), *subproofs_summaries])
+
+
+@dataclass
+class ProofSummary(ABC):
+    id: str
+    status: ProofStatus
+
+    @property
+    @abstractmethod
+    def lines(self) -> list[str]:
+        return [f'Proof: {self.id}', f'    status: {self.status}']
+
+    def __str__(self) -> str:
+        return '\n'.join(self.lines)
+
+
+@dataclass
+class CompositeSummary(ProofSummary):
+    id: str
+    status: ProofStatus
+    summaries: tuple[ProofSummary, ...]
+
+    def __init__(self, _summaries: Iterable[ProofSummary]):
+        summary = list(_summaries)[0]
+        self.id = summary.id
+        self.status = summary.status
+        self.summaries = tuple(chain(_summaries))
+
+    def __str__(self) -> str:
+        return '\n'.join(str(summary) for summary in self.summaries)
+
+    @property
+    def lines(self) -> list[str]:
+        return self.lines
 
 
 class Prover:
