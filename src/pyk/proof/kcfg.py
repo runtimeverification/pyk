@@ -4,7 +4,7 @@ import json
 
 # import json
 import logging
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 from pyk.utils import chain, hash_str, shorten_hashes
@@ -15,7 +15,7 @@ from ..kcfg import KCFG
 from .proof import Proof, ProofStatus, Prover
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
     from typing import Any, Final, TypeVar
 

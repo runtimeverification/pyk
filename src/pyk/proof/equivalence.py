@@ -2,7 +2,7 @@ from __future__ import annotations
 
 # import json
 import logging
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from pyk.kast.inner import Subst
 from pyk.kast.manip import ml_pred_to_bool
@@ -15,7 +15,7 @@ from ..kcfg import KCFG
 from .proof import Proof, ProofStatus
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
