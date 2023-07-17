@@ -221,7 +221,7 @@ class CompositeSummary(ProofSummary):
 
     @property
     def lines(self) -> list[str]:
-        return self.lines
+        return [line for lines in [summary.lines for summary in self.summaries] for line in lines]
 
 
 class Prover:
