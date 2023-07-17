@@ -4,9 +4,9 @@ import logging
 from collections import Counter
 from typing import TYPE_CHECKING
 
-from ..prelude.k import DOTS, EMPTY_K, GENERATED_TOP_CELL
+from ..prelude.k import DOTS, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
-from ..prelude.ml import mlAnd, mlEqualsTrue, mlImplies, mlOr
+from ..prelude.ml import mlAnd, mlEqualsTrue, mlImplies, mlOr, mlTop
 from ..utils import find_common_items, hash_str
 from .inner import KApply, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
 from .kast import EMPTY_ATT, KAtt, WithKAtt
@@ -51,16 +51,9 @@ def sort_assoc_label(label: str, kast: KInner) -> KInner:
     return kast
 
 
-def sort_ac_collections(definition: KDefinition, kast: KInner) -> KInner:
-    ac_hooks = {'MAP.concat', 'SET.concat', 'BAG.concat'}
-    ac_collections = [
-        prod.klabel.name
-        for prod in definition.productions
-        if prod.klabel is not None and 'hook' in prod.att and prod.att['hook'] in ac_hooks
-    ]
-
+def sort_ac_collections(kast: KInner) -> KInner:
     def _sort_ac_collections(_kast: KInner) -> KInner:
-        if type(_kast) is KApply and _kast.label.name in ac_collections:
+        if type(_kast) is KApply and (_kast.label.name in {'_Set_', '_Map_'} or _kast.label.name.endswith('CellMap_')):
             return sort_assoc_label(_kast.label.name, _kast)
         return _kast
 
@@ -341,7 +334,7 @@ def push_down_rewrites(kast: KInner) -> KInner:
                 and type(rhs) is KVariable
                 and lhs.items[-1] == rhs
             ):
-                return KSequence([KRewrite(KSequence(lhs.items[0:-1]), EMPTY_K), rhs])
+                return KSequence([KRewrite(KSequence(lhs.items[0:-1]), KSequence([])), rhs])
         return _kast
 
     return top_down(_push_down_rewrites, kast)
@@ -500,15 +493,7 @@ def minimize_rule(rule: RL, keep_vars: Iterable[str] = ()) -> RL:
 
 
 def remove_source_map(definition: KDefinition) -> KDefinition:
-    def _remove_source_map(att: KAtt) -> KAtt:
-        atts = att.atts
-        new_atts = {}
-        for att_key in atts:
-            if att_key != 'org.kframework.attributes.Source' and att_key != 'org.kframework.attributes.Location':
-                new_atts[att_key] = atts[att_key]
-        return KAtt(atts=new_atts)
-
-    return on_attributes(definition, _remove_source_map)
+    return on_attributes(definition, lambda att: att.drop_source())
 
 
 def remove_attrs(term: KInner) -> KInner:
@@ -613,8 +598,17 @@ def anti_unify(state1: KInner, state2: KInner) -> tuple[KInner, Subst, Subst]:
 
 
 def anti_unify_with_constraints(
-    constrained_term_1: KInner, constrained_term_2: KInner, implications: bool = False, disjunct: bool = False
+    constrained_term_1: KInner,
+    constrained_term_2: KInner,
+    implications: bool = False,
+    constraint_disjunct: bool = False,
+    abstracted_disjunct: bool = False,
 ) -> KInner:
+    def disjunction_from_substs(subst1: Subst, subst2: Subst) -> KInner:
+        if KToken('true', 'Bool') in [subst1.pred, subst2.pred]:
+            return mlTop()
+        return mlEqualsTrue(orBool([subst1.pred, subst2.pred]))
+
     state1, constraint1 = split_config_and_constraints(constrained_term_1)
     state2, constraint2 = split_config_and_constraints(constrained_term_2)
     constraints1 = flatten_label('#And', constraint1)
@@ -627,11 +621,14 @@ def anti_unify_with_constraints(
     implication1 = mlImplies(constraint1, subst1.ml_pred)
     implication2 = mlImplies(constraint2, subst2.ml_pred)
 
+    if abstracted_disjunct:
+        constraints.append(disjunction_from_substs(subst1, subst2))
+
     if implications:
         constraints.append(implication1)
         constraints.append(implication2)
 
-    if disjunct:
+    if constraint_disjunct:
         constraints.append(mlOr([constraint1, constraint2]))
 
     return mlAnd([state] + constraints)

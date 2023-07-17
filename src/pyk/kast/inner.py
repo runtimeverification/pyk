@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     T = TypeVar('T', bound='KAst')
     W = TypeVar('W', bound='WithKAtt')
     KI = TypeVar('KI', bound='KInner')
+    A = TypeVar('A', bound='Any')
+    B = TypeVar('B', bound='Any')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -133,6 +135,18 @@ class Subst(Mapping[str, KInner]):
         for _i in items[1:]:
             ml_term = KApply('#And', [ml_term, _i])
         return ml_term
+
+    @property
+    def pred(self) -> KInner:
+        conjuncts = [
+            KApply('_==K_', KVariable(name), val)
+            for name, val in self.items()
+            if type(val) is not KVariable or val.name != name
+        ]
+        if not conjuncts:
+            return KToken('true', 'Bool')
+
+        return reduce(KLabel('_andBool_'), conjuncts)
 
 
 @final
@@ -419,7 +433,7 @@ class KApply(KInner):
         return KApply(label=label, args=args)
 
     def map_inner(self: KApply, f: Callable[[KInner], KInner]) -> KApply:
-        return self.let(args=(f(arg) for arg in self.args))
+        return self.let(args=tuple(f(arg) for arg in self.args))
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KApply and term.label.name == self.label.name and term.arity == self.arity:
@@ -624,7 +638,7 @@ class KSequence(KInner, Sequence[KInner]):
         return KSequence(items=items)
 
     def map_inner(self: KSequence, f: Callable[[KInner], KInner]) -> KSequence:
-        return self.let(items=(f(item) for item in self.items))
+        return self.let(items=tuple(f(item) for item in self.items))
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KSequence:
@@ -640,6 +654,19 @@ class KSequence(KInner, Sequence[KInner]):
                 return _subst
         _LOGGER.debug(f'Matching failed: ({self}.match({term}))')
         return None
+
+
+def bottom_up_with_summary(f: Callable[[KInner, list[A]], tuple[KInner, A]], kinner: KInner) -> tuple[KInner, A]:
+    child_summaries = []
+
+    def map_child(child: KInner) -> KInner:
+        nonlocal child_summaries
+        (mapped_child, summarized_child) = bottom_up_with_summary(f, child)
+        child_summaries.append(summarized_child)
+        return mapped_child
+
+    mapped = kinner.map_inner(map_child)
+    return f(mapped, child_summaries)
 
 
 # TODO make method of KInner

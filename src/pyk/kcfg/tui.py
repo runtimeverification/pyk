@@ -11,19 +11,20 @@ from textual.widgets import Footer, Static
 from ..cterm import CTerm
 from ..kast.inner import KApply, KRewrite
 from ..kast.manip import flatten_label, minimize_term, push_down_rewrites
-from ..kcfg import KCFG, KCFGShow
 from ..prelude.kbool import TRUE
 from ..utils import shorten_hashes, single
+from .kcfg import KCFG
+from .show import KCFGShow
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
     from textual.app import ComposeResult
     from textual.events import Click
-    from textual.message import MessageTarget
 
     from ..kast import KInner
     from ..ktool.kprint import KPrint
+    from .show import NodePrinter
 
 
 KCFGElem = Union[KCFG.Node, KCFG.Successor]
@@ -35,9 +36,9 @@ class GraphChunk(Static):
     class Selected(Message):
         chunk_id: str
 
-        def __init__(self, sender: MessageTarget, chunk_id: str) -> None:
+        def __init__(self, chunk_id: str) -> None:
             self.chunk_id = chunk_id
-            super().__init__(sender)
+            super().__init__()
 
     def __init__(self, id: str, node_text: Iterable[str] = ()) -> None:
         self._node_text = '\n'.join(node_text)
@@ -49,8 +50,8 @@ class GraphChunk(Static):
     def on_leave(self) -> None:
         self.styles.border_left = None  # type: ignore
 
-    async def on_click(self, click: Click) -> None:
-        await self.emit(GraphChunk.Selected(self, self.id or ''))
+    def on_click(self, click: Click) -> None:
+        self.post_message(GraphChunk.Selected(self.id or ''))
         click.stop()
 
 
@@ -58,15 +59,15 @@ class BehaviorView(Widget):
     _kcfg: KCFG
     _kprint: KPrint
     _minimize: bool
-    _node_printer: Callable[[CTerm], Iterable[str]] | None
-    _nodes: Iterable[GraphChunk]
+    _node_printer: NodePrinter | None
+    _kcfg_nodes: Iterable[GraphChunk]
 
     def __init__(
         self,
         kcfg: KCFG,
         kprint: KPrint,
         minimize: bool = True,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_printer: NodePrinter | None = None,
         id: str = '',
     ):
         super().__init__(id=id)
@@ -74,15 +75,13 @@ class BehaviorView(Widget):
         self._kprint = kprint
         self._minimize = minimize
         self._node_printer = node_printer
-        self._nodes = []
-        kcfg_show = KCFGShow(kprint)
-        for lseg_id, node_lines in kcfg_show.pretty_segments(
-            self._kcfg, minimize=self._minimize, node_printer=self._node_printer
-        ):
-            self._nodes.append(GraphChunk(lseg_id, node_lines))
+        self._kcfg_nodes = []
+        kcfg_show = KCFGShow(kprint, node_printer=node_printer)
+        for lseg_id, node_lines in kcfg_show.pretty_segments(self._kcfg, minimize=self._minimize):
+            self._kcfg_nodes.append(GraphChunk(lseg_id, node_lines))
 
     def compose(self) -> ComposeResult:
-        return self._nodes
+        return self._kcfg_nodes
 
 
 class NodeView(Widget):
@@ -239,7 +238,7 @@ class KCFGViewer(App):
     _kcfg: KCFG
     _kprint: KPrint
 
-    _node_printer: Callable[[CTerm], Iterable[str]] | None
+    _node_printer: NodePrinter | None
     _custom_view: Callable[[KCFGElem], Iterable[str]] | None
 
     _minimize: bool
@@ -251,7 +250,7 @@ class KCFGViewer(App):
         self,
         kcfg: KCFG,
         kprint: KPrint,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
+        node_printer: NodePrinter | None = None,
         custom_view: Callable[[KCFGElem], Iterable[str]] | None = None,
         minimize: bool = True,
     ) -> None:

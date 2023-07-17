@@ -18,7 +18,10 @@ from ..kast.manip import (
     ml_pred_to_bool,
     push_down_rewrites,
 )
-from ..kore.rpc import KoreClient, KoreServer, StopReason
+from ..kast.outer import KRule
+from ..konvert import krule_to_kore
+from ..kore.rpc import KoreClient, KoreServer, SatResult, StopReason, UnknownResult, UnsatResult
+from ..kore.syntax import Import, Module
 from ..ktool.kprove import KoreExecLogFormat
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
@@ -32,10 +35,12 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final
 
-    from ..cli_utils import BugReport
     from ..kast import KInner
+    from ..kast.outer import KClaim
     from ..kore.rpc import LogEntry
+    from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
+    from ..utils import BugReport
     from .kcfg import NodeIdLike
 
 
@@ -135,6 +140,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
+        module_name: str | None = None,
     ) -> tuple[int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
@@ -144,6 +150,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             max_depth=depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
+            module_name=module_name,
             log_successful_rewrites=self._trace_rewrites,
             log_failed_rewrites=self._trace_rewrites,
             log_successful_simplifications=self._trace_rewrites,
@@ -177,6 +184,34 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         kore_simplified, logs = kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified, logs
+
+    def cterm_get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
+        _LOGGER.info(f'Getting model: {cterm}')
+        kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
+        _, kore_client = self._kore_rpc
+        result = kore_client.get_model(kore, module_name=module_name)
+        if type(result) is UnknownResult:
+            _LOGGER.debug('Result is Unknown')
+            return None
+        elif type(result) is UnsatResult:
+            _LOGGER.debug('Result is UNSAT')
+            return None
+        elif type(result) is SatResult:
+            _LOGGER.debug('Result is SAT')
+            if not result.model:
+                return Subst({})
+            model_subst = self.kprint.kore_to_kast(result.model)
+            _subst: dict[str, KInner] = {}
+            for subst_pred in flatten_label('#And', model_subst):
+                subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
+                m = subst_pattern.match(subst_pred)
+                if m is not None and type(m['###VAR']) is KVariable:
+                    _subst[m['###VAR'].name] = m['###TERM']
+                else:
+                    raise AssertionError(f'Received a non-substitution from get-model endpoint: {subst_pred}')
+            return Subst(_subst)
+        else:
+            raise AssertionError('Received an invalid response from get-model endpoint')
 
     def cterm_implies(
         self,
@@ -397,7 +432,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 else:
                     logs[node.id] = next_node_logs
 
-    def step(self, cfg: KCFG, node_id: NodeIdLike, logs: dict[int, tuple[LogEntry, ...]], depth: int = 1) -> int:
+    def step(
+        self,
+        cfg: KCFG,
+        node_id: NodeIdLike,
+        logs: dict[int, tuple[LogEntry, ...]],
+        depth: int = 1,
+        module_name: str | None = None,
+    ) -> int:
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
@@ -405,7 +447,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(node.cterm, depth=depth)
+        actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+            node.cterm, depth=depth, module_name=module_name
+        )
         if actual_depth != depth:
             raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
         if len(next_cterms) > 0:
@@ -452,20 +496,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_depth += section_depth
         return tuple(new_nodes)
 
-    def target_subsume(
-        self,
-        kcfg: KCFG,
-        node: KCFG.Node,
-    ) -> bool:
-        target_node = kcfg.get_unique_target()
-        _LOGGER.info(f'Checking subsumption into target state {self.id}: {shorten_hashes((node.id, target_node.id))}')
-        csubst = self.cterm_implies(node.cterm, target_node.cterm)
-        if csubst is not None:
-            kcfg.create_cover(node.id, target_node.id, csubst=csubst)
-            _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((node.id, target_node.id))}')
-            return True
-        return False
-
     def extend(
         self,
         kcfg: KCFG,
@@ -474,15 +504,20 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
+        module_name: str | None = None,
     ) -> None:
-        if not kcfg.is_frontier(node.id):
-            raise ValueError(f'Cannot extend non-frontier node {self.id}: {node.id}')
-
-        kcfg.add_expanded(node.id)
+        if not kcfg.is_leaf(node.id):
+            raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
+        if kcfg.is_stuck(node.id):
+            raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
 
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
         depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
-            node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+            node.cterm,
+            depth=execute_depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
         )
 
         # Basic block
@@ -496,6 +531,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         # Stuck
         elif len(next_cterms) == 0:
+            kcfg.add_stuck(node.id)
             _LOGGER.info(f'Found stuck node {self.id}: {shorten_hashes(node.id)}')
 
         # Cut Rule
@@ -539,3 +575,20 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         else:
             raise ValueError('Unhandled case.')
+
+    def add_dependencies_module(
+        self, old_module_name: str, new_module_name: str, dependencies: Iterable[KClaim], priority: int = 1
+    ) -> None:
+        kast_rules = [
+            KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=c.att.update({'priority': priority}))
+            for c in dependencies
+        ]
+        kore_axioms: list[Sentence] = [
+            krule_to_kore(self.kprint.definition, self.kprint.kompiled_kore, r) for r in kast_rules
+        ]
+        _, kore_client = self._kore_rpc
+        sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
+        sentences = sentences + kore_axioms
+        m = Module(name=new_module_name, sentences=sentences)
+        _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
+        kore_client.add_module(m)

@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
-from ..cli_utils import ensure_dir_path
-from ..cterm import CTerm, build_claim, build_rule
 from ..kast.inner import KApply, KRewrite, top_down
 from ..kast.manip import (
     flatten_label,
@@ -16,40 +14,116 @@ from ..kast.manip import (
     push_down_rewrites,
     sort_ac_collections,
 )
-from ..kast.outer import KFlatModule
+from ..kast.outer import KRule
 from ..prelude.k import DOTS
 from ..prelude.ml import mlAnd
-from ..utils import add_indent
+from ..utils import add_indent, ensure_dir_path
 from .kcfg import KCFG
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
     from pathlib import Path
     from typing import Final
 
     from ..kast import KInner
-    from ..kast.outer import KRuleLike
+    from ..kast.outer import KFlatModule, KSentence
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
 
 _LOGGER: Final = logging.getLogger(__name__)
 
 
+class NodePrinter:
+    kprint: KPrint
+    full_printer: bool
+    minimize: bool
+
+    def __init__(self, kprint: KPrint, full_printer: bool = False, minimize: bool = False):
+        self.kprint = kprint
+        self.full_printer = full_printer
+        self.minimize = minimize
+
+    def print_node(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
+        attrs = self.node_attrs(kcfg, node)
+        attr_str = ' (' + ', '.join(attrs) + ')' if attrs else ''
+        node_strs = [f'{node.id}{attr_str}']
+        if self.full_printer:
+            kast = node.cterm.kast
+            if self.minimize:
+                kast = minimize_term(kast)
+            node_strs.extend('  ' + line for line in self.kprint.pretty_print(kast).split('\n'))
+        return node_strs
+
+    def node_attrs(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
+        attrs = []
+        if kcfg.is_root(node.id):
+            attrs.append('root')
+        if kcfg.is_stuck(node.id):
+            attrs.append('stuck')
+        if kcfg.is_leaf(node.id):
+            attrs.append('leaf')
+        if kcfg.is_split(node.id):
+            attrs.append('split')
+        attrs.extend(['@' + alias for alias in sorted(kcfg.aliases(node.id))])
+        return attrs
+
+
 class KCFGShow:
     kprint: KPrint
+    node_printer: NodePrinter
 
-    def __init__(
-        self,
-        kprint: KPrint,
-    ):
+    def __init__(self, kprint: KPrint, node_printer: NodePrinter | None = None):
         self.kprint = kprint
+        self.node_printer = node_printer if node_printer is not None else NodePrinter(kprint)
 
-    def pretty_segments(
-        self,
-        kcfg: KCFG,
-        minimize: bool = True,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-    ) -> Iterable[tuple[str, Iterable[str]]]:
+    def node_short_info(self, kcfg: KCFG, node: KCFG.Node) -> list[str]:
+        return self.node_printer.print_node(kcfg, node)
+
+    @staticmethod
+    def hide_cells(term: KInner, omit_cells: Iterable[str]) -> KInner:
+        def _hide_cells(_k: KInner) -> KInner:
+            if type(_k) == KApply and _k.label.name in omit_cells:
+                return DOTS
+            return _k
+
+        if omit_cells:
+            return top_down(_hide_cells, term)
+        return term
+
+    @staticmethod
+    def hide_cells_in_rules(
+        module: KFlatModule, module_name: str | None = None, omit_cells: Iterable[str] = ()
+    ) -> KFlatModule:
+        def _hide_cells_in_rule(_sent: KSentence) -> KSentence:
+            if type(_sent) is KRule:
+                return _sent.let(body=KCFGShow.hide_cells(_sent.body, omit_cells))
+            return _sent
+
+        return module.let(sentences=map(_hide_cells_in_rule, module.sentences))
+
+    @staticmethod
+    def simplify_config(config: KInner, omit_cells: Iterable[str]) -> KInner:
+        config = inline_cell_maps(config)
+        config = sort_ac_collections(config)
+        config = KCFGShow.hide_cells(config, omit_cells)
+        return config
+
+    @staticmethod
+    def make_unique_segments(segments: Iterable[tuple[str, Iterable[str]]]) -> Iterable[tuple[str, Iterable[str]]]:
+        _segments = []
+        used_ids = []
+        for id, seg_lines in segments:
+            suffix = ''
+            counter = 0
+            while f'{id}{suffix}' in used_ids:
+                suffix = f'_{counter}'
+                counter += 1
+            new_id = f'{id}{suffix}'
+            used_ids.append(new_id)
+            _segments.append((f'{new_id}', [l.rstrip() for l in seg_lines]))
+        return _segments
+
+    def pretty_segments(self, kcfg: KCFG, minimize: bool = True) -> Iterable[tuple[str, Iterable[str]]]:
         """Return a pretty version of the KCFG in segments.
 
         Each segment is a tuple of an identifier and a list of lines to be printed for that segment (Tuple[str, Iterable[str]).
@@ -60,17 +134,8 @@ class KCFGShow:
         processed_nodes: list[KCFG.Node] = []
         ret_lines: list[tuple[str, list[str]]] = []
 
-        def _bold(text: str) -> str:
-            return '\033[1m' + text + '\033[0m'
-
-        def _green(text: str) -> str:
-            return '\033[32m' + text + '\033[0m'
-
         def _print_node(node: KCFG.Node) -> list[str]:
-            short_info = kcfg.node_short_info(node, node_printer=node_printer)
-            if kcfg.is_frontier(node.id):
-                short_info[0] = _bold(short_info[0])
-            return short_info
+            return self.node_short_info(kcfg, node)
 
         def _print_edge(edge: KCFG.Edge) -> list[str]:
             if edge.depth == 1:
@@ -131,17 +196,15 @@ class KCFGShow:
             suffix = []
             elbow = '├─'
             node_indent = '│   '
-            if kcfg.is_init(curr_node.id):
+            if kcfg.is_root(curr_node.id):
                 elbow = '┌─'
-            elif processed or kcfg.is_target(curr_node.id) or not successors:
+            elif processed or not successors:
                 elbow = '└─'
                 node_indent = '    '
                 if curr_node in prior_on_trace:
                     suffix = ['(looped back)', '']
-                elif processed and not kcfg.is_target(curr_node.id):
+                elif processed and not kcfg.is_leaf(curr_node.id):
                     suffix = ['(continues as previously)', '']
-                elif kcfg.is_stuck(curr_node.id):
-                    suffix = ['(stuck)', '']
                 else:
                     suffix = ['']
             ret_node_lines.append(indent + elbow + ' ' + curr_node_strs[0])
@@ -149,10 +212,7 @@ class KCFGShow:
             ret_node_lines.extend(add_indent(indent + '   ', suffix))
             ret_lines.append((f'node_{curr_node.id}', ret_node_lines))
 
-            if processed or kcfg.is_target(curr_node.id):
-                return
-
-            if not successors:
+            if processed or not successors:
                 return
             successor = successors[0]
 
@@ -206,32 +266,24 @@ class KCFGShow:
 
         def _sorted_init_nodes() -> tuple[list[KCFG.Node], list[KCFG.Node]]:
             sorted_init_nodes = sorted(node for node in kcfg.nodes if node not in processed_nodes)
-            init_expanded_nodes = []
-            init_unexpanded_nodes = []
-            target_nodes = []
+            init_nodes = []
+            init_leaf_nodes = []
             remaining_nodes = []
             for node in sorted_init_nodes:
-                if kcfg.is_init(node.id):
-                    if kcfg.is_expanded(node.id):
-                        init_expanded_nodes.append(node)
+                if kcfg.is_root(node.id):
+                    if kcfg.is_leaf(node.id):
+                        init_leaf_nodes.append(node)
                     else:
-                        init_unexpanded_nodes.append(node)
-                elif kcfg.is_target(node.id):
-                    target_nodes.append(node)
+                        init_nodes.append(node)
                 else:
                     remaining_nodes.append(node)
-            return (init_expanded_nodes + init_unexpanded_nodes + target_nodes, remaining_nodes)
+            return (init_nodes + init_leaf_nodes, remaining_nodes)
 
         init, _ = _sorted_init_nodes()
         while init:
             ret_lines.append(('unknown', ['']))
             _print_subgraph('', init[0], [])
             init, _ = _sorted_init_nodes()
-        if kcfg.frontier or kcfg.stuck:
-            ret_lines.append(('unknown', ['', 'Target Nodes:']))
-            for target in kcfg.target:
-                ret_node_lines = [''] + _print_node(target)
-                ret_lines.append((f'node_{target.id}', ret_node_lines))
         _, remaining = _sorted_init_nodes()
         if remaining:
             ret_lines.append(('unknown', ['', 'Remaining Nodes:']))
@@ -239,75 +291,38 @@ class KCFGShow:
                 ret_node_lines = [''] + _print_node(node)
                 ret_lines.append((f'node_{node.id}', ret_node_lines))
 
-        _ret_lines = []
-        used_ids = []
-        for id, seg_lines in ret_lines:
-            suffix = ''
-            counter = 0
-            while f'{id}{suffix}' in used_ids:
-                suffix = f'_{counter}'
-                counter += 1
-            new_id = f'{id}{suffix}'
-            used_ids.append(new_id)
-            _ret_lines.append((f'{new_id}', [l.rstrip() for l in seg_lines]))
-        return _ret_lines
+        return KCFGShow.make_unique_segments(ret_lines)
 
     def pretty(
         self,
         kcfg: KCFG,
         minimize: bool = True,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
     ) -> Iterable[str]:
-        return (
-            line
-            for _, seg_lines in self.pretty_segments(
-                kcfg,
-                minimize=minimize,
-                node_printer=node_printer,
-            )
-            for line in seg_lines
-        )
+        return (line for _, seg_lines in self.pretty_segments(kcfg, minimize=minimize) for line in seg_lines)
+
+    def to_module(self, cfg: KCFG, module_name: str | None = None, omit_cells: Iterable[str] = ()) -> KFlatModule:
+        return KCFGShow.hide_cells_in_rules(cfg.to_module(module_name), omit_cells=omit_cells)
 
     def show(
         self,
-        cfgid: str,
         cfg: KCFG,
         nodes: Iterable[NodeIdLike] = (),
         node_deltas: Iterable[tuple[NodeIdLike, NodeIdLike]] = (),
         to_module: bool = False,
         minimize: bool = True,
         sort_collections: bool = False,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
         omit_cells: Iterable[str] = (),
+        module_name: str | None = None,
     ) -> list[str]:
         res_lines: list[str] = []
-        res_lines += self.pretty(cfg, minimize=minimize, node_printer=node_printer)
-
-        def hide_cells(term: KInner) -> KInner:
-            def _hide_cells(_k: KInner) -> KInner:
-                if type(_k) == KApply and _k.label.name in omit_cells:
-                    return DOTS
-                return _k
-
-            if omit_cells:
-                return top_down(_hide_cells, term)
-            return term
-
-        def simplify_config(config: KInner) -> KInner:
-            config = inline_cell_maps(config)
-            config = sort_ac_collections(self.kprint.definition, config)
-            config = hide_cells(config)
-            return config
-
-        def is_ceil_condition(kast: KInner) -> bool:
-            return type(kast) is KApply and kast.label.name == '#Ceil'
+        res_lines += self.pretty(cfg, minimize=minimize)
 
         nodes_printed = False
 
         for node_id in nodes:
             nodes_printed = True
             kast = cfg.node(node_id).cterm.kast
-            kast = hide_cells(kast)
+            kast = KCFGShow.hide_cells(kast, omit_cells)
             if minimize:
                 kast = minimize_term(kast)
             res_lines.append('')
@@ -319,8 +334,8 @@ class KCFGShow:
 
         for node_id_1, node_id_2 in node_deltas:
             nodes_printed = True
-            config_1 = simplify_config(cfg.node(node_id_1).cterm.config)
-            config_2 = simplify_config(cfg.node(node_id_2).cterm.config)
+            config_1 = KCFGShow.simplify_config(cfg.node(node_id_1).cterm.config, omit_cells)
+            config_2 = KCFGShow.simplify_config(cfg.node(node_id_2).cterm.config, omit_cells)
             config_delta = push_down_rewrites(KRewrite(config_1, config_2))
             if minimize:
                 config_delta = minimize_term(config_delta)
@@ -337,35 +352,12 @@ class KCFGShow:
         res_lines.append('')
 
         if to_module:
-
-            def to_rule(edge: KCFG.Edge, *, claim: bool = False) -> KRuleLike:
-                sentence_id = f'BASIC-BLOCK-{edge.source.id}-TO-{edge.target.id}'
-                init_constraints = [c for c in edge.source.cterm.constraints if not is_ceil_condition(c)]
-                init_cterm = CTerm(simplify_config(edge.source.cterm.config), init_constraints)
-                target_constraints = [c for c in edge.target.cterm.constraints if not is_ceil_condition(c)]
-                target_cterm = CTerm(simplify_config(edge.target.cterm.config), target_constraints)
-                rule: KRuleLike
-                if claim:
-                    rule, _ = build_claim(sentence_id, init_cterm, target_cterm)
-                else:
-                    rule, _ = build_rule(sentence_id, init_cterm, target_cterm, priority=35)
-                return rule
-
-            rules = [to_rule(e) for e in cfg.edges()]
-            nd_steps = [
-                to_rule(KCFG.Edge(ndbranch.source, target, 1))
-                for ndbranch in cfg.ndbranches()
-                for target in ndbranch.targets
-            ]
-            claims = [to_rule(KCFG.Edge(nd, cfg.get_unique_target(), -1), claim=True) for nd in cfg.frontier]
-            cfg_module_name = cfgid.upper().replace('.', '-').replace('_', '-')
-            new_module = KFlatModule(f'SUMMARY-{cfg_module_name}', rules + nd_steps + claims)
-            res_lines.append(self.kprint.pretty_print(new_module, sort_collections=sort_collections))
-            res_lines.append('')
+            module = self.to_module(cfg, module_name, omit_cells=omit_cells)
+            res_lines.append(self.kprint.pretty_print(module, sort_collections=sort_collections))
 
         return res_lines
 
-    def dot(self, kcfg: KCFG, node_printer: Callable[[CTerm], Iterable[str]] | None = None) -> str:
+    def dot(self, kcfg: KCFG) -> Digraph:
         def _short_label(label: str) -> str:
             return '\n'.join(
                 [
@@ -377,8 +369,8 @@ class KCFGShow:
         graph = Digraph()
 
         for node in kcfg.nodes:
-            label = '\n'.join(kcfg.node_short_info(node, node_printer=node_printer))
-            class_attrs = ' '.join(kcfg.node_attrs(node.id))
+            label = '\n'.join(self.node_short_info(kcfg, node))
+            class_attrs = ' '.join(self.node_printer.node_attrs(kcfg, node))
             attrs = {'class': class_attrs} if class_attrs else {}
             graph.node(name=node.id, label=label, **attrs)
 
@@ -407,24 +399,9 @@ class KCFGShow:
                 label = '1 step'
                 graph.edge(tail_name=ndbranch.source.id, head_name=target, label=f'  {label}        ')
 
-        for target_id in kcfg._target:
-            for node in kcfg.frontier:
-                attrs = {'class': 'target', 'style': 'solid'}
-                graph.edge(tail_name=node.id, head_name=target_id, label='  ???', **attrs)
-            for node in kcfg.stuck:
-                attrs = {'class': 'target', 'style': 'solid'}
-                graph.edge(tail_name=node.id, head_name=target_id, label='  false', **attrs)
+        return graph
 
-        return graph.source
-
-    def dump(
-        self,
-        cfgid: str,
-        cfg: KCFG,
-        dump_dir: Path,
-        dot: bool = False,
-        node_printer: Callable[[CTerm], Iterable[str]] | None = None,
-    ) -> None:
+    def dump(self, cfgid: str, cfg: KCFG, dump_dir: Path, dot: bool = False) -> None:
         ensure_dir_path(dump_dir)
 
         cfg_file = dump_dir / f'{cfgid}.json'
@@ -432,9 +409,9 @@ class KCFGShow:
         _LOGGER.info(f'Wrote CFG file {cfgid}: {cfg_file}')
 
         if dot:
-            cfg_dot = self.dot(cfg, node_printer=node_printer)
+            cfg_dot = self.dot(cfg)
             dot_file = dump_dir / f'{cfgid}.dot'
-            dot_file.write_text(cfg_dot)
+            dot_file.write_text(cfg_dot.source)
             _LOGGER.info(f'Wrote DOT file {cfgid}: {dot_file}')
 
         nodes_dir = dump_dir / 'nodes'

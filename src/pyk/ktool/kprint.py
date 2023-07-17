@@ -10,7 +10,7 @@ from subprocess import CalledProcessError
 from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
-from ..cli_utils import check_dir_path, check_file_path, run_process
+from ..cli.utils import check_dir_path, check_file_path
 from ..kast import kast_term
 from ..kast.inner import KInner
 from ..kast.outer import read_kast_definition
@@ -19,6 +19,7 @@ from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.kompiled import KompiledKore
 from ..kore.parser import KoreParser
 from ..kore.syntax import App, SortApp
+from ..utils import run_process
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
@@ -26,12 +27,12 @@ if TYPE_CHECKING:
     from tempfile import _TemporaryFileWrapper
     from typing import Final
 
-    from ..cli_utils import BugReport
     from ..kast import KAst
     from ..kast.inner import KSort, KToken
     from ..kast.outer import KDefinition, KFlatModule
     from ..kast.pretty import SymbolTable
     from ..kore.syntax import Pattern
+    from ..utils import BugReport
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ def _kast(
     expression: str | None = None,
     module: str | None = None,
     sort: str | None = None,
+    temp_dir: str | Path | None = None,
     gen_glr_parser: bool = False,
     # ---
     check: bool = True,
@@ -83,6 +85,9 @@ def _kast(
         definition_dir = Path(definition_dir)
         check_dir_path(definition_dir)
 
+    if temp_dir is not None:
+        temp_dir = Path(temp_dir)
+
     if input is not None:
         input = KAstInput(input)
 
@@ -98,6 +103,7 @@ def _kast(
         expression=expression,
         module=module,
         sort=sort,
+        temp_dir=temp_dir,
         gen_glr_parser=gen_glr_parser,
     )
 
@@ -116,6 +122,7 @@ def gen_glr_parser(
     definition_dir: str | Path | None = None,
     module: str | None = None,
     sort: str | None = None,
+    temp_dir: str | Path | None = None,
 ) -> Path:
     parser_file = Path(parser_file)
     _kast(
@@ -124,6 +131,7 @@ def gen_glr_parser(
         definition_dir=definition_dir,
         module=module,
         sort=sort,
+        temp_dir=temp_dir,
         gen_glr_parser=True,
         check=True,
     )
@@ -141,6 +149,7 @@ def _build_arg_list(
     expression: str | None,
     module: str | None,
     sort: str | None,
+    temp_dir: Path | None,
     gen_glr_parser: bool,
 ) -> list[str]:
     args = [command if command is not None else 'kast']
@@ -158,6 +167,8 @@ def _build_arg_list(
         args += ['--module', module]
     if sort:
         args += ['--sort', sort]
+    if temp_dir:
+        args += ['--temp-dir', str(temp_dir)]
     if gen_glr_parser:
         args += ['--gen-glr-parser']
     return args
@@ -311,6 +322,7 @@ class KPrint:
                 output=output,
                 module=module,
                 sort=sort,
+                temp_dir=self.use_directory,
                 check=check,
             )
 
@@ -326,5 +338,6 @@ class KPrint:
                 output=output,
                 module=module,
                 sort=sort,
+                temp_dir=self.use_directory,
                 check=check,
             )

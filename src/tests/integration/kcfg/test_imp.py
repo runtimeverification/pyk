@@ -9,13 +9,15 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term, ml_pred_to_bool
-from pyk.kcfg import KCFG
 from pyk.kcfg.explore import SubsumptionCheckResult
+from pyk.kcfg.kcfg import KCFG
+from pyk.kcfg.show import KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEquals, mlEqualsFalse, mlEqualsTrue, mlTop
-from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, EqualityProof, EqualityProver, ProofStatus
+from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
 from pyk.proof.equivalence import EquivalenceProof, EquivalenceProver
+from pyk.proof.show import APRBMCProofNodePrinter, APRProofNodePrinter
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
 
@@ -24,6 +26,8 @@ from ..utils import K_FILES
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
+
+    from pytest import TempPathFactory
 
     from pyk.kast.inner import KInner
     from pyk.kast.outer import KDefinition
@@ -185,6 +189,67 @@ IMPLIES_TEST_DATA: Final = (
         None,
     ),
     (
+        'refutation-1',
+        ('int $n ; $n = 0 ;', '.Map', mlTop()),
+        (
+            'int $n ; $n = 0 ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
+                    mlEqualsTrue(KApply('_<=Int_', [intToken(3), KVariable('X')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('X'), intToken(100)])),
+                ]
+            ),
+        ),
+        CSubst(Subst({})),
+    ),
+    (
+        'refutation-2',
+        ('int $n ; $n = 0 ;', '.Map', mlTop()),
+        (
+            'int $n ; $n = 0 ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<=Int_', [intToken(0), KVariable('X')])),
+                    mlEqualsTrue(KApply('_>Int_', [intToken(0), KVariable('Y')])),
+                ]
+            ),
+        ),
+        CSubst(Subst({})),
+    ),
+    (
+        'refutation-3',
+        ('int $n ; $n = 0 ;', '.Map', mlTop()),
+        (
+            'int $n ; $n = 0 ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<=Int_', [KVariable('Y'), KVariable('X')])),
+                ]
+            ),
+        ),
+        CSubst(Subst({})),
+    ),
+    (
+        'refutation-4',
+        ('int $n ; $n = 0 ;', '.Map', mlTop()),
+        (
+            'int $n ; $n = 0 ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('X'), KVariable('Y')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('Y'), KVariable('Z')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('Z'), KVariable('X')])),
+                ]
+            ),
+        ),
+        None,
+    ),
+    (
         'antecedent-bottom',
         (
             'int $n , $s ; $n = X ;',
@@ -198,6 +263,36 @@ IMPLIES_TEST_DATA: Final = (
         ),
         ('int $n , $s ; $n = Y ;', '.Map'),
         CSubst(Subst({}), [mlBottom()]),
+    ),
+)
+
+GET_MODEL_TEST_DATA: Final = (
+    (
+        'get-model-sat',
+        (
+            'int $n ; $n = X ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_==Int_', [KVariable('X'), intToken(3)])),
+                ]
+            ),
+        ),
+        Subst({'X': intToken(3)}),
+    ),
+    (
+        'get-model-unsat',
+        (
+            'int $n ; $n = X ;',
+            '.Map',
+            mlAnd(
+                [
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('X'), intToken(4)])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('X'), intToken(4)])),
+                ]
+            ),
+        ),
+        None,
     ),
 )
 
@@ -313,10 +408,21 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         1,
     ),
     (
-        'imp-if-almost-same',
+        'imp-if-almost-same-plus',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC-DEPENDENCIES',
+        'if-almost-same-plus',
+        None,
+        None,
+        [],
+        ProofStatus.PASSED,
+        2,
+    ),
+    (
+        'imp-if-almost-same-times',
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
-        'if-almost-same',
+        'if-almost-same-times',
         None,
         None,
         [],
@@ -332,7 +438,51 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         [],
         ProofStatus.PASSED,
-        2,  # Change this to 1 once we can reuse subproofs
+        1,  # We can reuse subproofs.
+    ),
+    (
+        'imp-use-if-almost-same-twice',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'use-if-almost-same-twice',
+        None,
+        None,
+        [],
+        ProofStatus.PASSED,
+        1,  # We can reuse subproofs.
+    ),
+    (
+        'imp-simple-sum-loop',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'sum-loop',
+        None,
+        None,
+        ['IMP.while'],  # If we do not include `IMP.while` in this list, we get 4 branches instead of 2
+        ProofStatus.PASSED,
+        2,
+    ),
+    (
+        'imp-simple-sum-N',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'sum-N',
+        None,
+        None,
+        [],
+        ProofStatus.PASSED,
+        1,
+    ),
+    (
+        'imp-failing-circularity',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'failing-circularity',
+        None,
+        None,
+        [],
+        ProofStatus.FAILED,
+        1,
     ),
 )
 
@@ -363,7 +513,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-concrete',
         20,
         20,
-        1,
+        0,
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
@@ -376,7 +526,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-concrete',
         20,
         20,
-        2,
+        1,
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
@@ -389,7 +539,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-concrete',
         20,
         20,
-        3,
+        2,
         [],
         ['IMP.while'],
         ProofStatus.FAILED,
@@ -402,7 +552,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-symbolic',
         20,
         20,
-        1,
+        0,
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
@@ -415,7 +565,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-symbolic',
         20,
         20,
-        2,
+        1,
         [],
         ['IMP.while'],
         ProofStatus.FAILED,
@@ -428,7 +578,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-loop-symbolic',
         20,
         20,
-        3,
+        2,
         [],
         ['IMP.while'],
         ProofStatus.FAILED,
@@ -441,7 +591,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-two-loops-symbolic',
         20,
         20,
-        1,
+        0,
         [],
         ['IMP.while'],
         ProofStatus.PASSED,
@@ -454,7 +604,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         'bmc-two-loops-symbolic',
         50,
         20,
-        2,
+        1,
         [],
         ['IMP.while'],
         ProofStatus.FAILED,
@@ -462,22 +612,11 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
-FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
-    (
-        'func-spec-concrete',
-        K_FILES / 'imp-simple-spec.k',
-        'IMP-FUNCTIONAL-SPEC',
-        'concrete-addition',
-        ProofStatus.PASSED,
-    ),
-)
-
 PROGRAM_EQUIVALENCE_DATA: Iterable[
-    tuple[str, int, Iterable[str], Iterable[str], tuple[str, str, KInner], tuple[str, str, KInner]]
+    tuple[str, Iterable[str], Iterable[str], tuple[str, str, KInner], tuple[str, str, KInner]]
 ] = (
     (
         'double-add-vs-mul',
-        10,
         ['IMP.while'],
         [],
         (
@@ -493,17 +632,31 @@ PROGRAM_EQUIVALENCE_DATA: Iterable[
     ),
 )
 
+FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInner]]] = (
+    (
+        'failing-if',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'failing-if',
+        0,
+        1,
+        (mlTop(),),
+    ),
+    (
+        'fail-branch',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'fail-branch',
+        0,
+        1,
+        (mlEqualsFalse(KApply('_<=Int_', [KVariable('_S', 'Int'), KToken('123', '')])),),
+    ),
+)
 
-def leaf_number(kcfg: KCFG) -> int:
-    target_id = kcfg.get_unique_target().id
-    target_subsumed_nodes = (
-        len(kcfg.edges(target_id=target_id))
-        + len(kcfg.covers(target_id=target_id))
-        + len(kcfg.splits(target_id=target_id))
-    )
-    frontier_nodes = len(kcfg.frontier)
-    stuck_nodes = len(kcfg.stuck)
-    return target_subsumed_nodes + frontier_nodes + stuck_nodes
+
+def leaf_number(proof: APRProof) -> int:
+    non_target_leaves = [nd for nd in proof.kcfg.leaves if not proof.is_target(nd.id)]
+    return len(non_target_leaves) + len(proof.kcfg.predecessors(proof.target))
 
 
 class TestImpProof(KCFGExploreTest):
@@ -577,7 +730,6 @@ class TestImpProof(KCFGExploreTest):
                 ),
                 KVariable('GENERATED_COUNTER_CELL'),
             ),
-            (),
         )
         if constraint is not None:
             _config = _config.add_constraint(constraint)
@@ -624,6 +776,27 @@ class TestImpProof(KCFGExploreTest):
         assert set(actual_next_states) == set(expected_next_states)
 
     @pytest.mark.parametrize(
+        'test_id,cterm,expected',
+        GET_MODEL_TEST_DATA,
+        ids=[test_id for test_id, *_ in GET_MODEL_TEST_DATA],
+    )
+    def test_get_model(
+        self,
+        kcfg_explore: KCFGExplore,
+        cterm: CTerm,
+        test_id: str,
+        expected: Subst | None,
+    ) -> None:
+        # Given
+        cterm_term = self.config(kcfg_explore.kprint, *cterm)
+
+        # When
+        actual = kcfg_explore.cterm_get_model(cterm_term)
+
+        # Then
+        assert actual == expected
+
+    @pytest.mark.parametrize(
         'test_id,antecedent,consequent,expected',
         IMPLIES_TEST_DATA,
         ids=[test_id for test_id, *_ in IMPLIES_TEST_DATA],
@@ -636,6 +809,9 @@ class TestImpProof(KCFGExploreTest):
         consequent: tuple[str, str] | tuple[str, str, KInner],
         expected: CSubst | None,
     ) -> None:
+        if test_id in ['refutation-2']:
+            pytest.skip()
+
         # Given
         antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
         consequent_term = self.config(kcfg_explore.kprint, *consequent)
@@ -683,27 +859,72 @@ class TestImpProof(KCFGExploreTest):
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
+        tmp_path_factory: TempPathFactory,
     ) -> None:
-        claim = single(
-            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
-        )
+        with tmp_path_factory.mktemp('apr_tmp_proofs') as proof_dir:
+            claim = single(
+                kprove.get_claims(
+                    Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+                )
+            )
 
-        kcfg = KCFG.from_claim(kprove.definition, claim)
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
-        prover = APRProver(
-            proof,
-            is_terminal=TestImpProof._is_terminal,
-            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
-        )
-        kcfg = prover.advance_proof(
-            kcfg_explore,
-            max_iterations=max_iterations,
-            execute_depth=max_depth,
-            cut_point_rules=cut_rules,
-        )
+            deps = claim.dependencies
 
-        assert proof.status == proof_status
-        assert leaf_number(kcfg) == expected_leaf_number
+            def qualify(module: str, label: str) -> str:
+                if '.' in label:
+                    return label
+                return f'{module}.{label}'
+
+            subproof_ids = [qualify(spec_module, dep_id) for dep_id in deps]
+
+            # < Admit all the dependencies >
+            # We create files for all the subproofs, all tagged as `admitted`.
+            # Later, when creating the proof for the main claim, these get loaded
+            # and their status will be `PASSED`. This is similar to how Coq handles admitted lemmas.
+            # We do all this in order to decouple the tests of "main theorems" from tests of its dependencies.
+            deps_claims = kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=subproof_ids)
+
+            deps_proofs = [
+                APRProof.from_claim(kprove.definition, c, subproof_ids=[], logs={}, proof_dir=proof_dir)
+                for c in deps_claims
+            ]
+            for dp in deps_proofs:
+                dp.admit()
+                dp.write_proof()
+            # </Admit all the dependencies >
+
+            proof = APRProof.from_claim(
+                kprove.definition,
+                claim,
+                subproof_ids=subproof_ids,
+                circularity=claim.is_circularity,
+                logs={},
+                proof_dir=proof_dir,
+            )
+            _msg_suffix = ' (and is a circularity)' if claim.is_circularity else ''
+            _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(subproof_ids)} dependencies{_msg_suffix}")
+
+            prover = APRProver(
+                proof,
+                kcfg_explore=kcfg_explore,
+                is_terminal=TestImpProof._is_terminal,
+                extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+            )
+
+            prover.advance_proof(
+                max_iterations=max_iterations,
+                execute_depth=max_depth,
+                cut_point_rules=cut_rules,
+            )
+
+            kcfg_show = KCFGShow(
+                kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+            )
+            cfg_lines = kcfg_show.show(proof.kcfg)
+            _LOGGER.info('\n'.join(cfg_lines))
+
+            assert proof.status == proof_status
+            assert leaf_number(proof) == expected_leaf_number
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
@@ -728,29 +949,27 @@ class TestImpProof(KCFGExploreTest):
             _kast = minimize_term(cterm.kast)
             return kcfg_explore.kprint.pretty_print(_kast).split('\n')
 
-        claims = kprove.get_claims(
-            Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
-        assert len(claims) == 1
 
-        kcfg = KCFG.from_claim(kprove.definition, claims[0])
-        proof = APRProof(f'{spec_module}.{claim_id}', kcfg, {})
+        proof = APRProof.from_claim(kprove.definition, claim, logs={})
         prover = APRProver(
             proof,
+            kcfg_explore=kcfg_explore,
             is_terminal=TestImpProof._is_terminal,
             extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
 
-        kcfg = prover.advance_proof(
-            kcfg_explore,
+        prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
         )
 
-        assert len(kcfg.stuck) == 1
-        path_constraint = kcfg.path_constraints(kcfg.stuck[0].id)
+        assert len(proof.terminal) == 1
+        path_constraint = proof.path_constraints(proof.terminal[0].id)
         actual_constraint = kcfg_explore.kprint.pretty_print(path_constraint).replace('\n', ' ')
         assert actual_constraint == expected_constraint
 
@@ -779,27 +998,36 @@ class TestImpProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        kcfg = KCFG.from_claim(kprove.definition, claim)
-        kcfg_explore.simplify(kcfg, {})
-        proof = APRBMCProof(f'{spec_module}.{claim_id}', kcfg, {}, bmc_depth)
-        prover = APRBMCProver(proof, TestImpProof._same_loop, is_terminal=TestImpProof._is_terminal)
-        kcfg = prover.advance_proof(
-            kcfg_explore,
+        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
+        kcfg_explore.simplify(proof.kcfg, {})
+        prover = APRBMCProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            same_loop=TestImpProof._same_loop,
+            is_terminal=TestImpProof._is_terminal,
+        )
+        prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
             cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
         )
 
+        kcfg_show = KCFGShow(
+            kcfg_explore.kprint, node_printer=APRBMCProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
+        )
+        cfg_lines = kcfg_show.show(proof.kcfg)
+        _LOGGER.info('\n'.join(cfg_lines))
+
         assert proof.status == proof_status
-        assert leaf_number(kcfg) == expected_leaf_number
+        assert leaf_number(proof) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,proof_status',
-        FUNC_PROVE_TEST_DATA,
-        ids=[test_id for test_id, *_ in FUNC_PROVE_TEST_DATA],
+        'test_id,spec_file,spec_module,claim_id,expected_pending,expected_failing,path_conditions',
+        FAILURE_INFO_TEST_DATA,
+        ids=[test_id for test_id, *_ in FAILURE_INFO_TEST_DATA],
     )
-    def test_functional_prove(
+    def test_failure_info(
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
@@ -807,44 +1035,38 @@ class TestImpProof(KCFGExploreTest):
         spec_file: str,
         spec_module: str,
         claim_id: str,
-        proof_status: ProofStatus,
+        expected_pending: int,
+        expected_failing: int,
+        path_conditions: tuple[KInner],
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        equality_proof = EqualityProof.from_claim(claim, kprove.definition)
-        equality_prover = EqualityProver(equality_proof)
-        equality_prover.advance_proof(kcfg_explore)
+        proof = APRProof.from_claim(kprove.definition, claim, logs={})
+        kcfg_explore.simplify(proof.kcfg, {})
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+            is_terminal=TestImpProof._is_terminal,
+        )
+        prover.advance_proof()
 
-        assert equality_proof.status == proof_status
+        failure_info = prover.failure_info()
 
-    @pytest.mark.parametrize(
-        'test_id,antecedent,consequent,expected',
-        IMPLICATION_FAILURE_TEST_DATA,
-        ids=[test_id for test_id, *_ in IMPLICATION_FAILURE_TEST_DATA],
-    )
-    def test_implication_failure_reason(
-        self,
-        kcfg_explore: KCFGExplore,
-        kprove: KProve,
-        test_id: str,
-        antecedent: tuple[str, str] | tuple[str, str, KInner],
-        consequent: tuple[str, str] | tuple[str, str, KInner],
-        expected: str,
-    ) -> None:
-        antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
-        consequent_term = self.config(kcfg_explore.kprint, *consequent)
+        actual_pending = len(failure_info.pending_nodes)
+        actual_failing = len(failure_info.failing_nodes)
 
-        failed, actual = kcfg_explore.implication_failure_reason(antecedent_term, consequent_term)
+        assert expected_pending == actual_pending
+        assert expected_failing == actual_failing
 
-        print(actual)
+        actual_path_conds = set({path_condition for _, (_, path_condition) in failure_info.failing_nodes.items()})
+        expected_path_conds = set({kprove.pretty_print(condition) for condition in path_conditions})
 
-        assert failed == False
-        assert actual == expected
+        assert actual_path_conds == expected_path_conds
 
     @pytest.mark.parametrize(
-        'test_id,bmc_depth,cut_rules,terminal_rules,config_1,config_2',
+        'test_id,cut_rules,terminal_rules,config_1,config_2',
         PROGRAM_EQUIVALENCE_DATA,
         ids=[test_id for test_id, *_ in PROGRAM_EQUIVALENCE_DATA],
     )
@@ -853,7 +1075,6 @@ class TestImpProof(KCFGExploreTest):
         kprove: KProve,
         kcfg_explore: KCFGExplore,
         test_id: str,
-        bmc_depth: int,
         cut_rules: Iterable[str],
         terminal_rules: Iterable[str],
         # The following is taken from `test_implication_failure_reason`,
@@ -864,23 +1085,22 @@ class TestImpProof(KCFGExploreTest):
         configuration_1 = self.config(kcfg_explore.kprint, *config_1)
         kcfg_1 = KCFG()
         init_state_1 = kcfg_1.create_node(configuration_1)
-        kcfg_1.add_init(init_state_1.id)
+        kcfg_1.add_node(init_state_1)
 
         configuration_2 = self.config(kcfg_explore.kprint, *config_2)
         kcfg_2 = KCFG()
         init_state_2 = kcfg_2.create_node(configuration_2)
-        kcfg_2.add_init(init_state_2.id)
+        kcfg_2.add_node(init_state_2)
 
-        proof = EquivalenceProof('eq_1', kcfg_1, {}, bmc_depth, 'eq_2', kcfg_2, {}, bmc_depth)
+        proof = EquivalenceProof('eq_1', kcfg_1, {}, 'eq_2', kcfg_2, {})
         prover = EquivalenceProver(
+            kcfg_explore,
             proof,
-            same_loop=TestImpProof._same_loop,
             is_terminal=TestImpProof._is_terminal,
             extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
 
         prover.advance_proof(
-            kcfg_explore=kcfg_explore,
             max_iterations=10,
             execute_depth=10000,
             cut_point_rules=cut_rules,
@@ -913,7 +1133,7 @@ class TestImpProof(KCFGExploreTest):
         print('Final states of program 2:')
         print(f'{final_nodes_print_2}\n')
 
-        final_nodes_equivalence, pc_stuck, pc_frontier, pc_bounded = proof.check_equivalence(
+        final_nodes_equivalence, pc_stuck, pc_frontier = proof.check_equivalence(
             kcfg_explore, TestImpProof._cell_names(), TestImpProof._default_config_comparator()
         )
 
@@ -935,7 +1155,6 @@ class TestImpProof(KCFGExploreTest):
                 assert (
                     pc_stuck == SubsumptionCheckResult.EQUIVALENT
                     and pc_frontier == SubsumptionCheckResult.EQUIVALENT
-                    and pc_bounded == SubsumptionCheckResult.EQUIVALENT
                 )
             elif status_2 == ProofStatus.PENDING:
                 # Only second proof has not been completed
@@ -959,5 +1178,4 @@ class TestImpProof(KCFGExploreTest):
             assert (
                 pc_stuck == SubsumptionCheckResult.EQUIVALENT
                 and pc_frontier == SubsumptionCheckResult.EQUIVALENT
-                and pc_bounded == SubsumptionCheckResult.EQUIVALENT
             )

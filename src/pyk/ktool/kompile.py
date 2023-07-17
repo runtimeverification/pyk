@@ -13,7 +13,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING, final
 
-from ..cli_utils import abs_or_rel_to, check_dir_path, check_file_path, run_process
+from ..utils import abs_or_rel_to, check_dir_path, check_file_path, run_process
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -27,7 +27,9 @@ def kompile(
     *,
     command: Iterable[str] = ('kompile',),
     output_dir: str | Path | None = None,
+    temp_dir: str | Path | None = None,
     debug: bool = False,
+    verbose: bool = False,
     cwd: Path | None = None,
     check: bool = True,
     **kwargs: Any,
@@ -37,7 +39,9 @@ def kompile(
     return kompiler(
         command=command,
         output_dir=output_dir,
+        temp_dir=temp_dir,
         debug=debug,
+        verbose=verbose,
         cwd=cwd,
         check=check,
     )
@@ -99,7 +103,9 @@ class Kompile(ABC):
         command: Iterable[str] | None = None,
         *,
         output_dir: str | Path | None = None,
+        temp_dir: str | Path | None = None,
         debug: bool = False,
+        verbose: bool = False,
         cwd: Path | None = None,
         check: bool = True,
     ) -> Path:
@@ -114,11 +120,18 @@ class Kompile(ABC):
             output_dir = Path(output_dir)
             args += ['--output-definition', str(output_dir)]
 
+        if temp_dir is not None:
+            temp_dir = Path(temp_dir)
+            args += ['--temp-dir', str(temp_dir)]
+
         if debug:
             args += ['--debug']
 
+        if verbose:
+            args += ['--verbose']
+
         try:
-            run_process(args, logger=_LOGGER, cwd=cwd, check=check)
+            proc_res = run_process(args, logger=_LOGGER, cwd=cwd, check=check)
         except CalledProcessError as err:
             raise RuntimeError(
                 f'Command kompile exited with code {err.returncode} for: {self.base_args.main_file}',
@@ -126,6 +139,9 @@ class Kompile(ABC):
                 err.stderr,
                 err.returncode,
             ) from err
+
+        if proc_res.stdout:
+            print(proc_res.stdout.rstrip())
 
         definition_dir = output_dir if output_dir else Path(self.base_args.main_file.stem + '-kompiled')
         assert definition_dir.is_dir()

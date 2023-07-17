@@ -94,22 +94,41 @@ def kast_to_kore(
     return kompiled_kore.add_injections(kore, _ksort_to_kore(sort))
 
 
-def krule_to_kore(krule: KRule) -> Axiom:
+# 'krule' should have sorts on variables
+def krule_to_kore(kast_defn: KDefinition, kompiled_kore: KompiledKore, krule: KRule) -> Axiom:
     krule_body = krule.body
     krule_lhs = CTerm(extract_lhs(krule_body), [bool_to_ml_pred(krule.requires)])
     krule_rhs = CTerm(extract_rhs(krule_body), [bool_to_ml_pred(krule.ensures)])
 
-    kore_lhs = _kast_to_kore(krule_lhs.kast)
-    kore_rhs = _kast_to_kore(krule_rhs.kast)
+    top_level_kore_sort = SortApp('SortGeneratedTopCell')
+    top_level_k_sort = KSort('GeneratedTopCell')
+    # The backend does not like rewrite rules without a precondition
+    if len(krule_lhs.constraints) > 0:
+        kore_lhs0: Pattern = kast_to_kore(kast_defn, kompiled_kore, krule_lhs.kast, sort=top_level_k_sort)
+    else:
+        kore_lhs0 = And(
+            top_level_kore_sort,
+            kast_to_kore(kast_defn, kompiled_kore, krule_lhs.kast, sort=top_level_k_sort),
+            Top(top_level_kore_sort),
+        )
+
+    kore_rhs0: Pattern = kast_to_kore(kast_defn, kompiled_kore, krule_rhs.kast, sort=top_level_k_sort)
+
+    kore_lhs = kompiled_kore.add_injections(kore_lhs0, sort=top_level_kore_sort)
+    kore_rhs = kompiled_kore.add_injections(kore_rhs0, sort=top_level_kore_sort)
     prio = krule.priority
+    attrs = [App(symbol='priority', sorts=(), args=(String(str(prio)),))]
+    if 'label' in krule.att:
+        label = krule.att['label']
+        attrs.append(App(symbol='label', sorts=(), args=(String(label),)))
     axiom = Axiom(
         vars=(),
         pattern=Rewrites(
-            sort=SortApp(name='SortGeneratedTopCell', sorts=()),
+            sort=top_level_kore_sort,
             left=kore_lhs,
             right=kore_rhs,
         ),
-        attrs=(App(symbol='priority', sorts=(), args=(String(str(prio)),)),),
+        attrs=attrs,
     )
     return axiom
 

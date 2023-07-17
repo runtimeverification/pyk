@@ -15,16 +15,15 @@ from typing import TYPE_CHECKING, ContextManager, final
 
 from psutil import Process
 
-from ..cli_utils import check_dir_path, check_file_path
 from ..ktool.kprove import KoreExecLogFormat
-from ..utils import filter_none
+from ..utils import check_dir_path, check_file_path, filter_none
 from .syntax import And, Pattern, SortApp, kore_term
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from typing import Any, ClassVar, Final, TextIO, TypeVar
 
-    from ..cli_utils import BugReport
+    from ..utils import BugReport
     from .syntax import Module
 
     ER = TypeVar('ER', bound='ExecuteResult')
@@ -35,17 +34,13 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 @final
-@dataclass(frozen=True)
+@dataclass
 class JsonRpcError(Exception):
-    message: str
-    code: int
-    data: Any
-
     def __init__(self, message: str, code: int, data: Any = None):
-        object.__setattr__(self, 'message', message)
-        object.__setattr__(self, 'code', code)
-        object.__setattr__(self, 'data', data)
         super().__init__(message)
+        self.message = message
+        self.code = code
+        self.data = data
 
 
 class JsonRpcClient(ContextManager['JsonRpcClient']):
@@ -165,17 +160,13 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
 
 @final
-@dataclass(frozen=True)
+@dataclass
 class KoreClientError(Exception):  # TODO refine
-    message: str
-    code: int
-    data: Any
-
     def __init__(self, message: str, code: int, data: Any = None):
-        object.__setattr__(self, 'code', code)
-        object.__setattr__(self, 'message', message)
-        object.__setattr__(self, 'data', data)
         super().__init__(message)
+        self.message = message
+        self.code = code
+        self.data = data
 
 
 class StopReason(str, Enum):
@@ -490,6 +481,40 @@ class ImpliesResult:
         )
 
 
+class GetModelResult(ABC):  # noqa: B024
+    @staticmethod
+    def from_dict(dct: Mapping[str, Any]) -> GetModelResult:
+        status = dct['satisfiable']
+        match status:
+            case 'Unknown':
+                return UnknownResult()
+            case 'Unsat':
+                return UnsatResult()
+            case 'Sat':
+                substitution = dct.get('substitution')
+                return SatResult(model=kore_term(substitution, Pattern) if substitution else None)  # type: ignore
+            case _:
+                raise ValueError(f'Unknown status: {status}')
+
+
+@final
+@dataclass(frozen=True)
+class UnknownResult(GetModelResult):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class UnsatResult(GetModelResult):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class SatResult(GetModelResult):
+    model: Pattern | None
+
+
 class KoreClient(ContextManager['KoreClient']):
     _KORE_JSON_VERSION: Final = 1
 
@@ -529,6 +554,7 @@ class KoreClient(ContextManager['KoreClient']):
         max_depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
+        module_name: str | None = None,
         log_successful_rewrites: bool | None = None,
         log_failed_rewrites: bool | None = None,
         log_successful_simplifications: bool | None = None,
@@ -540,6 +566,7 @@ class KoreClient(ContextManager['KoreClient']):
                 'cut-point-rules': list(cut_point_rules) if cut_point_rules is not None else None,
                 'terminal-rules': list(terminal_rules) if terminal_rules is not None else None,
                 'state': self._state(pattern),
+                'module': module_name,
                 'log-successful-rewrites': log_successful_rewrites,
                 'log-failed-rewrites': log_failed_rewrites,
                 'log-successful-simplifications': log_successful_simplifications,
@@ -586,6 +613,17 @@ class KoreClient(ContextManager['KoreClient']):
         result = self._request('simplify', **params)
         logs = tuple(LogEntry.from_dict(l) for l in result['logs']) if 'logs' in result else ()
         return kore_term(result['state'], Pattern), logs  # type: ignore # https://github.com/python/mypy/issues/4717
+
+    def get_model(self, pattern: Pattern, module_name: str | None = None) -> GetModelResult:
+        params = filter_none(
+            {
+                'state': self._state(pattern),
+                'module': module_name,
+            }
+        )
+
+        result = self._request('get-model', **params)
+        return GetModelResult.from_dict(result)
 
     def add_module(self, module: Module) -> None:
         result = self._request('add-module', module=module.text)

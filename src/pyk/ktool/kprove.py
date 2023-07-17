@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from contextlib import contextmanager
 from enum import Enum
 from itertools import chain
@@ -10,14 +11,14 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
-from ..cli_utils import check_dir_path, check_file_path, gen_file_timestamp, run_process
+from ..cli.utils import check_dir_path, check_file_path
 from ..cterm import build_claim
 from ..kast import kast_term
 from ..kast.inner import KInner
 from ..kast.manip import extract_subst, flatten_label, free_vars
 from ..kast.outer import KDefinition, KFlatModule, KFlatModuleList, KImport, KRequire
 from ..prelude.ml import is_top, mlAnd, mlBottom, mlTop
-from ..utils import unique
+from ..utils import gen_file_timestamp, run_process, unique
 from .kprint import KPrint
 
 if TYPE_CHECKING:
@@ -25,10 +26,10 @@ if TYPE_CHECKING:
     from subprocess import CompletedProcess
     from typing import Final
 
-    from ..cli_utils import BugReport
     from ..cterm import CTerm
     from ..kast.outer import KClaim, KRule, KRuleLike
     from ..kast.pretty import SymbolTable
+    from ..utils import BugReport
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ def _kprove(
     output: KProveOutput | None = None,
     depth: int | None = None,
     claims: Iterable[str] = (),
+    temp_dir: Path | None = None,
     haskell_backend_command: str | None = None,
     dry_run: bool = False,
     # --
@@ -86,6 +88,7 @@ def _kprove(
         output=output,
         depth=depth,
         claims=claims,
+        temp_dir=temp_dir,
         haskell_backend_command=haskell_backend_command,
         dry_run=dry_run,
     )
@@ -109,6 +112,7 @@ def _build_arg_list(
     output: KProveOutput | None,
     depth: int | None,
     claims: Iterable[str],
+    temp_dir: Path | None,
     haskell_backend_command: str | None,
     dry_run: bool,
 ) -> list[str]:
@@ -135,6 +139,9 @@ def _build_arg_list(
     claims = list(claims)
     if claims:
         args += ['--claims', ','.join(claims)]
+
+    if temp_dir:
+        args += ['--temp-dir', str(temp_dir)]
 
     if haskell_backend_command:
         args += ['--haskell-backend-command', haskell_backend_command]
@@ -208,12 +215,14 @@ class KProve(KPrint):
         ]
 
         env = os.environ.copy()
-        kore_exec_opts = ' '.join(list(haskell_args) + haskell_log_args)
+        existing_opts = os.getenv('KORE_EXEC_OPTS')
+        kore_exec_opts = ' '.join(list(haskell_args) + haskell_log_args + ([existing_opts] if existing_opts else []))
         _LOGGER.debug(f'export KORE_EXEC_OPTS={kore_exec_opts!r}')
         env['KORE_EXEC_OPTS'] = kore_exec_opts
 
         if haskell_rts_args:
-            ghc_rts = ' '.join(list(haskell_rts_args))
+            existing = os.getenv('GHCRTS')
+            ghc_rts = ' '.join(list(haskell_rts_args) + ([existing] if existing else []))
             _LOGGER.debug(f'export GHCRTS={ghc_rts!r}')
             env['GHCRTS'] = ghc_rts
 
@@ -225,6 +234,7 @@ class KProve(KPrint):
             include_dirs=include_dirs,
             md_selector=md_selector,
             output=KProveOutput.JSON,
+            temp_dir=self.use_directory,
             dry_run=dry_run,
             args=self.prover_args + list(args),
             env=env,
@@ -301,15 +311,13 @@ class KProve(KPrint):
         next_states = [mlAnd([constraint_subst.unapply(ns), constraint_subst.ml_pred]) for ns in next_states]
         return next_states if len(next_states) > 0 else [mlTop()]
 
-    def get_claims(
+    def get_claim_modules(
         self,
         spec_file: Path,
         spec_module_name: str | None = None,
         include_dirs: Iterable[Path] = (),
         md_selector: str | None = None,
-        claim_labels: Iterable[str] | None = None,
-        exclude_claim_labels: Iterable[str] | None = None,
-    ) -> list[KClaim]:
+    ) -> KFlatModuleList:
         with self._temp_file() as ntf:
             self.prove(
                 spec_file,
@@ -319,10 +327,25 @@ class KProve(KPrint):
                 dry_run=True,
                 args=['--emit-json-spec', ntf.name],
             )
-            flat_module_list = kast_term(json.loads(Path(ntf.name).read_text()), KFlatModuleList)
+            return kast_term(json.loads(Path(ntf.name).read_text()), KFlatModuleList)
+
+    def get_claims(
+        self,
+        spec_file: Path,
+        spec_module_name: str | None = None,
+        include_dirs: Iterable[Path] = (),
+        md_selector: str | None = None,
+        claim_labels: Iterable[str] | None = None,
+        exclude_claim_labels: Iterable[str] | None = None,
+    ) -> list[KClaim]:
+        flat_module_list = self.get_claim_modules(
+            spec_file=spec_file,
+            spec_module_name=spec_module_name,
+            include_dirs=include_dirs,
+            md_selector=md_selector,
+        )
 
         all_claims = {c.label: c for m in flat_module_list.modules for c in m.claims}
-
         unfound_labels = []
         claim_labels = list(all_claims.keys()) if claim_labels is None else claim_labels
         exclude_claim_labels = [] if exclude_claim_labels is None else exclude_claim_labels
@@ -343,6 +366,7 @@ class KProve(KPrint):
         with self._temp_file(suffix='-spec.k') as ntf:
             tmp_claim_file = Path(ntf.name)
             tmp_module_name = tmp_claim_file.stem.removesuffix('-spec').rstrip('_').replace('_', '-').upper() + '-SPEC'
+            tmp_module_name = re.sub(r'-+', '-', tmp_module_name)
 
             sentences: list[KRuleLike] = []
             sentences += lemmas
