@@ -183,9 +183,8 @@ class Proof(ABC):
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
         return chain([f'Proof: {self.id}', f'    status: {self.status}'], *subproofs_summaries)
 
-    @classmethod
     @abstractmethod
-    def as_claim(cls, kprint: KPrint) -> KClaim | None:
+    def as_claim(self, kprint: KPrint) -> KClaim | None:
         ...
 
 
