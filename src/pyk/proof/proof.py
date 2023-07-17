@@ -177,8 +177,17 @@ class Proof(ABC):
 
     @property
     def summary(self) -> ProofSummary:
+        @dataclass
+        class _BaseSummary(ProofSummary):
+            id: str
+            status: ProofStatus
+
+            @property
+            def lines(self) -> list[str]:
+                return [f'Proof: {self.id}', f'    status: {self.status}']
+
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
-        return CompositeSummary(ProofSummary(self.id, self.status), subproofs_summaries)
+        return CompositeSummary([_BaseSummary(self.id, self.status), *subproofs_summaries])
 
 
 @dataclass
@@ -187,6 +196,7 @@ class ProofSummary(ABC):
     status: ProofStatus
 
     @property
+    @abstractmethod
     def lines(self) -> list[str]:
         return [f'Proof: {self.id}', f'    status: {self.status}']
 
@@ -200,13 +210,18 @@ class CompositeSummary(ProofSummary):
     status: ProofStatus
     summaries: tuple[ProofSummary, ...]
 
-    def __init__(self, summary: ProofSummary, subproofs_summaries: Iterable[ProofSummary]):
+    def __init__(self, _summaries: Iterable[ProofSummary]):
+        summary = list(_summaries)[0]
         self.id = summary.id
         self.status = summary.status
-        self.summaries = tuple(chain([summary], subproofs_summaries))
+        self.summaries = tuple(chain(_summaries))
 
     def __str__(self) -> str:
         return '\n'.join(str(summary) for summary in self.summaries)
+
+    @property
+    def lines(self) -> list[str]:
+        return self.lines
 
 
 class Prover:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Final, TypeVar
+from typing import TYPE_CHECKING, Any, Final
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KInner, KSort, Subst
@@ -19,8 +19,6 @@ if TYPE_CHECKING:
     from ..kast.outer import KClaim, KDefinition
     from ..kcfg import KCFGExplore
     from ..ktool.kprint import KPrint
-
-T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -195,9 +193,6 @@ class EqualitySummary(ProofSummary):
             f'    status: {self.status}',
             f'    admitted: {self.admitted}',
         ]
-
-    def __str__(self) -> str:
-        return '\n'.join(self.lines)
 
 
 class RefutationProof(ImpliesProof):

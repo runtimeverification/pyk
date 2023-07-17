@@ -8,7 +8,7 @@ from pyk.kcfg.kcfg import KCFG
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import intToken
 from pyk.proof.equality import EqualityProof, EqualitySummary
-from pyk.proof.proof import Proof, ProofStatus
+from pyk.proof.proof import CompositeSummary, Proof, ProofStatus
 from pyk.proof.reachability import APRBMCProof, APRBMCSummary, APRFailureInfo, APRProof, APRSummary
 
 from .test_kcfg import node, node_dicts
@@ -334,7 +334,9 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
     proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
 
     # Then
-    assert proof_from_disk.summary.summaries[0] == APRSummary(
+    comp_summary = proof_from_disk.summary
+    assert isinstance(comp_summary, CompositeSummary)
+    assert comp_summary.summaries[0] == APRSummary(  # noqa:
         id='apr_proof_1',
         status=ProofStatus.PENDING,
         admitted=False,
@@ -347,7 +349,9 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
         subproofs=1,
     )
 
-    assert proof_from_disk.summary.summaries[1].summaries == (
+    nest_comp_summary = comp_summary.summaries[1]
+    assert isinstance(nest_comp_summary, CompositeSummary)
+    assert nest_comp_summary.summaries == (
         APRSummary(
             id='apr_proof_2',
             status=ProofStatus.PENDING,

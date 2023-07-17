@@ -235,19 +235,21 @@ class APRProof(Proof):
     def summary(self) -> CompositeSummary:
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
         return CompositeSummary(
-            APRSummary(
-                self.id,
-                self.status,
-                self.admitted,
-                len(self.kcfg.nodes),
-                len(self.pending),
-                len(self.failing),
-                len(self.kcfg.stuck),
-                len(self.terminal),
-                len(self.node_refutations),
-                len(self.subproof_ids),
-            ),
-            subproofs_summaries,
+            [
+                APRSummary(
+                    self.id,
+                    self.status,
+                    self.admitted,
+                    len(self.kcfg.nodes),
+                    len(self.pending),
+                    len(self.failing),
+                    len(self.kcfg.stuck),
+                    len(self.terminal),
+                    len(self.node_refutations),
+                    len(self.subproof_ids),
+                ),
+                *subproofs_summaries,
+            ]
         )
 
     def get_refutation_id(self, node_id: int) -> str:
@@ -368,20 +370,22 @@ class APRBMCProof(APRProof):
     def summary(self) -> CompositeSummary:
         subproofs_summaries = [subproof.summary for subproof in self.subproofs]
         return CompositeSummary(
-            APRBMCSummary(
-                self.id,
-                self.status,
-                self.bmc_depth,
-                len(self.kcfg.nodes),
-                len(self.pending),
-                len(self.failing),
-                len(self.kcfg.stuck),
-                len(self.terminal),
-                len(self.node_refutations),
-                len(self._bounded_nodes),
-                len(self.subproof_ids),
-            ),
-            subproofs_summaries,
+            [
+                APRBMCSummary(
+                    self.id,
+                    self.status,
+                    self.bmc_depth,
+                    len(self.kcfg.nodes),
+                    len(self.pending),
+                    len(self.failing),
+                    len(self.kcfg.stuck),
+                    len(self.terminal),
+                    len(self.node_refutations),
+                    len(self._bounded_nodes),
+                    len(self.subproof_ids),
+                ),
+                *subproofs_summaries,
+            ]
         )
 
 
