@@ -146,8 +146,7 @@ class KCFGProof(Proof):
     def remove_terminal(self, nid: NodeIdLike) -> None:
         self._terminal_nodes.remove(self.kcfg._resolve(nid))  # TODO remove
 
-    @classmethod
-    def as_claim(cls, kprint: KPrint) -> KClaim | None:
+    def as_claim(self, kprint: KPrint) -> KClaim | None:
         return None
 
     @property

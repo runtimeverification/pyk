@@ -88,8 +88,7 @@ class EqualityProof(ImpliesProof):
         return EqualityProof(claim.label, lhs_body, rhs_body, sort, constraints=constraints, proof_dir=proof_dir)
 
     # TODO: How should this be handled?
-    @classmethod
-    def as_claim(cls, kprint: KPrint) -> KClaim | None:
+    def as_claim(self, kprint: KPrint) -> KClaim | None:
         return None
 
     @property
@@ -280,8 +279,7 @@ class RefutationProof(ImpliesProof):
         return lines
 
     # TODO: How should this be handled?
-    @classmethod
-    def as_claim(cls, kprint: KPrint) -> KClaim | None:
+    def as_claim(self, kprint: KPrint) -> KClaim | None:
         return None
 
 

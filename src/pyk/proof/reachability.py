@@ -180,10 +180,9 @@ class APRProof(KCFGProof):
         cfg, init_node, target_node = KCFG.from_claim(defn, claim)
         return APRProof(claim.label, cfg, init=init_node, target=target_node, logs=logs, **kwargs)
 
-    @classmethod
-    def as_claim(cls, kprint: KPrint) -> KClaim | None:
-        fr: CTerm = cls.kcfg.node(cls.init).cterm
-        to: CTerm = cls.kcfg.node(cls.target).cterm
+    def as_claim(self, kprint: KPrint) -> KClaim | None:
+        fr: CTerm = self.kcfg.node(self.init).cterm
+        to: CTerm = self.kcfg.node(self.target).cterm
         fr_config_sorted = kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
         to_config_sorted = kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
         kc = KClaim(
