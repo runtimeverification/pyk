@@ -253,6 +253,28 @@ class APRProof(Proof):
     def get_refutation_id(self, node_id: int) -> str:
         return f'{self.id}.node-infeasible-{node_id}'
 
+    def specialize_target_node(self) -> None:
+        target_subsumed = self.kcfg.predecessors(self.target)
+        if len(target_subsumed) < 2:
+            _LOGGER.info(
+                f'Found less than 2 nodes subsumed into target, not specializing target node {self.id}: {target_subsumed}'
+            )
+            return
+        target_subsumed_covers: list[KCFG.Cover] = []
+        for ts in target_subsumed:
+            if type(ts) is KCFG.Cover:
+                target_subsumed_covers.append(ts)
+            else:
+                _LOGGER.info(
+                    f'Found non-cover predecessor into target node, not specializing target node {self.id}: {ts}'
+                )
+                return
+        for tsc in target_subsumed_covers:
+            self.kcfg.remove_cover(tsc.source.id, tsc.target.id)
+        merge_id = self.kcfg.create_merge([cover.source.id for cover in target_subsumed_covers])
+        self.kcfg.create_cover(merge_id, self.target)
+        _LOGGER.info(f'Created specialized target subsumed node {self.id}: {merge_id}')
+
 
 class APRBMCProof(APRProof):
     """APRBMCProof and APRBMCProver perform bounded model-checking of an all-path reachability logic claim."""
@@ -587,28 +609,6 @@ class APRProver(Prover):
 
         self.proof.add_subproof(refutation)
         return refutation
-
-    def specialize_target_node(self) -> None:
-        target_subsumed = self.proof.kcfg.predecessors(self.proof.target)
-        if len(target_subsumed) < 2:
-            _LOGGER.info(
-                f'Found less than 2 nodes subsumed into target, not specializing target node {self.proof.id}: {target_subsumed}'
-            )
-            return
-        target_subsumed_covers: list[KCFG.Cover] = []
-        for ts in target_subsumed:
-            if type(ts) is KCFG.Cover:
-                target_subsumed_covers.append(ts)
-            else:
-                _LOGGER.info(
-                    f'Found non-cover predecessor into target node, not specializing target node {self.proof.id}: {ts}'
-                )
-                return
-        for tsc in target_subsumed_covers:
-            self.proof.kcfg.remove_cover(tsc.source.id, tsc.target.id)
-        merge_id = self.proof.kcfg.create_merge([cover.source.id for cover in target_subsumed_covers])
-        self.proof.kcfg.create_cover(merge_id, self.proof.target)
-        _LOGGER.info(f'Created specialized target subsumed node {self.proof.id}: {merge_id}')
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore)
