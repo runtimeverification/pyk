@@ -512,8 +512,11 @@ class Kernel(Enum):
     LINUX = 'Linux'
     DARWIN = 'Darwin'
 
-    cached: ClassVar[Kernel] = run_process(('uname', '-s'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
+    _cached: ClassVar[Kernel]
 
     @classmethod
     def get(cls) -> Kernel:
-        return cls.cached
+        if not hasattr(cls, '_cached'):
+            uname = run_process(('uname', '-s'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
+            cls._cached = Kernel(uname)
+        return cls._cached
