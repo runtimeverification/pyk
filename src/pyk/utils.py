@@ -516,7 +516,7 @@ class Kernel(Enum):
 
     @classmethod
     def get(cls) -> Kernel:
-        if cls.cached is None:
+        if not cls.cached:
             uname = run_process(('uname', '-s'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
             cls.cached = Kernel(uname)
         return cls.cached
