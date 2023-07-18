@@ -489,10 +489,8 @@ class APRProver(Prover):
             iterations += 1
             curr_node = self.proof.pending[0]
 
-            if self._check_subsume(curr_node):
-                continue
-
-            if self._check_terminal(curr_node):
+            if self._check_terminal(curr_node) or implication_every_block:
+                self._check_subsume(curr_node)
                 continue
 
             if self._check_abstract(curr_node):
