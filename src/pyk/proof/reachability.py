@@ -254,26 +254,12 @@ class APRProof(Proof):
         return f'{self.id}.node-infeasible-{node_id}'
 
     def specialize_target_node(self) -> None:
-        target_subsumed = self.kcfg.predecessors(self.target)
-        if len(target_subsumed) < 2:
-            _LOGGER.info(
-                f'Found less than 2 nodes subsumed into target, not specializing target node {self.id}: {target_subsumed}'
-            )
-            return
-        target_subsumed_covers: list[KCFG.Cover] = []
-        for ts in target_subsumed:
-            if type(ts) is KCFG.Cover:
-                target_subsumed_covers.append(ts)
-            else:
-                _LOGGER.info(
-                    f'Found non-cover predecessor into target node, not specializing target node {self.id}: {ts}'
-                )
-                return
-        for tsc in target_subsumed_covers:
-            self.kcfg.remove_cover(tsc.source.id, tsc.target.id)
-        merge_id = self.kcfg.create_merge([cover.source.id for cover in target_subsumed_covers])
-        self.kcfg.create_cover(merge_id, self.target)
-        _LOGGER.info(f'Created specialized target subsumed node {self.id}: {merge_id}')
+        pullback = self.kcfg.pullback_covers(self.target)
+        if pullback is None:
+            _LOGGER.warning(f'Could not make a cover pullback for target node: {self.target}')
+        else:
+            merge_id, source_ids = pullback
+            _LOGGER.info(f'Created specialized target subsumed node {self.id}: {pullback}')
 
 
 class APRBMCProof(APRProof):
