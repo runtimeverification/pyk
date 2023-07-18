@@ -694,17 +694,9 @@ class KoreServer(ContextManager['KoreServer']):
         args += haskell_log_args
 
         if bug_report:
-            bug_report.add_file(definition_file, Path('definition.kore'))
-            command = list(command)
-
-            version_info = run_process((command[0], '--version'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
-            bug_report.add_file_contents(version_info, Path('server_version.txt'))
-            server_instance = {
-                'exe': command[0],
-                'module': module_name,
-                'extra_args': command[1:] + smt_server_args + haskell_log_args,
-            }
-            bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
+            self.gather_server_report(
+                module_name, list(command), bug_report, definition_file, smt_server_args, haskell_log_args
+            )
 
         _LOGGER.info(f'Starting KoreServer: {" ".join(args)}')
 
@@ -714,6 +706,25 @@ class KoreServer(ContextManager['KoreServer']):
         if port:
             assert self.port == port
         _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
+
+    @staticmethod
+    def gather_server_report(
+        module_name: str,
+        command: list[str],
+        bug_report: BugReport,
+        definition_file: Path,
+        smt_server_args: list[str],
+        haskell_log_args: list[str],
+    ) -> None:
+        bug_report.add_file(definition_file, Path('definition.kore'))
+        version_info = run_process((command[0], '--version'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
+        bug_report.add_file_contents(version_info, Path('server_version.txt'))
+        server_instance = {
+            'exe': command[0],
+            'module': module_name,
+            'extra_args': command[1:] + smt_server_args + haskell_log_args,
+        }
+        bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
 
     @staticmethod
     def _check_none_or_positive(n: int | None, param_name: str) -> None:
