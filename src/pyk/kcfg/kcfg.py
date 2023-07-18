@@ -659,6 +659,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             self.create_cover(nid, new_node.id)
         return new_node.id
 
+    def pullback_covers(self, target_id: NodeIdLike) -> tuple[list[NodeIdLike], NodeIdLike] | None:
+        covers = self.covers(target_id=target_id)
+        source_ids: list[NodeIdLike] = [cover.source.id for cover in covers]
+        if len(source_ids) < 2:
+            return None
+        merge_id = self.create_merge(source_ids)
+        for cover in covers:
+            self.remove_cover(cover.source.id, target_id)
+            self.create_cover(cover.source.id, merge_id)
+        self.create_cover(merge_id, target_id)
+        return source_ids, merge_id
+
     def ndbranches(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[NDBranch]:
         source_id = self._resolve(source_id) if source_id is not None else None
         target_id = self._resolve(target_id) if target_id is not None else None
