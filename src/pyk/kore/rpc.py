@@ -34,17 +34,13 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 @final
-@dataclass(frozen=True)
+@dataclass
 class JsonRpcError(Exception):
-    message: str
-    code: int
-    data: Any
-
     def __init__(self, message: str, code: int, data: Any = None):
-        object.__setattr__(self, 'message', message)
-        object.__setattr__(self, 'code', code)
-        object.__setattr__(self, 'data', data)
         super().__init__(message)
+        self.message = message
+        self.code = code
+        self.data = data
 
 
 class JsonRpcClient(ContextManager['JsonRpcClient']):
@@ -164,17 +160,13 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
 
 @final
-@dataclass(frozen=True)
+@dataclass
 class KoreClientError(Exception):  # TODO refine
-    message: str
-    code: int
-    data: Any
-
     def __init__(self, message: str, code: int, data: Any = None):
-        object.__setattr__(self, 'code', code)
-        object.__setattr__(self, 'message', message)
-        object.__setattr__(self, 'data', data)
         super().__init__(message)
+        self.message = message
+        self.code = code
+        self.data = data
 
 
 class StopReason(str, Enum):
@@ -499,7 +491,8 @@ class GetModelResult(ABC):  # noqa: B024
             case 'Unsat':
                 return UnsatResult()
             case 'Sat':
-                return SatResult(model=kore_term(dct['substitution'], Pattern))  # type: ignore
+                substitution = dct.get('substitution')
+                return SatResult(model=kore_term(substitution, Pattern) if substitution else None)  # type: ignore
             case _:
                 raise ValueError(f'Unknown status: {status}')
 
@@ -519,7 +512,7 @@ class UnsatResult(GetModelResult):
 @final
 @dataclass(frozen=True)
 class SatResult(GetModelResult):
-    model: Pattern
+    model: Pattern | None
 
 
 class KoreClient(ContextManager['KoreClient']):
