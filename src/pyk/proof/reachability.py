@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import traceback
 from dataclasses import dataclass
 from itertools import chain
 from typing import TYPE_CHECKING
