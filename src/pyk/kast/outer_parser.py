@@ -3,12 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .outer_lexer import TokenType, outer_lexer
-from .outer_syntax import EMPTY_ATT, Att, Rule
+from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Rule
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator
+    from typing import Final
 
     from .outer_lexer import Token
+    from .outer_syntax import StringSentence
 
 
 class OuterParser:
@@ -19,13 +21,16 @@ class OuterParser:
         self._lexer = outer_lexer(it)
         self._la = next(self._lexer)
 
-    def _consume(self) -> None:
+    def _consume(self) -> str:
+        res = self._la.text
         self._la = next(self._lexer)
+        return res
 
     def _match(self, token_type: TokenType) -> str:
         # Do not call on EOF
         if self._la.type != token_type:
             raise ValueError(f'Expected {token_type.name}, got: {self._la.type.name}')
+        # _consume() inlined for efficiency
         res = self._la.text
         self._la = next(self._lexer)
         return res
@@ -39,8 +44,16 @@ class OuterParser:
         self._la = next(self._lexer)
         return res
 
-    def rule(self) -> Rule:
-        self._match(TokenType.KW_RULE)
+    def string_sentence(self) -> StringSentence:
+        tag: str
+        if self._la.type is TokenType.KW_CONTEXT:
+            tag = self._consume()
+            if self._la.type is TokenType.KW_ALIAS:
+                tag = self._consume()
+        else:
+            tag = self._match_any({TokenType.KW_CLAIM, TokenType.KW_CONFIG, TokenType.KW_RULE})
+
+        cls = _STRING_SENTENCE[tag]
 
         label: str
         if self._la.type == TokenType.LBRACK:
@@ -59,7 +72,7 @@ class OuterParser:
         else:
             att = EMPTY_ATT
 
-        return Rule(bubble, label, att)
+        return cls(bubble, label, att)
 
     def att(self) -> Att:
         items: list[tuple[str, str]] = []
@@ -87,3 +100,12 @@ class OuterParser:
         self._match(TokenType.RBRACK)
 
         return Att(items)
+
+
+_STRING_SENTENCE: Final = {
+    'alias': Alias,
+    'claim': Claim,
+    'configuration': Config,
+    'context': Context,
+    'rule': Rule,
+}

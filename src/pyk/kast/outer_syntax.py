@@ -40,9 +40,59 @@ class Att(AST, Sequence[tuple[str, str]]):
 EMPTY_ATT: Final = Att()
 
 
+class StringSentence(AST, ABC):
+    _prefix: str
+
+    bubble: str
+    label: str
+    att: Att
+
+
 @final
 @dataclass(frozen=True)
-class Rule(AST):
+class Rule(StringSentence):
+    _prefix = 'rule'
+
+    bubble: str
+    label: str = field(default='')
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass(frozen=True)
+class Claim(StringSentence):
+    _prefix = 'claim'
+
+    bubble: str
+    label: str = field(default='')
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass(frozen=True)
+class Config(StringSentence):
+    _prefix = 'configuration'
+
+    bubble: str
+    label: str = field(default='')
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass(frozen=True)
+class Context(StringSentence):
+    _prefix = 'context'
+
+    bubble: str
+    label: str = field(default='')
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass(frozen=True)
+class Alias(StringSentence):
+    _prefix = 'context alias'
+
     bubble: str
     label: str = field(default='')
     att: Att = field(default=EMPTY_ATT)
