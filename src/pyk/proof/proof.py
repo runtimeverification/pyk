@@ -69,11 +69,9 @@ class Proof(ABC):
         return [sp.id for sp in self._subproofs.values()]
 
     def write_proof(self, subproofs: bool = False) -> None:
-        print(self.id)
         if not self.proof_dir:
             return
         proof_path = self.proof_dir / f'{hash_str(self.id)}.json'
-        print(proof_path)
         if not self.up_to_date:
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
