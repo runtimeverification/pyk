@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .outer_lexer import TokenType, outer_lexer
-from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Import, Rule
+from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Import, Module, Rule
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator
     from typing import Any, Final
 
     from .outer_lexer import Token
-    from .outer_syntax import StringSentence
+    from .outer_syntax import Sentence, StringSentence
 
 
 class OuterParser:
@@ -44,6 +44,29 @@ class OuterParser:
         self._la = next(self._lexer)
         return res
 
+    def module(self) -> Module:
+        self._match(TokenType.KW_MODULE)
+
+        name = self._match(TokenType.MODNAME)
+
+        att: Att
+        if self._la.type is TokenType.LBRACK:
+            att = self.att()
+        else:
+            att = EMPTY_ATT
+
+        imports: list[Import] = []
+        while self._la.type in {TokenType.KW_IMPORT, TokenType.KW_IMPORTS}:
+            imports.append(self.importt())
+
+        sentences: list[Sentence] = []
+        while self._la.type is not TokenType.KW_ENDMODULE:
+            sentences.append(self.sentence())
+
+        self._consume()
+
+        return Module(name, sentences, imports, att)
+
     def importt(self) -> Import:
         self._match_any({TokenType.KW_IMPORT, TokenType.KW_IMPORTS})
 
@@ -58,13 +81,13 @@ class OuterParser:
 
         return Import(module_name, public=public)
 
-    def sentence(self) -> Any:  # TODO type
+    def sentence(self) -> Sentence:
         if self._la.type is TokenType.KW_SYNTAX:
             return self.syntax_sentence()
 
         return self.string_sentence()
 
-    def syntax_sentence(self) -> Any:
+    def syntax_sentence(self) -> Any:  # TODO type
         raise RuntimeError('TODO')
 
     def string_sentence(self) -> StringSentence:

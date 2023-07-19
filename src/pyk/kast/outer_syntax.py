@@ -40,7 +40,11 @@ class Att(AST, Sequence[tuple[str, str]]):
 EMPTY_ATT: Final = Att()
 
 
-class StringSentence(AST, ABC):
+class Sentence(AST, ABC):
+    ...
+
+
+class StringSentence(Sentence, ABC):
     _prefix: str
 
     bubble: str
@@ -103,3 +107,24 @@ class Alias(StringSentence):
 class Import(AST):
     module_name: str
     public: bool = field(default=True, kw_only=True)
+
+
+@final
+@dataclass(frozen=True)
+class Module(AST):
+    name: str
+    sentences: tuple[Sentence, ...]
+    imports: tuple[Import, ...]
+    att: Att
+
+    def __init__(
+        self,
+        name: str,
+        sentences: Iterable[Sentence] = (),
+        imports: Iterable[Import] = (),
+        att: Att = EMPTY_ATT,
+    ):
+        object.__setattr__(self, 'name', name)
+        object.__setattr__(self, 'sentences', tuple(sentences))
+        object.__setattr__(self, 'imports', tuple(imports))
+        object.__setattr__(self, 'att', att)
