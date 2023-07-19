@@ -21,7 +21,7 @@ from pyk.kore.rpc import (
     UnsatResult,
 )
 from pyk.kore.syntax import And, App, Bottom, Equals, EVar, Implies, Module, Top
-from pyk.testing import KoreClientTest
+from pyk.testing import BoosterClientTest, KoreClientTest
 
 from ..utils import K_FILES
 
@@ -209,6 +209,31 @@ GET_MODEL_WITH_SMT_TEST_DATA: Final = (
         SatResult(Equals(INT, INT, x, int_dv(1))),
     ),
 )
+
+
+class TestBooster(BoosterClientTest):
+    KOMPILE_MAIN_FILE = K_FILES / 'kore-rpc-test.k'
+    LLVM_LIB_MAIN_FILE = KOMPILE_MAIN_FILE
+    KORE_MODULE_NAME = 'KORE-RPC-TEST'
+
+    @pytest.mark.parametrize(
+        'test_id,n,params,expected',
+        EXECUTE_TEST_DATA,
+        ids=[test_id for test_id, *_ in EXECUTE_TEST_DATA],
+    )
+    def test_execute_booster(
+        self,
+        booster_client: KoreClient,
+        test_id: str,
+        n: int,
+        params: Mapping[str, Any],
+        expected: ExecuteResult,
+    ) -> None:
+        # When
+        actual = booster_client.execute(term(n), **params)
+
+        # Then
+        assert actual == expected
 
 
 class TestKoreClient(KoreClientTest):

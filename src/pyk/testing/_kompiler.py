@@ -8,7 +8,7 @@ from ..kast.outer import read_kast_definition
 from ..kcfg import KCFGExplore
 from ..kllvm.compiler import compile_runtime
 from ..kllvm.importer import import_runtime
-from ..kore.rpc import KoreClient, KoreServer
+from ..kore.rpc import BoosterServer, KoreClient, KoreServer
 from ..ktool.kompile import Kompile
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
@@ -69,6 +69,19 @@ class KompiledTest:
     @pytest.fixture(scope='class')
     def definition(self, definition_dir: Path) -> KDefinition:
         return read_kast_definition(definition_dir / 'compiled.json')
+
+
+class LlvmLibKompiledTest:
+    LLVM_LIB_MAIN_FILE: ClassVar[str | Path]
+    LLVM_LIB_KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
+
+    @pytest.fixture(scope='class')
+    def llvm_lib_dir(self, kompile: Kompiler) -> Path:
+        kwargs = self.LLVM_LIB_KOMPILE_ARGS
+        kwargs['main_file'] = self.LLVM_LIB_MAIN_FILE
+        kwargs['backend'] = 'llvm'
+        kwargs['llvm_kompile_type'] = 'c'
+        return kompile(**kwargs)
 
 
 class KPrintTest(KompiledTest):
@@ -144,6 +157,21 @@ class KoreClientTest(KompiledTest):
     @pytest.fixture
     def kore_client(self, definition_dir: Path, bug_report: BugReport) -> Iterator[KoreClient]:
         server = KoreServer(definition_dir, self.KORE_MODULE_NAME, bug_report=bug_report)
+        client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
+        yield client
+        client.close()
+        server.close()
+
+
+class BoosterClientTest(KompiledTest, LlvmLibKompiledTest):
+    KOMPILE_BACKEND = 'haskell'
+
+    KORE_MODULE_NAME: ClassVar[str]
+    KORE_CLIENT_TIMEOUT: ClassVar = 1000
+
+    @pytest.fixture
+    def booster_client(self, definition_dir: Path, llvm_lib_dir: Path, bug_report: BugReport) -> Iterator[KoreClient]:
+        server = BoosterServer(definition_dir, llvm_lib_dir, self.KORE_MODULE_NAME, bug_report=bug_report, command=None)
         client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
         yield client
         client.close()
