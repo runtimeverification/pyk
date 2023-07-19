@@ -229,15 +229,18 @@ class TestBooster(BoosterClientTest):
         params: Mapping[str, Any],
         expected: ExecuteResult,
     ) -> None:
-        if test_id == 'branching':
-            # order of next-states array differs in booster
-            pytest.skip()
+        # When
+        actual = booster_client.execute(term(n), **params)
+        # Then
+        assert actual.__class__ == expected.__class__
+        assert actual.reason == expected.reason
+        assert actual.state == expected.state
+        assert actual.depth == expected.depth
+        assert actual.rule == expected.rule
+        if actual.next_states is not None and expected.next_states is not None:
+            assert set(actual.next_states) == set(expected.next_states)
         else:
-            # When
-            actual = booster_client.execute(term(n), **params)
-
-            # Then
-            assert actual == expected
+            assert actual.next_states == expected.next_states
 
 
 class TestKoreClient(KoreClientTest):
