@@ -21,8 +21,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
 
-    from pytest import TempPathFactory
-
     from pyk.cterm import CTerm
     from pyk.kast.inner import KInner
     from pyk.kcfg import KCFGExplore
@@ -49,11 +47,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         3,
     ),
 )
-
-
-@pytest.fixture(scope='function')
-def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp('proofs')
 
 
 def leaf_number(proof: APRProof) -> int:
@@ -99,7 +92,6 @@ class TestGoToProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
-        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -116,7 +108,7 @@ class TestGoToProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth, proof_dir=proof_dir)
+        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
         kcfg_explore.simplify(proof.kcfg, {})
         prover = APRBMCProver(
             proof,

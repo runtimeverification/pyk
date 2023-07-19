@@ -20,8 +20,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
 
-    from pytest import TempPathFactory
-
     from pyk.kast import KInner
     from pyk.kcfg import KCFGExplore
     from pyk.ktool.kprint import KPrint
@@ -51,11 +49,6 @@ EXECUTE_TEST_DATA: Final[Iterable[tuple[str, int, State, int, State, Iterable[St
 APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str]]] = (
     ('cell-map-no-branch', K_FILES / 'cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 2, 1, []),
 )
-
-
-@pytest.fixture(scope='function')
-def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp('proofs')
 
 
 class TestCellMapProof(KCFGExploreTest):
@@ -129,7 +122,6 @@ class TestCellMapProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
-        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -142,7 +134,7 @@ class TestCellMapProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
+        proof = APRProof.from_claim(kprove.definition, claim, logs={})
         init = proof.kcfg.node(proof.init)
         new_init_term = kcfg_explore.cterm_assume_defined(init.cterm)
         proof.kcfg.replace_node(init.id, new_init_term)

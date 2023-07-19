@@ -191,11 +191,10 @@ class APRProof(Proof):
         defn: KDefinition,
         claim: KClaim,
         logs: dict[int, tuple[LogEntry, ...]],
-        proof_dir: Path,
         *args: Any,
         **kwargs: Any,
     ) -> APRProof:
-        apr_proof = APRProof(claim.label, KCFG(), init=0, target=0, logs=logs, proof_dir=proof_dir, **kwargs)
+        apr_proof = APRProof(claim.label, KCFG(), init=0, target=0, logs=logs, **kwargs)
 
         kcfg_dir = apr_proof.proof_subdir / 'kcfg'
 
@@ -490,10 +489,9 @@ class APRBMCProof(APRProof):
         return dct
 
     @staticmethod
-    def from_claim_with_bmc_depth(defn: KDefinition, claim: KClaim, bmc_depth: int, proof_dir: Path) -> APRBMCProof:
-        #          cfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=(proof_dir / claim.label / 'kcfg'))
-        #          return APRBMCProof(claim.label, cfg, init_node, target_node, {}, bmc_depth)
-
+    def from_claim_with_bmc_depth(
+        defn: KDefinition, claim: KClaim, bmc_depth: int, proof_dir: Path | None = None
+    ) -> APRBMCProof:
         aprbmc_proof = APRBMCProof(
             claim.label, KCFG(), bmc_depth=bmc_depth, init=0, target=0, logs={}, proof_dir=proof_dir
         )
