@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ from ..kast.outer import KFlatModule
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from pathlib import Path
     from types import TracebackType
     from typing import Any
 
@@ -203,8 +205,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _stuck: set[int]
     _aliases: dict[str, int]
     _lock: RLock
+    cfg_dir: Path | None
 
-    def __init__(self) -> None:
+    def __init__(self, cfg_dir: Path | None = None) -> None:
         self._node_id = 1
         self._nodes = {}
         self._edges = {}
@@ -214,6 +217,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._stuck = set()
         self._aliases = {}
         self._lock = RLock()
+        self.cfg_dir = cfg_dir
+        if self.cfg_dir is not None and not self.cfg_dir.exists():
+            self.cfg_dir.mkdir()
 
     def __contains__(self, item: object) -> bool:
         if type(item) is KCFG.Node:
@@ -268,8 +274,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return [node for node in self.nodes if not self.is_covered(node.id)]
 
     @staticmethod
-    def from_claim(defn: KDefinition, claim: KClaim) -> tuple[KCFG, NodeIdLike, NodeIdLike]:
-        cfg = KCFG()
+    def from_claim(defn: KDefinition, claim: KClaim, cfg_dir: Path) -> tuple[KCFG, NodeIdLike, NodeIdLike]:
+        cfg = KCFG(cfg_dir=cfg_dir)
         claim_body = claim.body
         claim_body = defn.instantiate_cell_vars(claim_body)
         claim_body = rename_generated_vars(claim_body)
@@ -426,6 +432,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         if node.id in self._nodes:
             raise ValueError(f'Node with id already exists: {node.id}')
         self._nodes[node.id] = node
+        self.write_node_data(node)
 
     def create_node(self, cterm: CTerm) -> Node:
         term = cterm.kast
@@ -434,6 +441,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node = KCFG.Node(self._node_id, cterm)
         self._node_id += 1
         self._nodes[node.id] = node
+        self.write_node_data(node)
         return node
 
     def remove_node(self, node_id: NodeIdLike) -> None:
@@ -468,6 +476,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         node = KCFG.Node(node_id, cterm)
         self._nodes[node_id] = node
+        self.write_node_data(node)
 
     def successors(
         self,
@@ -860,3 +869,105 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 )
 
         return visited
+
+    def write_cfg_data(self, omit_nodes: bool = False) -> None:
+        assert self.cfg_dir is not None
+        cfg_json = self.cfg_dir / 'kcfg.json'
+        if not self.cfg_dir.exists():
+            self.cfg_dir.mkdir()
+        nodes = [node.id for node in self.nodes]
+        edges = [edge.to_dict() for edge in self.edges()]
+        covers = [cover.to_dict() for cover in self.covers()]
+        splits = [split.to_dict() for split in self.splits()]
+        ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
+
+        stuck = sorted(self._stuck)
+        aliases = dict(sorted(self._aliases.items()))
+        dct: dict[str, list[int] | int | dict[str, int] | list[dict[str, Any]]] = {}
+        dct['next'] = self._node_id
+        dct['nodes'] = nodes
+        dct['edges'] = edges
+        dct['covers'] = covers
+        dct['splits'] = splits
+        dct['ndbranches'] = ndbranches
+        dct['stuck'] = stuck
+        dct['aliases'] = aliases
+        cfg_json.write_text(json.dumps(dct))
+
+        if not omit_nodes:
+            for node in self.nodes:
+                self.write_node_data(node)
+
+    def write_node_data(self, node: KCFG.Node) -> None:
+        if self.cfg_dir is None:
+            return
+        nodes_dir = self.cfg_dir / 'nodes'
+        if not nodes_dir.exists():
+            nodes_dir.mkdir()
+        node_json = nodes_dir / (str(node.id) + '.json')
+        node_dict = node.to_dict()
+        node_json.write_text(json.dumps(node_dict))
+
+    def delete_node_data(self, node: KCFG.Node) -> None:
+        assert self.cfg_dir is not None
+        nodes_dir = self.cfg_dir / 'nodes'
+        if not nodes_dir.exists():
+            nodes_dir.mkdir()
+        node_json = nodes_dir / (str(node.id) + '.json')
+        os.remove(node_json)
+
+    @staticmethod
+    def read_cfg_data(cfg_dir: Path, id: str) -> KCFG:
+        cfg = KCFG(cfg_dir)
+
+        assert cfg_dir is not None
+
+        cfg_json = cfg_dir / 'kcfg.json'
+        nodes_dir = cfg_dir / 'nodes'
+        dct = json.loads(cfg_json.read_text())
+
+        cfg.cfg_dir = cfg_dir
+
+        max_id = 0
+        for node_id in dct.get('nodes') or []:
+            max_id = max(max_id, node_id)
+            node_json = nodes_dir / (str(node_id) + '.json')
+            node_dict = json.loads(node_json.read_text())
+            cterm = CTerm.from_dict(node_dict['cterm'])
+            node = KCFG.Node(node_id, cterm)
+            cfg.add_node(node)
+
+        cfg._node_id = dct.get('next', max_id + 1)
+
+        for edge_dict in dct.get('edges') or []:
+            source_id = edge_dict['source']
+            target_id = edge_dict['target']
+            depth = edge_dict['depth']
+            cfg.create_edge(source_id, target_id, depth)
+
+        for cover_dict in dct.get('covers') or []:
+            source_id = cover_dict['source']
+            target_id = cover_dict['target']
+            csubst = CSubst.from_dict(cover_dict['csubst'])
+            cfg.create_cover(source_id, target_id, csubst=csubst)
+
+        for stuck_id in dct.get('stuck') or []:
+            cfg.add_stuck(stuck_id)
+
+        for alias, node_id in dct.get('aliases', {}).items():
+            cfg.add_alias(alias=alias, node_id=node_id)
+
+        for split_dict in dct.get('splits') or []:
+            source_id = split_dict['source']
+            targets = [
+                (target_dict['target'], CSubst.from_dict(target_dict['csubst']))
+                for target_dict in split_dict['targets']
+            ]
+            cfg.create_split(source_id, targets)
+
+        for ndbranch_dict in dct.get('ndbranches') or []:
+            source_id = ndbranch_dict['source']
+            target_ids = ndbranch_dict['targets']
+            cfg.create_ndbranch(source_id, target_ids)
+
+        return cfg

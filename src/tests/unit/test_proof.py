@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -11,11 +12,9 @@ from pyk.proof.equality import EqualityProof
 from pyk.proof.proof import Proof
 from pyk.proof.reachability import APRBMCProof, APRFailureInfo, APRProof
 
-from .test_kcfg import node, node_dicts
+from .test_kcfg import node, node_dicts, term
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from pytest import TempPathFactory
 
 
@@ -69,7 +68,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -91,7 +90,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -111,7 +110,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -119,6 +118,35 @@ class TestProof:
 
 
 #### APRProof
+
+
+def test_read_write_proof_data() -> None:
+    proof_dir = Path('proof_dir')
+
+    proof = APRProof(
+        id='apr_proof_1',
+        kcfg=KCFG(),
+        init=0,
+        target=0,
+        logs={},
+        proof_dir=proof_dir,
+    )
+
+    kcfg = KCFG(Path('proof_dir/apr_proof_1/kcfg'))
+    node1 = kcfg.create_node(term(1))
+    node2 = kcfg.create_node(term(2))
+    kcfg.create_node(term(3))
+    kcfg.create_node(term(4))
+
+    proof.kcfg = kcfg
+    proof.init = node1.id
+    proof.target = node2.id
+
+    proof.write_proof_data()
+
+    proof_from_disk = APRProof.read_proof_data(id=proof.id, proof_dir=proof_dir)
+
+    assert proof_from_disk.dict == proof.dict
 
 
 def test_apr_proof_from_dict_no_subproofs(proof_dir: Path) -> None:
@@ -138,6 +166,8 @@ def test_apr_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
     # Given
     eq_proof = equality_proof(1, proof_dir)
     proof = apr_proof(1, proof_dir)
+
+    proof_dir = Path('proofs_dir')
 
     # When
     eq_proof.write_proof()
