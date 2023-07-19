@@ -275,7 +275,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return [node for node in self.nodes if not self.is_covered(node.id)]
 
     @staticmethod
-    def from_claim(defn: KDefinition, claim: KClaim, cfg_dir: Path) -> tuple[KCFG, NodeIdLike, NodeIdLike]:
+    def from_claim(
+        defn: KDefinition, claim: KClaim, cfg_dir: Path | None = None
+    ) -> tuple[KCFG, NodeIdLike, NodeIdLike]:
         cfg = KCFG(cfg_dir=cfg_dir)
         claim_body = claim.body
         claim_body = defn.instantiate_cell_vars(claim_body)
@@ -910,8 +912,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def delete_node_data(self, node: KCFG.Node) -> None:
         assert self.cfg_dir is not None
         nodes_dir = self.cfg_dir / 'nodes'
-        if not nodes_dir.exists():
-            nodes_dir.mkdir()
+        ensure_dir_path(nodes_dir)
         node_json = nodes_dir / (str(node.id) + '.json')
         os.remove(node_json)
 
