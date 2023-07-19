@@ -212,9 +212,8 @@ GET_MODEL_WITH_SMT_TEST_DATA: Final = (
 
 
 class TestBooster(BoosterClientTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'kore-rpc-test.k'
-    LLVM_LIB_MAIN_FILE = KOMPILE_MAIN_FILE
-    KORE_MODULE_NAME = 'KORE-RPC-TEST'
+    MAIN_FILE = K_FILES / 'kore-rpc-test.k'
+    MODULE_NAME = 'KORE-RPC-TEST'
 
     @pytest.mark.parametrize(
         'test_id,n,params,expected',

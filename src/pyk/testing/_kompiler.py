@@ -73,19 +73,6 @@ class KompiledTest:
         return read_kast_definition(definition_dir / 'compiled.json')
 
 
-class LlvmLibKompiledTest:
-    LLVM_LIB_MAIN_FILE: ClassVar[str | Path]
-    LLVM_LIB_KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
-
-    @pytest.fixture(scope='class')
-    def llvm_lib_dir(self, kompile: Kompiler) -> Path:
-        kwargs = self.LLVM_LIB_KOMPILE_ARGS
-        kwargs['main_file'] = self.LLVM_LIB_MAIN_FILE
-        kwargs['backend'] = 'llvm'
-        kwargs['llvm_kompile_type'] = 'c'
-        return kompile(**kwargs)
-
-
 class KPrintTest(KompiledTest):
     @pytest.fixture
     def kprint(self, definition_dir: Path, tmp_path: Path) -> KPrint:
@@ -165,15 +152,33 @@ class KoreClientTest(KompiledTest):
         server.close()
 
 
-class BoosterClientTest(KompiledTest, LlvmLibKompiledTest):
-    KOMPILE_BACKEND = 'haskell'
-
-    KORE_MODULE_NAME: ClassVar[str]
+class BoosterClientTest:
+    MAIN_FILE: ClassVar[str | Path]
+    MODULE_NAME: ClassVar[str]
+    HASKELL_ARGS: ClassVar[dict[str, Any]] = {}
+    LLVM_ARGS: ClassVar[dict[str, Any]] = {}
     KORE_CLIENT_TIMEOUT: ClassVar = 1000
 
+    @pytest.fixture(scope='class')
+    def haskell_dir(self, kompile: Kompiler) -> Path:
+        kwargs = self.HASKELL_ARGS
+        kwargs['main_file'] = self.MAIN_FILE
+        kwargs['backend'] = 'haskell'
+        return kompile(**kwargs)
+
+    @pytest.fixture(scope='class')
+    def llvm_dir(self, kompile: Kompiler) -> Path:
+        kwargs = self.LLVM_ARGS
+        kwargs['main_file'] = self.MAIN_FILE
+        kwargs['backend'] = 'llvm'
+        kwargs['llvm_kompile_type'] = 'c'
+        return kompile(**kwargs)
+
     @pytest.fixture
-    def booster_client(self, definition_dir: Path, llvm_lib_dir: Path, bug_report: BugReport) -> Iterator[KoreClient]:
-        server = BoosterServer(definition_dir, llvm_lib_dir, self.KORE_MODULE_NAME, bug_report=bug_report, command=None)
+    def booster_client(
+        self, haskell_dir: Path, llvm_dir: Path, bug_report: BugReport | None = None
+    ) -> Iterator[KoreClient]:
+        server = BoosterServer(haskell_dir, llvm_dir, self.MODULE_NAME, bug_report=bug_report, command=None)
         client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
         yield client
         client.close()
