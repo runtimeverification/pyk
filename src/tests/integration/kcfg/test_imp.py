@@ -35,6 +35,11 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
+@pytest.fixture(scope='function')
+def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp('proofs')
+
+
 PROVE_CTERM_TEST_DATA: Final = (
     ('step-1', ['--depth', '1'], 'int $n , $s ; $n = 3 ;', [('int $s , .Ids ; $n = 3 ;', '$n |-> 0')]),
     ('step-2', ['--depth', '2'], 'int $n , $s ; $n = 3 ;', [('int .Ids ; $n = 3 ;', '$n |-> 0 $s |-> 0')]),

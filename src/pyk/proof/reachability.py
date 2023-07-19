@@ -73,9 +73,9 @@ class APRProof(Proof):
         self.circularity = circularity
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
         self.node_refutations = {}
-        self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_dir else None
+        self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
 
-        if self.proof_dir is not None:
+        if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)
             ensure_dir_path(self.proof_subdir)
 
@@ -196,7 +196,7 @@ class APRProof(Proof):
     ) -> APRProof:
         apr_proof = APRProof(claim.label, KCFG(), init=0, target=0, logs=logs, **kwargs)
 
-        kcfg_dir = apr_proof.proof_subdir / 'kcfg'
+        kcfg_dir = apr_proof.proof_subdir / 'kcfg' if apr_proof.proof_subdir else None
 
         cfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
         apr_proof.kcfg = cfg
@@ -301,9 +301,10 @@ class APRProof(Proof):
         )
 
     def write_proof_data(self, omit_nodes: bool = False) -> None:
-        assert self.proof_dir is not None
+        if self.proof_dir is None or self.proof_subdir is None:
+            _LOGGER.info(f'Skipped saving proof {self.id} since no save dir was specified.')
+            return
         ensure_dir_path(self.proof_dir)
-        assert self.proof_subdir is not None
         ensure_dir_path(self.proof_subdir)
         proof_json = self.proof_subdir / 'proof.json'
         dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
@@ -396,9 +397,10 @@ class APRBMCProof(APRProof):
         )
 
     def write_proof_data(self, omit_nodes: bool = False) -> None:
-        assert self.proof_dir is not None
+        if self.proof_dir is None or self.proof_subdir is None:
+            _LOGGER.info(f'Skipped saving proof {self.id} since no save dir was specified.')
+            return
         ensure_dir_path(self.proof_dir)
-        assert self.proof_subdir is not None
         ensure_dir_path(self.proof_subdir)
         proof_json = self.proof_subdir / 'proof.json'
         dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
@@ -496,8 +498,7 @@ class APRBMCProof(APRProof):
             claim.label, KCFG(), bmc_depth=bmc_depth, init=0, target=0, logs={}, proof_dir=proof_dir
         )
 
-        assert aprbmc_proof.proof_dir is not None
-        kcfg_dir = aprbmc_proof.proof_subdir / 'kcfg'
+        kcfg_dir = aprbmc_proof.proof_subdir / 'kcfg' if aprbmc_proof.proof_subdir else None
 
         cfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
         aprbmc_proof.kcfg = cfg

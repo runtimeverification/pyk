@@ -36,8 +36,9 @@ class Proof(ABC):
     admitted: bool
 
     @property
-    def proof_subdir(self) -> Path:
-        assert self.proof_dir is not None
+    def proof_subdir(self) -> Path | None:
+        if self.proof_dir is None:
+            return None
         return self.proof_dir / self.id
 
     def __init__(
