@@ -4,6 +4,7 @@ from ._kompiler import (
     KompiledTest,
     Kompiler,
     KoreClientTest,
+    KoreServerPoolTest,
     KPrintTest,
     KProveTest,
     KRunTest,
