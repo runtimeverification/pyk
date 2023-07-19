@@ -15,7 +15,7 @@ from ..kast.outer import KClaim
 from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
-from ..utils import FrozenDict, hash_str, shorten_hashes, single
+from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
 from .equality import Prover, RefutationProof
 from .proof import Proof, ProofStatus
 
@@ -76,10 +76,8 @@ class APRProof(Proof):
         self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_dir else None
 
         if self.proof_dir is not None:
-            if not self.proof_dir.exists():
-                self.proof_dir.mkdir()
-            if not self.proof_subdir.exists():
-                self.proof_subdir.mkdir()
+            ensure_dir_path(self.proof_dir)
+            ensure_dir_path(self.proof_subdir)
 
         if node_refutations is not None:
             refutations_not_in_subprroofs = set(node_refutations.values()).difference(
@@ -305,11 +303,9 @@ class APRProof(Proof):
 
     def write_proof_data(self, omit_nodes: bool = False) -> None:
         assert self.proof_dir is not None
-        if not self.proof_dir.exists():
-            self.proof_dir.mkdir()
+        ensure_dir_path(self.proof_dir)
         assert self.proof_subdir is not None
-        if not self.proof_subdir.exists():
-            self.proof_subdir.mkdir()
+        ensure_dir_path(self.proof_subdir)
         proof_json = self.proof_subdir / 'proof.json'
         dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
 
@@ -402,11 +398,9 @@ class APRBMCProof(APRProof):
 
     def write_proof_data(self, omit_nodes: bool = False) -> None:
         assert self.proof_dir is not None
-        if not self.proof_dir.exists():
-            self.proof_dir.mkdir()
+        ensure_dir_path(self.proof_dir)
         assert self.proof_subdir is not None
-        if not self.proof_subdir.exists():
-            self.proof_subdir.mkdir()
+        ensure_dir_path(self.proof_subdir)
         proof_json = self.proof_subdir / 'proof.json'
         dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
 

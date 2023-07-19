@@ -22,6 +22,7 @@ from ..kast.manip import (
     sort_ac_collections,
 )
 from ..kast.outer import KFlatModule
+from ..utils import ensure_dir_path
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -218,8 +219,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._aliases = {}
         self._lock = RLock()
         self.cfg_dir = cfg_dir
-        if self.cfg_dir is not None and not self.cfg_dir.exists():
-            self.cfg_dir.mkdir()
+        if self.cfg_dir is not None:
+            ensure_dir_path(self.cfg_dir)
 
     def __contains__(self, item: object) -> bool:
         if type(item) is KCFG.Node:
@@ -873,8 +874,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def write_cfg_data(self, omit_nodes: bool = False) -> None:
         assert self.cfg_dir is not None
         cfg_json = self.cfg_dir / 'kcfg.json'
-        if not self.cfg_dir.exists():
-            self.cfg_dir.mkdir()
+        ensure_dir_path(self.cfg_dir)
         nodes = [node.id for node in self.nodes]
         edges = [edge.to_dict() for edge in self.edges()]
         covers = [cover.to_dict() for cover in self.covers()]
@@ -902,8 +902,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         if self.cfg_dir is None:
             return
         nodes_dir = self.cfg_dir / 'nodes'
-        if not nodes_dir.exists():
-            nodes_dir.mkdir()
+        ensure_dir_path(nodes_dir)
         node_json = nodes_dir / (str(node.id) + '.json')
         node_dict = node.to_dict()
         node_json.write_text(json.dumps(node_dict))

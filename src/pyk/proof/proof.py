@@ -7,7 +7,7 @@ from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from ..utils import hash_file, hash_str
+from ..utils import ensure_dir_path, hash_file, hash_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -56,10 +56,10 @@ class Proof(ABC):
         if len(list(subproof_ids)) > 0:
             for proof_id in subproof_ids:
                 self.fetch_subproof(proof_id, force_reread=True)
-        if proof_dir is not None and not proof_dir.exists():
-            proof_dir.mkdir()
-        if self.proof_dir is not None and not self.proof_dir.exists():
-            self.proof_dir.mkdir()
+        if proof_dir is not None:
+            ensure_dir_path(proof_dir)
+        if self.proof_dir is not None:
+            ensure_dir_path(self.proof_dir)
 
     def admit(self) -> None:
         self.admitted = True
