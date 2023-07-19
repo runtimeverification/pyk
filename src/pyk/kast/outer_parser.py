@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .outer_lexer import TokenType, outer_lexer
-from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Rule
+from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Import, Rule
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator
@@ -43,6 +43,20 @@ class OuterParser:
         res = self._la.text
         self._la = next(self._lexer)
         return res
+
+    def importt(self) -> Import:
+        self._match_any({TokenType.KW_IMPORT, TokenType.KW_IMPORTS})
+
+        public = True
+        if self._la.type is TokenType.KW_PRIVATE:
+            public = False
+            self._consume()
+        elif self._la.type is TokenType.KW_PUBLIC:
+            self._consume()
+
+        module_name = self._match(TokenType.MODNAME)
+
+        return Import(module_name, public=public)
 
     def sentence(self) -> Any:  # TODO type
         if self._la.type is TokenType.KW_SYNTAX:

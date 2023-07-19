@@ -96,3 +96,10 @@ class Alias(StringSentence):
     bubble: str
     label: str = field(default='')
     att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass(frozen=True)
+class Import(AST):
+    module_name: str
+    public: bool = field(default=True, kw_only=True)

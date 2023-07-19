@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.outer_parser import OuterParser
-from pyk.kast.outer_syntax import Alias, Att, Claim, Config, Context, Rule
+from pyk.kast.outer_syntax import Alias, Att, Claim, Config, Context, Import, Rule
 
 if TYPE_CHECKING:
     from typing import Final
@@ -39,6 +39,28 @@ def test_sentence(k_text: str, expected: AST) -> None:
 
     # When
     actual = parser.sentence()
+
+    # Then
+    assert actual == expected
+
+
+IMPORT_TEST_DATA: Final = (
+    ('import TEST', Import('TEST', public=True)),
+    ('import public TEST', Import('TEST', public=True)),
+    ('import private TEST', Import('TEST', public=False)),
+    ('imports TEST', Import('TEST', public=True)),
+    ('imports public TEST', Import('TEST', public=True)),
+    ('imports private TEST', Import('TEST', public=False)),
+)
+
+
+@pytest.mark.parametrize('k_text,expected', IMPORT_TEST_DATA, ids=[k_text for k_text, _ in IMPORT_TEST_DATA])
+def test_import(k_text: str, expected: AST) -> None:
+    # Given
+    parser = OuterParser(k_text)
+
+    # When
+    actual = parser.importt()
 
     # Then
     assert actual == expected
