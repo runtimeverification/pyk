@@ -616,7 +616,7 @@ PROGRAM_EQUIVALENCE_DATA: Iterable[
     tuple[str, Iterable[str], Iterable[str], tuple[str, str, KInner], tuple[str, str, KInner]]
 ] = (
     (
-        'double-add-vs-mul',
+        'equiv-double-add-vs-mul',
         ['IMP.while'],
         [],
         (

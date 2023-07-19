@@ -211,8 +211,8 @@ class EquivalenceProof:
         pending_pc_check = kcfg_explore.path_constraint_subsumption(pc_pending_1, pc_pending_2)
 
         # 3. Nodes whose execution has been stopped due to a bound reached (bounded nodes)
-        # bounded_1 = [kcfg_1.get_node_unsafe(id) for id in self.proof_1._bounded_states]
-        # bounded_2 = [kcfg_2.get_node_unsafe(id) for id in self.proof_2._bounded_states]
+        # bounded_1 = [kcfg_1.node(id) for id in self.proof_1._bounded_states]
+        # bounded_2 = [kcfg_2.node(id) for id in self.proof_2._bounded_states]
 
         # print('Checking subsumption of path constraints of bounded states')
         # pc_bounded_1 = KCFG.multinode_path_constraint(bounded_1)

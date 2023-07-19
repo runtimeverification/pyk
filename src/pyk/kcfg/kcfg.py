@@ -421,12 +421,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return None
         return self._nodes[resolved_id]
 
-    def get_node_unsafe(self, node_id: NodeIdLike) -> Node:
-        node = self.get_node(node_id)
-        if node is None:
-            raise ValueError(f'Node with id {node_id} does not exist')
-        return node
-
     def contains_node(self, node: Node) -> bool:
         return bool(self.get_node(node.id))
 
@@ -883,16 +877,3 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @staticmethod
     def multinode_path_constraint(nodes: list[Node]) -> KInner:
         return ml_pred_to_bool(mlOr([node.cterm.constraint for node in nodes]))
-
-
-def path_length(_path: Iterable[KCFG.Successor]) -> int:
-    _path = tuple(_path)
-    if len(_path) == 0:
-        return 0
-    if type(_path[0]) is KCFG.Split or type(_path[0]) is KCFG.Cover:
-        return path_length(_path[1:])
-    elif type(_path[0]) is KCFG.NDBranch:
-        return 1 + path_length(_path[1:])
-    elif type(_path[0]) is KCFG.Edge:
-        return _path[0].depth + path_length(_path[1:])
-    raise ValueError(f'Cannot handle Successor type: {type(_path[0])}')
