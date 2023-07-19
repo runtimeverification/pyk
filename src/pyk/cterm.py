@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from .kast.inner import KApply, KAtt, KInner, KRewrite, KVariable, Subst
 from .kast.manip import (
+    anti_unify,
     apply_existential_substitutions,
     count_vars,
     flatten_label,
@@ -137,6 +138,29 @@ class CTerm:
     def add_constraint(self, new_constraint: KInner) -> CTerm:
         return CTerm(self.config, [new_constraint] + list(self.constraints))
 
+    def anti_unify(self, other: CTerm) -> tuple[CTerm, CSubst, CSubst]:
+        new_config, _, _ = anti_unify(self.config, other.config)
+        common_constraints = [constraint for constraint in self.constraints if constraint in other.constraints]
+        new_constraints = []
+        fvs = free_vars(new_config)
+        len_fvs = 0
+        while len_fvs < len(fvs):
+            len_fvs = len(fvs)
+            for constraint in common_constraints:
+                if constraint not in new_constraints:
+                    constraint_fvs = free_vars(constraint)
+                    if any(fv in fvs for fv in constraint_fvs):
+                        new_constraints.append(constraint)
+                        fvs.extend(constraint_fvs)
+        new_cterm = CTerm(config=new_config, constraints=new_constraints)
+        self_csubst = new_cterm.match_with_constraint(self)
+        other_csubst = new_cterm.match_with_constraint(other)
+        if self_csubst is None or other_csubst is None:
+            raise ValueError(
+                f'Anti-unification failed to produce a more general state: {(new_cterm, (self, self_csubst), (other, other_csubst))}'
+            )
+        return (new_cterm, self_csubst, other_csubst)
+
 
 @dataclass(frozen=True, order=True)
 class CSubst:
@@ -172,6 +196,10 @@ class CSubst:
     def apply(self, cterm: CTerm) -> CTerm:
         _kast = self.subst(cterm.kast)
         return CTerm(_kast, [self.constraint])
+
+    @property
+    def ml_pred(self) -> KInner:
+        return mlAnd(flatten_label('#And', self.subst.ml_pred) + list(self.constraints))
 
 
 def remove_useless_constraints(cterm: CTerm, keep_vars: Iterable[str] = ()) -> CTerm:
