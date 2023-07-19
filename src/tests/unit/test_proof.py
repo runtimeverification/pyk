@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,6 +14,8 @@ from pyk.proof.reachability import APRBMCProof, APRFailureInfo, APRProof
 from .test_kcfg import node, node_dicts, term
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pytest import TempPathFactory
 
 
@@ -130,7 +131,7 @@ def test_read_write_proof_data(proof_dir: Path) -> None:
         proof_dir=proof_dir,
     )
 
-    kcfg = KCFG(Path('proof_dir/apr_proof_1/kcfg'))
+    kcfg = KCFG(proof_dir / 'apr_proof_1' / 'kcfg')
     node1 = kcfg.create_node(term(1))
     node2 = kcfg.create_node(term(2))
     kcfg.create_node(term(3))
