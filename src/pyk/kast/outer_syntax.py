@@ -134,3 +134,14 @@ class Module(AST):
 @dataclass(frozen=True)
 class Require(AST):
     path: str
+
+
+@final
+@dataclass(frozen=True)
+class Definition(AST):
+    modules: tuple[Module, ...]
+    requires: tuple[Require, ...]
+
+    def __init__(self, modules: Iterable[Module] = (), requires: Iterable[Require] = ()):
+        object.__setattr__(self, 'modules', tuple(modules))
+        object.__setattr__(self, 'requires', tuple(requires))

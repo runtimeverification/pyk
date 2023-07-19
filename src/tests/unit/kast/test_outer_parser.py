@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.outer_parser import OuterParser
-from pyk.kast.outer_syntax import Alias, Att, Claim, Config, Context, Import, Module, Require, Rule
+from pyk.kast.outer_syntax import Alias, Att, Claim, Config, Context, Definition, Import, Module, Require, Rule
 
 if TYPE_CHECKING:
     from typing import Final
@@ -106,6 +106,37 @@ def test_require(k_text: str, expected: AST) -> None:
 
     # When
     actual = parser.require()
+
+    # Then
+    assert actual == expected
+
+
+DEFINITION_TEST_DATA: Final = (
+    ('', Definition()),
+    ('require "foo.k"', Definition(requires=(Require('"foo.k"'),))),
+    ('requires "foo.k"', Definition(requires=(Require('"foo.k"'),))),
+    (
+        'requires "foo.k" requires "bar.k"',
+        Definition(
+            requires=(
+                Require('"foo.k"'),
+                Require('"bar.k"'),
+            )
+        ),
+    ),
+    ('module FOO endmodule', Definition(modules=(Module('FOO'),))),
+    ('module FOO endmodule module BAR endmodule', Definition(modules=(Module('FOO'), Module('BAR')))),
+    ('requires "foo.k" module FOO endmodule', Definition(modules=(Module('FOO'),), requires=(Require('"foo.k"'),))),
+)
+
+
+@pytest.mark.parametrize('k_text,expected', DEFINITION_TEST_DATA, ids=[k_text for k_text, _ in DEFINITION_TEST_DATA])
+def test_definition(k_text: str, expected: AST) -> None:
+    # Given
+    parser = OuterParser(k_text)
+
+    # When
+    actual = parser.definition()
 
     # Then
     assert actual == expected

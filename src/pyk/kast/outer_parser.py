@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .outer_lexer import TokenType, outer_lexer
-from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Import, Module, Require, Rule
+from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Definition, Import, Module, Require, Rule
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator
@@ -43,6 +43,17 @@ class OuterParser:
         res = self._la.text
         self._la = next(self._lexer)
         return res
+
+    def definition(self) -> Definition:
+        requires: list[Require] = []
+        while self._la.type in {TokenType.KW_REQUIRE, TokenType.KW_REQUIRES}:
+            requires.append(self.require())
+
+        modules: list[Module] = []
+        while self._la.type is TokenType.KW_MODULE:
+            modules.append(self.module())
+
+        return Definition(modules, requires)
 
     def require(self) -> Require:
         self._match_any({TokenType.KW_REQUIRE, TokenType.KW_REQUIRES})
