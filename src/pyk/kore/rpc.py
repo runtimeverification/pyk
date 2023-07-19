@@ -694,7 +694,7 @@ class KoreServer(ContextManager['KoreServer']):
         args += haskell_log_args
 
         if bug_report:
-            self.gather_server_report(
+            self._gather_server_report(
                 module_name, list(command), bug_report, definition_file, smt_server_args, haskell_log_args
             )
 
@@ -708,7 +708,7 @@ class KoreServer(ContextManager['KoreServer']):
         _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
 
     @staticmethod
-    def gather_server_report(
+    def _gather_server_report(
         module_name: str,
         command: list[str],
         bug_report: BugReport,
