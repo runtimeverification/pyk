@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .outer_lexer import TokenType, outer_lexer
-from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Import, Module, Rule
+from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Import, Module, Require, Rule
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator
@@ -43,6 +43,11 @@ class OuterParser:
         res = self._la.text
         self._la = next(self._lexer)
         return res
+
+    def require(self) -> Require:
+        self._match_any({TokenType.KW_REQUIRE, TokenType.KW_REQUIRES})
+        path = self._match(TokenType.STRING)
+        return Require(path)  # TODO dequote
 
     def module(self) -> Module:
         self._match(TokenType.KW_MODULE)
@@ -132,7 +137,7 @@ class OuterParser:
             if self._la.type == TokenType.LPAREN:
                 self._consume()
                 value = self._match_any({TokenType.STRING, TokenType.ATTR_CONTENT})
-                self._match(TokenType.RPAREN)
+                self._match(TokenType.RPAREN)  # TODO dequote STRING
             else:
                 value = ''
 

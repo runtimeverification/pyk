@@ -128,3 +128,9 @@ class Module(AST):
         object.__setattr__(self, 'sentences', tuple(sentences))
         object.__setattr__(self, 'imports', tuple(imports))
         object.__setattr__(self, 'att', att)
+
+
+@final
+@dataclass(frozen=True)
+class Require(AST):
+    path: str

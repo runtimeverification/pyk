@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.outer_parser import OuterParser
-from pyk.kast.outer_syntax import Alias, Att, Claim, Config, Context, Import, Module, Rule
+from pyk.kast.outer_syntax import Alias, Att, Claim, Config, Context, Import, Module, Require, Rule
 
 if TYPE_CHECKING:
     from typing import Final
@@ -88,6 +88,24 @@ def test_module(k_text: str, expected: AST) -> None:
 
     # When
     actual = parser.module()
+
+    # Then
+    assert actual == expected
+
+
+REQUIRE_TEST_DATA: Final = (
+    ('require "foo.k"', Require('"foo.k"')),
+    ('requires "foo.k"', Require('"foo.k"')),
+)
+
+
+@pytest.mark.parametrize('k_text,expected', REQUIRE_TEST_DATA, ids=[k_text for k_text, _ in REQUIRE_TEST_DATA])
+def test_require(k_text: str, expected: AST) -> None:
+    # Given
+    parser = OuterParser(k_text)
+
+    # When
+    actual = parser.require()
 
     # Then
     assert actual == expected
