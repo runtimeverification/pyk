@@ -7,7 +7,7 @@ from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Rule
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator
-    from typing import Final
+    from typing import Any, Final
 
     from .outer_lexer import Token
     from .outer_syntax import StringSentence
@@ -43,6 +43,15 @@ class OuterParser:
         res = self._la.text
         self._la = next(self._lexer)
         return res
+
+    def sentence(self) -> Any:  # TODO type
+        if self._la.type is TokenType.KW_SYNTAX:
+            return self.syntax_sentence()
+
+        return self.string_sentence()
+
+    def syntax_sentence(self) -> Any:
+        raise RuntimeError('TODO')
 
     def string_sentence(self) -> StringSentence:
         tag: str

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pyk.kast.outer_syntax import AST
 
 
-STRING_SENTENCE_TEST_DATA: Final = (
+SENTENCE_TEST_DATA: Final = (
     ('rule x', Rule('x')),
     ('rule [label]: x', Rule('x', label='label')),
     ('rule x [key1, key2(value)]', Rule('x', att=Att((('key1', ''), ('key2', 'value'))))),
@@ -32,15 +32,13 @@ STRING_SENTENCE_TEST_DATA: Final = (
 )
 
 
-@pytest.mark.parametrize(
-    'k_text,expected', STRING_SENTENCE_TEST_DATA, ids=[k_text for k_text, _ in STRING_SENTENCE_TEST_DATA]
-)
-def test_string_sentence(k_text: str, expected: AST) -> None:
+@pytest.mark.parametrize('k_text,expected', SENTENCE_TEST_DATA, ids=[k_text for k_text, _ in SENTENCE_TEST_DATA])
+def test_sentence(k_text: str, expected: AST) -> None:
     # Given
     parser = OuterParser(k_text)
 
     # When
-    actual = parser.string_sentence()
+    actual = parser.sentence()
 
     # Then
     assert actual == expected
