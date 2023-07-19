@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
 
+    from pytest import TempPathFactory
+
     from pyk.kcfg import KCFGExplore
     from pyk.kcfg.kcfg import NodeIdLike
     from pyk.ktool.kprove import KProve
@@ -27,6 +29,11 @@ _LOGGER: Final = logging.getLogger(__name__)
 APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str]]] = (
     ('test-nondet', K_FILES / 'non-det-spec.k', 'NON-DET-SPEC', 'non-det', 8, 1, []),
 )
+
+
+@pytest.fixture(scope='function')
+def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp('proofs')
 
 
 class TestNonDetProof(KCFGExploreTest):
@@ -41,6 +48,7 @@ class TestNonDetProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
         test_id: str,
         spec_file: str,
         spec_module: str,
@@ -53,7 +61,7 @@ class TestNonDetProof(KCFGExploreTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        proof = APRProof.from_claim(kprove.definition, claim, logs={})
+        proof = APRProof.from_claim(kprove.definition, claim, proof_dir=proof_dir, logs={})
         prover = APRProver(proof, kcfg_explore=kcfg_explore)
         prover.advance_proof(
             max_iterations=max_iterations,
