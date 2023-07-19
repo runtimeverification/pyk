@@ -120,9 +120,7 @@ class TestProof:
 #### APRProof
 
 
-def test_read_write_proof_data() -> None:
-    proof_dir = Path('proof_dir')
-
+def test_read_write_proof_data(proof_dir: Path) -> None:
     proof = APRProof(
         id='apr_proof_1',
         kcfg=KCFG(),
@@ -166,8 +164,6 @@ def test_apr_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
     # Given
     eq_proof = equality_proof(1, proof_dir)
     proof = apr_proof(1, proof_dir)
-
-    proof_dir = Path('proofs_dir')
 
     # When
     eq_proof.write_proof()
