@@ -1032,6 +1032,7 @@ class TestImpProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
     ) -> None:
         claim = single(
             kprove.get_claims(
@@ -1040,7 +1041,7 @@ class TestImpProof(KCFGExploreTest):
                 claim_labels=['IMP-SIMPLE-SPEC.addition-1'],
             )
         )
-        proofs_dir = Path('apr_proofs')
+        proofs_dir = proof_dir
 
         proof = APRProof.from_claim(kprove.definition, claim, proof_dir=proofs_dir, logs={})
         kcfg_explore.simplify(proof.kcfg, {})
@@ -1060,6 +1061,7 @@ class TestImpProof(KCFGExploreTest):
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
+        proof_dir: Path,
     ) -> None:
         claim = single(
             kprove.get_claims(
@@ -1068,7 +1070,7 @@ class TestImpProof(KCFGExploreTest):
                 claim_labels=['IMP-SIMPLE-SPEC.addition-1'],
             )
         )
-        proofs_dir = Path('apr_proofs')
+        proofs_dir = proof_dir
 
         proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, proof_dir=proofs_dir, bmc_depth=3)
         kcfg_explore.simplify(proof.kcfg, {})
