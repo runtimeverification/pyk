@@ -9,6 +9,7 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term
+from pyk.kcfg.semantics import KCFGSemantics
 from pyk.kcfg.show import KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
@@ -33,6 +34,53 @@ if TYPE_CHECKING:
     from pyk.ktool.kprove import KProve
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class ImpSemantics(KCFGSemantics):
+    @staticmethod
+    def is_terminal(c: CTerm) -> bool:
+        k_cell = c.cell('K_CELL')
+        if type(k_cell) is KSequence:
+            if len(k_cell) == 0:
+                return True
+            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
+                return True
+        if type(k_cell) is KVariable:
+            return True
+        return False
+
+    @staticmethod
+    def extract_branches(c: CTerm, definition: KDefinition) -> Iterable[KInner]:
+        k_cell = c.cell('K_CELL')
+        if type(k_cell) is KSequence and len(k_cell) > 0:
+            k_cell = k_cell[0]
+        if type(k_cell) is KApply and k_cell.label.name == 'if(_)_else_':
+            condition = k_cell.args[0]
+            if (type(condition) is KVariable and condition.sort == BOOL) or (
+                type(condition) is KApply and definition.return_sort(condition.label) == BOOL
+            ):
+                return [mlEqualsTrue(condition), mlEqualsTrue(notBool(condition))]
+        return []
+
+    @staticmethod
+    def abstract_node(c: CTerm) -> CTerm:
+        return c
+
+    @staticmethod
+    def same_loop(c1: CTerm, c2: CTerm) -> bool:
+        k_cell_1 = c1.cell('K_CELL')
+        k_cell_2 = c2.cell('K_CELL')
+        if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
+            return k_cell_1[0].label.name == 'while(_)_'
+        return False
+
+    @property
+    def cut_point_rules(self) -> Iterable[str]:
+        return ['IMP.while']
+
+    @property
+    def terminal_rules(self) -> Iterable[str]:
+        return []
 
 
 PROVE_CTERM_TEST_DATA: Final = (
@@ -638,43 +686,11 @@ def leaf_number(proof: APRProof) -> int:
 
 class TestImpProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
+    SEMANTICS = ImpSemantics()
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
-
-    @staticmethod
-    def _is_terminal(cterm1: CTerm) -> bool:
-        k_cell = cterm1.cell('K_CELL')
-        if type(k_cell) is KSequence:
-            if len(k_cell) == 0:
-                return True
-            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
-                return True
-        if type(k_cell) is KVariable:
-            return True
-        return False
-
-    @staticmethod
-    def _extract_branches(defn: KDefinition, cterm: CTerm) -> list[KInner]:
-        k_cell = cterm.cell('K_CELL')
-        if type(k_cell) is KSequence and len(k_cell) > 0:
-            k_cell = k_cell[0]
-        if type(k_cell) is KApply and k_cell.label.name == 'if(_)_else_':
-            condition = k_cell.args[0]
-            if (type(condition) is KVariable and condition.sort == BOOL) or (
-                type(condition) is KApply and defn.return_sort(condition.label) == BOOL
-            ):
-                return [mlEqualsTrue(condition), mlEqualsTrue(notBool(condition))]
-        return []
-
-    @staticmethod
-    def _same_loop(cterm1: CTerm, cterm2: CTerm) -> bool:
-        k_cell_1 = cterm1.cell('K_CELL')
-        k_cell_2 = cterm2.cell('K_CELL')
-        if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
-            return k_cell_1[0].label.name == 'while(_)_'
-        return False
 
     @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: KInner | None = None) -> CTerm:
@@ -869,8 +885,8 @@ class TestImpProof(KCFGExploreTest):
             prover = APRProver(
                 proof,
                 kcfg_explore=kcfg_explore,
-                is_terminal=TestImpProof._is_terminal,
-                extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+                is_terminal=self.SEMANTICS.is_terminal,
+                extract_branches=lambda cterm: self.SEMANTICS.extract_branches(cterm, kprove.definition),
             )
 
             prover.advance_proof(
@@ -919,8 +935,8 @@ class TestImpProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
-            is_terminal=TestImpProof._is_terminal,
-            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+            is_terminal=self.SEMANTICS.is_terminal,
+            extract_branches=lambda cterm: self.SEMANTICS.extract_branches(cterm, kprove.definition),
         )
 
         prover.advance_proof(
@@ -965,8 +981,8 @@ class TestImpProof(KCFGExploreTest):
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
-            same_loop=TestImpProof._same_loop,
-            is_terminal=TestImpProof._is_terminal,
+            same_loop=self.SEMANTICS.same_loop,
+            is_terminal=self.SEMANTICS.is_terminal,
         )
         prover.advance_proof(
             max_iterations=max_iterations,
@@ -1010,7 +1026,7 @@ class TestImpProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
-            is_terminal=TestImpProof._is_terminal,
+            is_terminal=self.SEMANTICS.is_terminal,
         )
         prover.advance_proof()
 

@@ -8,6 +8,7 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
+from pyk.kcfg.semantics import DefaultSemantics
 from pyk.kcfg.show import KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.proof.show import APRProofNodePrinter
@@ -53,6 +54,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
 
 class TestCellMapProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'cell-map.k'
+    SEMANTICS = DefaultSemantics()
 
     @staticmethod
     def config(kprint: KPrint, k: str, active_accounts: str, accounts: Iterable[tuple[str, str]]) -> CTerm:

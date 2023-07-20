@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
+    from ..kast.outer import KDefinition
 
 
 class KCFGSemantics(ABC):
@@ -18,7 +19,7 @@ class KCFGSemantics(ABC):
 
     @staticmethod
     @abstractmethod
-    def extract_branches(c: CTerm) -> Iterable[KInner]:
+    def extract_branches(c: CTerm, definition: KDefinition) -> Iterable[KInner]:
         ...
 
     @staticmethod
@@ -46,7 +47,7 @@ class DefaultSemantics(KCFGSemantics):
         return False
 
     @staticmethod
-    def extract_branches(c: CTerm) -> Iterable[KInner]:
+    def extract_branches(c: CTerm, definition: KDefinition) -> Iterable[KInner]:
         return []
 
     @staticmethod
@@ -59,8 +60,8 @@ class DefaultSemantics(KCFGSemantics):
 
     @property
     def cut_point_rules(self) -> Iterable[str]:
-        return ()
+        return []
 
     @property
     def terminal_rules(self) -> Iterable[str]:
-        return ()
+        return []

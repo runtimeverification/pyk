@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from pyk.kcfg.semantics import DefaultSemantics
 from pyk.kcfg.show import KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.proof.show import APRProofNodePrinter
@@ -31,6 +32,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
 
 class TestNonDetProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'non-det.k'
+    SEMANTICS = DefaultSemantics()
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules',

@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from ..ktool.kprint import KPrint
     from ..utils import BugReport
     from .kcfg import NodeIdLike
+    from .semantics import KCFGSemantics
 
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -59,9 +60,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _rpc_closed: bool
     _trace_rewrites: bool
 
+    _semantics: KCFGSemantics
+
     def __init__(
         self,
         kprint: KPrint,
+        semantics: KCFGSemantics,
         *,
         id: str | None = None,
         port: int | None = None,
@@ -88,6 +92,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self._kore_client = None
         self._rpc_closed = False
         self._trace_rewrites = trace_rewrites
+        self._semantics = semantics
 
     def __enter__(self) -> KCFGExplore:
         return self
