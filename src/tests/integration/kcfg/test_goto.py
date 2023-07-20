@@ -72,9 +72,7 @@ class GotoSemantics(KCFGSemantics):
         return []
 
 
-APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, Path, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
-] = (
+APRBMC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, int, ProofStatus, int]] = (
     (
         'symbolic-loop',
         K_FILES / 'goto.k',
@@ -83,8 +81,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         1,
-        [],
-        [],
         ProofStatus.PASSED,
         3,
     ),
@@ -101,7 +97,7 @@ class TestGoToProof(KCFGExploreTest):
     SEMANTICS = GotoSemantics()
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,proof_status,expected_leaf_number',
         APRBMC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APRBMC_PROVE_TEST_DATA],
     )
@@ -116,8 +112,6 @@ class TestGoToProof(KCFGExploreTest):
         max_iterations: int | None,
         max_depth: int | None,
         bmc_depth: int,
-        terminal_rules: Iterable[str],
-        cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
     ) -> None:
@@ -137,8 +131,6 @@ class TestGoToProof(KCFGExploreTest):
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            cut_point_rules=cut_rules,
-            terminal_rules=terminal_rules,
         )
 
         kcfg_show = KCFGShow(

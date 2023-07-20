@@ -25,8 +25,8 @@ if TYPE_CHECKING:
 
 _LOGGER: Final = logging.getLogger(__name__)
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str]]] = (
-    ('test-nondet', K_FILES / 'non-det-spec.k', 'NON-DET-SPEC', 'non-det', 8, 1, []),
+APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None]] = (
+    ('test-nondet', K_FILES / 'non-det-spec.k', 'NON-DET-SPEC', 'non-det', 8, 1),
 )
 
 
@@ -35,7 +35,7 @@ class TestNonDetProof(KCFGExploreTest):
     SEMANTICS = DefaultSemantics()
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -60,7 +60,6 @@ class TestNonDetProof(KCFGExploreTest):
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            terminal_rules=terminal_rules,
         )
 
         kcfg_show = KCFGShow(

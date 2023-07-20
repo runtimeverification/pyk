@@ -341,7 +341,7 @@ GET_MODEL_TEST_DATA: Final = (
     ),
 )
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str], ProofStatus, int]] = (
+APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, ProofStatus, int]] = (
     (
         'imp-simple-addition-1',
         K_FILES / 'imp-simple-spec.k',
@@ -349,7 +349,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'addition-1',
         2,
         1,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -360,7 +359,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'addition-2',
         2,
         7,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -371,7 +369,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'addition-var',
         2,
         1,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -382,7 +379,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'pre-branch-proved',
         2,
         100,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -393,7 +389,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'while-cut-rule',
         2,
         1,
-        ['IMP.while'],
         ProofStatus.PASSED,
         1,
     ),
@@ -404,7 +399,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'while-cut-rule-delayed',
         4,
         100,
-        ['IMP.while'],
         ProofStatus.PASSED,
         1,
     ),
@@ -415,7 +409,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'failing-if',
         10,
         1,
-        [],
         ProofStatus.FAILED,
         2,
     ),
@@ -426,7 +419,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-10',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -437,7 +429,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-100',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -448,7 +439,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-1000',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -459,7 +449,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'if-almost-same-plus',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         2,
     ),
@@ -470,7 +459,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'if-almost-same-times',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         2,
     ),
@@ -481,7 +469,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'use-if-almost-same',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,  # We can reuse subproofs.
     ),
@@ -492,7 +479,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'use-if-almost-same-twice',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,  # We can reuse subproofs.
     ),
@@ -503,7 +489,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-loop',
         None,
         None,
-        ['IMP.while'],  # If we do not include `IMP.while` in this list, we get 4 branches instead of 2
         ProofStatus.PASSED,
         2,
     ),
@@ -514,7 +499,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-N',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -525,15 +509,12 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'failing-circularity',
         None,
         None,
-        [],
         ProofStatus.FAILED,
         1,
     ),
 )
 
-PATH_CONSTRAINTS_TEST_DATA: Iterable[
-    tuple[str, Path, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
-] = (
+PATH_CONSTRAINTS_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, str]] = (
     (
         'imp-simple-fail-branch',
         K_FILES / 'imp-simple-spec.k',
@@ -541,16 +522,12 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
         'fail-branch',
         None,
         1,
-        [],
-        [],
         '{ true #Equals notBool _S:Int <=Int 123 }',
     ),
 )
 
 
-APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, Path, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
-] = (
+APRBMC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, int, ProofStatus, int]] = (
     (
         'bmc-loop-concrete-1',
         K_FILES / 'imp-simple-spec.k',
@@ -559,8 +536,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
-        [],
-        ['IMP.while'],
         ProofStatus.PASSED,
         1,
     ),
@@ -572,8 +547,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         1,
-        [],
-        ['IMP.while'],
         ProofStatus.PASSED,
         1,
     ),
@@ -585,8 +558,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         2,
-        [],
-        ['IMP.while'],
         ProofStatus.FAILED,
         1,
     ),
@@ -598,8 +569,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
-        [],
-        ['IMP.while'],
         ProofStatus.PASSED,
         2,
     ),
@@ -611,8 +580,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         1,
-        [],
-        ['IMP.while'],
         ProofStatus.FAILED,
         3,
     ),
@@ -624,8 +591,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         2,
-        [],
-        ['IMP.while'],
         ProofStatus.FAILED,
         3,
     ),
@@ -637,8 +602,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
-        [],
-        ['IMP.while'],
         ProofStatus.PASSED,
         3,
     ),
@@ -650,8 +613,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         50,
         20,
         1,
-        [],
-        ['IMP.while'],
         ProofStatus.FAILED,
         7,
     ),
@@ -820,7 +781,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,proof_status,expected_leaf_number',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -834,7 +795,6 @@ class TestImpProof(KCFGExploreTest):
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
-        cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
         tmp_path_factory: TempPathFactory,
@@ -892,7 +852,6 @@ class TestImpProof(KCFGExploreTest):
             prover.advance_proof(
                 max_iterations=max_iterations,
                 execute_depth=max_depth,
-                cut_point_rules=cut_rules,
             )
 
             kcfg_show = KCFGShow(
@@ -905,7 +864,7 @@ class TestImpProof(KCFGExploreTest):
             assert leaf_number(proof) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,expected_constraint',
         PATH_CONSTRAINTS_TEST_DATA,
         ids=[test_id for test_id, *_ in PATH_CONSTRAINTS_TEST_DATA],
     )
@@ -919,8 +878,6 @@ class TestImpProof(KCFGExploreTest):
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
-        terminal_rules: Iterable[str],
-        cut_rules: Iterable[str],
         expected_constraint: str,
     ) -> None:
         def _node_printer(cterm: CTerm) -> list[str]:
@@ -942,8 +899,6 @@ class TestImpProof(KCFGExploreTest):
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            cut_point_rules=cut_rules,
-            terminal_rules=terminal_rules,
         )
 
         assert len(proof.terminal) == 1
@@ -952,7 +907,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual_constraint == expected_constraint
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,proof_status,expected_leaf_number',
         APRBMC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APRBMC_PROVE_TEST_DATA],
     )
@@ -967,8 +922,6 @@ class TestImpProof(KCFGExploreTest):
         max_iterations: int | None,
         max_depth: int | None,
         bmc_depth: int,
-        terminal_rules: Iterable[str],
-        cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
     ) -> None:
@@ -987,8 +940,6 @@ class TestImpProof(KCFGExploreTest):
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            cut_point_rules=cut_rules,
-            terminal_rules=terminal_rules,
         )
 
         kcfg_show = KCFGShow(

@@ -134,8 +134,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         self,
         cterm: CTerm,
         depth: int | None = None,
-        cut_point_rules: Iterable[str] | None = None,
-        terminal_rules: Iterable[str] | None = None,
         module_name: str | None = None,
     ) -> tuple[int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Executing: {cterm}')
@@ -144,8 +142,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         er = kore_client.execute(
             kore,
             max_depth=depth,
-            cut_point_rules=cut_point_rules,
-            terminal_rules=terminal_rules,
+            cut_point_rules=self._semantics.cut_point_rules,
+            terminal_rules=self._semantics.terminal_rules,
             module_name=module_name,
             log_successful_rewrites=self._trace_rewrites,
             log_failed_rewrites=self._trace_rewrites,
@@ -424,8 +422,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         node: KCFG.Node,
         logs: dict[int, tuple[LogEntry, ...]],
         execute_depth: int | None = None,
-        cut_point_rules: Iterable[str] = (),
-        terminal_rules: Iterable[str] = (),
         module_name: str | None = None,
     ) -> None:
         if not kcfg.is_leaf(node.id):
@@ -437,8 +433,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
             node.cterm,
             depth=execute_depth,
-            cut_point_rules=cut_point_rules,
-            terminal_rules=terminal_rules,
             module_name=module_name,
         )
 
