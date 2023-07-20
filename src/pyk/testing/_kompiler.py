@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC
 from typing import TYPE_CHECKING
 
 import pytest
@@ -8,14 +9,15 @@ from ..kast.outer import read_kast_definition
 from ..kcfg import KCFGExplore
 from ..kllvm.compiler import compile_runtime
 from ..kllvm.importer import import_runtime
-from ..kore.rpc import KoreClient, KoreServer
+from ..kore.pool import KoreServerPool
+from ..kore.rpc import BoosterServer, KoreClient, KoreServer
 from ..ktool.kompile import Kompile
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
 from ..ktool.krun import KRun
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
     from pathlib import Path
     from types import ModuleType
     from typing import Any, ClassVar
@@ -148,6 +150,58 @@ class KoreClientTest(KompiledTest):
         yield client
         client.close()
         server.close()
+
+
+class BoosterClientTest:
+    MAIN_FILE: ClassVar[str | Path]
+    MODULE_NAME: ClassVar[str]
+    HASKELL_ARGS: ClassVar[dict[str, Any]] = {}
+    LLVM_ARGS: ClassVar[dict[str, Any]] = {}
+    KORE_CLIENT_TIMEOUT: ClassVar = 1000
+
+    @pytest.fixture(scope='class')
+    def haskell_dir(self, kompile: Kompiler) -> Path:
+        kwargs = self.HASKELL_ARGS
+        kwargs['main_file'] = self.MAIN_FILE
+        kwargs['backend'] = 'haskell'
+        return kompile(**kwargs)
+
+    @pytest.fixture(scope='class')
+    def llvm_dir(self, kompile: Kompiler) -> Path:
+        kwargs = self.LLVM_ARGS
+        kwargs['main_file'] = self.MAIN_FILE
+        kwargs['backend'] = 'llvm'
+        kwargs['llvm_kompile_type'] = 'c'
+        return kompile(**kwargs)
+
+    @pytest.fixture
+    def booster_client(
+        self, haskell_dir: Path, llvm_dir: Path, bug_report: BugReport | None = None
+    ) -> Iterator[KoreClient]:
+        server = BoosterServer(haskell_dir, llvm_dir, self.MODULE_NAME, bug_report=bug_report, command=None)
+        client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
+        yield client
+        client.close()
+        server.close()
+
+
+class KoreServerPoolTest(KompiledTest, ABC):
+    KOMPILE_BACKEND = 'haskell'
+
+    POOL_MODULE_NAME: ClassVar[str]
+    POOL_MAX_WORKERS: ClassVar[int | None] = None
+
+    @pytest.fixture
+    def create_server(self, definition_dir: Path) -> Callable[[], KoreServer]:
+        def _create_server() -> KoreServer:
+            return KoreServer(definition_dir, self.POOL_MODULE_NAME)
+
+        return _create_server
+
+    @pytest.fixture
+    def server_pool(self, create_server: Callable[[], KoreServer]) -> Iterator[KoreServerPool]:
+        with KoreServerPool(create_server, max_workers=self.POOL_MAX_WORKERS) as pool:
+            yield pool
 
 
 class RuntimeTest(KompiledTest):
