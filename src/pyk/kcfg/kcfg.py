@@ -435,7 +435,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         if node.id in self._nodes:
             raise ValueError(f'Node with id already exists: {node.id}')
         self._nodes[node.id] = node
-        self.write_node_data(node)
+        self._write_node_data(node)
 
     def create_node(self, cterm: CTerm) -> Node:
         term = cterm.kast
@@ -444,7 +444,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node = KCFG.Node(self._node_id, cterm)
         self._node_id += 1
         self._nodes[node.id] = node
-        self.write_node_data(node)
+        self._write_node_data(node)
         return node
 
     def remove_node(self, node_id: NodeIdLike) -> None:
@@ -479,7 +479,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         node = KCFG.Node(node_id, cterm)
         self._nodes[node_id] = node
-        self.write_node_data(node)
+        self._write_node_data(node)
 
     def successors(
         self,
@@ -898,9 +898,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         if not omit_nodes:
             for node in self.nodes:
-                self.write_node_data(node)
+                self._write_node_data(node)
 
-    def write_node_data(self, node: KCFG.Node) -> None:
+    def _write_node_data(self, node: KCFG.Node) -> None:
         if self.cfg_dir is None:
             return
         nodes_dir = self.cfg_dir / 'nodes'
@@ -909,8 +909,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_dict = node.to_dict()
         node_json.write_text(json.dumps(node_dict))
 
-    def delete_node_data(self, node: KCFG.Node) -> None:
-        assert self.cfg_dir is not None
+    def _delete_node_data(self, node: KCFG.Node) -> None:
+        if self.cfg_dir is None:
+            return
         nodes_dir = self.cfg_dir / 'nodes'
         ensure_dir_path(nodes_dir)
         node_json = nodes_dir / (str(node.id) + '.json')
