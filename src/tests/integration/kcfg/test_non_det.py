@@ -49,7 +49,6 @@ class TestNonDetProof(KCFGExploreTest):
         claim_id: str,
         max_iterations: int,
         max_depth: int,
-        terminal_rules: Iterable[str],
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
