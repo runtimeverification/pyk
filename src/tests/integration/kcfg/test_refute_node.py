@@ -33,6 +33,9 @@ if TYPE_CHECKING:
 
 
 class RefuteSemantics(KCFGSemantics):
+    def __init__(self, definition: KDefinition | None = None):
+        super().__init__(definition)
+
     @staticmethod
     def is_terminal(c: CTerm) -> bool:
         k_cell = c.cell('K_CELL')
@@ -55,8 +58,7 @@ class RefuteSemantics(KCFGSemantics):
             return True
         return False
 
-    @staticmethod
-    def extract_branches(c: CTerm, definition: KDefinition) -> Iterable[KInner]:
+    def extract_branches(self, c: CTerm) -> Iterable[KInner]:
         k_cell = c.cell('K_CELL')
         if type(k_cell) is KSequence and len(k_cell) > 0:
             k_cell = k_cell[0]
@@ -116,9 +118,7 @@ class TestAPRProof(KCFGExploreTest):
         proof = APRProof(
             f'{spec_module}.{claim_id}', kcfg_pre, init=init_node, target=target_node, logs={}, proof_dir=proof_dir
         )
-        prover = APRProver(
-            proof, kcfg_explore, extract_branches=lambda c: self.SEMANTICS.extract_branches(c, kprove.definition)
-        )
+        prover = APRProver(proof, kcfg_explore, extract_branches=kcfg_explore.semantics.extract_branches)
 
         # When
         prover.advance_proof(max_iterations=1)
@@ -164,8 +164,8 @@ class TestAPRProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore,
-            is_terminal=self.SEMANTICS.is_terminal,
-            extract_branches=lambda c: self.SEMANTICS.extract_branches(c, kprove.definition),
+            is_terminal=kcfg_explore.semantics.is_terminal,
+            extract_branches=kcfg_explore.semantics.extract_branches,
         )
 
         # When

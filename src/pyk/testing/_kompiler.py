@@ -138,6 +138,7 @@ class KCFGExploreTest(KProveTest):
             semantics=self.SEMANTICS,
             bug_report=kprove._bug_report,
         ) as kcfg_explore:
+            kcfg_explore.semantics.set_definition(kprove.definition)
             yield kcfg_explore
 
 

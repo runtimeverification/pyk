@@ -12,14 +12,21 @@ if TYPE_CHECKING:
 
 
 class KCFGSemantics(ABC):
+    _definition: KDefinition | None
+
+    def __init__(self, definition: KDefinition | None = None):
+        self._definition = definition
+
+    def set_definition(self, definition: KDefinition) -> None:
+        self._definition = definition
+
     @staticmethod
     @abstractmethod
     def is_terminal(c: CTerm) -> bool:
         ...
 
-    @staticmethod
     @abstractmethod
-    def extract_branches(c: CTerm, definition: KDefinition) -> Iterable[KInner]:
+    def extract_branches(self, c: CTerm) -> Iterable[KInner]:
         ...
 
     @staticmethod
@@ -42,12 +49,14 @@ class KCFGSemantics(ABC):
 
 
 class DefaultSemantics(KCFGSemantics):
+    def __init__(self, definition: KDefinition | None = None):
+        super().__init__(definition)
+
     @staticmethod
     def is_terminal(c: CTerm) -> bool:
         return False
 
-    @staticmethod
-    def extract_branches(c: CTerm, definition: KDefinition) -> Iterable[KInner]:
+    def extract_branches(self, c: CTerm) -> Iterable[KInner]:
         return []
 
     @staticmethod

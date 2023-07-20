@@ -33,12 +33,14 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class GotoSemantics(KCFGSemantics):
+    def __init__(self, definition: KDefinition | None = None):
+        super().__init__(definition)
+
     @staticmethod
     def is_terminal(c: CTerm) -> bool:
         return False
 
-    @staticmethod
-    def extract_branches(c: CTerm, definition: KDefinition) -> Iterable[KInner]:
+    def extract_branches(self, c: CTerm) -> Iterable[KInner]:
         k_cell_pattern = KSequence([KApply('jumpi', [KVariable('JD')])])
         stack_cell_pattern = KApply('ws', [KVariable('S'), KVariable('SS')])
         k_cell_match = k_cell_pattern.match(c.cell('K_CELL'))
@@ -124,9 +126,9 @@ class TestGoToProof(KCFGExploreTest):
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
-            same_loop=self.SEMANTICS.same_loop,
-            is_terminal=self.SEMANTICS.is_terminal,
-            extract_branches=lambda c: self.SEMANTICS.extract_branches(c, kprove.definition),
+            same_loop=kcfg_explore.semantics.same_loop,
+            is_terminal=kcfg_explore.semantics.is_terminal,
+            extract_branches=kcfg_explore.semantics.extract_branches,
         )
         prover.advance_proof(
             max_iterations=max_iterations,

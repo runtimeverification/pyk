@@ -37,6 +37,9 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class ImpSemantics(KCFGSemantics):
+    def __init__(self, definition: KDefinition | None = None):
+        super().__init__(definition)
+
     @staticmethod
     def is_terminal(c: CTerm) -> bool:
         k_cell = c.cell('K_CELL')
@@ -49,15 +52,17 @@ class ImpSemantics(KCFGSemantics):
             return True
         return False
 
-    @staticmethod
-    def extract_branches(c: CTerm, definition: KDefinition) -> Iterable[KInner]:
+    def extract_branches(self, c: CTerm) -> Iterable[KInner]:
+        if self._definition is None:
+            raise ValueError('IMP branch extraction requires a non-None definition')
+
         k_cell = c.cell('K_CELL')
         if type(k_cell) is KSequence and len(k_cell) > 0:
             k_cell = k_cell[0]
         if type(k_cell) is KApply and k_cell.label.name == 'if(_)_else_':
             condition = k_cell.args[0]
             if (type(condition) is KVariable and condition.sort == BOOL) or (
-                type(condition) is KApply and definition.return_sort(condition.label) == BOOL
+                type(condition) is KApply and self._definition.return_sort(condition.label) == BOOL
             ):
                 return [mlEqualsTrue(condition), mlEqualsTrue(notBool(condition))]
         return []
@@ -845,8 +850,8 @@ class TestImpProof(KCFGExploreTest):
             prover = APRProver(
                 proof,
                 kcfg_explore=kcfg_explore,
-                is_terminal=self.SEMANTICS.is_terminal,
-                extract_branches=lambda cterm: self.SEMANTICS.extract_branches(cterm, kprove.definition),
+                is_terminal=kcfg_explore.semantics.is_terminal,
+                extract_branches=kcfg_explore.semantics.extract_branches,
             )
 
             prover.advance_proof(
@@ -892,8 +897,8 @@ class TestImpProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
-            is_terminal=self.SEMANTICS.is_terminal,
-            extract_branches=lambda cterm: self.SEMANTICS.extract_branches(cterm, kprove.definition),
+            is_terminal=kcfg_explore.semantics.is_terminal,
+            extract_branches=kcfg_explore.semantics.extract_branches,
         )
 
         prover.advance_proof(
@@ -934,8 +939,8 @@ class TestImpProof(KCFGExploreTest):
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
-            same_loop=self.SEMANTICS.same_loop,
-            is_terminal=self.SEMANTICS.is_terminal,
+            same_loop=kcfg_explore.semantics.same_loop,
+            is_terminal=kcfg_explore.semantics.is_terminal,
         )
         prover.advance_proof(
             max_iterations=max_iterations,
@@ -977,7 +982,7 @@ class TestImpProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
-            is_terminal=self.SEMANTICS.is_terminal,
+            is_terminal=kcfg_explore.semantics.is_terminal,
         )
         prover.advance_proof()
 
