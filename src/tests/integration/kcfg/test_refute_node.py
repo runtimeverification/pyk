@@ -92,6 +92,7 @@ REFUTE_NODE_TEST_DATA: Iterable[tuple[str, Iterable[KInner], ProofStatus]] = (
 
 class TestAPRProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'refute-node.k'
+    SEMANTICS = RefuteSemantics()
 
     @pytest.fixture(scope='function')
     def proof_dir(self, tmp_path_factory: TempPathFactory) -> Path:
