@@ -51,6 +51,26 @@ class SyntaxSentence(Sentence, ABC):
 
 @final
 @dataclass(frozen=True)
+class SortDecl(AST):
+    name: str
+    params: tuple[str, ...]
+    args: tuple[str, ...]
+
+    def __init__(self, name: str, params: Iterable[str] = (), args: Iterable[str] = ()):
+        object.__setattr__(self, 'name', name)
+        object.__setattr__(self, 'params', tuple(params))
+        object.__setattr__(self, 'args', tuple(args))
+
+
+@final
+@dataclass(frozen=True)
+class SyntaxDecl(SyntaxSentence):
+    decl: SortDecl
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass(frozen=True)
 class SyntaxPriority(SyntaxSentence):
     groups: tuple[tuple[str, ...], ...]
 

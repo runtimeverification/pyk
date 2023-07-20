@@ -15,7 +15,9 @@ from .outer_syntax import (
     Module,
     Require,
     Rule,
+    SortDecl,
     SyntaxAssoc,
+    SyntaxDecl,
     SyntaxLexical,
     SyntaxPriority,
 )
@@ -121,6 +123,23 @@ class OuterParser:
     def syntax_sentence(self) -> SyntaxSentence:
         self._match(TokenType.KW_SYNTAX)
 
+        if self._la.type in {TokenType.LBRACE, TokenType.ID_UPPER}:
+            decl = self._sort_decl()
+
+            if self._la.type is TokenType.EQ:
+                raise RuntimeError('TODO alias')
+
+            if self._la.type is TokenType.DCOLONEQ:
+                raise RuntimeError('TODO defn')
+
+            att: Att
+            if self._la.type is TokenType.LBRACK:
+                att = self.att()
+            else:
+                att = EMPTY_ATT
+
+            return SyntaxDecl(decl, att)
+
         if self._la.type in {TokenType.KW_PRIORITY, TokenType.KW_PRIORITIES}:
             self._consume()
             groups: list[list[str]] = []
@@ -153,7 +172,30 @@ class OuterParser:
             regex = self._match(TokenType.REGEX)  # TODO dequote
             return SyntaxLexical(name, regex)
 
-        raise RuntimeError('TODO')
+        raise ValueError(f'Unexpected token: {self._la.text}')
+
+    def _sort_decl(self) -> SortDecl:
+        params: list[str] = []
+        if self._la.type is TokenType.LBRACE:
+            self._consume()
+            params.append(self._match(TokenType.ID_UPPER))
+            while self._la.type is TokenType.COMMA:
+                self._consume()
+                params.append(self._match(TokenType.ID_UPPER))
+            self._match(TokenType.RBRACE)
+
+        name = self._match(TokenType.ID_UPPER)
+
+        args: list[str] = []
+        if self._la.type is TokenType.LBRACE:
+            self._consume()
+            args.append(self._match(TokenType.ID_UPPER))
+            while self._la.type is TokenType.COMMA:
+                self._consume()
+                args.append(self._match(TokenType.ID_UPPER))
+            self._match(TokenType.RBRACE)
+
+        return SortDecl(name, params, args)
 
     def string_sentence(self) -> StringSentence:
         tag: str

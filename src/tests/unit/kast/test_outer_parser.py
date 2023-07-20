@@ -16,7 +16,9 @@ from pyk.kast.outer_syntax import (
     Module,
     Require,
     Rule,
+    SortDecl,
     SyntaxAssoc,
+    SyntaxDecl,
     SyntaxLexical,
     SyntaxPriority,
 )
@@ -55,6 +57,18 @@ SENTENCE_TEST_DATA: Final = (
     ('syntax priorities foo > bar baz', SyntaxPriority((('foo',), ('bar', 'baz')))),
     ('syntax priorities foo > bar > baz', SyntaxPriority((('foo',), ('bar',), ('baz',)))),
     ('syntax priorities foo bar > baz', SyntaxPriority((('foo', 'bar'), ('baz',)))),
+    ('syntax Foo', SyntaxDecl(SortDecl('Foo'))),
+    ('syntax {Bar} Foo', SyntaxDecl(SortDecl('Foo', params=('Bar',)))),
+    ('syntax {Bar, Baz} Foo', SyntaxDecl(SortDecl('Foo', params=('Bar', 'Baz')))),
+    ('syntax Foo{Bar}', SyntaxDecl(SortDecl('Foo', args=('Bar',)))),
+    ('syntax Foo{Bar, Baz}', SyntaxDecl(SortDecl('Foo', args=('Bar', 'Baz')))),
+    ('syntax {Bar} Foo{Baz}', SyntaxDecl(SortDecl('Foo', params=('Bar',), args=('Baz',)))),
+    ('syntax Foo [bar]', SyntaxDecl(SortDecl('Foo'), att=Att((('bar', ''),)))),
+    ('syntax Foo [bar, baz]', SyntaxDecl(SortDecl('Foo'), att=Att((('bar', ''), ('baz', ''))))),
+    (
+        'syntax {Bar, Baz} Foo [bar, baz]',
+        SyntaxDecl(SortDecl('Foo', params=('Bar', 'Baz')), Att((('bar', ''), ('baz', '')))),
+    ),
 )
 
 
