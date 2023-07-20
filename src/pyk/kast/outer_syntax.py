@@ -44,6 +44,17 @@ class Sentence(AST, ABC):
     ...
 
 
+class SyntaxSentence(Sentence, ABC):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class SyntaxLexical(SyntaxSentence):
+    name: str
+    regex: str
+
+
 class StringSentence(Sentence, ABC):
     _prefix: str
 

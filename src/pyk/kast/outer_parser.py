@@ -3,14 +3,27 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .outer_lexer import TokenType, outer_lexer
-from .outer_syntax import EMPTY_ATT, Alias, Att, Claim, Config, Context, Definition, Import, Module, Require, Rule
+from .outer_syntax import (
+    EMPTY_ATT,
+    Alias,
+    Att,
+    Claim,
+    Config,
+    Context,
+    Definition,
+    Import,
+    Module,
+    Require,
+    Rule,
+    SyntaxLexical,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Iterable, Iterator
-    from typing import Any, Final
+    from typing import Final
 
     from .outer_lexer import Token
-    from .outer_syntax import Sentence, StringSentence
+    from .outer_syntax import Sentence, StringSentence, SyntaxSentence
 
 
 class OuterParser:
@@ -103,7 +116,16 @@ class OuterParser:
 
         return self.string_sentence()
 
-    def syntax_sentence(self) -> Any:  # TODO type
+    def syntax_sentence(self) -> SyntaxSentence:
+        self._match(TokenType.KW_SYNTAX)
+
+        if self._la.type is TokenType.KW_LEXICAL:
+            self._consume()
+            name = self._match(TokenType.ID_UPPER)
+            self._match(TokenType.EQ)
+            regex = self._match(TokenType.REGEX)  # TODO dequote
+            return SyntaxLexical(name, regex)
+
         raise RuntimeError('TODO')
 
     def string_sentence(self) -> StringSentence:

@@ -5,7 +5,19 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.outer_parser import OuterParser
-from pyk.kast.outer_syntax import Alias, Att, Claim, Config, Context, Definition, Import, Module, Require, Rule
+from pyk.kast.outer_syntax import (
+    Alias,
+    Att,
+    Claim,
+    Config,
+    Context,
+    Definition,
+    Import,
+    Module,
+    Require,
+    Rule,
+    SyntaxLexical,
+)
 
 if TYPE_CHECKING:
     from typing import Final
@@ -29,6 +41,7 @@ SENTENCE_TEST_DATA: Final = (
     ('configuration x', Config('x')),
     ('context x', Context('x')),
     ('context alias x', Alias('x')),
+    ('syntax lexical Digit = r"[0-9]"', SyntaxLexical('Digit', 'r"[0-9]"')),
 )
 
 
