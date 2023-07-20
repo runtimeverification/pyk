@@ -7,6 +7,7 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable
 from pyk.kast.manip import get_cell
+from pyk.kcfg.semantics import DefaultSemantics
 from pyk.prelude.ml import mlEqualsTrue, mlTop
 from pyk.testing import KCFGExploreTest
 
@@ -39,6 +40,7 @@ SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90
 
 class TestSimpleProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'simple-proofs.k'
+    SEMANTICS = DefaultSemantics()
 
     @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: str | None = None) -> CTerm:
