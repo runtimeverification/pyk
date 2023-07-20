@@ -9,6 +9,7 @@ import pytest
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term
+from pyk.kcfg.semantics import KCFGSemantics
 from pyk.kcfg.show import KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
@@ -33,6 +34,58 @@ if TYPE_CHECKING:
     from pyk.ktool.kprove import KProve
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class ImpSemantics(KCFGSemantics):
+    def __init__(self, definition: KDefinition | None = None):
+        super().__init__(definition)
+
+    @staticmethod
+    def is_terminal(c: CTerm) -> bool:
+        k_cell = c.cell('K_CELL')
+        if type(k_cell) is KSequence:
+            if len(k_cell) == 0:
+                return True
+            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
+                return True
+        if type(k_cell) is KVariable:
+            return True
+        return False
+
+    def extract_branches(self, c: CTerm) -> Iterable[KInner]:
+        if self._definition is None:
+            raise ValueError('IMP branch extraction requires a non-None definition')
+
+        k_cell = c.cell('K_CELL')
+        if type(k_cell) is KSequence and len(k_cell) > 0:
+            k_cell = k_cell[0]
+        if type(k_cell) is KApply and k_cell.label.name == 'if(_)_else_':
+            condition = k_cell.args[0]
+            if (type(condition) is KVariable and condition.sort == BOOL) or (
+                type(condition) is KApply and self._definition.return_sort(condition.label) == BOOL
+            ):
+                return [mlEqualsTrue(condition), mlEqualsTrue(notBool(condition))]
+        return []
+
+    @staticmethod
+    def abstract_node(c: CTerm) -> CTerm:
+        return c
+
+    @staticmethod
+    def same_loop(c1: CTerm, c2: CTerm) -> bool:
+        k_cell_1 = c1.cell('K_CELL')
+        k_cell_2 = c2.cell('K_CELL')
+        if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
+            return k_cell_1[0].label.name == 'while(_)_'
+        return False
+
+    @property
+    def cut_point_rules(self) -> Iterable[str]:
+        return ['IMP.while']
+
+    @property
+    def terminal_rules(self) -> Iterable[str]:
+        return []
 
 
 PROVE_CTERM_TEST_DATA: Final = (
@@ -293,7 +346,7 @@ GET_MODEL_TEST_DATA: Final = (
     ),
 )
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str], ProofStatus, int]] = (
+APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, ProofStatus, int]] = (
     (
         'imp-simple-addition-1',
         K_FILES / 'imp-simple-spec.k',
@@ -301,7 +354,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'addition-1',
         2,
         1,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -312,7 +364,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'addition-2',
         2,
         7,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -323,7 +374,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'addition-var',
         2,
         1,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -334,7 +384,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'pre-branch-proved',
         2,
         100,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -345,7 +394,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'while-cut-rule',
         2,
         1,
-        ['IMP.while'],
         ProofStatus.PASSED,
         1,
     ),
@@ -356,7 +404,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'while-cut-rule-delayed',
         4,
         100,
-        ['IMP.while'],
         ProofStatus.PASSED,
         1,
     ),
@@ -367,7 +414,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'failing-if',
         10,
         1,
-        [],
         ProofStatus.FAILED,
         2,
     ),
@@ -378,7 +424,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-10',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -389,7 +434,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-100',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -400,7 +444,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-1000',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -411,7 +454,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'if-almost-same-plus',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         2,
     ),
@@ -422,7 +464,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'if-almost-same-times',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         2,
     ),
@@ -433,7 +474,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'use-if-almost-same',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,  # We can reuse subproofs.
     ),
@@ -444,7 +484,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'use-if-almost-same-twice',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,  # We can reuse subproofs.
     ),
@@ -455,7 +494,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-loop',
         None,
         None,
-        ['IMP.while'],  # If we do not include `IMP.while` in this list, we get 4 branches instead of 2
         ProofStatus.PASSED,
         2,
     ),
@@ -466,7 +504,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'sum-N',
         None,
         None,
-        [],
         ProofStatus.PASSED,
         1,
     ),
@@ -477,15 +514,12 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         'failing-circularity',
         None,
         None,
-        [],
         ProofStatus.FAILED,
         1,
     ),
 )
 
-PATH_CONSTRAINTS_TEST_DATA: Iterable[
-    tuple[str, Path, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
-] = (
+PATH_CONSTRAINTS_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, str]] = (
     (
         'imp-simple-fail-branch',
         K_FILES / 'imp-simple-spec.k',
@@ -493,16 +527,12 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[
         'fail-branch',
         None,
         1,
-        [],
-        [],
         '{ true #Equals notBool _S:Int <=Int 123 }',
     ),
 )
 
 
-APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, Path, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
-] = (
+APRBMC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, int, ProofStatus, int]] = (
     (
         'bmc-loop-concrete-1',
         K_FILES / 'imp-simple-spec.k',
@@ -511,8 +541,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
-        [],
-        ['IMP.while'],
         ProofStatus.PASSED,
         1,
     ),
@@ -524,8 +552,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         1,
-        [],
-        ['IMP.while'],
         ProofStatus.PASSED,
         1,
     ),
@@ -537,8 +563,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         2,
-        [],
-        ['IMP.while'],
         ProofStatus.FAILED,
         1,
     ),
@@ -550,8 +574,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
-        [],
-        ['IMP.while'],
         ProofStatus.PASSED,
         2,
     ),
@@ -563,8 +585,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         1,
-        [],
-        ['IMP.while'],
         ProofStatus.FAILED,
         3,
     ),
@@ -576,8 +596,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         2,
-        [],
-        ['IMP.while'],
         ProofStatus.FAILED,
         3,
     ),
@@ -589,8 +607,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
-        [],
-        ['IMP.while'],
         ProofStatus.PASSED,
         3,
     ),
@@ -602,8 +618,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         50,
         20,
         1,
-        [],
-        ['IMP.while'],
         ProofStatus.FAILED,
         7,
     ),
@@ -638,43 +652,11 @@ def leaf_number(proof: APRProof) -> int:
 
 class TestImpProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
+    SEMANTICS = ImpSemantics()
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
-
-    @staticmethod
-    def _is_terminal(cterm1: CTerm) -> bool:
-        k_cell = cterm1.cell('K_CELL')
-        if type(k_cell) is KSequence:
-            if len(k_cell) == 0:
-                return True
-            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
-                return True
-        if type(k_cell) is KVariable:
-            return True
-        return False
-
-    @staticmethod
-    def _extract_branches(defn: KDefinition, cterm: CTerm) -> list[KInner]:
-        k_cell = cterm.cell('K_CELL')
-        if type(k_cell) is KSequence and len(k_cell) > 0:
-            k_cell = k_cell[0]
-        if type(k_cell) is KApply and k_cell.label.name == 'if(_)_else_':
-            condition = k_cell.args[0]
-            if (type(condition) is KVariable and condition.sort == BOOL) or (
-                type(condition) is KApply and defn.return_sort(condition.label) == BOOL
-            ):
-                return [mlEqualsTrue(condition), mlEqualsTrue(notBool(condition))]
-        return []
-
-    @staticmethod
-    def _same_loop(cterm1: CTerm, cterm2: CTerm) -> bool:
-        k_cell_1 = cterm1.cell('K_CELL')
-        k_cell_2 = cterm2.cell('K_CELL')
-        if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
-            return k_cell_1[0].label.name == 'while(_)_'
-        return False
 
     @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: KInner | None = None) -> CTerm:
@@ -804,7 +786,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,proof_status,expected_leaf_number',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -818,7 +800,6 @@ class TestImpProof(KCFGExploreTest):
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
-        cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
         tmp_path_factory: TempPathFactory,
@@ -869,14 +850,13 @@ class TestImpProof(KCFGExploreTest):
             prover = APRProver(
                 proof,
                 kcfg_explore=kcfg_explore,
-                is_terminal=TestImpProof._is_terminal,
-                extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+                is_terminal=kcfg_explore.semantics.is_terminal,
+                extract_branches=kcfg_explore.semantics.extract_branches,
             )
 
             prover.advance_proof(
                 max_iterations=max_iterations,
                 execute_depth=max_depth,
-                cut_point_rules=cut_rules,
             )
 
             kcfg_show = KCFGShow(
@@ -889,7 +869,7 @@ class TestImpProof(KCFGExploreTest):
             assert leaf_number(proof) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,expected_constraint',
         PATH_CONSTRAINTS_TEST_DATA,
         ids=[test_id for test_id, *_ in PATH_CONSTRAINTS_TEST_DATA],
     )
@@ -903,8 +883,6 @@ class TestImpProof(KCFGExploreTest):
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
-        terminal_rules: Iterable[str],
-        cut_rules: Iterable[str],
         expected_constraint: str,
     ) -> None:
         def _node_printer(cterm: CTerm) -> list[str]:
@@ -919,15 +897,13 @@ class TestImpProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
-            is_terminal=TestImpProof._is_terminal,
-            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
+            is_terminal=kcfg_explore.semantics.is_terminal,
+            extract_branches=kcfg_explore.semantics.extract_branches,
         )
 
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            cut_point_rules=cut_rules,
-            terminal_rules=terminal_rules,
         )
 
         assert len(proof.terminal) == 1
@@ -936,7 +912,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual_constraint == expected_constraint
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,proof_status,expected_leaf_number',
         APRBMC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APRBMC_PROVE_TEST_DATA],
     )
@@ -951,8 +927,6 @@ class TestImpProof(KCFGExploreTest):
         max_iterations: int | None,
         max_depth: int | None,
         bmc_depth: int,
-        terminal_rules: Iterable[str],
-        cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
     ) -> None:
@@ -965,14 +939,12 @@ class TestImpProof(KCFGExploreTest):
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
-            same_loop=TestImpProof._same_loop,
-            is_terminal=TestImpProof._is_terminal,
+            same_loop=kcfg_explore.semantics.same_loop,
+            is_terminal=kcfg_explore.semantics.is_terminal,
         )
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            cut_point_rules=cut_rules,
-            terminal_rules=terminal_rules,
         )
 
         kcfg_show = KCFGShow(
@@ -1010,7 +982,7 @@ class TestImpProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
-            is_terminal=TestImpProof._is_terminal,
+            is_terminal=kcfg_explore.semantics.is_terminal,
         )
         prover.advance_proof()
 

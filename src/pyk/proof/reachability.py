@@ -473,8 +473,6 @@ class APRProver(Prover):
         self,
         max_iterations: int | None = None,
         execute_depth: int | None = None,
-        cut_point_rules: Iterable[str] = (),
-        terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
     ) -> KCFG:
         iterations = 0
@@ -515,8 +513,6 @@ class APRProver(Prover):
                 curr_node,
                 self.proof.logs,
                 execute_depth=execute_depth,
-                cut_point_rules=cut_point_rules,
-                terminal_rules=terminal_rules,
                 module_name=module_name,
             )
 
@@ -678,8 +674,6 @@ class APRBMCProver(APRProver):
         self,
         max_iterations: int | None = None,
         execute_depth: int | None = None,
-        cut_point_rules: Iterable[str] = (),
-        terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
     ) -> KCFG:
         iterations = 0
@@ -715,8 +709,6 @@ class APRBMCProver(APRProver):
             super().advance_proof(
                 max_iterations=1,
                 execute_depth=execute_depth,
-                cut_point_rules=cut_point_rules,
-                terminal_rules=terminal_rules,
                 implication_every_block=implication_every_block,
             )
 

@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from ..kast.inner import KInner
     from ..kast.outer import KClaim, KDefinition, KImport, KRuleLike
 
-
 NodeIdLike = int | str
 
 

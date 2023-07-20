@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from pytest import TempPathFactory
 
     from ..kast.outer import KDefinition
+    from ..kcfg.semantics import KCFGSemantics
     from ..ktool.kprint import SymbolTable
     from ..utils import BugReport
 
@@ -128,12 +129,16 @@ class KProveTest(KompiledTest):
 
 
 class KCFGExploreTest(KProveTest):
+    SEMANTICS: ClassVar[KCFGSemantics]
+
     @pytest.fixture
     def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
         with KCFGExplore(
             kprove,
+            semantics=self.SEMANTICS,
             bug_report=kprove._bug_report,
         ) as kcfg_explore:
+            kcfg_explore.semantics.set_definition(kprove.definition)
             yield kcfg_explore
 
 
