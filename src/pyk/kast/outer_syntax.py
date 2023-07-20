@@ -51,6 +51,15 @@ class SyntaxSentence(Sentence, ABC):
 
 @final
 @dataclass(frozen=True)
+class SyntaxPriority(SyntaxSentence):
+    groups: tuple[tuple[str, ...], ...]
+
+    def __init__(self, groups: Iterable[Iterable[str]]):
+        object.__setattr__(self, 'groups', tuple(tuple(group) for group in groups))
+
+
+@final
+@dataclass(frozen=True)
 class SyntaxAssoc(SyntaxSentence):
     class Kind(Enum):
         LEFT = 'left'

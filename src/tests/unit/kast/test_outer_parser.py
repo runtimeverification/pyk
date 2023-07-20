@@ -18,6 +18,7 @@ from pyk.kast.outer_syntax import (
     Rule,
     SyntaxAssoc,
     SyntaxLexical,
+    SyntaxPriority,
 )
 
 if TYPE_CHECKING:
@@ -46,6 +47,14 @@ SENTENCE_TEST_DATA: Final = (
     ('syntax left foo', SyntaxAssoc(SyntaxAssoc.Kind.LEFT, ('foo',))),
     ('syntax right foo bar', SyntaxAssoc(SyntaxAssoc.Kind.RIGHT, ('foo', 'bar'))),
     ('syntax non-assoc foo bar baz', SyntaxAssoc(SyntaxAssoc.Kind.NON_ASSOC, ('foo', 'bar', 'baz'))),
+    ('syntax priority foo', SyntaxPriority((('foo',),))),
+    ('syntax priorities foo', SyntaxPriority((('foo',),))),
+    ('syntax priorities foo bar', SyntaxPriority((('foo', 'bar'),))),
+    ('syntax priorities foo bar baz', SyntaxPriority((('foo', 'bar', 'baz'),))),
+    ('syntax priorities foo > bar', SyntaxPriority((('foo',), ('bar',)))),
+    ('syntax priorities foo > bar baz', SyntaxPriority((('foo',), ('bar', 'baz')))),
+    ('syntax priorities foo > bar > baz', SyntaxPriority((('foo',), ('bar',), ('baz',)))),
+    ('syntax priorities foo bar > baz', SyntaxPriority((('foo', 'bar'), ('baz',)))),
 )
 
 

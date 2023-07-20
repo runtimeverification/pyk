@@ -17,6 +17,7 @@ from .outer_syntax import (
     Rule,
     SyntaxAssoc,
     SyntaxLexical,
+    SyntaxPriority,
 )
 
 if TYPE_CHECKING:
@@ -119,6 +120,23 @@ class OuterParser:
 
     def syntax_sentence(self) -> SyntaxSentence:
         self._match(TokenType.KW_SYNTAX)
+
+        if self._la.type in {TokenType.KW_PRIORITY, TokenType.KW_PRIORITIES}:
+            self._consume()
+            groups: list[list[str]] = []
+            group: list[str] = []
+            group.append(self._match(TokenType.KLABEL))
+            while self._la.type is TokenType.KLABEL:
+                group.append(self._consume())
+            groups.append(group)
+            while self._la.type is TokenType.GT:
+                self._consume()
+                group = []
+                group.append(self._match(TokenType.KLABEL))
+                while self._la.type is TokenType.KLABEL:
+                    group.append(self._consume())
+                groups.append(group)
+            return SyntaxPriority(groups)
 
         if self._la.type in {TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC}:
             kind = SyntaxAssoc.Kind(self._consume())
