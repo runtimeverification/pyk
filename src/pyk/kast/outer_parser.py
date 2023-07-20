@@ -15,6 +15,7 @@ from .outer_syntax import (
     Module,
     Require,
     Rule,
+    SyntaxAssoc,
     SyntaxLexical,
 )
 
@@ -118,6 +119,14 @@ class OuterParser:
 
     def syntax_sentence(self) -> SyntaxSentence:
         self._match(TokenType.KW_SYNTAX)
+
+        if self._la.type in {TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC}:
+            kind = SyntaxAssoc.Kind(self._consume())
+            klabels: list[str] = []
+            klabels.append(self._match(TokenType.KLABEL))
+            while self._la.type is TokenType.KLABEL:
+                klabels.append(self._consume())
+            return SyntaxAssoc(kind, klabels)
 
         if self._la.type is TokenType.KW_LEXICAL:
             self._consume()

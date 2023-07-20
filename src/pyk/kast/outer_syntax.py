@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING, final, overload
 
 if TYPE_CHECKING:
@@ -46,6 +47,22 @@ class Sentence(AST, ABC):
 
 class SyntaxSentence(Sentence, ABC):
     ...
+
+
+@final
+@dataclass(frozen=True)
+class SyntaxAssoc(SyntaxSentence):
+    class Kind(Enum):
+        LEFT = 'left'
+        RIGHT = 'right'
+        NON_ASSOC = 'non-assoc'
+
+    kind: Kind
+    klabels: tuple[str, ...]
+
+    def __init__(self, kind: Kind, klabels: Iterable[str]):
+        object.__setattr__(self, 'kind', kind)
+        object.__setattr__(self, 'klabels', tuple(klabels))
 
 
 @final

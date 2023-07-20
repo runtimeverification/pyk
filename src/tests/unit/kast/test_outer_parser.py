@@ -16,6 +16,7 @@ from pyk.kast.outer_syntax import (
     Module,
     Require,
     Rule,
+    SyntaxAssoc,
     SyntaxLexical,
 )
 
@@ -42,6 +43,9 @@ SENTENCE_TEST_DATA: Final = (
     ('context x', Context('x')),
     ('context alias x', Alias('x')),
     ('syntax lexical Digit = r"[0-9]"', SyntaxLexical('Digit', 'r"[0-9]"')),
+    ('syntax left foo', SyntaxAssoc(SyntaxAssoc.Kind.LEFT, ('foo',))),
+    ('syntax right foo bar', SyntaxAssoc(SyntaxAssoc.Kind.RIGHT, ('foo', 'bar'))),
+    ('syntax non-assoc foo bar baz', SyntaxAssoc(SyntaxAssoc.Kind.NON_ASSOC, ('foo', 'bar', 'baz'))),
 )
 
 
