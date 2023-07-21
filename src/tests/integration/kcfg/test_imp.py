@@ -647,7 +647,7 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         'failing-if',
         0,
         1,
-        (mlTop(),),
+        (mlEqualsTrue(notBool(KVariable('_B', 'Bool'))),),
     ),
     (
         'fail-branch',
