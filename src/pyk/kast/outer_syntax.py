@@ -49,6 +49,12 @@ class SyntaxSentence(Sentence, ABC):
     ...
 
 
+class Assoc(Enum):
+    LEFT = 'left'
+    RIGHT = 'right'
+    NON_ASSOC = 'non-assoc'
+
+
 @final
 @dataclass(frozen=True)
 class SortDecl(AST):
@@ -82,6 +88,76 @@ class SyntaxDecl(SyntaxSentence):
 
 @final
 @dataclass(frozen=True)
+class SyntaxDefn(SyntaxSentence):
+    decl: SortDecl
+    blocks: tuple[PriorityBlock, ...]
+
+    def __init__(self, decl: SortDecl, blocks: Iterable[PriorityBlock] = ()):
+        object.__setattr__(self, 'decl', decl)
+        object.__setattr__(self, 'blocks', tuple(blocks))
+
+
+@final
+@dataclass(frozen=True)
+class PriorityBlock(AST):
+    productions: tuple[ProductionLike, ...]
+    assoc: Assoc | None
+
+    def __init__(self, productions: Iterable[ProductionLike], assoc: Assoc | None = None):
+        object.__setattr__(self, 'productions', tuple(productions))
+        object.__setattr__(self, 'assoc', assoc)
+
+
+class ProductionLike(AST, ABC):
+    att: Att
+
+
+@final
+@dataclass(frozen=True)
+class Production(ProductionLike):
+    items: tuple[ProductionItem, ...]
+    att: Att = field(default=EMPTY_ATT)
+
+    def __init__(self, items: Iterable[ProductionItem], att: Att = EMPTY_ATT):
+        object.__setattr__(self, 'items', tuple(items))
+        object.__setattr__(self, 'att', att)
+
+
+class ProductionItem(AST, ABC):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class Terminal(ProductionItem):
+    value: str
+
+
+@final
+@dataclass(frozen=True)
+class NonTerminal(ProductionItem):
+    sort: Sort
+    name: str = field(default='')
+
+
+@final
+@dataclass(frozen=True)
+class UserList(ProductionLike):
+    sort: str
+    sep: str
+    non_empty: bool = field(default=False)
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass
+class Lexical(ProductionLike):
+    regex: str
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass(frozen=True)
 class SyntaxSynonym(SyntaxSentence):
     new: SortDecl
     old: Sort
@@ -100,16 +176,11 @@ class SyntaxPriority(SyntaxSentence):
 @final
 @dataclass(frozen=True)
 class SyntaxAssoc(SyntaxSentence):
-    class Kind(Enum):
-        LEFT = 'left'
-        RIGHT = 'right'
-        NON_ASSOC = 'non-assoc'
-
-    kind: Kind
+    assoc: Assoc
     klabels: tuple[str, ...]
 
-    def __init__(self, kind: Kind, klabels: Iterable[str]):
-        object.__setattr__(self, 'kind', kind)
+    def __init__(self, assoc: Assoc, klabels: Iterable[str]):
+        object.__setattr__(self, 'assoc', assoc)
         object.__setattr__(self, 'klabels', tuple(klabels))
 
 

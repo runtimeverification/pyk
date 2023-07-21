@@ -6,22 +6,30 @@ from .outer_lexer import TokenType, outer_lexer
 from .outer_syntax import (
     EMPTY_ATT,
     Alias,
+    Assoc,
     Att,
     Claim,
     Config,
     Context,
     Definition,
     Import,
+    Lexical,
     Module,
+    NonTerminal,
+    PriorityBlock,
+    Production,
     Require,
     Rule,
     Sort,
     SortDecl,
     SyntaxAssoc,
     SyntaxDecl,
+    SyntaxDefn,
     SyntaxLexical,
     SyntaxPriority,
     SyntaxSynonym,
+    Terminal,
+    UserList,
 )
 
 if TYPE_CHECKING:
@@ -29,7 +37,7 @@ if TYPE_CHECKING:
     from typing import Final
 
     from .outer_lexer import Token
-    from .outer_syntax import Sentence, StringSentence, SyntaxSentence
+    from .outer_syntax import ProductionItem, ProductionLike, Sentence, StringSentence, SyntaxSentence
 
 
 class OuterParser:
@@ -130,7 +138,13 @@ class OuterParser:
                 return SyntaxSynonym(decl, sort, att)
 
             if self._la.type is TokenType.DCOLONEQ:
-                raise RuntimeError('TODO defn')
+                self._consume()
+                blocks: list[PriorityBlock] = []
+                blocks.append(self._priority_block())
+                while self._la.type is TokenType.GT:
+                    self._consume()
+                    blocks.append(self._priority_block())
+                return SyntaxDefn(decl, blocks)
 
             att = self._maybe_att()
             return SyntaxDecl(decl, att)
@@ -153,12 +167,12 @@ class OuterParser:
             return SyntaxPriority(groups)
 
         if self._la.type in {TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC}:
-            kind = SyntaxAssoc.Kind(self._consume())
+            assoc = Assoc(self._consume())
             klabels: list[str] = []
             klabels.append(self._match(TokenType.KLABEL))
             while self._la.type is TokenType.KLABEL:
                 klabels.append(self._consume())
-            return SyntaxAssoc(kind, klabels)
+            return SyntaxAssoc(assoc, klabels)
 
         if self._la.type is TokenType.KW_LEXICAL:
             self._consume()
@@ -213,6 +227,117 @@ class OuterParser:
             self._match(TokenType.RBRACE)
 
         return Sort(name, args)
+
+    def _priority_block(self) -> PriorityBlock:
+        assoc: Assoc | None
+        if self._la.type in {TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC}:  # TODO sets
+            assoc = Assoc(self._consume())
+            self._match(TokenType.COLON)
+        else:
+            assoc = None
+
+        productions: list[ProductionLike] = []
+        productions.append(self._production_like())
+        while self._la.type is TokenType.VBAR:
+            self._consume()
+            productions.append(self._production_like())
+        return PriorityBlock(productions, assoc)
+
+    def _production_like(self) -> ProductionLike:
+        la1 = self._la
+        self._match_any(
+            {
+                TokenType.ID_LOWER,
+                TokenType.ID_UPPER,
+                TokenType.STRING,
+                TokenType.REGEX,
+            }
+        )
+
+        if la1.type is TokenType.REGEX:
+            regex = la1.text  # TODO dequote
+            att = self._maybe_att()
+            return Lexical(regex, att)
+
+        if self._la.type is TokenType.LBRACE and la1.text in {'List', 'NeList'}:
+            non_empty = la1.text == 'NeList'
+            self._consume()
+            sort = self._match(TokenType.ID_UPPER)
+            self._match(TokenType.COMMA)
+            sep = self._match(TokenType.STRING)
+            self._match(TokenType.RBRACE)
+            att = self._maybe_att()
+            return UserList(sort, sep, non_empty, att)
+
+        items: list[ProductionItem] = []
+
+        if la1.type is TokenType.STRING:
+            items.append(Terminal(la1.text))  # TODO dequote
+        else:
+            assert la1.type in {TokenType.ID_LOWER, TokenType.ID_UPPER}
+            if self._la.type is TokenType.LPAREN:
+                items.append(Terminal(la1.text))
+                items.append(Terminal(self._consume()))
+                while self._la.type is not TokenType.RPAREN:
+                    items.append(self._non_terminal())
+                    if self._la.type is TokenType.COMMA:
+                        items.append(Terminal(self._consume()))
+                        continue
+                    break
+                items.append(Terminal(self._match(TokenType.RPAREN)))
+            else:
+                items.append(self._non_terminal_with_la(la1))
+
+        while self._la.type in {
+            TokenType.STRING,
+            TokenType.ID_LOWER,
+            TokenType.ID_UPPER,
+        }:
+            items.append(self._production_item())
+
+        att = self._maybe_att()
+        return Production(items, att)
+
+    def _production_item(self) -> ProductionItem:
+        if self._la.type is TokenType.STRING:
+            return Terminal(self._consume())  # TODO dequote
+
+        return self._non_terminal()
+
+    def _non_terminal(self) -> NonTerminal:
+        la1 = self._la
+        self._match_any({TokenType.ID_LOWER, TokenType.ID_UPPER})
+        return self._non_terminal_with_la(la1)
+
+    def _non_terminal_with_la(self, la: Token) -> NonTerminal:
+        if la.type is TokenType.ID_LOWER or self._la.type is TokenType.COLON:
+            self._match(TokenType.COLON)
+            sort = self._sort()
+            return NonTerminal(sort, la.text)
+
+        return NonTerminal(self._sort_with_la(la))
+
+    def _sort_with_la(self, la: Token) -> Sort:
+        assert la.type is TokenType.ID_UPPER
+
+        args: list[int | str] = []
+        if self._la.type is TokenType.LBRACE:
+            self._consume()
+            if self._la.type is TokenType.NAT:
+                args.append(int(self._consume()))
+            else:
+                args.append(self._match(TokenType.ID_UPPER))
+
+            while self._la.type is TokenType.COMMA:
+                self._consume()
+                if self._la.type is TokenType.NAT:
+                    args.append(int(self._consume()))
+                else:
+                    args.append(self._match(TokenType.ID_UPPER))
+
+            self._match(TokenType.RBRACE)
+
+        return Sort(la.text, args)
 
     def string_sentence(self) -> StringSentence:
         tag: str
