@@ -64,8 +64,27 @@ class SortDecl(AST):
 
 @final
 @dataclass(frozen=True)
+class Sort(AST):
+    name: str
+    args: tuple[int | str, ...]
+
+    def __init__(self, name: str, args: Iterable[int | str] = ()):
+        object.__setattr__(self, 'name', name)
+        object.__setattr__(self, 'args', tuple(args))
+
+
+@final
+@dataclass(frozen=True)
 class SyntaxDecl(SyntaxSentence):
     decl: SortDecl
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
+@dataclass(frozen=True)
+class SyntaxSynonym(SyntaxSentence):
+    new: SortDecl
+    old: Sort
     att: Att = field(default=EMPTY_ATT)
 
 

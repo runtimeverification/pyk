@@ -15,11 +15,13 @@ from .outer_syntax import (
     Module,
     Require,
     Rule,
+    Sort,
     SortDecl,
     SyntaxAssoc,
     SyntaxDecl,
     SyntaxLexical,
     SyntaxPriority,
+    SyntaxSynonym,
 )
 
 if TYPE_CHECKING:
@@ -81,12 +83,7 @@ class OuterParser:
         self._match(TokenType.KW_MODULE)
 
         name = self._match(TokenType.MODNAME)
-
-        att: Att
-        if self._la.type is TokenType.LBRACK:
-            att = self.att()
-        else:
-            att = EMPTY_ATT
+        att = self._maybe_att()
 
         imports: list[Import] = []
         while self._la.type in {TokenType.KW_IMPORT, TokenType.KW_IMPORTS}:
@@ -127,17 +124,15 @@ class OuterParser:
             decl = self._sort_decl()
 
             if self._la.type is TokenType.EQ:
-                raise RuntimeError('TODO alias')
+                self._consume()
+                sort = self._sort()
+                att = self._maybe_att()
+                return SyntaxSynonym(decl, sort, att)
 
             if self._la.type is TokenType.DCOLONEQ:
                 raise RuntimeError('TODO defn')
 
-            att: Att
-            if self._la.type is TokenType.LBRACK:
-                att = self.att()
-            else:
-                att = EMPTY_ATT
-
+            att = self._maybe_att()
             return SyntaxDecl(decl, att)
 
         if self._la.type in {TokenType.KW_PRIORITY, TokenType.KW_PRIORITIES}:
@@ -197,6 +192,28 @@ class OuterParser:
 
         return SortDecl(name, params, args)
 
+    def _sort(self) -> Sort:
+        name = self._match(TokenType.ID_UPPER)
+
+        args: list[int | str] = []
+        if self._la.type is TokenType.LBRACE:
+            self._consume()
+            if self._la.type is TokenType.NAT:
+                args.append(int(self._consume()))
+            else:
+                args.append(self._match(TokenType.ID_UPPER))
+
+            while self._la.type is TokenType.COMMA:
+                self._consume()
+                if self._la.type is TokenType.NAT:
+                    args.append(int(self._consume()))
+                else:
+                    args.append(self._match(TokenType.ID_UPPER))
+
+            self._match(TokenType.RBRACE)
+
+        return Sort(name, args)
+
     def string_sentence(self) -> StringSentence:
         tag: str
         if self._la.type is TokenType.KW_CONTEXT:
@@ -218,19 +235,16 @@ class OuterParser:
             label = ''
 
         bubble = self._match(TokenType.BUBBLE)
-
-        att: Att
-        if self._la.type == TokenType.LBRACK:
-            att = self.att()
-        else:
-            att = EMPTY_ATT
-
+        att = self._maybe_att()
         return cls(bubble, label, att)
 
-    def att(self) -> Att:
+    def _maybe_att(self) -> Att:
         items: list[tuple[str, str]] = []
 
-        self._match(TokenType.LBRACK)
+        if self._la.type is not TokenType.LBRACK:
+            return EMPTY_ATT
+
+        self._consume()
 
         while True:
             key = self._match(TokenType.ATTR_KEY)

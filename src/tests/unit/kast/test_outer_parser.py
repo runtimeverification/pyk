@@ -16,11 +16,13 @@ from pyk.kast.outer_syntax import (
     Module,
     Require,
     Rule,
+    Sort,
     SortDecl,
     SyntaxAssoc,
     SyntaxDecl,
     SyntaxLexical,
     SyntaxPriority,
+    SyntaxSynonym,
 )
 
 if TYPE_CHECKING:
@@ -68,6 +70,11 @@ SENTENCE_TEST_DATA: Final = (
     (
         'syntax {Bar, Baz} Foo [bar, baz]',
         SyntaxDecl(SortDecl('Foo', params=('Bar', 'Baz')), Att((('bar', ''), ('baz', '')))),
+    ),
+    ('syntax Foo = Bar', SyntaxSynonym(SortDecl('Foo'), Sort('Bar'))),
+    (
+        'syntax {N} Vector{N} = Matrix{N, 1} [foo]',
+        SyntaxSynonym(SortDecl('Vector', ('N',), ('N',)), Sort('Matrix', ('N', 1)), att=Att((('foo', ''),))),
     ),
 )
 
