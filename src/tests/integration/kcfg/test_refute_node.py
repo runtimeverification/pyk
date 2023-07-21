@@ -33,9 +33,6 @@ if TYPE_CHECKING:
 
 
 class RefuteSemantics(KCFGSemantics):
-    def __init__(self, definition: KDefinition | None = None):
-        super().__init__(definition)
-
     def is_terminal(self, c: CTerm) -> bool:
         k_cell = c.cell('K_CELL')
         if type(k_cell) is KSequence:
@@ -83,7 +80,9 @@ REFUTE_NODE_TEST_DATA: Iterable[tuple[str, Iterable[KInner], ProofStatus]] = (
 
 class TestAPRProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'refute-node.k'
-    SEMANTICS = RefuteSemantics()
+
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        return RefuteSemantics()
 
     @pytest.fixture(scope='function')
     def proof_dir(self, tmp_path_factory: TempPathFactory) -> Path:

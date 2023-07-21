@@ -17,7 +17,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final, Union
 
+    from pyk.kast.outer import KDefinition
     from pyk.kcfg import KCFGExplore
+    from pyk.kcfg.semantics import KCFGSemantics
     from pyk.ktool.kprint import KPrint
 
     STATE = Union[tuple[str, str], tuple[str, str, str]]
@@ -40,7 +42,9 @@ SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90
 
 class TestSimpleProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'simple-proofs.k'
-    SEMANTICS = DefaultSemantics()
+
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        return DefaultSemantics()
 
     @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: str | None = None) -> CTerm:

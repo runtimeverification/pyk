@@ -8,20 +8,9 @@ if TYPE_CHECKING:
 
     from ..cterm import CTerm
     from ..kast.inner import KInner
-    from ..kast.outer import KDefinition
 
 
 class KCFGSemantics(ABC):
-    definition: KDefinition | None
-
-    cut_point_rules: Iterable[str]
-    terminal_rules: Iterable[str]
-
-    def __init__(self, definition: KDefinition | None = None):
-        self.definition = definition
-        self.cut_point_rules = []
-        self.terminal_rules = []
-
     @abstractmethod
     def is_terminal(self, c: CTerm) -> bool:
         ...
@@ -40,9 +29,6 @@ class KCFGSemantics(ABC):
 
 
 class DefaultSemantics(KCFGSemantics):
-    def __init__(self, definition: KDefinition | None = None):
-        super().__init__(definition)
-
     def is_terminal(self, c: CTerm) -> bool:
         return False
 

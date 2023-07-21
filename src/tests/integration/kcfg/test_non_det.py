@@ -19,8 +19,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
 
+    from pyk.kast.outer import KDefinition
     from pyk.kcfg import KCFGExplore
     from pyk.kcfg.kcfg import NodeIdLike
+    from pyk.kcfg.semantics import KCFGSemantics
     from pyk.ktool.kprove import KProve
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -32,7 +34,9 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None]
 
 class TestNonDetProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'non-det.k'
-    SEMANTICS = DefaultSemantics()
+
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        return DefaultSemantics()
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth',

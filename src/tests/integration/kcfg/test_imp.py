@@ -37,8 +37,11 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class ImpSemantics(KCFGSemantics):
+    definition: KDefinition | None
+
     def __init__(self, definition: KDefinition | None = None):
-        super().__init__(definition)
+        super().__init__()
+        self.definition = definition
 
     def is_terminal(self, c: CTerm) -> bool:
         k_cell = c.cell('K_CELL')
@@ -525,7 +528,9 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
     ),
 )
 
-PATH_CONSTRAINTS_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, str]] = (
+PATH_CONSTRAINTS_TEST_DATA: Iterable[
+    tuple[str, Path, str, str, int | None, int | None, Iterable[str], Iterable[str], str]
+] = (
     (
         'imp-simple-fail-branch',
         K_FILES / 'imp-simple-spec.k',
@@ -533,13 +538,15 @@ PATH_CONSTRAINTS_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int 
         'fail-branch',
         None,
         1,
+        [],
+        [],
         '{ true #Equals notBool _S:Int <=Int 123 }',
     ),
 )
 
 
 APRBMC_PROVE_TEST_DATA: Iterable[
-    tuple[str, Path, str, str, int | None, int | None, int, Iterable[str], ProofStatus, int]
+    tuple[str, Path, str, str, int | None, int | None, int, Iterable[str], Iterable[str], ProofStatus, int]
 ] = (
     (
         'bmc-loop-concrete-1',
@@ -549,6 +556,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
+        [],
         ['IMP.while'],
         ProofStatus.PASSED,
         1,
@@ -561,6 +569,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         1,
+        [],
         ['IMP.while'],
         ProofStatus.PASSED,
         1,
@@ -573,6 +582,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         2,
+        [],
         ['IMP.while'],
         ProofStatus.FAILED,
         1,
@@ -585,6 +595,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
+        [],
         ['IMP.while'],
         ProofStatus.PASSED,
         2,
@@ -597,6 +608,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         1,
+        [],
         ['IMP.while'],
         ProofStatus.FAILED,
         3,
@@ -609,6 +621,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         2,
+        [],
         ['IMP.while'],
         ProofStatus.FAILED,
         3,
@@ -621,6 +634,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         20,
         20,
         0,
+        [],
         ['IMP.while'],
         ProofStatus.PASSED,
         3,
@@ -633,6 +647,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
         50,
         20,
         1,
+        [],
         ['IMP.while'],
         ProofStatus.FAILED,
         7,
@@ -668,7 +683,9 @@ def leaf_number(proof: APRProof) -> int:
 
 class TestImpProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
-    SEMANTICS = ImpSemantics()
+
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        return ImpSemantics(definition)
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
@@ -853,8 +870,6 @@ class TestImpProof(KCFGExploreTest):
                 dp.write_proof()
             # </Admit all the dependencies >
 
-            kcfg_explore.kcfg_semantics.cut_point_rules = cut_rules
-
             proof = APRProof.from_claim(
                 kprove.definition,
                 claim,
@@ -871,10 +886,7 @@ class TestImpProof(KCFGExploreTest):
                 kcfg_explore=kcfg_explore,
             )
 
-            prover.advance_proof(
-                max_iterations=max_iterations,
-                execute_depth=max_depth,
-            )
+            prover.advance_proof(max_iterations=max_iterations, execute_depth=max_depth, cut_point_rules=cut_rules)
 
             kcfg_show = KCFGShow(
                 kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
@@ -886,7 +898,7 @@ class TestImpProof(KCFGExploreTest):
             assert leaf_number(proof) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,expected_constraint',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules,cut_rules,expected_constraint',
         PATH_CONSTRAINTS_TEST_DATA,
         ids=[test_id for test_id, *_ in PATH_CONSTRAINTS_TEST_DATA],
     )
@@ -900,6 +912,8 @@ class TestImpProof(KCFGExploreTest):
         claim_id: str,
         max_iterations: int | None,
         max_depth: int | None,
+        terminal_rules: Iterable[str],
+        cut_rules: Iterable[str],
         expected_constraint: str,
     ) -> None:
         def _node_printer(cterm: CTerm) -> list[str]:
@@ -919,6 +933,8 @@ class TestImpProof(KCFGExploreTest):
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
+            terminal_rules=terminal_rules,
+            cut_point_rules=cut_rules,
         )
 
         assert len(proof.terminal) == 1
@@ -927,7 +943,7 @@ class TestImpProof(KCFGExploreTest):
         assert actual_constraint == expected_constraint
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,bmc_depth,terminal_rules,cut_rules,proof_status,expected_leaf_number',
         APRBMC_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APRBMC_PROVE_TEST_DATA],
     )
@@ -942,6 +958,7 @@ class TestImpProof(KCFGExploreTest):
         max_iterations: int | None,
         max_depth: int | None,
         bmc_depth: int,
+        terminal_rules: Iterable[str],
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
@@ -953,8 +970,6 @@ class TestImpProof(KCFGExploreTest):
         proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
         kcfg_explore.simplify(proof.kcfg, {})
 
-        kcfg_explore.kcfg_semantics.cut_point_rules = cut_rules
-
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -962,6 +977,8 @@ class TestImpProof(KCFGExploreTest):
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
+            terminal_rules=terminal_rules,
+            cut_point_rules=cut_rules,
         )
 
         kcfg_show = KCFGShow(
