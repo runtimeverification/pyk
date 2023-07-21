@@ -36,8 +36,7 @@ class RefuteSemantics(KCFGSemantics):
     def __init__(self, definition: KDefinition | None = None):
         super().__init__(definition)
 
-    @staticmethod
-    def is_terminal(c: CTerm) -> bool:
+    def is_terminal(self, c: CTerm) -> bool:
         k_cell = c.cell('K_CELL')
         if type(k_cell) is KSequence:
             if len(k_cell) == 0:
@@ -70,21 +69,11 @@ class RefuteSemantics(KCFGSemantics):
             return [mlEqualsTrue(gtInt(discriminant, intToken(0))), mlEqualsTrue(leInt(discriminant, intToken(0)))]
         return []
 
-    @staticmethod
-    def abstract_node(c: CTerm) -> CTerm:
+    def abstract_node(self, c: CTerm) -> CTerm:
         return c
 
-    @staticmethod
-    def same_loop(c1: CTerm, c2: CTerm) -> bool:
+    def same_loop(self, c1: CTerm, c2: CTerm) -> bool:
         return False
-
-    @property
-    def cut_point_rules(self) -> Iterable[str]:
-        return []
-
-    @property
-    def terminal_rules(self) -> Iterable[str]:
-        return []
 
 
 REFUTE_NODE_TEST_DATA: Iterable[tuple[str, Iterable[KInner], ProofStatus]] = (
@@ -118,7 +107,7 @@ class TestAPRProof(KCFGExploreTest):
         proof = APRProof(
             f'{spec_module}.{claim_id}', kcfg_pre, init=init_node, target=target_node, logs={}, proof_dir=proof_dir
         )
-        prover = APRProver(proof, kcfg_explore, extract_branches=kcfg_explore.semantics.extract_branches)
+        prover = APRProver(proof, kcfg_explore)
 
         # When
         prover.advance_proof(max_iterations=1)
@@ -164,8 +153,6 @@ class TestAPRProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore,
-            is_terminal=kcfg_explore.semantics.is_terminal,
-            extract_branches=kcfg_explore.semantics.extract_branches,
         )
 
         # When

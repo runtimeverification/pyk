@@ -61,12 +61,12 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     _rpc_closed: bool
     _trace_rewrites: bool
 
-    semantics: KCFGSemantics
+    kcfg_semantics: KCFGSemantics
 
     def __init__(
         self,
         kprint: KPrint,
-        semantics: KCFGSemantics,
+        kcfg_semantics: KCFGSemantics,
         *,
         id: str | None = None,
         port: int | None = None,
@@ -82,7 +82,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
-        self.semantics = semantics
+        self.kcfg_semantics = kcfg_semantics
         self._port = port
         self._kore_rpc_command = kore_rpc_command
         self._llvm_definition_dir = llvm_definition_dir
@@ -160,8 +160,8 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         er = kore_client.execute(
             kore,
             max_depth=depth,
-            cut_point_rules=self.semantics.cut_point_rules,
-            terminal_rules=self.semantics.terminal_rules,
+            cut_point_rules=self.kcfg_semantics.cut_point_rules,
+            terminal_rules=self.kcfg_semantics.terminal_rules,
             module_name=module_name,
             log_successful_rewrites=self._trace_rewrites,
             log_failed_rewrites=self._trace_rewrites,
