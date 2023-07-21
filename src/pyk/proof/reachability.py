@@ -47,7 +47,6 @@ class APRProof(Proof):
     node_refutations: dict[NodeIdLike, RefutationProof]  # TODO _node_refutatations
     init: NodeIdLike
     target: NodeIdLike
-    _terminal_nodes: list[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
 
@@ -60,7 +59,6 @@ class APRProof(Proof):
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         node_refutations: dict[int, str] | None = None,
-        terminal_nodes: Iterable[NodeIdLike] | None = None,
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
         admitted: bool = False,
@@ -71,7 +69,6 @@ class APRProof(Proof):
         self.target = target
         self.logs = logs
         self.circularity = circularity
-        self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
         self.node_refutations = {}
 
         if node_refutations is not None:
@@ -88,10 +85,6 @@ class APRProof(Proof):
                 self.node_refutations[node_id] = subproof
 
     @property
-    def terminal(self) -> list[KCFG.Node]:
-        return [self.kcfg.node(nid) for nid in self._terminal_nodes]
-
-    @property
     def pending(self) -> list[KCFG.Node]:
         return [nd for nd in self.kcfg.leaves if self.is_pending(nd.id)]
 
@@ -102,12 +95,9 @@ class APRProof(Proof):
     def is_refuted(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) in self.node_refutations.keys()
 
-    def is_terminal(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg._resolve(node_id) in (self.kcfg._resolve(nid) for nid in self._terminal_nodes)
-
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
-            self.is_terminal(node_id)
+            self.kcfg.is_terminal(node_id)
             or self.kcfg.is_stuck(node_id)
             or self.is_target(node_id)
             or self.is_refuted(node_id)
@@ -153,7 +143,6 @@ class APRProof(Proof):
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         cfg = KCFG.from_dict(dct['cfg'])
         init_node = dct['init']
-        terminal_nodes = dct['terminal_nodes']
         target_node = dct['target']
         id = dct['id']
         circularity = dct.get('circularity', False)
@@ -173,7 +162,6 @@ class APRProof(Proof):
             init_node,
             target_node,
             logs=logs,
-            terminal_nodes=terminal_nodes,
             circularity=circularity,
             admitted=admitted,
             proof_dir=proof_dir,
@@ -219,18 +207,11 @@ class APRProof(Proof):
         dct['cfg'] = self.kcfg.to_dict()
         dct['init'] = self.init
         dct['target'] = self.target
-        dct['terminal_nodes'] = self._terminal_nodes
         dct['node_refutations'] = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
         dct['circularity'] = self.circularity
         logs = {k: [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
-
-    def add_terminal(self, nid: NodeIdLike) -> None:
-        self._terminal_nodes.append(self.kcfg._resolve(nid))  # TODO remove
-
-    def remove_terminal(self, nid: NodeIdLike) -> None:
-        self._terminal_nodes.remove(self.kcfg._resolve(nid))  # TODO remove
 
     @property
     def summary(self) -> Iterable[str]:
@@ -243,7 +224,7 @@ class APRProof(Proof):
             f'    pending: {len(self.pending)}',
             f'    failing: {len(self.failing)}',
             f'    stuck: {len(self.kcfg.stuck)}',
-            f'    terminal: {len(self.terminal)}',
+            f'    terminal: {len(self.kcfg.terminal)}',
             f'    refuted: {len(self.node_refutations)}',
             f'Subproofs: {len(self.subproof_ids)}',
         ]
@@ -304,7 +285,7 @@ class APRBMCProof(APRProof):
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
-            self.is_terminal(node_id)
+            self.kcfg.is_terminal(node_id)
             or self.kcfg.is_stuck(node_id)
             or self.is_bounded(node_id)
             or self.is_target(node_id)
@@ -374,7 +355,7 @@ class APRBMCProof(APRProof):
             f'    pending: {len(self.pending)}',
             f'    failing: {len(self.failing)}',
             f'    stuck: {len(self.kcfg.stuck)}',
-            f'    terminal: {len(self.terminal)}',
+            f'    terminal: {len(self.kcfg.terminal)}',
             f'    refuted: {len(self.node_refutations.keys())}',
             f'    bounded: {len(self.bounded)}',
             f'Subproofs: {len(self.subproof_ids)}',
@@ -424,14 +405,6 @@ class APRProver(Prover):
             priority=1,
         )
 
-    def _check_terminal(self, curr_node: KCFG.Node) -> bool:
-        _LOGGER.info(f'Checking terminal {self.proof.id}: {shorten_hashes(curr_node.id)}')
-        if self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm):
-            _LOGGER.info(f'Terminal node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
-            self.proof.add_terminal(curr_node.id)
-            return True
-        return False
-
     def nonzero_depth(self, node: KCFG.Node) -> bool:
         return not self.proof.kcfg.zero_depth_between(self.proof.init, node.id)
 
@@ -446,15 +419,6 @@ class APRProver(Prover):
             _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, target_node.id))}')
             return True
         return False
-
-    def _check_abstract(self, node: KCFG.Node) -> bool:
-        new_cterm = self.kcfg_explore.kcfg_semantics.abstract_node(node.cterm)
-        if new_cterm == node.cterm:
-            return False
-
-        new_node = self.proof.kcfg.create_node(new_cterm)
-        self.proof.kcfg.create_cover(node.id, new_node.id)
-        return True
 
     def advance_proof(
         self,
@@ -479,24 +443,10 @@ class APRProver(Prover):
                 if self._check_subsume(curr_node):
                     continue
 
-            if self._check_terminal(curr_node):
-                continue
-
-            if self._check_abstract(curr_node):
-                continue
-
-            if len(self.proof.kcfg.splits(target_id=curr_node.id)) == 0:
-                branches = list(self.kcfg_explore.kcfg_semantics.extract_branches(curr_node.cterm))
-                if len(branches) > 0:
-                    self.proof.kcfg.split_on_constraints(curr_node.id, branches)
-                    _LOGGER.info(
-                        f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[self.kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
-                    )
-                    continue
-
             module_name = (
                 self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
             )
+
             self.kcfg_explore.extend(
                 self.proof.kcfg,
                 curr_node,

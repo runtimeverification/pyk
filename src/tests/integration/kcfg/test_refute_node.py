@@ -54,7 +54,7 @@ class RefuteSemantics(KCFGSemantics):
             return True
         return False
 
-    def extract_branches(self, c: CTerm) -> Iterable[KInner]:
+    def extract_branches(self, c: CTerm) -> list[KInner]:
         k_cell = c.cell('K_CELL')
         if type(k_cell) is KSequence and len(k_cell) > 0:
             k_cell = k_cell[0]
@@ -159,7 +159,7 @@ class TestAPRProof(KCFGExploreTest):
 
         assert prover.proof.status == ProofStatus.FAILED
 
-        stuck_node = single(prover.proof.terminal)
+        stuck_node = single(prover.proof.kcfg.terminal)
         refutation = prover.refute_node(stuck_node)
         assert refutation is not None
         refutation_prover = RefutationProver(refutation, kcfg_explore)

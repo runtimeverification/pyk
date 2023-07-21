@@ -436,6 +436,23 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_depth += section_depth
         return tuple(new_nodes)
 
+    def _check_terminal(self, node: KCFG.Node, kcfg: KCFG) -> bool:
+        _LOGGER.info(f'Checking terminal: {shorten_hashes(node.id)}')
+        if self.kcfg_semantics.is_terminal(node.cterm):
+            _LOGGER.info(f'Terminal node: {shorten_hashes(node.id)}.')
+            kcfg.add_terminal(node.id)
+            return True
+        return False
+
+    def _check_abstract(self, node: KCFG.Node, kcfg: KCFG) -> bool:
+        new_cterm = self.kcfg_semantics.abstract_node(node.cterm)
+        if new_cterm == node.cterm:
+            return False
+
+        new_node = kcfg.create_node(new_cterm)
+        kcfg.create_cover(node.id, new_node.id)
+        return True
+
     def extend(
         self,
         kcfg: KCFG,
@@ -450,6 +467,21 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
         if kcfg.is_stuck(node.id):
             raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
+
+        if self._check_terminal(node, kcfg):
+            return
+
+        if self._check_abstract(node, kcfg):
+            return
+
+        if len(kcfg.splits(target_id=node.id)) == 0:
+            branches = list(self.kcfg_semantics.extract_branches(node.cterm))
+            if len(branches) > 0:
+                kcfg.split_on_constraints(node.id, branches)
+                _LOGGER.info(
+                    f'Found {len(branches)} branches using heuristic for node {node.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+                )
+                return
 
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
         depth, cterm, next_cterms, next_node_logs = self.cterm_execute(

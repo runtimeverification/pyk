@@ -200,6 +200,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _splits: dict[int, Split]
     _ndbranches: dict[int, NDBranch]
     _stuck: set[int]
+    _terminal: set[int]
     _aliases: dict[str, int]
     _lock: RLock
 
@@ -211,6 +212,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._splits = {}
         self._ndbranches = {}
         self._stuck = set()
+        self._terminal = set()
         self._aliases = {}
         self._lock = RLock()
 
@@ -252,7 +254,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     @property
     def stuck(self) -> list[Node]:
-        return [node for node in self.nodes if self.is_stuck(node.id)]
+        return [node for node in self.nodes if node.id in self._stuck]
+
+    @property
+    def terminal(self) -> list[Node]:
+        return [node for node in self.nodes if node.id in self._terminal]
 
     @property
     def leaves(self) -> list[Node]:
@@ -302,6 +308,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
         stuck = sorted(self._stuck)
+        terminal = sorted(self._terminal)
         aliases = dict(sorted(self._aliases.items()))
 
         res = {
@@ -312,6 +319,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             'splits': splits,
             'ndbranches': ndbranches,
             'stuck': stuck,
+            'terminal': terminal,
             'aliases': aliases,
         }
         return {k: v for k, v in res.items() if v}
@@ -344,6 +352,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         for stuck_id in dct.get('stuck') or []:
             cfg.add_stuck(stuck_id)
+
+        for terminal_id in dct.get('terminal') or []:
+            cfg.add_terminal(terminal_id)
 
         for alias, node_id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=node_id)
@@ -453,6 +464,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 self._covers.pop(source_id)
 
         self._stuck.discard(node_id)
+        self._terminal.discard(node_id)
 
         self._splits = {k: s for k, s in self._splits.items() if k != node_id and node_id not in s.target_ids}
         self._ndbranches = {k: b for k, b in self._ndbranches.items() if k != node_id and node_id not in b.target_ids}
@@ -618,8 +630,22 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         )
 
     def add_stuck(self, node_id: NodeIdLike) -> None:
+        self._stuck.add(self._resolve(node_id))
+
+    def remove_stuck(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
-        self._stuck.add(node_id)
+        if node_id not in self._stuck:
+            raise ValueError(f'Node is not stuck: {node_id}')
+        self._stuck.remove(node_id)
+
+    def add_terminal(self, node_id: NodeIdLike) -> None:
+        self._terminal.add(self._resolve(node_id))
+
+    def remove_terminal(self, node_id: NodeIdLike) -> None:
+        node_id = self._resolve(node_id)
+        if node_id not in self._terminal:
+            raise ValueError(f'Node is not terminal: {node_id}')
+        self._terminal.remove(node_id)
 
     def splits(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[Split]:
         source_id = self._resolve(source_id) if source_id is not None else None
@@ -686,20 +712,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         self._aliases[alias] = node_id
 
-    def remove_stuck(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        if node_id not in self._stuck:
-            raise ValueError(f'Node is not stuck: {node_id}')
-        self._stuck.remove(node_id)
-
     def remove_alias(self, alias: str) -> None:
         if alias not in self._aliases:
             raise ValueError(f'Alias does not exist: {alias}')
         self._aliases.pop(alias)
-
-    def discard_stuck(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._stuck.discard(node_id)
 
     def is_root(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
@@ -708,6 +724,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def is_stuck(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return node_id in self._stuck
+
+    def is_terminal(self, node_id: NodeIdLike) -> bool:
+        node_id = self._resolve(node_id)
+        return node_id in self._terminal
 
     def is_split(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)

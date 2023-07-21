@@ -36,7 +36,7 @@ class GotoSemantics(KCFGSemantics):
     def is_terminal(self, c: CTerm) -> bool:
         return False
 
-    def extract_branches(self, c: CTerm) -> Iterable[KInner]:
+    def extract_branches(self, c: CTerm) -> list[KInner]:
         k_cell_pattern = KSequence([KApply('jumpi', [KVariable('JD')])])
         stack_cell_pattern = KApply('ws', [KVariable('S'), KVariable('SS')])
         k_cell_match = k_cell_pattern.match(c.cell('K_CELL'))
