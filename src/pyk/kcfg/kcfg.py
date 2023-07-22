@@ -911,6 +911,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             node = self.get_node(node_id)
             assert node is not None
             self._write_node_data(node)
+        self._deleted_nodes.clear()
+        self._created_nodes.clear()
 
     def _write_node_data(self, node: KCFG.Node) -> None:
         if self.cfg_dir is None:
