@@ -300,7 +300,7 @@ class APRProof(Proof):
             node_refutations=node_refutations,
         )
 
-    def write_proof_data(self, omit_nodes: bool = False) -> None:
+    def write_proof_data(self) -> None:
         if self.proof_dir is None or self.proof_subdir is None:
             _LOGGER.info(f'Skipped saving proof {self.id} since no save dir was specified.')
             return
@@ -325,7 +325,7 @@ class APRProof(Proof):
 
         proof_json.write_text(json.dumps(dct))
 
-        self.kcfg.write_cfg_data(omit_nodes=omit_nodes)
+        self.kcfg.write_cfg_data()
 
 
 class APRBMCProof(APRProof):
@@ -396,7 +396,7 @@ class APRBMCProof(APRProof):
             node_refutations=node_refutations,
         )
 
-    def write_proof_data(self, omit_nodes: bool = False) -> None:
+    def write_proof_data(self) -> None:
         if self.proof_dir is None or self.proof_subdir is None:
             _LOGGER.info(f'Skipped saving proof {self.id} since no save dir was specified.')
             return
@@ -422,7 +422,7 @@ class APRBMCProof(APRProof):
 
         proof_json.write_text(json.dumps(dct))
 
-        self.kcfg.write_cfg_data(omit_nodes=omit_nodes)
+        self.kcfg.write_cfg_data()
 
     @property
     def bounded(self) -> list[KCFG.Node]:
@@ -626,7 +626,7 @@ class APRProver(Prover):
         iterations = 0
 
         while self.proof.pending:
-            self.proof.write_proof_data(omit_nodes=True)
+            self.proof.write_proof_data()
 
             if max_iterations is not None and max_iterations <= iterations:
                 _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
@@ -665,7 +665,7 @@ class APRProver(Prover):
                 module_name=module_name,
             )
 
-        self.proof.write_proof_data(omit_nodes=True)
+        self.proof.write_proof_data()
         return self.proof.kcfg
 
     def refute_node(self, node: KCFG.Node) -> RefutationProof | None:
