@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass
@@ -930,7 +929,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_json = nodes_dir / (str(node.id) + '.json')
         if not node_json.exists():
             return
-        os.remove(node_json)
+        node_json.unlink()
 
     @staticmethod
     def read_cfg_data(cfg_dir: Path, id: str) -> KCFG:
