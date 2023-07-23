@@ -409,7 +409,6 @@ class APRProver(Prover):
     ) -> None:
         super().__init__(kcfg_explore)
         self.proof = proof
-        self.kcfg_explore = kcfg_explore
         self._is_terminal = is_terminal
         self._extract_branches = extract_branches
         self._abstract_node = abstract_node
@@ -495,8 +494,9 @@ class APRProver(Prover):
             iterations += 1
             curr_node = self.proof.pending[0]
 
-            if self._check_subsume(curr_node):
-                continue
+            if implication_every_block or self._is_terminal is None or self._is_terminal(curr_node.cterm):
+                if self._check_subsume(curr_node):
+                    continue
 
             if self._check_terminal(curr_node):
                 continue
