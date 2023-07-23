@@ -373,8 +373,8 @@ class APRBMCProof(APRProof):
             [
                 APRBMCSummary(
                     self.id,
-                    self.status,
                     self.bmc_depth,
+                    self.status,
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
@@ -598,6 +598,35 @@ class APRProver(Prover):
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore)
 
 
+@dataclass
+class APRSummary(ProofSummary):
+    id: str
+    status: ProofStatus
+    admitted: bool
+    nodes: int
+    pending: int
+    failing: int
+    stuck: int
+    terminal: int
+    refuted: int
+    subproofs: int
+
+    @property
+    def lines(self) -> list[str]:
+        return [
+            f'APRProof: {self.id}',
+            f'    status: {self.status}',
+            f'    admitted: {self.admitted}',
+            f'    nodes: {self.nodes}',
+            f'    pending: {self.pending}',
+            f'    failing: {self.failing}',
+            f'    stuck: {self.stuck}',
+            f'    terminal: {self.terminal}',
+            f'    refuted: {self.refuted}',
+            f'Subproofs: {self.subproofs}',
+        ]
+
+
 @dataclass(frozen=True)
 class APRFailureInfo:
     failing_nodes: FrozenDict[int, tuple[str, str]]
@@ -728,35 +757,6 @@ class APRBMCProver(APRProver):
 
         self.proof.write_proof()
         return self.proof.kcfg
-
-
-@dataclass
-class APRSummary(ProofSummary):
-    id: str
-    status: ProofStatus
-    admitted: bool
-    nodes: int
-    pending: int
-    failing: int
-    stuck: int
-    terminal: int
-    refuted: int
-    subproofs: int
-
-    @property
-    def lines(self) -> list[str]:
-        return [
-            f'APRProof: {self.id}',
-            f'    status: {self.status}',
-            f'    admitted: {self.admitted}',
-            f'    nodes: {self.nodes}',
-            f'    pending: {self.pending}',
-            f'    failing: {self.failing}',
-            f'    stuck: {self.stuck}',
-            f'    terminal: {self.terminal}',
-            f'    refuted: {self.refuted}',
-            f'Subproofs: {self.subproofs}',
-        ]
 
 
 @dataclass
