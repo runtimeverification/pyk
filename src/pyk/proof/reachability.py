@@ -225,7 +225,6 @@ class APRProof(Proof):
                     len(self.pending),
                     len(self.failing),
                     len(self.kcfg.stuck),
-                    len(self.terminal),
                     len(self.node_refutations),
                     len(self.subproof_ids),
                 ),
@@ -360,7 +359,6 @@ class APRBMCProof(APRProof):
                     len(self.pending),
                     len(self.failing),
                     len(self.kcfg.stuck),
-                    len(self.terminal),
                     len(self.node_refutations),
                     len(self._bounded_nodes),
                     len(self.subproof_ids),
@@ -427,10 +425,7 @@ class APRProver(Prover):
         return False
 
     def _check_abstract(self, node: KCFG.Node) -> bool:
-        if self._abstract_node is None:
-            return False
-
-        new_cterm = self._abstract_node(node.cterm)
+        new_cterm = self.kcfg_explore.kcfg_semantics.abstract_node(node.cterm)
         if new_cterm == node.cterm:
             return False
 
@@ -446,18 +441,18 @@ class APRProver(Prover):
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
     ) -> None:
-        if implication_every_block or self._is_terminal is None or self._is_terminal(node.cterm):
+        if implication_every_block or self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
             if self._check_subsume(node):
                 return
 
-        if self._check_terminal(node):
+        if self.kcfg_explore._check_terminal(node, self.proof.kcfg):
             return
 
         if self._check_abstract(node):
             return
 
-        if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=node.id)) == 0:
-            branches = list(self._extract_branches(node.cterm))
+        if len(self.proof.kcfg.splits(target_id=node.id)) == 0:
+            branches = list(self.kcfg_explore.kcfg_semantics.extract_branches(node.cterm))
             if len(branches) > 0:
                 self.proof.kcfg.split_on_constraints(node.id, branches)
                 _LOGGER.info(
@@ -584,7 +579,6 @@ class APRSummary(ProofSummary):
     pending: int
     failing: int
     stuck: int
-    terminal: int
     refuted: int
     subproofs: int
 
@@ -598,7 +592,6 @@ class APRSummary(ProofSummary):
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
             f'    stuck: {self.stuck}',
-            f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
             f'Subproofs: {self.subproofs}',
         ]
@@ -691,7 +684,7 @@ class APRBMCProver(APRProver):
             _prior_loops = [
                 succ.source.id
                 for succ in self.proof.shortest_path_to(node.id)
-                if self._same_loop(succ.source.cterm, node.cterm)
+                if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
             ]
             prior_loops: list[NodeIdLike] = []
             for _pl in _prior_loops:
@@ -722,7 +715,6 @@ class APRBMCSummary(ProofSummary):
     pending: int
     failing: int
     stuck: int
-    terminal: int
     refuted: int
     bounded: int
     subproofs: int
@@ -736,7 +728,6 @@ class APRBMCSummary(ProofSummary):
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
             f'    stuck: {self.stuck}',
-            f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
             f'    bounded: {self.bounded}',
             f'Subproofs: {self.subproofs}',
