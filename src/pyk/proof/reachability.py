@@ -474,15 +474,15 @@ class APRProver(Prover):
         new_node = self.proof.kcfg.create_node(new_cterm)
         self.proof.kcfg.create_cover(node.id, new_node.id)
         return True
-    
+
     def advance_pending_node(
         self,
-        node : KCFG.Node,
+        node: KCFG.Node,
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-        implication_every_block: bool = True       
-    ) -> None :
+        implication_every_block: bool = True,
+    ) -> None:
         if implication_every_block or self._is_terminal is None or self._is_terminal(node.cterm):
             if self._check_subsume(node):
                 return
@@ -502,9 +502,7 @@ class APRProver(Prover):
                 )
                 return
 
-        module_name = (
-            self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
-        )
+        module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
         self.kcfg_explore.extend(
             self.proof.kcfg,
             node,
@@ -539,7 +537,7 @@ class APRProver(Prover):
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
-                implication_every_block=implication_every_block    
+                implication_every_block=implication_every_block,
             )
 
         self.proof.write_proof()
@@ -756,8 +754,9 @@ class APRBMCProver(APRProver):
             execute_depth=execute_depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
-            implication_every_block=implication_every_block
+            implication_every_block=implication_every_block,
         )
+
 
 @dataclass(frozen=True)
 class APRBMCSummary(ProofSummary):
