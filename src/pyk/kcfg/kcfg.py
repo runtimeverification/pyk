@@ -485,7 +485,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         node = KCFG.Node(node_id, cterm)
         self._nodes[node_id] = node
-        self._deleted_nodes.add(node.id)
         self._created_nodes.add(node.id)
 
     def successors(
