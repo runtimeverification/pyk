@@ -904,6 +904,7 @@ class APRBMCProver(APRProver):
             implication_every_block=implication_every_block,
         )
 
+
 @dataclass(frozen=True)
 class APRBMCSummary(ProofSummary):
     id: str

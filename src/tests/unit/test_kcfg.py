@@ -407,14 +407,14 @@ def test_aliases() -> None:
     with pytest.raises(ValueError, match='Unknown node: 10'):
         cfg.add_alias('buzz', 10)
 
-def test_write_cfg_data(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
 
+def test_write_cfg_data(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     written_nodes = set()
     deleted_nodes = set()
 
     def write_node_data(node: KCFG.Node) -> None:
         written_nodes.add(node.id)
-        
+
     def delete_node_data(node_id: int) -> None:
         deleted_nodes.add(node_id)
 
@@ -449,6 +449,7 @@ def test_write_cfg_data(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
 
     assert written_nodes == {2, 3, 4}
     assert deleted_nodes == {1, 2}
+
 
 def test_pretty_print() -> None:
     def _x_equals(i: int) -> KInner:
