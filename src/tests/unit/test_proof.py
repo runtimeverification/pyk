@@ -11,7 +11,7 @@ from pyk.proof.equality import EqualityProof, EqualitySummary
 from pyk.proof.proof import CompositeSummary, Proof, ProofStatus
 from pyk.proof.reachability import APRBMCProof, APRBMCSummary, APRFailureInfo, APRProof, APRSummary
 
-from .test_kcfg import node, node_dicts
+from .test_kcfg import node, node_dicts, term
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -69,7 +69,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -91,7 +91,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -111,7 +111,7 @@ class TestProof:
         sample_proof.write_proof()
 
         # When
-        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=sample_proof.proof_dir)
+        proof_from_disk = Proof.read_proof(id=sample_proof.id, proof_dir=proof_dir)
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
@@ -119,6 +119,33 @@ class TestProof:
 
 
 #### APRProof
+
+
+def test_read_write_proof_data(proof_dir: Path) -> None:
+    proof = APRProof(
+        id='apr_proof_1',
+        kcfg=KCFG(),
+        init=0,
+        target=0,
+        logs={},
+        proof_dir=proof_dir,
+    )
+
+    kcfg = KCFG(proof_dir / 'apr_proof_1' / 'kcfg')
+    node1 = kcfg.create_node(term(1))
+    node2 = kcfg.create_node(term(2))
+    kcfg.create_node(term(3))
+    kcfg.create_node(term(4))
+
+    proof.kcfg = kcfg
+    proof.init = node1.id
+    proof.target = node2.id
+
+    proof.write_proof_data()
+
+    proof_from_disk = APRProof.read_proof_data(id=proof.id, proof_dir=proof_dir)
+
+    assert proof_from_disk.dict == proof.dict
 
 
 def test_apr_proof_from_dict_no_subproofs(proof_dir: Path) -> None:
