@@ -25,7 +25,7 @@ from ..utils import K_FILES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Final
+    from typing import Callable, Final
 
     from pytest import TempPathFactory
 
@@ -612,26 +612,6 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
-PROGRAM_EQUIVALENCE_DATA: Iterable[
-    tuple[str, Iterable[str], Iterable[str], tuple[str, str, KInner], tuple[str, str, KInner]]
-] = (
-    (
-        'equiv-double-add-vs-mul',
-        ['IMP.while'],
-        [],
-        (
-            'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
-            '.Map',
-            mlTop(),  # mlEqualsTrue(KApply('_<Int_', [KVariable('N', 'Int'), KToken('15', 'Int')])),
-        ),
-        (
-            'int $n; $n = N:Int ; $n = 2 * $n ;',
-            '.Map',
-            mlTop(),  # mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('5', 'Int')])),
-        ),
-    ),
-)
-
 FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInner]]] = (
     (
         'failing-if',
@@ -650,6 +630,87 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         0,
         1,
         (mlEqualsFalse(KApply('_<=Int_', [KVariable('_S', 'Int'), KToken('123', '')])),),
+    ),
+)
+
+PROGRAM_EQUIVALENCE_DATA: Iterable[
+    tuple[
+        str,
+        Iterable[str],
+        Iterable[str],
+        tuple[str, str, KInner],
+        tuple[str, str, KInner],
+        str,
+        tuple[bool, SubsumptionCheckResult, SubsumptionCheckResult],
+    ]
+] = (
+    (
+        'keq-def-equiv-comput',
+        ['IMP.while'],
+        [],
+        (
+            'int $n ; $n = N:Int ; $n = $n + $n ;',
+            '.Map',
+            mlTop(),
+        ),
+        (
+            'int $n; $n = N:Int ; $n = 2 * $n ;',
+            '.Map',
+            mlTop(),
+        ),
+        'default',
+        (True, SubsumptionCheckResult.EQUIVALENT, SubsumptionCheckResult.EQUIVALENT),
+    ),
+    (
+        'keq-def-subleft-comput',
+        ['IMP.while'],
+        [],
+        (
+            'int $n ; $n = N:Int ; $n = $n + $n ;',
+            '.Map',
+            mlTop(),
+        ),
+        (
+            'int $n; $n = N:Int ; $n = 2 * $n ;',
+            '.Map',
+            mlEqualsTrue(KApply('_<Int_', [KVariable('N', 'Int'), KToken('15', 'Int')])),
+        ),
+        'default',
+        (True, SubsumptionCheckResult.FIRST_SUBSUMES, SubsumptionCheckResult.EQUIVALENT),
+    ),
+    (
+        'keq-def-subright-comput',
+        ['IMP.while'],
+        [],
+        (
+            'int $n ; $n = N:Int ; $n = $n + $n ;',
+            '.Map',
+            mlEqualsTrue(KApply('_<Int_', [KVariable('N', 'Int'), KToken('15', 'Int')])),
+        ),
+        (
+            'int $n; $n = N:Int ; $n = 2 * $n ;',
+            '.Map',
+            mlTop(),
+        ),
+        'default',
+        (True, SubsumptionCheckResult.SECOND_SUBSUMES, SubsumptionCheckResult.EQUIVALENT),
+    ),
+    (
+        'keq-def-equiv-comput-pcsplit',
+        ['IMP.while'],
+        [],
+        (
+            'int $n ; $n = N:Int ; if ( 0 <= $n ) { if ( 10 <= $n ) { $n = $n + $n ; } else { $n = $n + $n ; } } else { $n = $n + $n ; }',
+            '.Map',
+            mlTop(),
+        ),
+        (
+            'int $n; $n = N:Int ; if ( 5 <= $n ) { $n = 2 * $n ; } else { $n = 2 * $n ; }',
+            '.Map',
+            mlTop(),
+        ),
+        'default',
+        (True, SubsumptionCheckResult.EQUIVALENT, SubsumptionCheckResult.EQUIVALENT),
     ),
 )
 
@@ -1067,8 +1128,10 @@ class TestImpProof(KCFGExploreTest):
 
         assert actual_path_conds == expected_path_conds
 
+    comparators: dict[str, Callable[[], KInner]] = {'default': _default_config_comparator}
+
     @pytest.mark.parametrize(
-        'test_id,cut_rules,terminal_rules,config_1,config_2',
+        'test_id,cut_rules,terminal_rules,config_1,config_2,config_comparator,expected_outcome',
         PROGRAM_EQUIVALENCE_DATA,
         ids=[test_id for test_id, *_ in PROGRAM_EQUIVALENCE_DATA],
     )
@@ -1083,6 +1146,8 @@ class TestImpProof(KCFGExploreTest):
         # as it seems to be a reasonable way of inputting only a given initial state
         config_1: tuple[str, str, KInner],
         config_2: tuple[str, str, KInner],
+        config_comparator: str,
+        expected_outcome: tuple[bool, SubsumptionCheckResult, SubsumptionCheckResult],
     ) -> None:
         configuration_1 = self.config(kcfg_explore.kprint, *config_1)
         kcfg_1 = KCFG()
@@ -1110,68 +1175,79 @@ class TestImpProof(KCFGExploreTest):
         print(f'Status of proof 1: {prover.prover_1.proof.status.value}')
         print(f'Status of proof 2: {prover.prover_2.proof.status.value}\n')
 
-        final_nodes_print_1 = [
+        terminal_nodes_1 = [kcfg_1.node(id) for id in prover.prover_1.proof._terminal_nodes]
+        terminal_nodes_2 = [kcfg_2.node(id) for id in prover.prover_2.proof._terminal_nodes]
+
+        terminal_nodes_print_1 = [
             (
                 kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
                 kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
                 kcfg_explore.kprint.pretty_print(s.cterm.constraint),
             )
-            for s in prover.prover_1.proof.kcfg.stuck
+            for s in terminal_nodes_1
         ]
 
-        final_nodes_print_2 = [
+        terminal_nodes_print_2 = [
             (
                 kcfg_explore.kprint.pretty_print(s.cterm.cell('K_CELL')),
                 kcfg_explore.kprint.pretty_print(s.cterm.cell('STATE_CELL')),
                 kcfg_explore.kprint.pretty_print(s.cterm.constraint),
             )
-            for s in prover.prover_2.proof.kcfg.stuck
+            for s in terminal_nodes_2
         ]
 
         print('Final states of program 1:')
-        print(f'{final_nodes_print_1}\n')
+        print(f'{terminal_nodes_print_1}\n')
         print('Final states of program 2:')
-        print(f'{final_nodes_print_2}\n')
+        print(f'{terminal_nodes_print_2}\n')
 
-        final_nodes_equivalence, pc_stuck, pc_frontier = proof.check_equivalence(
-            kcfg_explore, TestImpProof._cell_names(), TestImpProof._default_config_comparator()
+        comparator = TestImpProof.comparators[config_comparator]
+        expected_fne, expected_pc_terminal, expected_pc_frontier = expected_outcome
+
+        computed_fne, computed_pc_terminal, computed_pc_frontier = proof.check_equivalence(
+            kcfg_explore, TestImpProof._cell_names(), comparator()
         )
 
         #
         # Correctness check
         #
+        assert (
+            (computed_fne == expected_fne)
+            and (computed_pc_terminal == expected_pc_terminal)
+            and (computed_pc_frontier == expected_pc_frontier)
+        )
 
-        # Regardless of the proof statuses, equivalence of any final nodes has to hold
-        assert final_nodes_equivalence
+        # # Regardless of the proof statuses, equivalence of any final nodes has to hold
+        # assert (computed_fne == expected_fne)
 
-        # Statuses of the two proofs
-        status_1 = prover.prover_1.proof.status
-        status_2 = prover.prover_2.proof.status
+        # # Statuses of the two proofs
+        # status_1 = prover.prover_1.proof.status
+        # status_2 = prover.prover_2.proof.status
 
-        if status_1 == ProofStatus.COMPLETED:
-            if status_2 == ProofStatus.COMPLETED:
-                # Both proofs have been completed
-                print('Both proofs have been completed.')
-                assert (
-                    pc_stuck == SubsumptionCheckResult.EQUIVALENT and pc_frontier == SubsumptionCheckResult.EQUIVALENT
-                )
-            elif status_2 == ProofStatus.PENDING:
-                # Only second proof has not been completed
-                print('Only second proof has not been completed.')
-                assert (
-                    pc_stuck == SubsumptionCheckResult.FIRST_SUBSUMES
-                    and pc_frontier == SubsumptionCheckResult.SECOND_SUBSUMES
-                )
-        elif status_2 == ProofStatus.COMPLETED:
-            # Only first proof has not been completed
-            print('Only first proof has not been completed.')
-            assert (
-                pc_stuck == SubsumptionCheckResult.SECOND_SUBSUMES
-                and pc_frontier == SubsumptionCheckResult.FIRST_SUBSUMES
-            )
-        elif status_2 == ProofStatus.PENDING:
-            # Neither proof has been completed
-            # The following check means the two proofs are done in lock-step,
-            # but this need not be the case in general
-            print('Neither proof has been completed.')
-            assert pc_stuck == SubsumptionCheckResult.EQUIVALENT and pc_frontier == SubsumptionCheckResult.EQUIVALENT
+        # if status_1 == ProofStatus.COMPLETED:
+        #     if status_2 == ProofStatus.COMPLETED:
+        #         # Both proofs have been completed
+        #         print('Both proofs have been completed.')
+        #         assert (
+        #             pc_stuck == SubsumptionCheckResult.EQUIVALENT and pc_frontier == SubsumptionCheckResult.EQUIVALENT
+        #         )
+        #     elif status_2 == ProofStatus.PENDING:
+        #         # Only second proof has not been completed
+        #         print('Only second proof has not been completed.')
+        #         assert (
+        #             pc_stuck == SubsumptionCheckResult.FIRST_SUBSUMES
+        #             and pc_frontier == SubsumptionCheckResult.SECOND_SUBSUMES
+        #         )
+        # elif status_2 == ProofStatus.COMPLETED:
+        #     # Only first proof has not been completed
+        #     print('Only first proof has not been completed.')
+        #     assert (
+        #         pc_stuck == SubsumptionCheckResult.SECOND_SUBSUMES
+        #         and pc_frontier == SubsumptionCheckResult.FIRST_SUBSUMES
+        #     )
+        # elif status_2 == ProofStatus.PENDING:
+        #     # Neither proof has been completed
+        #     # The following check means the two proofs are done in lock-step,
+        #     # but this need not be the case in general
+        #     print('Neither proof has been completed.')
+        #     assert pc_stuck == SubsumptionCheckResult.EQUIVALENT and pc_frontier == SubsumptionCheckResult.EQUIVALENT

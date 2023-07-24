@@ -181,21 +181,21 @@ class EquivalenceProof:
         kcfg_1 = self.proof_1.kcfg
         kcfg_2 = self.proof_2.kcfg
 
-        # 1. Nodes whose execution cannot proceed further (stuck/final nodes)
-        final_1 = kcfg_1.stuck
-        final_2 = kcfg_2.stuck
+        # 1. Nodes whose execution cannot proceed further (terminal nodes)
+        terminal_1 = [kcfg_1.node(id) for id in self.proof_1._terminal_nodes]
+        terminal_2 = [kcfg_2.node(id) for id in self.proof_2._terminal_nodes]
 
-        pc_final_1 = KCFG.multinode_path_constraint(final_1)
-        pc_final_2 = KCFG.multinode_path_constraint(final_2)
+        pc_terminal_1 = KCFG.multinode_path_constraint(terminal_1)
+        pc_terminal_2 = KCFG.multinode_path_constraint(terminal_2)
 
         print('Checking subsumption of path constraints of final states')
 
         # Relationship of path conditions
-        final_pc_check = kcfg_explore.path_constraint_subsumption(pc_final_1, pc_final_2)
+        final_pc_check = kcfg_explore.path_constraint_subsumption(pc_terminal_1, pc_terminal_2)
 
         # Relationship of individual final nodes
         final_nodes_equivalence = [
-            config_equivalence(config_1, config_2) for config_1 in final_1 for config_2 in final_2
+            config_equivalence(config_1, config_2) for config_1 in terminal_1 for config_2 in terminal_2
         ]
         final_nodes_equivalence_summary = not (False in final_nodes_equivalence)
 
