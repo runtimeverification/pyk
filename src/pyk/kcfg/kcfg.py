@@ -902,10 +902,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         dct['aliases'] = aliases
         cfg_json.write_text(json.dumps(dct))
 
+        print(self.nodes)
+        print(self._deleted_nodes)
+
         for node_id in self._deleted_nodes:
-            node = self.get_node(node_id)
-            assert node is not None
-            self._delete_node_data(node)
+            self._delete_node_data(node_id)
         for node_id in self._created_nodes:
             node = self.get_node(node_id)
             assert node is not None
@@ -922,12 +923,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_dict = node.to_dict()
         node_json.write_text(json.dumps(node_dict))
 
-    def _delete_node_data(self, node: KCFG.Node) -> None:
+    def _delete_node_data(self, node_id: int) -> None:
         if self.cfg_dir is None:
             return
         nodes_dir = self.cfg_dir / 'nodes'
         ensure_dir_path(nodes_dir)
-        node_json = nodes_dir / (str(node.id) + '.json')
+        node_json = nodes_dir / (str(node_id) + '.json')
         if not node_json.exists():
             return
         node_json.unlink()
