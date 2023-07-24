@@ -27,6 +27,7 @@ from ..prelude.kbool import notBool
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
+from .semantics import DefaultSemantics
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -66,7 +67,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def __init__(
         self,
         kprint: KPrint,
-        kcfg_semantics: KCFGSemantics,
+        kcfg_semantics: KCFGSemantics | None,
         *,
         id: str | None = None,
         port: int | None = None,
@@ -82,7 +83,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     ):
         self.kprint = kprint
         self.id = id if id is not None else 'NO ID'
-        self.kcfg_semantics = kcfg_semantics
+        self.kcfg_semantics = kcfg_semantics if kcfg_semantics is not None else DefaultSemantics()
         self._port = port
         self._kore_rpc_command = kore_rpc_command
         self._llvm_definition_dir = llvm_definition_dir
