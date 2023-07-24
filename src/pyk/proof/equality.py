@@ -180,7 +180,7 @@ class EqualityProof(ImpliesProof):
         return EqualitySummary(self.id, self.status, self.admitted)
 
 
-@dataclass
+@dataclass(frozen=True)
 class EqualitySummary(ProofSummary):
     id: str
     status: ProofStatus
@@ -281,7 +281,7 @@ class RefutationProof(ImpliesProof):
         return lines
 
 
-@dataclass
+@dataclass(frozen=True)
 class RefutationSummary(ProofSummary):
     id: str
     status: ProofStatus

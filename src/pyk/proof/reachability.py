@@ -598,7 +598,7 @@ class APRProver(Prover):
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore)
 
 
-@dataclass
+@dataclass(frozen=True)
 class APRSummary(ProofSummary):
     id: str
     status: ProofStatus
@@ -759,7 +759,7 @@ class APRBMCProver(APRProver):
         return self.proof.kcfg
 
 
-@dataclass
+@dataclass(frozen=True)
 class APRBMCSummary(ProofSummary):
     id: str
     bmc_depth: int
