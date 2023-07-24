@@ -304,7 +304,7 @@ def _id_or_keyword(la: str, it: Iterator[str]) -> tuple[Token, str]:
         token_type = TokenType.ID_UPPER
 
     consumed = []
-    while la in _ALNUM:
+    while la in _ALNUM or la == '-':
         consumed.append(la)
         la = next(it, '')
     text = ''.join(consumed)
