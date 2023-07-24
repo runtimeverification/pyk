@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from itertools import chain
 from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
@@ -18,6 +17,9 @@ from ..prelude.ml import mlAnd, mlEquals, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
 from .equality import Prover, RefutationProof
 from .proof import Proof, ProofStatus
+from ..utils import FrozenDict, hash_str, shorten_hashes, single
+from .equality import ProofSummary, RefutationProof
+from .proof import CompositeSummary, Proof, ProofStatus, Prover
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -250,22 +252,25 @@ class APRProof(Proof):
         self._terminal_nodes.remove(self.kcfg._resolve(nid))  # TODO remove
 
     @property
-    def summary(self) -> Iterable[str]:
-        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
-        yield from [
-            f'APRProof: {self.id}',
-            f'    status: {self.status}',
-            f'    admitted: {self.admitted}',
-            f'    nodes: {len(self.kcfg.nodes)}',
-            f'    pending: {len(self.pending)}',
-            f'    failing: {len(self.failing)}',
-            f'    stuck: {len(self.kcfg.stuck)}',
-            f'    terminal: {len(self.terminal)}',
-            f'    refuted: {len(self.node_refutations)}',
-            f'Subproofs: {len(self.subproof_ids)}',
-        ]
-        for summary in subproofs_summaries:
-            yield from summary
+    def summary(self) -> CompositeSummary:
+        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
+        return CompositeSummary(
+            [
+                APRSummary(
+                    self.id,
+                    self.status,
+                    self.admitted,
+                    len(self.kcfg.nodes),
+                    len(self.pending),
+                    len(self.failing),
+                    len(self.kcfg.stuck),
+                    len(self.terminal),
+                    len(self.node_refutations),
+                    len(self.subproof_ids),
+                ),
+                *subproofs_summaries,
+            ]
+        )
 
     def get_refutation_id(self, node_id: int) -> str:
         return f'{self.id}.node-infeasible-{node_id}'
@@ -511,22 +516,26 @@ class APRBMCProof(APRProof):
         self._bounded_nodes.append(self.kcfg._resolve(nid))
 
     @property
-    def summary(self) -> Iterable[str]:
-        subproofs_summaries = chain(subproof.summary for subproof in self.subproofs)
-        yield from [
-            f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
-            f'    status: {self.status}',
-            f'    nodes: {len(self.kcfg.nodes)}',
-            f'    pending: {len(self.pending)}',
-            f'    failing: {len(self.failing)}',
-            f'    stuck: {len(self.kcfg.stuck)}',
-            f'    terminal: {len(self.terminal)}',
-            f'    refuted: {len(self.node_refutations.keys())}',
-            f'    bounded: {len(self.bounded)}',
-            f'Subproofs: {len(self.subproof_ids)}',
-        ]
-        for summary in subproofs_summaries:
-            yield from summary
+    def summary(self) -> CompositeSummary:
+        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
+        return CompositeSummary(
+            [
+                APRBMCSummary(
+                    self.id,
+                    self.bmc_depth,
+                    self.status,
+                    len(self.kcfg.nodes),
+                    len(self.pending),
+                    len(self.failing),
+                    len(self.kcfg.stuck),
+                    len(self.terminal),
+                    len(self.node_refutations),
+                    len(self._bounded_nodes),
+                    len(self.subproof_ids),
+                ),
+                *subproofs_summaries,
+            ]
+        )
 
 
 class APRProver(Prover):
@@ -615,6 +624,44 @@ class APRProver(Prover):
         self.proof.kcfg.create_cover(node.id, new_node.id)
         return True
 
+    def advance_pending_node(
+        self,
+        node: KCFG.Node,
+        execute_depth: int | None = None,
+        cut_point_rules: Iterable[str] = (),
+        terminal_rules: Iterable[str] = (),
+        implication_every_block: bool = True,
+    ) -> None:
+        if implication_every_block or self._is_terminal is None or self._is_terminal(node.cterm):
+            if self._check_subsume(node):
+                return
+
+        if self._check_terminal(node):
+            return
+
+        if self._check_abstract(node):
+            return
+
+        if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=node.id)) == 0:
+            branches = list(self._extract_branches(node.cterm))
+            if len(branches) > 0:
+                self.proof.kcfg.split_on_constraints(node.id, branches)
+                _LOGGER.info(
+                    f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(node.id)}: {[self.kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
+                )
+                return
+
+        module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
+        self.kcfg_explore.extend(
+            self.proof.kcfg,
+            node,
+            self.proof.logs,
+            execute_depth=execute_depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
+        )
+
     def advance_proof(
         self,
         max_iterations: int | None = None,
@@ -634,35 +681,12 @@ class APRProver(Prover):
             iterations += 1
             curr_node = self.proof.pending[0]
 
-            if self._check_subsume(curr_node):
-                continue
-
-            if self._check_terminal(curr_node):
-                continue
-
-            if self._check_abstract(curr_node):
-                continue
-
-            if self._extract_branches is not None and len(self.proof.kcfg.splits(target_id=curr_node.id)) == 0:
-                branches = list(self._extract_branches(curr_node.cterm))
-                if len(branches) > 0:
-                    self.proof.kcfg.split_on_constraints(curr_node.id, branches)
-                    _LOGGER.info(
-                        f'Found {len(branches)} branches using heuristic for node {self.proof.id}: {shorten_hashes(curr_node.id)}: {[self.kcfg_explore.kprint.pretty_print(bc) for bc in branches]}'
-                    )
-                    continue
-
-            module_name = (
-                self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
-            )
-            self.kcfg_explore.extend(
-                self.proof.kcfg,
-                curr_node,
-                self.proof.logs,
+            self.advance_pending_node(
+                node=curr_node,
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
-                module_name=module_name,
+                implication_every_block=implication_every_block,
             )
 
         self.proof.write_proof_data()
@@ -735,6 +759,35 @@ class APRProver(Prover):
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore)
+
+
+@dataclass(frozen=True)
+class APRSummary(ProofSummary):
+    id: str
+    status: ProofStatus
+    admitted: bool
+    nodes: int
+    pending: int
+    failing: int
+    stuck: int
+    terminal: int
+    refuted: int
+    subproofs: int
+
+    @property
+    def lines(self) -> list[str]:
+        return [
+            f'APRProof: {self.id}',
+            f'    status: {self.status}',
+            f'    admitted: {self.admitted}',
+            f'    nodes: {self.nodes}',
+            f'    pending: {self.pending}',
+            f'    failing: {self.failing}',
+            f'    stuck: {self.stuck}',
+            f'    terminal: {self.terminal}',
+            f'    refuted: {self.refuted}',
+            f'Subproofs: {self.subproofs}',
+        ]
 
 
 @dataclass(frozen=True)
@@ -819,15 +872,40 @@ class APRBMCProver(APRProver):
         self._same_loop = same_loop
         self._checked_nodes = []
 
-    def advance_proof(
+    def advance_pending_node(
         self,
-        max_iterations: int | None = None,
+        node: KCFG.Node,
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
-    ) -> KCFG:
-        iterations = 0
+    ) -> None:
+        if node.id not in self._checked_nodes:
+            _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {node.id}')
+            self._checked_nodes.append(node.id)
+            _prior_loops = [
+                succ.source.id
+                for succ in self.proof.shortest_path_to(node.id)
+                if self._same_loop(succ.source.cterm, node.cterm)
+            ]
+            prior_loops: list[NodeIdLike] = []
+            for _pl in _prior_loops:
+                if not (
+                    self.proof.kcfg.zero_depth_between(_pl, node.id)
+                    or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+                ):
+                    prior_loops.append(_pl)
+            _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
+            if len(prior_loops) > self.proof.bmc_depth:
+                self.proof.add_bounded(node.id)
+                return
+        super().advance_pending_node(
+            node=node,
+            execute_depth=execute_depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            implication_every_block=implication_every_block,
+        )
 
         while self.proof.pending:
             if max_iterations is not None and max_iterations <= iterations:
@@ -835,33 +913,32 @@ class APRBMCProver(APRProver):
                 break
             iterations += 1
 
-            for f in self.proof.pending:
-                if f.id not in self._checked_nodes:
-                    _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {f.id}')
-                    self._checked_nodes.append(f.id)
-                    _prior_loops = [
-                        succ.source.id
-                        for succ in self.proof.shortest_path_to(f.id)
-                        if self._same_loop(succ.source.cterm, f.cterm)
-                    ]
-                    prior_loops: list[NodeIdLike] = []
-                    for _pl in _prior_loops:
-                        if not (
-                            self.proof.kcfg.zero_depth_between(_pl, f.id)
-                            or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
-                        ):
-                            prior_loops.append(_pl)
-                    _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(f.id, prior_loops)}')
-                    if len(prior_loops) > self.proof.bmc_depth:
-                        self.proof.add_bounded(f.id)
+@dataclass(frozen=True)
+class APRBMCSummary(ProofSummary):
+    id: str
+    bmc_depth: int
+    status: ProofStatus
+    nodes: int
+    pending: int
+    failing: int
+    stuck: int
+    terminal: int
+    refuted: int
+    bounded: int
+    subproofs: int
+>>>>>>> origin/master
 
-            super().advance_proof(
-                max_iterations=1,
-                execute_depth=execute_depth,
-                cut_point_rules=cut_point_rules,
-                terminal_rules=terminal_rules,
-                implication_every_block=implication_every_block,
-            )
-
-        self.proof.write_proof()
-        return self.proof.kcfg
+    @property
+    def lines(self) -> list[str]:
+        return [
+            f'APRBMCProof(depth={self.bmc_depth}): {self.id}',
+            f'    status: {self.status}',
+            f'    nodes: {self.nodes}',
+            f'    pending: {self.pending}',
+            f'    failing: {self.failing}',
+            f'    stuck: {self.stuck}',
+            f'    terminal: {self.terminal}',
+            f'    refuted: {self.refuted}',
+            f'    bounded: {self.bounded}',
+            f'Subproofs: {self.subproofs}',
+        ]
