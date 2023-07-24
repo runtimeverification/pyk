@@ -285,17 +285,21 @@ def test_apr_proof_summary(proof_dir: Path) -> None:
     proof = apr_proof(1, proof_dir)
 
     assert len(proof.summary.summaries) == 1
-    assert proof.summary.summaries[0] == APRSummary(
-        id='apr_proof_1',
-        status=ProofStatus.PASSED,
-        admitted=False,
-        nodes=1,
-        pending=0,
-        failing=0,
-        stuck=0,
-        terminal=0,
-        refuted=0,
-        subproofs=0,
+    assert proof.summary == CompositeSummary(
+        [
+            APRSummary(
+                id='apr_proof_1',
+                status=ProofStatus.PASSED,
+                admitted=False,
+                nodes=1,
+                pending=0,
+                failing=0,
+                stuck=0,
+                terminal=0,
+                refuted=0,
+                subproofs=0,
+            )
+        ]
     )
 
 
@@ -303,18 +307,22 @@ def test_aprbmc_proof_summary(proof_dir: Path) -> None:
     proof = aprbmc_proof(1, proof_dir)
 
     assert len(proof.summary.summaries) == 1
-    assert proof.summary.summaries[0] == APRBMCSummary(
-        id='aprbmc_proof_1',
-        status=ProofStatus.PASSED,
-        bmc_depth=1,
-        nodes=1,
-        pending=0,
-        failing=0,
-        stuck=0,
-        terminal=0,
-        refuted=0,
-        subproofs=0,
-        bounded=0,
+    assert proof.summary == CompositeSummary(
+        [
+            APRBMCSummary(
+                id='aprbmc_proof_1',
+                status=ProofStatus.PASSED,
+                bmc_depth=1,
+                nodes=1,
+                pending=0,
+                failing=0,
+                stuck=0,
+                terminal=0,
+                refuted=0,
+                subproofs=0,
+                bounded=0,
+            )
+        ]
     )
 
 
@@ -336,7 +344,8 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
     # Then
     comp_summary = proof_from_disk.summary
     assert isinstance(comp_summary, CompositeSummary)
-    assert comp_summary.summaries[0] == APRSummary(  # noqa:
+    assert len(comp_summary.summaries) == 2
+    assert comp_summary.summaries[0] == APRSummary(
         id='apr_proof_1',
         status=ProofStatus.PENDING,
         admitted=False,
@@ -349,24 +358,24 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
         subproofs=1,
     )
 
-    nest_comp_summary = comp_summary.summaries[1]
-    assert isinstance(nest_comp_summary, CompositeSummary)
-    assert nest_comp_summary.summaries == (
-        APRSummary(
-            id='apr_proof_2',
-            status=ProofStatus.PENDING,
-            admitted=False,
-            nodes=2,
-            pending=1,
-            failing=0,
-            stuck=0,
-            terminal=0,
-            refuted=0,
-            subproofs=1,
-        ),
-        EqualitySummary(
-            id='equality_proof_1',
-            status=ProofStatus.PENDING,
-            admitted=False,
-        ),
+    assert comp_summary.summaries[1] == CompositeSummary(
+        [
+            APRSummary(
+                id='apr_proof_2',
+                status=ProofStatus.PENDING,
+                admitted=False,
+                nodes=2,
+                pending=1,
+                failing=0,
+                stuck=0,
+                terminal=0,
+                refuted=0,
+                subproofs=1,
+            ),
+            EqualitySummary(
+                id='equality_proof_1',
+                status=ProofStatus.PENDING,
+                admitted=False,
+            ),
+        ]
     )
