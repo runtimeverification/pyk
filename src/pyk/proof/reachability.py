@@ -15,11 +15,8 @@ from ..kcfg import KCFG
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
-from .equality import Prover, RefutationProof
-from .proof import Proof, ProofStatus
-from ..utils import FrozenDict, hash_str, shorten_hashes, single
-from .equality import ProofSummary, RefutationProof
-from .proof import CompositeSummary, Proof, ProofStatus, Prover
+from .equality import ProofSummary, Prover, RefutationProof
+from .proof import CompositeSummary, Proof, ProofStatus
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -907,12 +904,6 @@ class APRBMCProver(APRProver):
             implication_every_block=implication_every_block,
         )
 
-        while self.proof.pending:
-            if max_iterations is not None and max_iterations <= iterations:
-                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
-                break
-            iterations += 1
-
 @dataclass(frozen=True)
 class APRBMCSummary(ProofSummary):
     id: str
@@ -926,7 +917,6 @@ class APRBMCSummary(ProofSummary):
     refuted: int
     bounded: int
     subproofs: int
->>>>>>> origin/master
 
     @property
     def lines(self) -> list[str]:
