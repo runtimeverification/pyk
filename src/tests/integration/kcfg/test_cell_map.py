@@ -8,6 +8,7 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable, build_assoc
+from pyk.kcfg.semantics import DefaultSemantics
 from pyk.kcfg.show import KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.proof.show import APRProofNodePrinter
@@ -21,7 +22,9 @@ if TYPE_CHECKING:
     from typing import Final
 
     from pyk.kast import KInner
+    from pyk.kast.outer import KDefinition
     from pyk.kcfg import KCFGExplore
+    from pyk.kcfg.semantics import KCFGSemantics
     from pyk.ktool.kprint import KPrint
     from pyk.ktool.kprove import KProve
 
@@ -46,13 +49,16 @@ EXECUTE_TEST_DATA: Final[Iterable[tuple[str, int, State, int, State, Iterable[St
 )
 
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str]]] = (
-    ('cell-map-no-branch', K_FILES / 'cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 2, 1, []),
+APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None]] = (
+    ('cell-map-no-branch', K_FILES / 'cell-map-spec.k', 'CELL-MAP-SPEC', 'cell-map-no-branch', 2, 1),
 )
 
 
 class TestCellMapProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'cell-map.k'
+
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        return DefaultSemantics()
 
     @staticmethod
     def config(kprint: KPrint, k: str, active_accounts: str, accounts: Iterable[tuple[str, str]]) -> CTerm:
@@ -114,7 +120,7 @@ class TestCellMapProof(KCFGExploreTest):
         assert actual_k == expected_k
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,terminal_rules',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -128,7 +134,6 @@ class TestCellMapProof(KCFGExploreTest):
         claim_id: str,
         max_iterations: int,
         max_depth: int,
-        terminal_rules: Iterable[str],
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
@@ -142,7 +147,6 @@ class TestCellMapProof(KCFGExploreTest):
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            terminal_rules=terminal_rules,
         )
 
         kcfg_show = KCFGShow(
