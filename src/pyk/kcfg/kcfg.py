@@ -542,7 +542,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         else:
             res = (edge for _, targets in self._edges.items() for _, edge in targets.items())
 
-
         return [edge for edge in res if not target_id or target_id == edge.target.id]
 
     def contains_edge(self, edge: Edge) -> bool:
