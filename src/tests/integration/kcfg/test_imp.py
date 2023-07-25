@@ -644,6 +644,7 @@ PROGRAM_EQUIVALENCE_DATA: Iterable[
         tuple[bool, SubsumptionCheckResult, SubsumptionCheckResult],
     ]
 ] = (
+    # Default comparator, equivalent computation, equivalent pcs
     (
         'keq-def-equiv-comput',
         ['IMP.while'],
@@ -661,6 +662,7 @@ PROGRAM_EQUIVALENCE_DATA: Iterable[
         'default',
         (True, SubsumptionCheckResult.EQUIVALENT, SubsumptionCheckResult.EQUIVALENT),
     ),
+    # Default comparator, equivalent computation, pc1 => pc2
     (
         'keq-def-subleft-comput',
         ['IMP.while'],
@@ -678,6 +680,7 @@ PROGRAM_EQUIVALENCE_DATA: Iterable[
         'default',
         (True, SubsumptionCheckResult.FIRST_SUBSUMES, SubsumptionCheckResult.EQUIVALENT),
     ),
+    # Default comparator, equivalent computation, pc2 => pc1
     (
         'keq-def-subright-comput',
         ['IMP.while'],
@@ -695,6 +698,25 @@ PROGRAM_EQUIVALENCE_DATA: Iterable[
         'default',
         (True, SubsumptionCheckResult.SECOND_SUBSUMES, SubsumptionCheckResult.EQUIVALENT),
     ),
+    # Default comparator, equivalent computation, incomparable pcs
+    (
+        'keq-def-incomp-comput',
+        ['IMP.while'],
+        [],
+        (
+            'int $n ; $n = N:Int ; $n = $n + $n ;',
+            '.Map',
+            mlEqualsTrue(KApply('_<Int_', [KVariable('N', 'Int'), KToken('15', 'Int')])),
+        ),
+        (
+            'int $n; $n = N:Int ; $n = 2 * $n ;',
+            '.Map',
+            mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('10', 'Int')])),
+        ),
+        'default',
+        (True, SubsumptionCheckResult.INCOMPARABLE, SubsumptionCheckResult.EQUIVALENT),
+    ),
+    # Default comparator, equivalent computation, split and equivalent pcs
     (
         'keq-def-equiv-comput-pcsplit',
         ['IMP.while'],
