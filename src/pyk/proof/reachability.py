@@ -565,7 +565,9 @@ class APRProver(Prover):
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
         subproofs: list[Proof] = (
-            [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids] if proof.proof_dir is not None else []
+            [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
+            if proof.proof_dir is not None
+            else []
         )
 
         apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
