@@ -608,7 +608,8 @@ class APRSummary(ProofSummary):
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
             f'    stuck: {self.stuck}',
-            f'    terminal: {self.terminal}' f'    refuted: {self.refuted}',
+            f'    terminal: {self.terminal}',
+            f'    refuted: {self.refuted}',
             f'Subproofs: {self.subproofs}',
         ]
 
