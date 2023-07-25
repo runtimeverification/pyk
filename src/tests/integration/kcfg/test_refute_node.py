@@ -159,8 +159,8 @@ class TestAPRProof(KCFGExploreTest):
 
         assert prover.proof.status == ProofStatus.FAILED
 
-        stuck_node = single(prover.proof.terminal)
-        refutation = prover.refute_node(stuck_node)
+        failing_node = single(prover.proof.failing)
+        refutation = prover.refute_node(failing_node)
         assert refutation is not None
         refutation_prover = RefutationProver(refutation, kcfg_explore)
         refutation_prover.advance_proof()

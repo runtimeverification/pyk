@@ -937,8 +937,8 @@ class TestImpProof(KCFGExploreTest):
             cut_point_rules=cut_rules,
         )
 
-        assert len(proof.terminal) == 1
-        path_constraint = proof.path_constraints(proof.terminal[0].id)
+        assert len(proof.failing) == 1
+        path_constraint = proof.path_constraints(proof.failing[0].id)
         actual_constraint = kcfg_explore.kprint.pretty_print(path_constraint).replace('\n', ' ')
         assert actual_constraint == expected_constraint
 
