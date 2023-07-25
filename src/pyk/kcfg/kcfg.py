@@ -542,6 +542,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         else:
             res = (edge for _, targets in self._edges.items() for _, edge in targets.items())
 
+
         return [edge for edge in res if not target_id or target_id == edge.target.id]
 
     def contains_edge(self, edge: Edge) -> bool:
@@ -902,10 +903,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         dct['aliases'] = aliases
         cfg_json.write_text(json.dumps(dct))
 
-        print(self.nodes)
-        print(self._deleted_nodes)
-
         for node_id in self._deleted_nodes:
+            self._created_nodes.remove(node_id)
             self._delete_node_data(node_id)
         for node_id in self._created_nodes:
             node = self.get_node(node_id)

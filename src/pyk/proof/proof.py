@@ -84,7 +84,7 @@ class Proof(ABC):
 
     @staticmethod
     def proof_exists(id: str, proof_dir: Path) -> bool:
-        proof_path = proof_dir / f'{hash_str(id)}.json'
+        proof_path = proof_dir / id / 'proof.json'
         return proof_path.exists() and proof_path.is_file()
 
     @property
