@@ -902,9 +902,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         dct['aliases'] = aliases
         cfg_json.write_text(json.dumps(dct))
 
-        print(self.nodes)
-        print(self._deleted_nodes)
-
         for node_id in self._deleted_nodes:
             self._delete_node_data(node_id)
         for node_id in self._created_nodes:
