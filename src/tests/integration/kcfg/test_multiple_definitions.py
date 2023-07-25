@@ -6,7 +6,6 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KVariable
-from pyk.kcfg.semantics import DefaultSemantics
 from pyk.prelude.ml import mlTop
 from pyk.testing import KCFGExploreTest
 
@@ -15,9 +14,7 @@ from ..utils import K_FILES
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from pyk.kast.outer import KDefinition
     from pyk.kcfg import KCFGExplore
-    from pyk.kcfg.semantics import KCFGSemantics
 
 
 EXECUTE_TEST_DATA: Iterable[tuple[str]] = (('branch',),)
@@ -25,9 +22,6 @@ EXECUTE_TEST_DATA: Iterable[tuple[str]] = (('branch',),)
 
 class TestMultipleDefinitionsProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'multiple-definitions.k'
-
-    def semantics(self, definition: KDefinition) -> KCFGSemantics:
-        return DefaultSemantics()
 
     @staticmethod
     def config() -> CTerm:
