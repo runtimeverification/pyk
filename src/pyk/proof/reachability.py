@@ -303,8 +303,6 @@ class APRProof(Proof):
         )
 
     def write_proof_data(self) -> None:
-        print('in APRProof.write_proof_data')
-        print(self.id)
         if self.proof_dir is None or self.proof_subdir is None:
             _LOGGER.info(f'Skipped saving proof {self.id} since no save dir was specified.')
             return
