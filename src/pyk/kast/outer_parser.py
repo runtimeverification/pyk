@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..dequote import dequote_string
 from .outer_lexer import TokenType, outer_lexer
 from .outer_syntax import (
     EMPTY_ATT,
@@ -56,7 +57,6 @@ _PRODUCTION_TOKENS: Final = (TokenType.ID_LOWER, TokenType.ID_UPPER, TokenType.S
 _PRODUCTION_ITEM_TOKENS: Final = (TokenType.STRING, TokenType.ID_LOWER, TokenType.ID_UPPER)
 _ID_TOKENS: Final = (TokenType.ID_LOWER, TokenType.ID_UPPER)
 _SIMPLE_BUBBLE_TOKENS: Final = (TokenType.KW_CLAIM, TokenType.KW_CONFIG, TokenType.KW_RULE)
-_ATTR_TAG_TOKENS: Final = (TokenType.STRING, TokenType.ATTR_CONTENT)
 _SORT_DECL_TOKENS: Final = (TokenType.LBRACE, TokenType.ID_UPPER)
 
 
@@ -104,8 +104,8 @@ class OuterParser:
 
     def require(self) -> Require:
         self._match_any(_REQUIRES_TOKENS)
-        path = self._match(TokenType.STRING)
-        return Require(path)  # TODO dequote
+        path = _dequote_string(self._match(TokenType.STRING))
+        return Require(path)
 
     def module(self) -> Module:
         self._match(TokenType.KW_MODULE)
@@ -198,7 +198,7 @@ class OuterParser:
             self._consume()
             name = self._match(TokenType.ID_UPPER)
             self._match(TokenType.EQ)
-            regex = self._match(TokenType.REGEX)  # TODO dequote
+            regex = _dequote_regex(self._match(TokenType.REGEX))
             return SyntaxLexical(name, regex)
 
         raise ValueError(f'Unexpected token: {self._la.text}')
@@ -268,7 +268,7 @@ class OuterParser:
         self._match_any(_PRODUCTION_TOKENS)
 
         if la1.type is TokenType.REGEX:
-            regex = la1.text  # TODO dequote
+            regex = _dequote_regex(la1.text)
             att = self._maybe_att()
             return Lexical(regex, att)
 
@@ -277,7 +277,7 @@ class OuterParser:
             self._consume()
             sort = self._match(TokenType.ID_UPPER)
             self._match(TokenType.COMMA)
-            sep = self._match(TokenType.STRING)
+            sep = _dequote_string(self._match(TokenType.STRING))
             self._match(TokenType.RBRACE)
             att = self._maybe_att()
             return UserList(sort, sep, non_empty, att)
@@ -285,7 +285,7 @@ class OuterParser:
         items: list[ProductionItem] = []
 
         if la1.type is TokenType.STRING:
-            items.append(Terminal(la1.text))  # TODO dequote
+            items.append(Terminal(_dequote_string(la1.text)))
         else:
             # assert la1.type in _ID_TOKENS
             if self._la.type is TokenType.LPAREN:
@@ -309,7 +309,7 @@ class OuterParser:
 
     def _production_item(self) -> ProductionItem:
         if self._la.type is TokenType.STRING:
-            return Terminal(self._consume())  # TODO dequote
+            return Terminal(_dequote_string(self._consume()))
 
         return self._non_terminal()
 
@@ -388,8 +388,11 @@ class OuterParser:
             value: str
             if self._la.type == TokenType.LPAREN:
                 self._consume()
-                value = self._match_any(_ATTR_TAG_TOKENS)
-                self._match(TokenType.RPAREN)  # TODO dequote STRING
+                if self._la.type is TokenType.ATTR_CONTENT:
+                    value = self._consume()
+                else:
+                    value = _dequote_string(self._match(TokenType.STRING))
+                self._match(TokenType.RPAREN)
             else:
                 value = ''
 
@@ -403,3 +406,11 @@ class OuterParser:
         self._match(TokenType.RBRACK)
 
         return Att(items)
+
+
+def _dequote_string(s: str) -> str:
+    return dequote_string(s[1:-1])
+
+
+def _dequote_regex(s: str) -> str:
+    return dequote_string(s[2:-1])

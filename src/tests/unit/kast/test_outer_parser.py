@@ -43,6 +43,8 @@ SENTENCE_TEST_DATA: Final = (
     ('rule x', Rule('x')),
     ('rule [label]: x', Rule('x', label='label')),
     ('rule x [key1, key2(value)]', Rule('x', att=Att((('key1', ''), ('key2', 'value'))))),
+    ('rule x [key("value")]', Rule('x', att=Att((('key', 'value'),)))),
+    ('rule x [key("value\\n")]', Rule('x', att=Att((('key', 'value\n'),)))),
     (
         'rule [label]: x [key1, key2(value)]',
         Rule('x', label='label', att=Att((('key1', ''), ('key2', 'value')))),
@@ -55,7 +57,7 @@ SENTENCE_TEST_DATA: Final = (
     ('configuration x', Config('x')),
     ('context x', Context('x')),
     ('context alias x', Alias('x')),
-    ('syntax lexical Digit = r"[0-9]"', SyntaxLexical('Digit', 'r"[0-9]"')),
+    ('syntax lexical Digit = r"[0-9]"', SyntaxLexical('Digit', '[0-9]')),
     ('syntax left foo', SyntaxAssoc(Assoc.LEFT, ('foo',))),
     ('syntax right foo bar', SyntaxAssoc(Assoc.RIGHT, ('foo', 'bar'))),
     ('syntax non-assoc foo bar baz', SyntaxAssoc(Assoc.NON_ASSOC, ('foo', 'bar', 'baz'))),
@@ -86,19 +88,19 @@ SENTENCE_TEST_DATA: Final = (
     ),
     (
         'syntax Foo ::= r"foo" [token]',
-        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Lexical('r"foo"', att=Att((('token', ''),))),)),)),
+        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Lexical('foo', att=Att((('token', ''),))),)),)),
     ),
     (
         'syntax Foos ::= List{Foo, ","}',
-        SyntaxDefn(SortDecl('Foos'), (PriorityBlock((UserList('Foo', '","', non_empty=False),)),)),
+        SyntaxDefn(SortDecl('Foos'), (PriorityBlock((UserList('Foo', ',', non_empty=False),)),)),
     ),
     (
         'syntax Foos ::= NeList{Foo, ","}',
-        SyntaxDefn(SortDecl('Foos'), (PriorityBlock((UserList('Foo', '","', non_empty=True),)),)),
+        SyntaxDefn(SortDecl('Foos'), (PriorityBlock((UserList('Foo', ',', non_empty=True),)),)),
     ),
     (
         'syntax Foo ::= "foo"',
-        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('"foo"'),)),)),)),
+        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('foo'),)),)),)),
     ),
     (
         'syntax Foo ::= Bar',
@@ -141,25 +143,25 @@ SENTENCE_TEST_DATA: Final = (
     ),
     (
         'syntax Foo ::= left: "foo"',
-        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('"foo"'),)),), assoc=Assoc.LEFT),)),
+        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('foo'),)),), assoc=Assoc.LEFT),)),
     ),
     (
         'syntax Foo ::= right: "foo"',
-        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('"foo"'),)),), assoc=Assoc.RIGHT),)),
+        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('foo'),)),), assoc=Assoc.RIGHT),)),
     ),
     (
         'syntax Foo ::= non-assoc: "foo"',
-        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('"foo"'),)),), assoc=Assoc.NON_ASSOC),)),
+        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('foo'),)),), assoc=Assoc.NON_ASSOC),)),
     ),
     (
         'syntax Foo ::= "bar" Bar',
-        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('"bar"'), NonTerminal(Sort('Bar')))),)),)),
+        SyntaxDefn(SortDecl('Foo'), (PriorityBlock((Production((Terminal('bar'), NonTerminal(Sort('Bar')))),)),)),
     ),
     (
         'syntax Foo ::= "bar" | Bar',
         SyntaxDefn(
             SortDecl('Foo'),
-            (PriorityBlock((Production((Terminal('"bar"'),)), Production((NonTerminal(Sort('Bar')),)))),),
+            (PriorityBlock((Production((Terminal('bar'),)), Production((NonTerminal(Sort('Bar')),)))),),
         ),
     ),
     (
@@ -167,8 +169,8 @@ SENTENCE_TEST_DATA: Final = (
         SyntaxDefn(
             SortDecl('Foo'),
             (
-                PriorityBlock((Production((Terminal('"bar"'),)),)),
-                PriorityBlock((Production((Terminal('"baz"'),)),)),
+                PriorityBlock((Production((Terminal('bar'),)),)),
+                PriorityBlock((Production((Terminal('baz'),)),)),
             ),
         ),
     ),
@@ -177,8 +179,8 @@ SENTENCE_TEST_DATA: Final = (
         SyntaxDefn(
             SortDecl('Foo'),
             (
-                PriorityBlock((Production((Terminal('"bar"'), NonTerminal(Sort('Bar')))),)),
-                PriorityBlock((Production((Terminal('"baz"'), NonTerminal(Sort('Baz')))),)),
+                PriorityBlock((Production((Terminal('bar'), NonTerminal(Sort('Bar')))),)),
+                PriorityBlock((Production((Terminal('baz'), NonTerminal(Sort('Baz')))),)),
             ),
         ),
     ),
@@ -187,8 +189,8 @@ SENTENCE_TEST_DATA: Final = (
         SyntaxDefn(
             SortDecl('Foo'),
             (
-                PriorityBlock((Production((Terminal('"bar"'),)), Production((NonTerminal(Sort('Bar')),)))),
-                PriorityBlock((Production((Terminal('"baz"'),)), Production((NonTerminal(Sort('Baz')),)))),
+                PriorityBlock((Production((Terminal('bar'),)), Production((NonTerminal(Sort('Bar')),)))),
+                PriorityBlock((Production((Terminal('baz'),)), Production((NonTerminal(Sort('Baz')),)))),
             ),
         ),
     ),
@@ -198,10 +200,10 @@ SENTENCE_TEST_DATA: Final = (
             SortDecl('Foo'),
             (
                 PriorityBlock(
-                    (Production((Terminal('"bar"'),)), Production((NonTerminal(Sort('Bar')),))), assoc=Assoc.LEFT
+                    (Production((Terminal('bar'),)), Production((NonTerminal(Sort('Bar')),))), assoc=Assoc.LEFT
                 ),
                 PriorityBlock(
-                    (Production((Terminal('"baz"'),)), Production((NonTerminal(Sort('Baz')),))), assoc=Assoc.RIGHT
+                    (Production((Terminal('baz'),)), Production((NonTerminal(Sort('Baz')),))), assoc=Assoc.RIGHT
                 ),
             ),
         ),
@@ -212,11 +214,11 @@ SENTENCE_TEST_DATA: Final = (
             SortDecl('Foos'),
             (
                 PriorityBlock(
-                    (Production((Terminal('"bar"'),)), Production((NonTerminal(Sort('Bar')),))),
+                    (Production((Terminal('bar'),)), Production((NonTerminal(Sort('Bar')),))),
                     assoc=Assoc.LEFT,
                 ),
-                PriorityBlock((Lexical('r"baz"', att=Att((('token', ''),))),), assoc=Assoc.RIGHT),
-                PriorityBlock((UserList('Foo', '","'),), assoc=Assoc.NON_ASSOC),
+                PriorityBlock((Lexical('baz', att=Att((('token', ''),))),), assoc=Assoc.RIGHT),
+                PriorityBlock((UserList('Foo', ','),), assoc=Assoc.NON_ASSOC),
             ),
         ),
     ),
@@ -331,11 +333,7 @@ SENTENCE_TEST_DATA: Final = (
             SortDecl('KItem'),
             (
                 PriorityBlock(
-                    (
-                        Production(
-                            (NonTerminal(Sort('List')), Terminal('"["'), NonTerminal(Sort('Int')), Terminal('"]"'))
-                        ),
-                    )
+                    (Production((NonTerminal(Sort('List')), Terminal('['), NonTerminal(Sort('Int')), Terminal(']'))),)
                 ),
             ),
         ),
@@ -405,8 +403,8 @@ def test_module(k_text: str, expected: AST) -> None:
 
 
 REQUIRE_TEST_DATA: Final = (
-    ('require "foo.k"', Require('"foo.k"')),
-    ('requires "foo.k"', Require('"foo.k"')),
+    ('require "foo.k"', Require('foo.k')),
+    ('requires "foo.k"', Require('foo.k')),
 )
 
 
@@ -424,20 +422,12 @@ def test_require(k_text: str, expected: AST) -> None:
 
 DEFINITION_TEST_DATA: Final = (
     ('', Definition()),
-    ('require "foo.k"', Definition(requires=(Require('"foo.k"'),))),
-    ('requires "foo.k"', Definition(requires=(Require('"foo.k"'),))),
-    (
-        'requires "foo.k" requires "bar.k"',
-        Definition(
-            requires=(
-                Require('"foo.k"'),
-                Require('"bar.k"'),
-            )
-        ),
-    ),
+    ('require "foo.k"', Definition(requires=(Require('foo.k'),))),
+    ('requires "foo.k"', Definition(requires=(Require('foo.k'),))),
+    ('requires "foo.k" requires "bar.k"', Definition(requires=(Require('foo.k'), Require('bar.k')))),
     ('module FOO endmodule', Definition(modules=(Module('FOO'),))),
     ('module FOO endmodule module BAR endmodule', Definition(modules=(Module('FOO'), Module('BAR')))),
-    ('requires "foo.k" module FOO endmodule', Definition(modules=(Module('FOO'),), requires=(Require('"foo.k"'),))),
+    ('requires "foo.k" module FOO endmodule', Definition(modules=(Module('FOO'),), requires=(Require('foo.k'),))),
 )
 
 
