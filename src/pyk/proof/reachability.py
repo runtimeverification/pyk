@@ -46,7 +46,7 @@ class APRProof(Proof):
     node_refutations: dict[NodeIdLike, RefutationProof]  # TODO _node_refutatations
     init: NodeIdLike
     target: NodeIdLike
-    _terminal_nodes: set[NodeIdLike]
+    _terminal_nodes: list[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
 
@@ -59,7 +59,7 @@ class APRProof(Proof):
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         node_refutations: dict[int, str] | None = None,
-        terminal_nodes: set[NodeIdLike] | None = None,
+        terminal_nodes: Iterable[NodeIdLike] | None = None,
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
         admitted: bool = False,
@@ -70,7 +70,7 @@ class APRProof(Proof):
         self.target = target
         self.logs = logs
         self.circularity = circularity
-        self._terminal_nodes = terminal_nodes if terminal_nodes is not None else set()
+        self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
         self.node_refutations = {}
 
         if node_refutations is not None:
@@ -124,7 +124,7 @@ class APRProof(Proof):
         )
 
     def add_terminal(self, node_id: NodeIdLike) -> None:
-        self._terminal_nodes.add(self.kcfg._resolve(node_id))
+        self._terminal_nodes.append(self.kcfg._resolve(node_id))
 
     def remove_terminal(self, node_id: NodeIdLike) -> None:
         node_id = self.kcfg._resolve(node_id)
