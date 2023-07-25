@@ -464,9 +464,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if self._check_abstract(node, kcfg):
             return
 
-        if len(kcfg.splits(target_id=node.id)) == 0:
-            branches = list(self.kcfg_semantics.extract_branches(node.cterm))
-            if len(branches) > 0:
+        if not kcfg.splits(target_id=node.id):
+            branches = self.kcfg_semantics.extract_branches(node.cterm)
+            if branches:
                 kcfg.split_on_constraints(node.id, branches)
                 _LOGGER.info(
                     f'Found {len(branches)} branches using heuristic for node {node.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'

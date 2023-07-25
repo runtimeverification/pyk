@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kcfg.semantics import DefaultSemantics
 from pyk.proof import EqualityProof, EqualityProver, ProofStatus
 from pyk.testing import KCFGExploreTest
 from pyk.utils import single
@@ -17,9 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
 
-    from pyk.kast.outer import KDefinition
     from pyk.kcfg import KCFGExplore
-    from pyk.kcfg.semantics import KCFGSemantics
     from pyk.ktool.kprint import SymbolTable
     from pyk.ktool.kprove import KProve
 
@@ -116,9 +113,6 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
 
 class TestImpEqualityProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
-
-    def semantics(self, definition: KDefinition) -> KCFGSemantics:
-        return DefaultSemantics()
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
