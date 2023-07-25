@@ -40,6 +40,26 @@ if TYPE_CHECKING:
     from .outer_syntax import ProductionItem, ProductionLike, Sentence, StringSentence, SyntaxSentence
 
 
+_STRING_SENTENCE: Final = {
+    TokenType.KW_ALIAS.value: Alias,
+    TokenType.KW_CLAIM.value: Claim,
+    TokenType.KW_CONFIG.value: Config,
+    TokenType.KW_CONTEXT.value: Context,
+    TokenType.KW_RULE.value: Rule,
+}
+
+_REQUIRES_TOKENS: Final = (TokenType.KW_REQUIRE, TokenType.KW_REQUIRES)
+_IMPORTS_TOKENS: Final = (TokenType.KW_IMPORT, TokenType.KW_IMPORTS)
+_PRIORITIES_TOKENS: Final = (TokenType.KW_PRIORITY, TokenType.KW_PRIORITIES)
+_ASSOC_TOKENS: Final = (TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC)
+_PRODUCTION_TOKENS: Final = (TokenType.ID_LOWER, TokenType.ID_UPPER, TokenType.STRING, TokenType.REGEX)
+_PRODUCTION_ITEM_TOKENS: Final = (TokenType.STRING, TokenType.ID_LOWER, TokenType.ID_UPPER)
+_ID_TOKENS: Final = (TokenType.ID_LOWER, TokenType.ID_UPPER)
+_SIMPLE_BUBBLE_TOKENS: Final = (TokenType.KW_CLAIM, TokenType.KW_CONFIG, TokenType.KW_RULE)
+_ATTR_TAG_TOKENS: Final = (TokenType.STRING, TokenType.ATTR_CONTENT)
+_SORT_DECL_TOKENS: Final = (TokenType.LBRACE, TokenType.ID_UPPER)
+
+
 class OuterParser:
     _lexer: Iterator[Token]
     _la: Token
@@ -73,7 +93,7 @@ class OuterParser:
 
     def definition(self) -> Definition:
         requires: list[Require] = []
-        while self._la.type in {TokenType.KW_REQUIRE, TokenType.KW_REQUIRES}:
+        while self._la.type in _REQUIRES_TOKENS:
             requires.append(self.require())
 
         modules: list[Module] = []
@@ -83,7 +103,7 @@ class OuterParser:
         return Definition(modules, requires)
 
     def require(self) -> Require:
-        self._match_any({TokenType.KW_REQUIRE, TokenType.KW_REQUIRES})
+        self._match_any(_REQUIRES_TOKENS)
         path = self._match(TokenType.STRING)
         return Require(path)  # TODO dequote
 
@@ -94,7 +114,7 @@ class OuterParser:
         att = self._maybe_att()
 
         imports: list[Import] = []
-        while self._la.type in {TokenType.KW_IMPORT, TokenType.KW_IMPORTS}:
+        while self._la.type in _IMPORTS_TOKENS:
             imports.append(self.importt())
 
         sentences: list[Sentence] = []
@@ -106,7 +126,7 @@ class OuterParser:
         return Module(name, sentences, imports, att)
 
     def importt(self) -> Import:
-        self._match_any({TokenType.KW_IMPORT, TokenType.KW_IMPORTS})
+        self._match_any(_IMPORTS_TOKENS)
 
         public = True
         if self._la.type is TokenType.KW_PRIVATE:
@@ -128,7 +148,7 @@ class OuterParser:
     def syntax_sentence(self) -> SyntaxSentence:
         self._match(TokenType.KW_SYNTAX)
 
-        if self._la.type in {TokenType.LBRACE, TokenType.ID_UPPER}:
+        if self._la.type in _SORT_DECL_TOKENS:
             decl = self._sort_decl()
 
             if self._la.type is TokenType.EQ:
@@ -149,7 +169,7 @@ class OuterParser:
             att = self._maybe_att()
             return SyntaxDecl(decl, att)
 
-        if self._la.type in {TokenType.KW_PRIORITY, TokenType.KW_PRIORITIES}:
+        if self._la.type in _PRIORITIES_TOKENS:
             self._consume()
             groups: list[list[str]] = []
             group: list[str] = []
@@ -166,7 +186,7 @@ class OuterParser:
                 groups.append(group)
             return SyntaxPriority(groups)
 
-        if self._la.type in {TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC}:
+        if self._la.type in _ASSOC_TOKENS:
             assoc = Assoc(self._consume())
             klabels: list[str] = []
             klabels.append(self._match(TokenType.KLABEL))
@@ -230,7 +250,7 @@ class OuterParser:
 
     def _priority_block(self) -> PriorityBlock:
         assoc: Assoc | None
-        if self._la.type in {TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC}:  # TODO sets
+        if self._la.type in _ASSOC_TOKENS:
             assoc = Assoc(self._consume())
             self._match(TokenType.COLON)
         else:
@@ -245,22 +265,15 @@ class OuterParser:
 
     def _production_like(self) -> ProductionLike:
         la1 = self._la
-        self._match_any(
-            {
-                TokenType.ID_LOWER,
-                TokenType.ID_UPPER,
-                TokenType.STRING,
-                TokenType.REGEX,
-            }
-        )
+        self._match_any(_PRODUCTION_TOKENS)
 
         if la1.type is TokenType.REGEX:
             regex = la1.text  # TODO dequote
             att = self._maybe_att()
             return Lexical(regex, att)
 
-        if self._la.type is TokenType.LBRACE and la1.text in {'List', 'NeList'}:
-            non_empty = la1.text == 'NeList'
+        if self._la.type is TokenType.LBRACE and la1.text in ('List', 'NeList'):
+            non_empty = la1.text[0] == 'N'
             self._consume()
             sort = self._match(TokenType.ID_UPPER)
             self._match(TokenType.COMMA)
@@ -274,7 +287,7 @@ class OuterParser:
         if la1.type is TokenType.STRING:
             items.append(Terminal(la1.text))  # TODO dequote
         else:
-            assert la1.type in {TokenType.ID_LOWER, TokenType.ID_UPPER}
+            # assert la1.type in _ID_TOKENS
             if self._la.type is TokenType.LPAREN:
                 items.append(Terminal(la1.text))
                 items.append(Terminal(self._consume()))
@@ -288,11 +301,7 @@ class OuterParser:
             else:
                 items.append(self._non_terminal_with_la(la1))
 
-        while self._la.type in {
-            TokenType.STRING,
-            TokenType.ID_LOWER,
-            TokenType.ID_UPPER,
-        }:
+        while self._la.type in _PRODUCTION_ITEM_TOKENS:
             items.append(self._production_item())
 
         att = self._maybe_att()
@@ -306,7 +315,7 @@ class OuterParser:
 
     def _non_terminal(self) -> NonTerminal:
         la1 = self._la
-        self._match_any({TokenType.ID_LOWER, TokenType.ID_UPPER})
+        self._match_any(_ID_TOKENS)
         return self._non_terminal_with_la(la1)
 
     def _non_terminal_with_la(self, la: Token) -> NonTerminal:
@@ -318,7 +327,7 @@ class OuterParser:
         return NonTerminal(self._sort_with_la(la))
 
     def _sort_with_la(self, la: Token) -> Sort:
-        assert la.type is TokenType.ID_UPPER
+        # assert la.type is TokenType.ID_UPPER
 
         args: list[int | str] = []
         if self._la.type is TokenType.LBRACE:
@@ -340,15 +349,17 @@ class OuterParser:
         return Sort(la.text, args)
 
     def string_sentence(self) -> StringSentence:
-        tag: str
-        if self._la.type is TokenType.KW_CONTEXT:
-            tag = self._consume()
-            if self._la.type is TokenType.KW_ALIAS:
-                tag = self._consume()
-        else:
-            tag = self._match_any({TokenType.KW_CLAIM, TokenType.KW_CONFIG, TokenType.KW_RULE})
+        cls_key = self._la.type.value
 
-        cls = _STRING_SENTENCE[tag]
+        if self._la.type is TokenType.KW_CONTEXT:
+            self._consume()
+            if self._la.type is TokenType.KW_ALIAS:
+                cls_key = self._la.type.value
+                self._consume()
+        else:
+            self._match_any(_SIMPLE_BUBBLE_TOKENS)
+
+        cls = _STRING_SENTENCE[cls_key]
 
         label: str
         if self._la.type == TokenType.LBRACK:
@@ -377,7 +388,7 @@ class OuterParser:
             value: str
             if self._la.type == TokenType.LPAREN:
                 self._consume()
-                value = self._match_any({TokenType.STRING, TokenType.ATTR_CONTENT})
+                value = self._match_any(_ATTR_TAG_TOKENS)
                 self._match(TokenType.RPAREN)  # TODO dequote STRING
             else:
                 value = ''
@@ -392,12 +403,3 @@ class OuterParser:
         self._match(TokenType.RBRACK)
 
         return Att(items)
-
-
-_STRING_SENTENCE: Final = {
-    'alias': Alias,
-    'claim': Claim,
-    'configuration': Config,
-    'context': Context,
-    'rule': Rule,
-}
