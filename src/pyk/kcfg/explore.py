@@ -437,14 +437,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_depth += section_depth
         return tuple(new_nodes)
 
-    def _check_terminal(self, node: KCFG.Node, kcfg: KCFG) -> bool:
-        _LOGGER.info(f'Checking terminal: {shorten_hashes(node.id)}')
-        if self.kcfg_semantics.is_terminal(node.cterm):
-            _LOGGER.info(f'Terminal node: {shorten_hashes(node.id)}.')
-            kcfg.add_terminal(node.id)
-            return True
-        return False
-
     def _check_abstract(self, node: KCFG.Node, kcfg: KCFG) -> bool:
         new_cterm = self.kcfg_semantics.abstract_node(node.cterm)
         if new_cterm == node.cterm:
@@ -468,9 +460,6 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
         if kcfg.is_stuck(node.id):
             raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
-
-        if self._check_terminal(node, kcfg):
-            return
 
         if self._check_abstract(node, kcfg):
             return

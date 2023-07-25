@@ -36,7 +36,7 @@ class APRProofNodePrinter(NodePrinter):
             attrs.append('target')
         if self.proof.is_pending(node.id):
             attrs.append('pending')
-        if self.proof.kcfg.is_terminal(node.id):
+        if self.proof.is_terminal(node.id):
             attrs.append('terminal')
             if 'stuck' in attrs:
                 attrs.remove('stuck')
