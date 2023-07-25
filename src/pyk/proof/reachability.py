@@ -304,7 +304,7 @@ class APRBMCProof(APRProof):
 
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
-            self.is_pending(node_id) or self.is_target(node_id) or self.is_bounded(node_id)
+            self.is_pending(node_id) or self.is_target(node_id) or self.is_refuted(node_id) or self.is_bounded(node_id)
         )
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
@@ -464,16 +464,13 @@ class APRProver(Prover):
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
     ) -> None:
+        if self._check_terminal(node):
+            _ = self._check_subsume(node)
+            return
+
         if implication_every_block:
             if self._check_subsume(node):
-                # Shouldn't the node be marked somehow here?
-                # Otherwise, this subsumption call will be repeated?
                 return
-
-        # Is this logic correct?
-        if self._check_terminal(node) and not self._check_subsume(node):
-            self.proof.kcfg.add_stuck(node.id)
-            return
 
         module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
         self.kcfg_explore.extend(
