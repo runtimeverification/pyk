@@ -857,7 +857,7 @@ class TestImpProof(KCFGExploreTest):
             ]
             for dp in deps_proofs:
                 dp.admit()
-                dp.write_proof()
+                dp.write_proof_data()
             # </Admit all the dependencies >
 
             proof = APRProof.from_claim(

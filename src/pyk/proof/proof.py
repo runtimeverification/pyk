@@ -57,7 +57,7 @@ class Proof(ABC):
             raise ValueError(f'Cannot read subproofs {subproof_ids} of proof {self.id} with no proof_dir')
         if len(list(subproof_ids)) > 0:
             for proof_id in subproof_ids:
-                self.fetch_subproof(proof_id, force_reread=True)
+                self.fetch_subproof_data(proof_id, force_reread=True)
         if proof_dir is not None:
             ensure_dir_path(proof_dir)
         if self.proof_dir is not None:
@@ -84,6 +84,11 @@ class Proof(ABC):
 
     @staticmethod
     def proof_exists(id: str, proof_dir: Path) -> bool:
+        proof_path = proof_dir / f'{hash_str(id)}.json'
+        return proof_path.exists() and proof_path.is_file()
+
+    @staticmethod
+    def proof_data_exists(id: str, proof_dir: Path) -> bool:
         proof_path = proof_dir / id / 'proof.json'
         return proof_path.exists() and proof_path.is_file()
 
@@ -112,6 +117,14 @@ class Proof(ABC):
             raise ValueError(f"Cannot find subproof {proof_id} in parent proof's {self.id} proof_dir {self.proof_dir}")
         self._subproofs[proof_id] = self.fetch_subproof(proof_id, force_reread=True)
 
+    def read_subproof_data(self, proof_id: str) -> None:
+        if self.proof_dir is None:
+            raise ValueError(f'Cannot add subproof to the proof {self.id} with no proof_dir')
+        assert self.proof_dir
+        if not Proof.proof_data_exists(proof_id, self.proof_dir):
+            raise ValueError(f"Cannot find subproof {proof_id} in parent proof's {self.id} proof_dir {self.proof_dir}")
+        self._subproofs[proof_id] = self.fetch_subproof_data(proof_id, force_reread=True)
+
     def add_subproof(self, proof: Proof) -> None:
         self._subproofs[proof.id] = proof
 
@@ -125,6 +138,18 @@ class Proof(ABC):
 
         if self.proof_dir is not None and (force_reread or not self._subproofs[proof_id].up_to_date):
             updated_subproof = Proof.read_proof(proof_id, self.proof_dir)
+            self._subproofs[proof_id] = updated_subproof
+            return updated_subproof
+        else:
+            return self._subproofs[proof_id]
+
+    def fetch_subproof_data(
+        self, proof_id: str, force_reread: bool = False, uptodate_check_method: str = 'timestamp'
+    ) -> Proof:
+        """Get a subproof, re-reading from disk if it's not up-to-date"""
+
+        if self.proof_dir is not None and (force_reread or not self._subproofs[proof_id].up_to_date):
+            updated_subproof = Proof.read_proof_data(self.proof_dir, proof_id)
             self._subproofs[proof_id] = updated_subproof
             return updated_subproof
         else:
@@ -180,6 +205,28 @@ class Proof(ABC):
                 return locals()[proof_type].from_dict(proof_dict, proof_dir)
 
         raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
+
+    @staticmethod
+    def read_proof_data(proof_dir: Path, id: str) -> Proof:
+        # these local imports allow us to call .to_dict() based on the proof type we read from JSON
+        from .equality import EqualityProof, RefutationProof  # noqa
+        from .reachability import APRBMCProof, APRProof  # noqa
+
+        proof_path = proof_dir / id / 'proof.json'
+        if Proof.proof_data_exists(id, proof_dir):
+            proof_dict = json.loads(proof_path.read_text())
+            proof_type = proof_dict['type']
+            admitted = proof_dict.get('admitted', False)
+            _LOGGER.info(f'Reading {proof_type} from file {id}: {proof_path}')
+            if proof_type in Proof._PROOF_TYPES:
+                return locals()[proof_type].read_proof_data(proof_dir, id)
+
+        raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
+
+    @abstractmethod
+    def write_proof_data(self) -> None:
+        for sp in self.subproofs:
+            sp.write_proof_data()
 
     @property
     def json(self) -> str:

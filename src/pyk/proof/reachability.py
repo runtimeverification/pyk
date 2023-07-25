@@ -303,6 +303,8 @@ class APRProof(Proof):
         )
 
     def write_proof_data(self) -> None:
+        print('in APRProof.write_proof_data')
+        print(self.id)
         if self.proof_dir is None or self.proof_subdir is None:
             _LOGGER.info(f'Skipped saving proof {self.id} since no save dir was specified.')
             return
@@ -399,6 +401,8 @@ class APRBMCProof(APRProof):
         )
 
     def write_proof_data(self) -> None:
+        print('in APRBMCProof.write_proof_data')
+        print(self.id)
         if self.proof_dir is None or self.proof_subdir is None:
             _LOGGER.info(f'Skipped saving proof {self.id} since no save dir was specified.')
             return
@@ -410,7 +414,7 @@ class APRBMCProof(APRProof):
         dct['id'] = self.id
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
-        dct['type'] = 'APRProof'
+        dct['type'] = 'APRBMCProof'
         dct['init'] = self.kcfg._resolve(self.init)
         dct['target'] = self.kcfg._resolve(self.target)
         dct['node_refutations'] = {
@@ -561,9 +565,7 @@ class APRProver(Prover):
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
         subproofs: list[Proof] = (
-            [Proof.read_proof(i, proof_dir=proof.proof_dir) for i in proof.subproof_ids]
-            if proof.proof_dir is not None
-            else []
+            [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids] if proof.proof_dir is not None else []
         )
 
         apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
@@ -695,17 +697,18 @@ class APRProver(Prover):
         if refutation is None:
             _LOGGER.error(f'Failed to refute node {node.id}')
             return None
-        refutation.write_proof()
+        refutation.write_proof_data()
 
         self.proof.node_refutations[node.id] = refutation
 
-        self.proof.write_proof()
+        self.proof.write_proof_data()
 
         return refutation
 
     def unrefute_node(self, node: KCFG.Node) -> None:
         self.proof.remove_subproof(self.proof.get_refutation_id(node.id))
         del self.proof.node_refutations[node.id]
+        self.proof.write_proof_data()
         _LOGGER.info(f'Disabled refutation of node {node.id}.')
 
     def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:  # TODO put into prover class

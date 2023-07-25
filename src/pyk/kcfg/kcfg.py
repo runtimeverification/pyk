@@ -456,6 +456,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
 
         node = self._nodes.pop(node_id)
+        self._created_nodes.discard(node_id)
         self._deleted_nodes.add(node.id)
 
         self._edges.pop(node_id, None)
@@ -903,7 +904,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         cfg_json.write_text(json.dumps(dct))
 
         for node_id in self._deleted_nodes:
-            self._created_nodes.remove(node_id)
             self._delete_node_data(node_id)
         for node_id in self._created_nodes:
             node = self.get_node(node_id)

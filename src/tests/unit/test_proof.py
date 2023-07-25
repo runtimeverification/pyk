@@ -167,11 +167,11 @@ def test_apr_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
     proof = apr_proof(1, proof_dir)
 
     # When
-    eq_proof.write_proof()
-    proof.read_subproof(eq_proof.id)
-    proof.write_proof()
+    eq_proof.write_proof_data()
+    proof.read_subproof_data(eq_proof.id)
+    proof.write_proof_data()
     assert proof.proof_dir
-    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof_data(proof_dir, proof.id)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -184,13 +184,13 @@ def test_apr_proof_from_dict_nested_subproofs(proof_dir: Path) -> None:
     proof = apr_proof(1, proof_dir)
 
     # When
-    eq_proof.write_proof()
-    subproof.read_subproof(eq_proof.id)
-    subproof.write_proof()
-    proof.read_subproof(subproof.id)
-    proof.write_proof()
+    eq_proof.write_proof_data()
+    subproof.read_subproof_data(eq_proof.id)
+    subproof.write_proof_data()
+    proof.read_subproof_data(subproof.id)
+    proof.write_proof_data()
     assert proof.proof_dir
-    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof_data(proof.proof_dir, proof.id)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -204,15 +204,15 @@ def test_apr_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None:
     proof = apr_proof(1, proof_dir)
 
     # When
-    sub_proof_1.write_proof()
-    sub_proof_2.write_proof()
-    sub_proof_3.write_proof()
-    proof.read_subproof(sub_proof_1.id)
-    proof.read_subproof(sub_proof_2.id)
-    proof.read_subproof(sub_proof_3.id)
-    proof.write_proof()
+    sub_proof_1.write_proof_data()
+    sub_proof_2.write_proof_data()
+    sub_proof_3.write_proof_data()
+    proof.read_subproof_data(sub_proof_1.id)
+    proof.read_subproof_data(sub_proof_2.id)
+    proof.read_subproof_data(sub_proof_3.id)
+    proof.write_proof_data()
     assert proof.proof_dir
-    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof_data(proof.proof_dir, proof.id)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -240,11 +240,11 @@ def test_aprbmc_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
     proof = aprbmc_proof(1, proof_dir)
 
     # When
-    eq_proof.write_proof()
-    proof.read_subproof(eq_proof.id)
-    proof.write_proof()
+    eq_proof.write_proof_data()
+    proof.read_subproof_data(eq_proof.id)
+    proof.write_proof_data()
     assert proof.proof_dir
-    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof_data(proof.proof_dir, proof.id)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -257,13 +257,13 @@ def test_aprbmc_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None
     proof = aprbmc_proof(1, proof_dir)
 
     # When
-    eq_proof.write_proof()
-    subproof.read_subproof(eq_proof.id)
-    subproof.write_proof()
-    proof.read_subproof(subproof.id)
-    proof.write_proof()
+    eq_proof.write_proof_data()
+    subproof.read_subproof_data(eq_proof.id)
+    subproof.write_proof_data()
+    proof.read_subproof_data(subproof.id)
+    proof.write_proof_data()
     assert proof.proof_dir
-    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof_data(proof.proof_dir, proof.id)
 
     # Then
     assert proof.dict == proof_from_disk.dict
@@ -360,13 +360,13 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
     proof = apr_proof(1, proof_dir)
 
     # When
-    eq_proof.write_proof()
-    subproof.read_subproof(eq_proof.id)
-    subproof.write_proof()
-    proof.read_subproof(subproof.id)
-    proof.write_proof()
+    eq_proof.write_proof_data()
+    subproof.read_subproof_data(eq_proof.id)
+    subproof.write_proof_data()
+    proof.read_subproof_data(subproof.id)
+    proof.write_proof_data()
     assert proof.proof_dir
-    proof_from_disk = Proof.read_proof(proof.id, proof_dir=proof.proof_dir)
+    proof_from_disk = Proof.read_proof_data(proof.proof_dir, proof.id)
 
     # Then
     comp_summary = proof_from_disk.summary
