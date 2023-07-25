@@ -55,7 +55,6 @@ class ImpliesProof(Proof):
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
             _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
-            print(proof_path)
 
 
 class EqualityProof(ImpliesProof):
