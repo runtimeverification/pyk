@@ -568,12 +568,29 @@ def remove_constraints_for(var_names: Collection[str], constrained_term: KInner)
     return mlAnd([state, constraint])
 
 
+def get_sort(k: KInner) -> KSort | None:
+    if type(k) is KToken:
+        return k.sort
+    if type(k) is KVariable and k.sort is not None:
+        return k.sort
+    if type(k) is KRewrite:
+        lhs_sort = get_sort(k.lhs)
+        rhs_sort = get_sort(k.rhs)
+        if lhs_sort != rhs_sort:
+            return None
+        return lhs_sort
+    return None
+
+
 def abstract_term_safely(
     kast: KInner, base_name: str = 'V', sort: KSort | None = None, existing_var_names: set[str] | None = None
 ) -> KVariable:
     def _abstract(k: KInner) -> KVariable:
+        _sort = sort
+        if sort == None:
+            _sort = get_sort(k)
         vname = hash_str(k)[0:8]
-        return KVariable(base_name + '_' + vname, sort=sort)
+        return KVariable(base_name + '_' + vname, sort=_sort)
 
     new_var = _abstract(kast)
     if existing_var_names is not None:
