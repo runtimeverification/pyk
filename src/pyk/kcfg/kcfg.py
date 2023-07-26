@@ -673,6 +673,31 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         split = KCFG.Split(self.node(source_id), tuple((self.node(nid), csubst) for nid, csubst in splits))
         self._splits[source_id] = split
 
+    def create_merge(self, node_ids: Iterable[NodeIdLike]) -> NodeIdLike:
+        node_ids = list(node_ids)
+        if len(node_ids) < 2:
+            raise ValueError(f'Cannot create merge node with less than 2 input nodes: {node_ids}')
+        cterms = [self.node(nid).cterm for nid in node_ids]
+        new_cterm = cterms[0]
+        for cterm in cterms[1:]:
+            new_cterm, _, _ = new_cterm.anti_unify(cterm)
+        new_node = self.create_node(new_cterm)
+        for nid in node_ids:
+            self.create_cover(nid, new_node.id)
+        return new_node.id
+
+    def pullback_covers(self, target_id: NodeIdLike) -> tuple[list[NodeIdLike], NodeIdLike] | None:
+        covers = self.covers(target_id=target_id)
+        source_ids: list[NodeIdLike] = [cover.source.id for cover in covers]
+        if len(source_ids) < 2:
+            return None
+        merge_id = self.create_merge(source_ids)
+        for cover in covers:
+            self.remove_cover(cover.source.id, target_id)
+            self.create_cover(cover.source.id, merge_id)
+        self.create_cover(merge_id, target_id)
+        return source_ids, merge_id
+
     def ndbranches(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[NDBranch]:
         source_id = self._resolve(source_id) if source_id is not None else None
         target_id = self._resolve(target_id) if target_id is not None else None

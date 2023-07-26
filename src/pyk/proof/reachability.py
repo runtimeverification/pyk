@@ -275,6 +275,14 @@ class APRProof(Proof):
     def get_refutation_id(self, node_id: int) -> str:
         return f'{self.id}.node-infeasible-{node_id}'
 
+    def specialize_target_node(self) -> None:
+        pullback = self.kcfg.pullback_covers(self.target)
+        if pullback is None:
+            _LOGGER.warning(f'Could not make a cover pullback for target node: {self.target}')
+        else:
+            merge_id, source_ids = pullback
+            _LOGGER.info(f'Created specialized target subsumed node {self.id}: {pullback}')
+
     @staticmethod
     def read_proof_data(proof_dir: Path, id: str) -> APRProof:
         proof_subdir = proof_dir / id
