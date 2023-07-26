@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.cterm import CTerm, build_claim, build_rule
+from pyk.cterm import CSubst, CTerm, build_claim, build_rule
 from pyk.kast import KAtt
-from pyk.kast.inner import KApply, KLabel, KRewrite, KSequence, KVariable
+from pyk.kast.inner import KApply, KLabel, KRewrite, KSequence, KToken, KVariable, Subst
 from pyk.kast.outer import KClaim
 from pyk.prelude.k import GENERATED_TOP_CELL
-from pyk.prelude.kint import INT, intToken
+from pyk.prelude.kint import INT
 from pyk.prelude.ml import mlAnd, mlEqualsTrue
+from pyk.prelude.utils import token
 
 from .utils import a, b, c, f, g, h, k, x, y, z
 
@@ -106,7 +107,7 @@ def test_build_rule(lhs: KInner, rhs: KInner, keep_vars: list[str], expected: KI
 
 
 def constraint(v: KVariable) -> KInner:
-    return KApply('_<=Int_', intToken(0), v)
+    return KApply('_<=Int_', token(0), v)
 
 
 # (<k> V1 </k> #And { true #Equals 0 <=Int V2}) => <k> V2 </k>      expected: <k> _V1 => V2 </k> requires 0 <=Int V2
@@ -155,4 +156,89 @@ def test_build_claim(test_id: str, init: KInner, target: KInner, expected: KClai
     actual, _ = build_claim('claim', init_cterm, target_cterm)
 
     # Then
+    assert actual == expected
+
+
+ANTI_UNIFY_TEST_DATA: list[tuple[str, CTerm, CTerm, tuple[CTerm, CSubst, CSubst] | None]] = [
+    (
+        'empty-subst',
+        CTerm(
+            KApply(
+                '<generatedTop>',
+                [
+                    KApply('<k>', KToken('1', 'Int')),
+                ],
+            ),
+            [],
+        ),
+        CTerm(
+            KApply(
+                '<generatedTop>',
+                [
+                    KApply('<k>', KToken('1', 'Int')),
+                ],
+            ),
+            [],
+        ),
+        (
+            CTerm(
+                KApply(
+                    '<generatedTop>',
+                    [
+                        KApply('<k>', [KToken('1', 'Int')]),
+                    ],
+                ),
+                [],
+            ),
+            CSubst(Subst({}), []),
+            CSubst(Subst({}), []),
+        ),
+    ),
+    (
+        'same-constraints',
+        CTerm(
+            KApply(
+                '<generatedTop>',
+                [
+                    KApply('<k>', KToken('1', 'Int')),
+                    KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
+                ],
+            ),
+            [mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')]))],
+        ),
+        CTerm(
+            KApply(
+                '<generatedTop>',
+                [
+                    KApply('<k>', KToken('2', 'Int')),
+                    KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
+                ],
+            ),
+            [mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')]))],
+        ),
+        (
+            CTerm(
+                KApply(
+                    '<generatedTop>',
+                    [
+                        KApply('<k>', [KVariable('V_93d8c352')]),
+                        KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
+                    ],
+                ),
+                [],
+            ),
+            CSubst(Subst({'V_93d8c352': token(1), 'GENERATEDCOUNTER_CELL': KVariable('GENERATEDCOUNTER_CELL')}), []),
+            CSubst(Subst({'V_93d8c352': token(2), 'GENERATEDCOUNTER_CELL': KVariable('GENERATEDCOUNTER_CELL')}), []),
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    'test_id,cterm1,cterm2,expected',
+    ANTI_UNIFY_TEST_DATA,
+    ids=[test_id for test_id, *_ in ANTI_UNIFY_TEST_DATA],
+)
+def test_anti_unify(test_id: str, cterm1: CTerm, cterm2: CTerm, expected: tuple[CTerm, CSubst, CSubst] | None) -> None:
+    actual = cterm1.anti_unify(cterm2)
     assert actual == expected
