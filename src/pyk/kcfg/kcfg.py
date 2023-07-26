@@ -626,6 +626,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             raise ValueError(f'Node is not stuck: {node_id}')
         self._stuck.remove(node_id)
 
+    def discard_stuck(self, node_id: NodeIdLike) -> None:
+        node_id = self._resolve(node_id)
+        self._stuck.discard(node_id)
+
     def splits(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[Split]:
         source_id = self._resolve(source_id) if source_id is not None else None
         target_id = self._resolve(target_id) if target_id is not None else None
