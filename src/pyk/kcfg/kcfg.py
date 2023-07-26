@@ -682,8 +682,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for cterm in cterms[1:]:
             new_cterm, _, _ = new_cterm.anti_unify(cterm)
         new_node = self.create_node(new_cterm)
-        for nid in node_ids:
-            self.create_cover(nid, new_node.id)
         return new_node.id
 
     def pullback_covers(self, target_id: NodeIdLike) -> tuple[list[NodeIdLike], NodeIdLike] | None:
