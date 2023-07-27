@@ -36,7 +36,7 @@ module SIMPLE-PROOFS
          <k> foo ~> foo ~> foo => baz ~> foo ~> foo ...</k> [owise]
 
     syntax KItem ::= Step
-    syntax Step ::= "a" | "b" | "c" | "d" | "e"
+    syntax Step ::= "a" | "b" | "c" | "d" | "e" | "x" | "y"
 
     rule [a.b]: <k> a => b ... </k>
     rule [b.c]: <k> b => c ... </k>
@@ -47,6 +47,6 @@ module SIMPLE-PROOFS
     syntax KItem ::= "mybytes" [symbol, klabel(mybytes), function, total]
     rule mybytes => b"\x00\x90\xa0\n\xa1\xf1\x61"
 
-    rule [ensures-false]: <k> a => b ... </k> ensures false
+    rule [ensures-false]: <k> x => y ... </k> ensures false
 
 endmodule

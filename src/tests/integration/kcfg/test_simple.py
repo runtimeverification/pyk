@@ -7,6 +7,7 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable
 from pyk.kast.manip import get_cell
+from pyk.kore.rpc import StopReason
 from pyk.prelude.ml import mlEqualsTrue, mlTop
 from pyk.testing import KCFGExploreTest
 
@@ -32,7 +33,7 @@ EXECUTE_TEST_DATA: Iterable[tuple[str, int, STATE, int, STATE, list[STATE]]] = (
         ('foo', '3 |-> M:Int'),
         [],
     ),
-    ('reachable', 1, ('a', '.Map'), 1, ('b', '.Map'), [])
+    ('vacuous', 1, ('x', '.Map'), 0, ('x', '.Map'), []),
 )
 
 SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90\xa0\n\xa1\xf1a"', '.Map')),)
@@ -73,7 +74,7 @@ class TestSimpleProof(KCFGExploreTest):
         pre: tuple[str, str],
         expected_depth: int,
         expected_post: tuple[str, str],
-        expected_next_states: Iterable[tuple[str, str]],
+        expected_next_states: Iterable[tuple[str, str]]
     ) -> None:
         # Given
         expected_k, expected_state, *_ = expected_post
@@ -97,6 +98,7 @@ class TestSimpleProof(KCFGExploreTest):
         assert actual_state == expected_state
         assert actual_depth == expected_depth
         assert set(actual_next_states) == set(expected_next_states)
+        # TODO check for the `ExecuteResult` in the logs returned from the cterm_execute and make sure that it was marked as vacuous
 
     @pytest.mark.parametrize(
         'test_id,pre,expected_post',
