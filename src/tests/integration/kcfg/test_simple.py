@@ -32,6 +32,7 @@ EXECUTE_TEST_DATA: Iterable[tuple[str, int, STATE, int, STATE, list[STATE]]] = (
         ('foo', '3 |-> M:Int'),
         [],
     ),
+    ('reachable', 1, ('a', '.Map'), 1, ('b', '.Map'), [])
 )
 
 SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90\xa0\n\xa1\xf1a"', '.Map')),)
