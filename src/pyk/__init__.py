@@ -5,5 +5,4 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Final
 
-
 K_VERSION: Final = '6.0.33'
