@@ -11,6 +11,7 @@ from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import minimize_term, ml_pred_to_bool
 from pyk.kcfg.explore import SubsumptionCheckResult
 from pyk.kcfg.kcfg import KCFG
+from pyk.kcfg.semantics import KCFGSemantics
 from pyk.kcfg.show import KCFGShow
 from pyk.prelude.kbool import BOOL, notBool
 from pyk.prelude.kint import intToken
@@ -36,6 +37,50 @@ if TYPE_CHECKING:
     from pyk.ktool.kprove import KProve
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class ImpSemantics(KCFGSemantics):
+    definition: KDefinition | None
+
+    def __init__(self, definition: KDefinition | None = None):
+        super().__init__()
+        self.definition = definition
+
+    def is_terminal(self, c: CTerm) -> bool:
+        k_cell = c.cell('K_CELL')
+        if type(k_cell) is KSequence:
+            if len(k_cell) == 0:
+                return True
+            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
+                return True
+        if type(k_cell) is KVariable:
+            return True
+        return False
+
+    def extract_branches(self, c: CTerm) -> list[KInner]:
+        if self.definition is None:
+            raise ValueError('IMP branch extraction requires a non-None definition')
+
+        k_cell = c.cell('K_CELL')
+        if type(k_cell) is KSequence and len(k_cell) > 0:
+            k_cell = k_cell[0]
+        if type(k_cell) is KApply and k_cell.label.name == 'if(_)_else_':
+            condition = k_cell.args[0]
+            if (type(condition) is KVariable and condition.sort == BOOL) or (
+                type(condition) is KApply and self.definition.return_sort(condition.label) == BOOL
+            ):
+                return [mlEqualsTrue(condition), mlEqualsTrue(notBool(condition))]
+        return []
+
+    def abstract_node(self, c: CTerm) -> CTerm:
+        return c
+
+    def same_loop(self, c1: CTerm, c2: CTerm) -> bool:
+        k_cell_1 = c1.cell('K_CELL')
+        k_cell_2 = c2.cell('K_CELL')
+        if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
+            return k_cell_1[0].label.name == 'while(_)_'
+        return False
 
 
 PROVE_CTERM_TEST_DATA: Final = (
@@ -620,7 +665,7 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         'failing-if',
         0,
         1,
-        (mlTop(),),
+        (mlEqualsTrue(notBool(KVariable('_B', 'Bool'))),),
     ),
     (
         'fail-branch',
@@ -629,7 +674,7 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         'fail-branch',
         0,
         1,
-        (mlEqualsFalse(KApply('_<=Int_', [KVariable('_S', 'Int'), KToken('123', '')])),),
+        (mlEqualsTrue(notBool(KApply('_<=Int_', [KVariable('_S', 'Int'), KToken('123', '')]))),),
     ),
 )
 
@@ -745,44 +790,13 @@ def leaf_number(proof: APRProof) -> int:
 class TestImpProof(KCFGExploreTest):
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
 
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        return ImpSemantics(definition)
+
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
 
-    @staticmethod
-    def _is_terminal(cterm1: CTerm) -> bool:
-        k_cell = cterm1.cell('K_CELL')
-        if type(k_cell) is KSequence:
-            if len(k_cell) == 0:
-                return True
-            if len(k_cell) == 1 and type(k_cell[0]) is KVariable:
-                return True
-        if type(k_cell) is KVariable:
-            return True
-        return False
-
-    @staticmethod
-    def _extract_branches(defn: KDefinition, cterm: CTerm) -> list[KInner]:
-        k_cell = cterm.cell('K_CELL')
-        if type(k_cell) is KSequence and len(k_cell) > 0:
-            k_cell = k_cell[0]
-        if type(k_cell) is KApply and k_cell.label.name == 'if(_)_else_':
-            condition = k_cell.args[0]
-            if (type(condition) is KVariable and condition.sort == BOOL) or (
-                type(condition) is KApply and defn.return_sort(condition.label) == BOOL
-            ):
-                return [mlEqualsTrue(condition), mlEqualsTrue(notBool(condition))]
-        return []
-
-    @staticmethod
-    def _same_loop(cterm1: CTerm, cterm2: CTerm) -> bool:
-        k_cell_1 = cterm1.cell('K_CELL')
-        k_cell_2 = cterm2.cell('K_CELL')
-        if k_cell_1 == k_cell_2 and type(k_cell_1) is KSequence and type(k_cell_1[0]) is KApply:
-            return k_cell_1[0].label.name == 'while(_)_'
-        return False
-
-    # Names of IMP configuration cells
     @staticmethod
     def _cell_names() -> Iterable[str]:
         return ['K_CELL', 'STATE_CELL']
@@ -992,15 +1006,9 @@ class TestImpProof(KCFGExploreTest):
             prover = APRProver(
                 proof,
                 kcfg_explore=kcfg_explore,
-                is_terminal=TestImpProof._is_terminal,
-                extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
             )
 
-            prover.advance_proof(
-                max_iterations=max_iterations,
-                execute_depth=max_depth,
-                cut_point_rules=cut_rules,
-            )
+            prover.advance_proof(max_iterations=max_iterations, execute_depth=max_depth, cut_point_rules=cut_rules)
 
             kcfg_show = KCFGShow(
                 kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
@@ -1042,19 +1050,17 @@ class TestImpProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
-            is_terminal=TestImpProof._is_terminal,
-            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
         )
 
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
+            cut_point_rules=cut_rules,
         )
 
-        assert len(proof.terminal) == 1
-        path_constraint = proof.path_constraints(proof.terminal[0].id)
+        assert len(proof.failing) == 1
+        path_constraint = proof.path_constraints(proof.failing[0].id)
         actual_constraint = kcfg_explore.kprint.pretty_print(path_constraint).replace('\n', ' ')
         assert actual_constraint == expected_constraint
 
@@ -1085,17 +1091,16 @@ class TestImpProof(KCFGExploreTest):
 
         proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
         kcfg_explore.simplify(proof.kcfg, {})
+
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
-            same_loop=TestImpProof._same_loop,
-            is_terminal=TestImpProof._is_terminal,
         )
         prover.advance_proof(
             max_iterations=max_iterations,
             execute_depth=max_depth,
-            cut_point_rules=cut_rules,
             terminal_rules=terminal_rules,
+            cut_point_rules=cut_rules,
         )
 
         kcfg_show = KCFGShow(
@@ -1133,7 +1138,6 @@ class TestImpProof(KCFGExploreTest):
         prover = APRProver(
             proof,
             kcfg_explore=kcfg_explore,
-            is_terminal=TestImpProof._is_terminal,
         )
         prover.advance_proof()
 
@@ -1180,12 +1184,7 @@ class TestImpProof(KCFGExploreTest):
         _ = kcfg_2.create_node(configuration_2)
 
         proof = EquivalenceProof('eq_1', kcfg_1, {}, 'eq_2', kcfg_2, {})
-        prover = EquivalenceProver(
-            kcfg_explore,
-            proof,
-            is_terminal=TestImpProof._is_terminal,
-            extract_branches=lambda cterm: TestImpProof._extract_branches(kprove.definition, cterm),
-        )
+        prover = EquivalenceProver(kcfg_explore, proof)
 
         prover.advance_proof(
             max_iterations=10,
@@ -1194,11 +1193,11 @@ class TestImpProof(KCFGExploreTest):
             terminal_rules=terminal_rules,
         )
 
-        print(f'Status of proof 1: {prover.prover_1.proof.status.value}')
-        print(f'Status of proof 2: {prover.prover_2.proof.status.value}\n')
+        _LOGGER.info(f'Status of proof 1: {prover.prover_1.proof.status.value}')
+        _LOGGER.info(f'Status of proof 2: {prover.prover_2.proof.status.value}\n')
 
-        terminal_nodes_1 = [kcfg_1.node(id) for id in prover.prover_1.proof._terminal_nodes]
-        terminal_nodes_2 = [kcfg_2.node(id) for id in prover.prover_2.proof._terminal_nodes]
+        terminal_nodes_1 = [kcfg_1.node(id) for id in prover.prover_1.proof._terminal_node_ids]
+        terminal_nodes_2 = [kcfg_2.node(id) for id in prover.prover_2.proof._terminal_node_ids]
 
         terminal_nodes_print_1 = [
             (
@@ -1218,10 +1217,10 @@ class TestImpProof(KCFGExploreTest):
             for s in terminal_nodes_2
         ]
 
-        print('Final states of program 1:')
-        print(f'{terminal_nodes_print_1}\n')
-        print('Final states of program 2:')
-        print(f'{terminal_nodes_print_2}\n')
+        _LOGGER.info('Final states of program 1:')
+        _LOGGER.info(f'{terminal_nodes_print_1}\n')
+        _LOGGER.info('Final states of program 2:')
+        _LOGGER.info(f'{terminal_nodes_print_2}\n')
 
         comparator = TestImpProof.comparators[config_comparator]
         expected_fne, expected_pc_terminal, expected_pc_frontier = expected_outcome
@@ -1233,11 +1232,9 @@ class TestImpProof(KCFGExploreTest):
         #
         # Correctness check
         #
-        assert (
-            (computed_fne == expected_fne)
-            and (computed_pc_terminal == expected_pc_terminal)
-            and (computed_pc_frontier == expected_pc_frontier)
-        )
+        assert computed_fne == expected_fne
+        assert computed_pc_terminal == expected_pc_terminal
+        assert computed_pc_frontier == expected_pc_frontier
 
         # # Regardless of the proof statuses, equivalence of any final nodes has to hold
         # assert (computed_fne == expected_fne)
@@ -1249,20 +1246,20 @@ class TestImpProof(KCFGExploreTest):
         # if status_1 == ProofStatus.COMPLETED:
         #     if status_2 == ProofStatus.COMPLETED:
         #         # Both proofs have been completed
-        #         print('Both proofs have been completed.')
+        #         _LOGGER.info('Both proofs have been completed.')
         #         assert (
         #             pc_stuck == SubsumptionCheckResult.EQUIVALENT and pc_frontier == SubsumptionCheckResult.EQUIVALENT
         #         )
         #     elif status_2 == ProofStatus.PENDING:
         #         # Only second proof has not been completed
-        #         print('Only second proof has not been completed.')
+        #         _LOGGER.info('Only second proof has not been completed.')
         #         assert (
         #             pc_stuck == SubsumptionCheckResult.FIRST_SUBSUMES
         #             and pc_frontier == SubsumptionCheckResult.SECOND_SUBSUMES
         #         )
         # elif status_2 == ProofStatus.COMPLETED:
         #     # Only first proof has not been completed
-        #     print('Only first proof has not been completed.')
+        #     _LOGGER.info('Only first proof has not been completed.')
         #     assert (
         #         pc_stuck == SubsumptionCheckResult.SECOND_SUBSUMES
         #         and pc_frontier == SubsumptionCheckResult.FIRST_SUBSUMES
@@ -1271,5 +1268,5 @@ class TestImpProof(KCFGExploreTest):
         #     # Neither proof has been completed
         #     # The following check means the two proofs are done in lock-step,
         #     # but this need not be the case in general
-        #     print('Neither proof has been completed.')
+        #     _LOGGER.info('Neither proof has been completed.')
         #     assert pc_stuck == SubsumptionCheckResult.EQUIVALENT and pc_frontier == SubsumptionCheckResult.EQUIVALENT
