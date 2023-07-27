@@ -378,11 +378,11 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         neg_implication = bool_to_ml_pred(andBool([antecedent, notBool(consequent)]))
 
         dummy_config = self.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-        # config_top = CTerm(config=dummy_config, constraints=[mlTop(GENERATED_TOP_CELL)])
+        config_top = CTerm(config=dummy_config, constraints=[mlTop(GENERATED_TOP_CELL)])
         config_neg_implication = CTerm(config=dummy_config, constraints=[neg_implication])
 
-        # result = self.cterm_implies(config_top, config_neg_implication) == None
-        result = self.cterm_get_model(config_neg_implication) == None
+        result = self.cterm_implies(config_top, config_neg_implication) == None
+        # result = self.cterm_get_model(config_neg_implication) == None
 
         _LOGGER.debug('check_implication summary:')
         _LOGGER.debug(f'\tAntecedent: {self.kprint.pretty_print(antecedent)}')
