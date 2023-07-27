@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING
@@ -14,9 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    from pyk.kast.outer import KClaim
     from pyk.kcfg.explore import KCFGExplore
-    from pyk.ktool.kprint import KPrint
 
     T = TypeVar('T', bound='Proof')
 
@@ -24,17 +23,16 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class ProofStatus(Enum):
-    PASSED = 'passed'
-    FAILED = 'failed'
-    PENDING = 'pending'
     COMPLETED = 'completed'
+    FAILED = 'failed'
+    PASSED = 'passed'
+    PENDING = 'pending'
 
 
 class Proof(ABC):
     _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof', 'RefutationProof'}
 
     id: str
-    has_target: bool
     proof_dir: Path | None
     _subproofs: dict[str, Proof]
     admitted: bool
@@ -179,13 +177,46 @@ class Proof(ABC):
         return json.dumps(self.dict)
 
     @property
-    def summary(self) -> Iterable[str]:
-        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
-        return chain([f'Proof: {self.id}', f'    status: {self.status}'], *subproofs_summaries)
+    def summary(self) -> ProofSummary:
+        @dataclass
+        class BaseSummary(ProofSummary):
+            id: str
+            status: ProofStatus
 
+            @property
+            def lines(self) -> list[str]:
+                return [f'Proof: {self.id}', f'    status: {self.status}']
+
+        subproofs_summaries = [subproof.summary for subproof in self.subproofs]
+        return CompositeSummary([BaseSummary(self.id, self.status), *subproofs_summaries])
+
+
+class ProofSummary(ABC):
+    id: str
+    status: ProofStatus
+
+    @property
     @abstractmethod
-    def as_claim(self, kprint: KPrint) -> KClaim | None:
+    def lines(self) -> list[str]:
         ...
+
+    def __str__(self) -> str:
+        return '\n'.join(self.lines)
+
+
+@dataclass
+class CompositeSummary(ProofSummary):
+    summaries: tuple[ProofSummary, ...]
+
+    def __init__(self, _summaries: Iterable[ProofSummary]):
+        self.summaries = tuple(chain(_summaries))
+
+    def __str__(self) -> str:
+        return '\n'.join(str(summary) for summary in self.summaries)
+
+    @property
+    def lines(self) -> list[str]:
+        return [line for lines in (summary.lines for summary in self.summaries) for line in lines]
 
 
 class Prover:

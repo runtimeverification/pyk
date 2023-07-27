@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from threading import RLock
 from typing import TYPE_CHECKING, List, Union, cast, final
 
+from pyk.prelude.ml import mlOr
+
 from ..cterm import CSubst, CTerm, build_claim, build_rule
 from ..kast.inner import KApply
 from ..kast.kast import EMPTY_ATT
@@ -22,7 +24,6 @@ from ..kast.manip import (
     sort_ac_collections,
 )
 from ..kast.outer import KFlatModule
-from ..prelude.ml import mlOr
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -32,7 +33,6 @@ if TYPE_CHECKING:
     from ..kast import KAtt
     from ..kast.inner import KInner
     from ..kast.outer import KClaim, KDefinition, KImport, KRuleLike
-
 
 NodeIdLike = int | str
 
@@ -255,7 +255,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     @property
     def stuck(self) -> list[Node]:
-        return [node for node in self.nodes if self.is_stuck(node.id)]
+        return [node for node in self.nodes if node.id in self._stuck]
 
     @property
     def leaves(self) -> list[Node]:
@@ -621,8 +621,17 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         )
 
     def add_stuck(self, node_id: NodeIdLike) -> None:
+        self._stuck.add(self._resolve(node_id))
+
+    def remove_stuck(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
-        self._stuck.add(node_id)
+        if node_id not in self._stuck:
+            raise ValueError(f'Node is not stuck: {node_id}')
+        self._stuck.remove(node_id)
+
+    def discard_stuck(self, node_id: NodeIdLike) -> None:
+        node_id = self._resolve(node_id)
+        self._stuck.discard(node_id)
 
     def splits(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[Split]:
         source_id = self._resolve(source_id) if source_id is not None else None
@@ -689,20 +698,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         self._aliases[alias] = node_id
 
-    def remove_stuck(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        if node_id not in self._stuck:
-            raise ValueError(f'Node is not stuck: {node_id}')
-        self._stuck.remove(node_id)
-
     def remove_alias(self, alias: str) -> None:
         if alias not in self._aliases:
             raise ValueError(f'Alias does not exist: {alias}')
         self._aliases.pop(alias)
-
-    def discard_stuck(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._stuck.discard(node_id)
 
     def is_root(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
