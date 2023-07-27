@@ -113,8 +113,7 @@ class KAtt(KAst, Mapping[str, Any]):
     @classmethod
     def from_dict(cls: type[KAtt], d: Mapping[str, Any]) -> KAtt:
         cls._check_node(d)
-        return EMPTY_ATT
-        # return KAtt(atts=d['att'])
+        return KAtt(atts=d['att'])
 
     def to_dict(self) -> dict[str, Any]:
         def _to_dict(m: Any) -> Any:
