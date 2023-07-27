@@ -10,7 +10,7 @@ from pyk.kore.rpc import LogEntry
 from ..kast.manip import flatten_label
 from ..kcfg import KCFG
 from ..prelude.ml import mlAnd, mlTop
-from ..utils import hash_str, shorten_hashes
+from ..utils import ensure_dir_path, hash_str, shorten_hashes
 from .equality import ProofSummary
 from .proof import CompositeSummary, Proof, ProofStatus, Prover
 
@@ -174,8 +174,47 @@ class ExplorationProof(Proof):
             ]
         )
 
-    def get_refutation_id(self, node_id: int) -> str:
-        return f'{self.id}.node-infeasible-{node_id}'
+    @staticmethod
+    def read_proof_data(proof_dir: Path, id: str) -> ExplorationProof:
+        proof_subdir = proof_dir / id
+        proof_json = proof_subdir / 'proof.json'
+        proof_dict = json.loads(proof_json.read_text())
+        cfg_dir = proof_subdir / 'kcfg'
+        kcfg = KCFG.read_cfg_data(cfg_dir, id)
+        init = int(proof_dict['init'])
+        terminal_node_ids = proof_dict['terminal_node_ids']
+        logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
+
+        return ExplorationProof(
+            id=id,
+            kcfg=kcfg,
+            init=init,
+            logs=logs,
+            terminal_node_ids=terminal_node_ids,
+            proof_dir=proof_dir,
+        )
+
+    def write_proof_data(self) -> None:
+        if self.proof_dir is None or self.proof_subdir is None:
+            _LOGGER.info(f'Skipped saving proof {self.id} since no save dir was specified.')
+            return
+        ensure_dir_path(self.proof_dir)
+        ensure_dir_path(self.proof_subdir)
+        proof_json = self.proof_subdir / 'proof.json'
+        dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
+
+        dct['id'] = self.id
+        dct['subproof_ids'] = self.subproof_ids
+        dct['admitted'] = self.admitted
+        dct['type'] = 'APRProof'
+        dct['init'] = self.kcfg._resolve(self.init)
+        dct['terminal_node_ids'] = sorted(self._terminal_node_ids)
+        logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
+        dct['logs'] = logs
+
+        proof_json.write_text(json.dumps(dct))
+
+        self.kcfg.write_cfg_data()
 
 
 class ExplorationProver(Prover):
@@ -252,7 +291,7 @@ class ExplorationProver(Prover):
         iterations = 0
 
         while self.proof._pending_node_ids:
-            self.proof.write_proof()
+            self.proof.write_proof_data()
 
             if max_iterations is not None and max_iterations <= iterations:
                 _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
@@ -271,7 +310,7 @@ class ExplorationProver(Prover):
             )
             self.update()
 
-        self.proof.write_proof()
+        self.proof.write_proof_data()
         return self.proof.kcfg
 
 

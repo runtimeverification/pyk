@@ -271,7 +271,7 @@ Ids
 DCOLONEQ
 ::=
 
-KW_LIST
+ID_UPPER
 List
 
 LBRACE
@@ -314,4 +314,3 @@ RBRACK
 ]
 
 EOF
-
