@@ -250,8 +250,6 @@ class KPrint:
         return proc_res.stdout
 
     def kore_to_kast(self, kore: Pattern) -> KInner:
-        _LOGGER.debug(f'kore_to_kast: {kore.text}')
-
         try:
             _LOGGER.info('Invoking kore_to_kast')
             return kore_to_kast(self.definition, kore)
