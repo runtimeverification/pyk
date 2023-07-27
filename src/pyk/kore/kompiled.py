@@ -43,7 +43,9 @@ class KompiledKore:
     @cached_property
     def definition(self) -> Definition:
         _LOGGER.info(f'Loading kore definition: {self.path}')
-        return KoreParser(self.path.read_text()).definition()
+        kore_text = self.path.read_text()
+        _LOGGER.info(f'Parsing kore definition: {self.path}')
+        return KoreParser(kore_text).definition()
 
     @cached_property
     def _subsort_table(self) -> FrozenDict[Sort, frozenset[Sort]]:
