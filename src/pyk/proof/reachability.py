@@ -250,7 +250,7 @@ class APRProof(Proof):
         dct['cfg'] = self.kcfg.to_dict()
         dct['init'] = self.init
         dct['target'] = self.target
-        dct['terminal_nodes'] = self._terminal_nodes
+        dct['terminal_nodes'] = list(self._terminal_nodes)
         dct['node_refutations'] = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
         dct['circularity'] = self.circularity
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
@@ -501,7 +501,7 @@ class APRBMCProof(APRProof):
         dct = super().dict
         dct['type'] = 'APRBMCProof'
         dct['bmc_depth'] = self.bmc_depth
-        dct['bounded_nodes'] = self._bounded_nodes
+        dct['bounded_nodes'] = list(self._bounded_nodes)
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         dct['circularity'] = self.circularity
