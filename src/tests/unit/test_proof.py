@@ -122,24 +122,20 @@ class TestProof:
 
 
 def test_read_write_proof_data(proof_dir: Path) -> None:
-    proof = APRProof(
-        id='apr_proof_1',
-        kcfg=KCFG(),
-        init=0,
-        target=0,
-        logs={},
-        proof_dir=proof_dir,
-    )
-
     kcfg = KCFG(proof_dir / 'apr_proof_1' / 'kcfg')
     node1 = kcfg.create_node(term(1))
     node2 = kcfg.create_node(term(2))
     kcfg.create_node(term(3))
     kcfg.create_node(term(4))
 
-    proof.kcfg = kcfg
-    proof.init = node1.id
-    proof.target = node2.id
+    proof = APRProof(
+        id='apr_proof_1',
+        kcfg=kcfg,
+        init=node1.id,
+        target=node2.id,
+        logs={},
+        proof_dir=proof_dir,
+    )
 
     proof.write_proof_data()
 
