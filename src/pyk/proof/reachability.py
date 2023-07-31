@@ -609,20 +609,14 @@ class APRProver(Prover):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
-        fail_fast: bool = False,
-    ) -> bool:
+    ) -> None:
         if self._check_terminal(node):
-            subsumed = self._check_subsume(node)
-            if fail_fast and not subsumed:
-                _LOGGER.warning(
-                    f'Terminating proof early because fail_fast is set and a failing terminal node was reached: {node.id}'
-                )
-                return True
-            return False
+            _ = self._check_subsume(node)
+            return
 
         if implication_every_block:
             if self._check_subsume(node):
-                return False
+                return
 
         module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
         self.kcfg_explore.extend(
@@ -634,7 +628,6 @@ class APRProver(Prover):
             terminal_rules=terminal_rules,
             module_name=module_name,
         )
-        return False
 
     def advance_proof(
         self,
@@ -656,15 +649,21 @@ class APRProver(Prover):
             iterations += 1
             curr_node = self.proof.pending[0]
 
-            failed = self.advance_pending_node(
+            self.advance_pending_node(
                 node=curr_node,
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
                 implication_every_block=implication_every_block,
-                fail_fast=fail_fast,
             )
-            if failed:
+            if (
+                fail_fast
+                and self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm)
+                and (not self.proof.kcfg.is_covered(curr_node.id))
+            ):
+                _LOGGER.warning(
+                    f'Terminating proof early because fail_fast is set and a failing terminal node was reached: {curr_node.id}'
+                )
                 break
 
         self.proof.write_proof_data()
@@ -849,8 +848,7 @@ class APRBMCProver(APRProver):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
-        fail_fast: bool = False,
-    ) -> bool:
+    ) -> None:
         if node.id not in self._checked_nodes:
             _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {node.id}')
             self._checked_nodes.append(node.id)
@@ -869,8 +867,8 @@ class APRBMCProver(APRProver):
             _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
             if len(prior_loops) > self.proof.bmc_depth:
                 self.proof.add_bounded(node.id)
-                return False
-        return super().advance_pending_node(
+                return
+        super().advance_pending_node(
             node=node,
             execute_depth=execute_depth,
             cut_point_rules=cut_point_rules,
