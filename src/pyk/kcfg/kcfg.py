@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from threading import RLock
 from typing import TYPE_CHECKING, List, Union, cast, final
 
+from pyk.prelude.ml import mlOr
+
 from ..cterm import CSubst, CTerm, build_claim, build_rule
 from ..kast.inner import KApply
 from ..kast.kast import EMPTY_ATT
@@ -16,6 +18,7 @@ from ..kast.manip import (
     extract_rhs,
     flatten_label,
     inline_cell_maps,
+    ml_pred_to_bool,
     remove_source_attributes,
     rename_generated_vars,
     sort_ac_collections,
@@ -984,3 +987,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             cfg.create_ndbranch(source_id, target_ids)
 
         return cfg
+
+    #
+    # Multi-node path constraint
+    # ==========================
+    #
+    #   Parameters:
+    #   -----------
+    #     nodes: a list of KCFG node ids
+    #
+    #   Return value:
+    #     the ML-sorted disjunction of the path constraints of the individual nodes
+    #
+    @staticmethod
+    def multinode_path_constraint(nodes: list[Node]) -> KInner:
+        return ml_pred_to_bool(mlOr([node.cterm.constraint for node in nodes]))

@@ -137,6 +137,10 @@ class CTerm:
     def add_constraint(self, new_constraint: KInner) -> CTerm:
         return CTerm(self.config, [new_constraint] + list(self.constraints))
 
+    @property
+    def constraint(self) -> KInner:
+        return mlAnd(self.constraints)
+
 
 @dataclass(frozen=True, order=True)
 class CSubst:
