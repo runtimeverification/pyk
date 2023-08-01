@@ -56,12 +56,6 @@ class KompiledTest:
     KOMPILE_BACKEND: ClassVar[str | None] = None
     KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
 
-    @pytest.fixture
-    def bug_report(self, tmp_path: Path) -> BugReport | None:
-        return None
-        # Use the following line instead to generate bug reports for tests
-        # return BugReport(tmp_path / 'bug-report')
-
     @pytest.fixture(scope='class')
     def definition_dir(self, kompile: Kompiler) -> Path:
         kwargs = self.KOMPILE_ARGS
@@ -132,19 +126,19 @@ class KProveTest(KompiledTest):
         pass
 
 
-class KCFGExploreTest(KProveTest):
+class KCFGExploreTest(KPrintTest):
     @abstractmethod
     def semantics(self, definition: KDefinition) -> KCFGSemantics:
         ...
 
     @pytest.fixture
-    def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
-        with KCFGExplore(
-            kprove,
-            kcfg_semantics=self.semantics(kprove.definition),
-            bug_report=kprove._bug_report,
-        ) as kcfg_explore:
-            yield kcfg_explore
+    def kcfg_explore(self, kprint: KProve, bug_report: BugReport | None) -> Iterator[KCFGExplore]:
+        definition_dir = kprint.definition_dir
+        main_module_name = kprint.main_module
+        semantics = self.semantics(kprint.definition)
+        with KoreServer(definition_dir, main_module_name, bug_report=bug_report) as server:
+            with KoreClient('localhost', server.port, bug_report=bug_report) as client:
+                yield KCFGExplore(kprint, client, kcfg_semantics=semantics)
 
 
 class KoreClientTest(KompiledTest):
@@ -154,7 +148,7 @@ class KoreClientTest(KompiledTest):
     KORE_CLIENT_TIMEOUT: ClassVar = 1000
 
     @pytest.fixture
-    def kore_client(self, definition_dir: Path, bug_report: BugReport) -> Iterator[KoreClient]:
+    def kore_client(self, definition_dir: Path, bug_report: BugReport | None) -> Iterator[KoreClient]:
         server = KoreServer(definition_dir, self.KORE_MODULE_NAME, bug_report=bug_report)
         client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
         yield client
