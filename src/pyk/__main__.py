@@ -53,8 +53,13 @@ def main() -> None:
 def exec_print(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     printer = KPrint(kompiled_dir)
-    _LOGGER.info(f'Reading Kast from file: {args.term.name}')
-    term = KInner.from_json(args.term.read())
+    if args.input == 'kore-json':
+        _LOGGER.info(f'Reading KoreJSON from file: {args.term.name}')
+        kore = Pattern.from_json(args.term.read())
+        term = printer.kore_to_kast(kore)
+    else:
+        _LOGGER.info(f'Reading Kast from file: {args.term.name}')
+        term = KInner.from_json(args.term.read())
     if is_top(term):
         args.output_file.write(printer.pretty_print(term))
         _LOGGER.info(f'Wrote file: {args.output_file.name}')
@@ -147,7 +152,8 @@ def create_argument_parser() -> ArgumentParser:
         help='Pretty print a term.',
         parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
     )
-    print_args.add_argument('term', type=FileType('r'), help='Input term (in JSON).')
+    print_args.add_argument('term', type=FileType('r'), help='Input term (in format specified with --input).')
+    print_args.add_argument('--input', default='kast', type=str, help='')
     print_args.add_argument('--omit-labels', default='', nargs='?', help='List of labels to omit from output.')
     print_args.add_argument(
         '--keep-cells', default='', nargs='?', help='List of cells with primitive values to keep in output.'
