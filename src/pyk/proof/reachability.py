@@ -658,8 +658,8 @@ class APRProver(Prover):
             )
             if (
                 fail_fast
+                and not self.proof.kcfg.is_covered(curr_node.id)
                 and self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm)
-                and (not self.proof.kcfg.is_covered(curr_node.id))
             ):
                 _LOGGER.warning(
                     f'Terminating proof early because fail_fast is set and a failing terminal node was reached: {curr_node.id}'
