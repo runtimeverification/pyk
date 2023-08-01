@@ -17,7 +17,7 @@ from ..prelude.ml import mlAnd, mlEquals
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
 from .equality import ProofSummary, RefutationProof
 from .exploration import ExplorationProof, ExplorationProver
-from .proof import CompositeSummary, Proof, ProofStatus, Prover
+from .proof import CompositeSummary, Proof, ProofStatus
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -93,12 +93,8 @@ class APRProof(ExplorationProof):
         return self.kcfg.is_leaf(node_id) and (self.is_terminal(node_id) or self.kcfg.is_stuck(node_id))
 
     @property
-    def pending(self) -> list[KCFG.Node]:
-        return [nd for nd in super().pending if not self.is_target(nd.id) and not self.is_refuted(nd.id)]
-
-    @property
     def failing(self) -> list[KCFG.Node]:
-        return [nd for nd in self.kcfg.leaves if (self.is_terminal(nd.id) or self.kcfg.is_stuck(nd.id))]
+        return [nd for nd in self.kcfg.leaves if self.is_failing(nd.id)]
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -370,36 +366,24 @@ class APRProver(ExplorationProver):
         proof: APRProof,
         kcfg_explore: KCFGExplore,
     ) -> None:
-        Prover.__init__(self, kcfg_explore)
-        self.proof = proof
-        self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
+        super().__init__(proof, kcfg_explore)
 
-        subproofs: list[Proof] = (
-            [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
-            if proof.proof_dir is not None
-            else []
-        )
-
-        apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
-
-        dependencies_as_claims: list[KClaim] = [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
-
-        self.dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
-        self.kcfg_explore.add_dependencies_module(
-            self.main_module_name,
-            self.dependencies_module_name,
-            dependencies_as_claims,
-            priority=1,
-        )
         self.circularities_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'
         self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
             self.circularities_module_name,
-            dependencies_as_claims + ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []),
+            self.dependencies_as_claims() + ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []),
             priority=1,
         )
 
-        self._checked_terminals = {}
+    def dependencies_as_claims(self) -> list[KClaim]:
+        subproofs: list[Proof] = (
+            [Proof.read_proof_data(self.proof.proof_dir, i) for i in self.proof.subproof_ids]
+            if self.proof.proof_dir is not None
+            else []
+        )
+        apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
+        return [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
         return not self.proof.kcfg.zero_depth_between(self.proof.init, node.id)
@@ -623,10 +607,6 @@ class APRBMCProof(APRProof):
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return super().is_pending(node_id) and not self.is_bounded(node_id)
-
-    @property
-    def pending(self) -> list[KCFG.Node]:
-        return [nd for nd in super().pending if not self.is_bounded(nd.id)]
 
     @property
     def bounded(self) -> list[KCFG.Node]:

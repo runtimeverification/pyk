@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from typing import Any, Final, TypeVar
 
     from ..kast.inner import KInner
+    from ..kast.outer import KClaim
     from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
 
@@ -71,7 +72,7 @@ class ExplorationProof(Proof):
 
     @property
     def pending(self) -> list[KCFG.Node]:
-        return [nd for nd in self.kcfg.leaves if not self.is_terminal(nd.id) and not self.kcfg.is_stuck(nd.id)]
+        return [nd for nd in self.kcfg.leaves if self.is_pending(nd.id)]
 
     def add_terminal(self, node_id: NodeIdLike) -> None:
         self._terminal_node_ids.add(self.kcfg._resolve(node_id))
@@ -238,17 +239,21 @@ class ExplorationProver(Prover):
     ) -> None:
         super().__init__(kcfg_explore)
         self.proof = proof
+
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
 
         self.dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
         self.kcfg_explore.add_dependencies_module(
             self.main_module_name,
             self.dependencies_module_name,
-            [],
+            self.dependencies_as_claims(),
             priority=1,
         )
 
         self._checked_terminals = {}
+
+    def dependencies_as_claims(self) -> list[KClaim]:
+        return []
 
     def get_module_name(self, node: KCFG.Node) -> str:
         return self.dependencies_module_name
