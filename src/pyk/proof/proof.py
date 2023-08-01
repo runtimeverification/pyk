@@ -23,7 +23,6 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class ProofStatus(Enum):
-    COMPLETED = 'completed'
     FAILED = 'failed'
     PASSED = 'passed'
     PENDING = 'pending'

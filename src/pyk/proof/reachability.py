@@ -94,11 +94,11 @@ class APRProof(ExplorationProof):
 
     @property
     def pending(self) -> list[KCFG.Node]:
-        return [nd for nd in self.kcfg.leaves if self.is_pending(nd.id)]
+        return [nd for nd in super().pending if not self.is_target(nd.id) and not self.is_refuted(nd.id)]
 
     @property
     def failing(self) -> list[KCFG.Node]:
-        return [nd for nd in self.kcfg.leaves if self.is_failing(nd.id)]
+        return [nd for nd in self.kcfg.leaves if (self.is_terminal(nd.id) or self.kcfg.is_stuck(nd.id))]
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
@@ -623,6 +623,10 @@ class APRBMCProof(APRProof):
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return super().is_pending(node_id) and not self.is_bounded(node_id)
+
+    @property
+    def pending(self) -> list[KCFG.Node]:
+        return [nd for nd in super().pending if not self.is_bounded(nd.id)]
 
     @property
     def bounded(self) -> list[KCFG.Node]:

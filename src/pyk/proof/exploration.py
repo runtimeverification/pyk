@@ -97,7 +97,7 @@ class ExplorationProof(Proof):
         elif len(self.pending) > 0:
             return ProofStatus.PENDING
         else:
-            return ProofStatus.COMPLETED
+            return ProofStatus.PASSED
 
     @classmethod
     def from_dict(
@@ -267,7 +267,6 @@ class ExplorationProver(Prover):
 
     def _update_terminals(self) -> None:
         pending = self.proof.pending
-
         for node in pending:
             self._check_terminal(node)
 
@@ -297,7 +296,7 @@ class ExplorationProver(Prover):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
-    ) -> KCFG:
+    ) -> None:
         iterations = 0
 
         self._update_terminals()
@@ -325,4 +324,3 @@ class ExplorationProver(Prover):
             self._update_terminals()
 
         self.proof.write_proof_data()
-        return self.proof.kcfg
