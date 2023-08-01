@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 import pytest
@@ -11,7 +11,7 @@ from ..kllvm.compiler import compile_runtime
 from ..kllvm.importer import import_runtime
 from ..kore.pool import KoreServerPool
 from ..kore.rpc import BoosterServer, KoreClient, KoreServer
-from ..ktool.kompile import Kompile
+from ..ktool.kompile import DefinitionInfo, Kompile
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
 from ..ktool.krun import KRun
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from pytest import TempPathFactory
 
     from ..kast.outer import KDefinition
+    from ..kcfg.semantics import KCFGSemantics
     from ..ktool.kprint import SymbolTable
     from ..utils import BugReport
 
@@ -55,12 +56,6 @@ class KompiledTest:
     KOMPILE_BACKEND: ClassVar[str | None] = None
     KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
 
-    @pytest.fixture
-    def bug_report(self, tmp_path: Path) -> BugReport | None:
-        return None
-        # Use the following line instead to generate bug reports for tests
-        # return BugReport(tmp_path / 'bug-report')
-
     @pytest.fixture(scope='class')
     def definition_dir(self, kompile: Kompiler) -> Path:
         kwargs = self.KOMPILE_ARGS
@@ -71,6 +66,10 @@ class KompiledTest:
     @pytest.fixture(scope='class')
     def definition(self, definition_dir: Path) -> KDefinition:
         return read_kast_definition(definition_dir / 'compiled.json')
+
+    @pytest.fixture(scope='class')
+    def definition_info(self, definition_dir: Path) -> DefinitionInfo:
+        return DefinitionInfo(definition_dir)
 
 
 class KPrintTest(KompiledTest):
@@ -127,14 +126,19 @@ class KProveTest(KompiledTest):
         pass
 
 
-class KCFGExploreTest(KProveTest):
+class KCFGExploreTest(KPrintTest):
+    @abstractmethod
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        ...
+
     @pytest.fixture
-    def kcfg_explore(self, kprove: KProve) -> Iterator[KCFGExplore]:
-        with KCFGExplore(
-            kprove,
-            bug_report=kprove._bug_report,
-        ) as kcfg_explore:
-            yield kcfg_explore
+    def kcfg_explore(self, kprint: KProve, bug_report: BugReport | None) -> Iterator[KCFGExplore]:
+        definition_dir = kprint.definition_dir
+        main_module_name = kprint.main_module
+        semantics = self.semantics(kprint.definition)
+        with KoreServer(definition_dir, main_module_name, bug_report=bug_report) as server:
+            with KoreClient('localhost', server.port, bug_report=bug_report) as client:
+                yield KCFGExplore(kprint, client, kcfg_semantics=semantics)
 
 
 class KoreClientTest(KompiledTest):
@@ -144,7 +148,7 @@ class KoreClientTest(KompiledTest):
     KORE_CLIENT_TIMEOUT: ClassVar = 1000
 
     @pytest.fixture
-    def kore_client(self, definition_dir: Path, bug_report: BugReport) -> Iterator[KoreClient]:
+    def kore_client(self, definition_dir: Path, bug_report: BugReport | None) -> Iterator[KoreClient]:
         server = KoreServer(definition_dir, self.KORE_MODULE_NAME, bug_report=bug_report)
         client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
         yield client
