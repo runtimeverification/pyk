@@ -104,6 +104,9 @@ class APRProof(ExplorationProof):
     def failing(self) -> list[KCFG.Node]:
         return [nd for nd in self.kcfg.leaves if self.is_failing(nd.id)]
 
+    def prune_from(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike]) -> list[NodeIdLike]:
+        return super().prune_from(node_id, keep_nodes=list(keep_nodes) + [self.target])
+
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
         proof_path = proof_dir / f'{hash_str(id)}.json'
@@ -391,8 +394,11 @@ class APRBMCProof(APRProof):
     def bounded(self) -> list[KCFG.Node]:
         return [nd for nd in self.kcfg.leaves if self.is_bounded(nd.id)]
 
-    def add_bounded(self, nid: NodeIdLike) -> None:
-        self._bounded_node_ids.add(self.kcfg._resolve(nid))
+    def prune_from(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike]) -> list[NodeIdLike]:
+        pruned_nodes = super().prune_from(node_id, keep_nodes=keep_nodes)
+        for nid in pruned_nodes:
+            self._bounded_node_ids.discard(self.kcfg._resolve(nid))
+        return pruned_nodes
 
     @classmethod
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
@@ -453,6 +459,9 @@ class APRBMCProof(APRProof):
         return APRBMCProof(
             claim.label, cfg, bmc_depth=bmc_depth, init=init_node, target=target_node, logs={}, proof_dir=proof_dir
         )
+
+    def add_bounded(self, nid: NodeIdLike) -> None:
+        self._bounded_node_ids.add(self.kcfg._resolve(nid))
 
     @property
     def summary(self) -> CompositeSummary:
