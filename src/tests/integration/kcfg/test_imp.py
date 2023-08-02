@@ -16,7 +16,7 @@ from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
 from pyk.proof.show import APRBMCProofNodePrinter, APRProofNodePrinter
-from pyk.testing import KCFGExploreTest
+from pyk.testing import KCFGExploreTest, KProveTest
 from pyk.utils import single
 
 from ..utils import K_FILES
@@ -686,7 +686,7 @@ def leaf_number(proof: APRProof) -> int:
     return len(non_target_leaves) + len(proof.kcfg.predecessors(proof.target))
 
 
-class TestImpProof(KCFGExploreTest):
+class TestImpProof(KCFGExploreTest, KProveTest):
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
 
     def semantics(self, definition: KDefinition) -> KCFGSemantics:
@@ -1093,3 +1093,57 @@ class TestImpProof(KCFGExploreTest):
 
         assert proof.dict == proof_from_disk.dict
         assert proof.kcfg.nodes == proof_from_disk.kcfg.nodes
+
+    def test_fail_fast(
+        self,
+        kprove: KProve,
+        kcfg_explore: KCFGExplore,
+        proof_dir: Path,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(
+                K_FILES / 'imp-simple-spec.k',
+                spec_module_name='IMP-SIMPLE-SPEC',
+                claim_labels=['IMP-SIMPLE-SPEC.fail-early'],
+            )
+        )
+
+        proof = APRProof.from_claim(
+            kprove.definition,
+            claim,
+            logs={},
+            proof_dir=proof_dir,
+        )
+
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+        )
+
+        prover.advance_proof(fail_fast=False)
+
+        # Both branches will be checked and fail (fail_fast=False)
+        assert len(proof.kcfg.leaves) == 3
+        assert len(proof.pending) == 0
+        assert len(proof.terminal) == 2
+        assert len(proof.failing) == 2
+
+        proof = APRProof.from_claim(
+            kprove.definition,
+            claim,
+            logs={},
+            proof_dir=proof_dir,
+        )
+
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+        )
+
+        prover.advance_proof(fail_fast=True)
+
+        # First branch will be reached first and terminate the proof, leaving the second long branch pending (fail_fast=True)
+        assert len(proof.kcfg.leaves) == 3
+        assert len(proof.pending) == 1
+        assert len(proof.terminal) == 1
+        assert len(proof.failing) == 1
