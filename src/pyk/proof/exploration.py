@@ -48,9 +48,9 @@ class ExplorationProof(Proof):
         admitted: bool = False,
     ):
         if type(self) == ExplorationProof:
-            if not subproof_ids:
+            if subproof_ids:
                 raise ValueError('Subproofs provided for an ExplorationProof')
-            if not admitted:
+            if admitted:
                 raise ValueError('Admitted ExplorationProof')
 
         super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
