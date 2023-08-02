@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyk.ktool.kompile import KompileBackend
+import pytest
+
+from pyk.ktool.kompile import KompileBackend, KompileNotFoundException, kompile
 from pyk.testing import KompiledTest
 
 from .utils import K_FILES
@@ -31,3 +33,12 @@ class TestLlvmKompile(KompiledTest):
         assert definition_info.main_module_name == 'IMP'
         assert definition_info.syntax_module_name == 'IMP-SYNTAX'
         assert definition_info.timestamp >= 0
+
+
+def test_kompile_not_found() -> None:
+    k_file = K_FILES / 'imp-verification.k'
+    # this is supposed to NOT be found on $PATH
+    bad_kompile = 'bad-name-of-kompile'
+
+    with pytest.raises(KompileNotFoundException):
+        kompile(k_file, command=[bad_kompile])
