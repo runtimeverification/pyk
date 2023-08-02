@@ -82,10 +82,6 @@ class ExplorationProof(Proof):
     def pending(self) -> list[KCFG.Node]:
         return [nd for nd in self.kcfg.leaves if self.is_pending(nd.id)]
 
-    @property
-    def failing(self) -> list[KCFG.Node]:
-        return []
-
     def add_terminal(self, node_id: NodeIdLike) -> None:
         self._terminal_node_ids.add(self.kcfg._resolve(node_id))
 
