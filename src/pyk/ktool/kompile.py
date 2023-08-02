@@ -24,7 +24,8 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class KompileNotFoundException(Exception):
-    pass
+    def __init__(self, kompile_command: str):
+        super().__init__(f'Kompile command not found: {str}')
 
 
 def kompile(
@@ -119,7 +120,7 @@ class Kompile(ABC):
             check_dir_path(abs_or_rel_to(include_dir, cwd or Path()))
 
         command = list(command) if command is not None else ['kompile']
-        if shutil.which(command[0]) is None:
+        if not shutil.which(command[0]):
             raise KompileNotFoundException(command[0])
         args = command + self.args()
 

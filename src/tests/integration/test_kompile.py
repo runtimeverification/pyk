@@ -35,10 +35,11 @@ class TestLlvmKompile(KompiledTest):
         assert definition_info.timestamp >= 0
 
 
-def test_kompile_not_found() -> None:
+def test_kompile_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     k_file = K_FILES / 'imp-verification.k'
     # this is supposed to NOT be found on $PATH
     bad_kompile = 'bad-name-of-kompile'
+    monkeypatch.setenv('PATH', '')
 
     with pytest.raises(KompileNotFoundException):
         kompile(k_file, command=[bad_kompile])
