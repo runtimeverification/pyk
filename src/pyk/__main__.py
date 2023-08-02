@@ -3,13 +3,14 @@ from __future__ import annotations
 import logging
 import sys
 from argparse import ArgumentParser, FileType
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
 from .cli.args import KCLIArgs
-from .cli.utils import LOG_FORMAT, PrintInput, dir_path, loglevel
+from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import split_config_and_constraints
 from .kast.inner import KInner
@@ -29,6 +30,11 @@ if TYPE_CHECKING:
 
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class PrintInput(Enum):
+    KORE_JSON = 'kore-json'
+    KAST_JSON = 'kast-json'
 
 
 def main() -> None:
@@ -53,7 +59,7 @@ def main() -> None:
 def exec_print(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     printer = KPrint(kompiled_dir)
-    if args.input == PrintInput.KOREJSON:
+    if args.input == PrintInput.KORE_JSON:
         _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
         kore = Pattern.from_json(args.term.read())
         term = printer.kore_to_kast(kore)
@@ -153,10 +159,7 @@ def create_argument_parser() -> ArgumentParser:
         parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
     )
     print_args.add_argument('term', type=FileType('r'), help='Input term (in format specified with --input).')
-    input_formats = '|'.join([pi.value for pi in PrintInput])
-    print_args.add_argument(
-        '--input', default=PrintInput.KASTJSON, type=PrintInput, help=f'Format of input: [{input_formats}]'
-    )
+    print_args.add_argument('--input', default=PrintInput.KAST_JSON, type=PrintInput, choices=list(PrintInput))
     print_args.add_argument('--omit-labels', default='', nargs='?', help='List of labels to omit from output.')
     print_args.add_argument(
         '--keep-cells', default='', nargs='?', help='List of cells with primitive values to keep in output.'

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -74,8 +73,3 @@ def arg_pair_of(
         return fst_type(elems[0]), snd_type(elems[1])
 
     return parse
-
-
-class PrintInput(Enum):
-    KOREJSON = 'kore-json'
-    KASTJSON = 'kast-json'
