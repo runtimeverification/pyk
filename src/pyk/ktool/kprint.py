@@ -20,6 +20,7 @@ from ..kore.kompiled import KompiledKore
 from ..kore.parser import KoreParser
 from ..kore.syntax import App, SortApp
 from ..utils import run_process
+from .kompile import DefinitionInfo
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
@@ -200,15 +201,14 @@ class KPrint:
         self.use_directory = use_directory
         self._definition = None
         self._symbol_table = None
-        with open(self.definition_dir / 'mainModule.txt') as mm:
-            self.main_module = mm.read()
-        with open(self.definition_dir / 'backend.txt') as ba:
-            self.backend = ba.read()
+
+        info = DefinitionInfo(self.definition_dir)
+        self.main_module = info.main_module_name
+        self.backend = info.backend.value
+
         self._extra_unparsing_modules = extra_unparsing_modules
         self._patch_symbol_table = patch_symbol_table
         self._bug_report = bug_report
-        if self._bug_report:
-            self._bug_report.add_definition(self.definition_dir)
 
     @contextmanager
     def _temp_file(self, suffix: str | None = None) -> Iterator[_TemporaryFileWrapper]:
@@ -252,9 +252,8 @@ class KPrint:
         return proc_res.stdout
 
     def kore_to_kast(self, kore: Pattern) -> KInner:
-        _LOGGER.debug(f'kore_to_kast: {kore.text}')
-
         try:
+            _LOGGER.info('Invoking kore_to_kast')
             return kore_to_kast(self.definition, kore)
         except ValueError as err:
             _LOGGER.warning(err)
@@ -269,6 +268,7 @@ class KPrint:
 
     def kast_to_kore(self, kast: KInner, sort: KSort | None = None) -> Pattern:
         try:
+            _LOGGER.info('Invoking kast_to_kore')
             return kast_to_kore(self.definition, self.kompiled_kore, kast, sort)
         except ValueError as ve:
             _LOGGER.warning(ve)

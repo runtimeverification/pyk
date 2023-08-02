@@ -5,9 +5,49 @@
     layout: vertical;
 }
 #behavior {
+    border: solid dimgrey;
     height: 1fr;
     overflow-x: auto;
     overflow-y: auto;
+}
+#behavior:focus {
+    border: solid white;
+}
+
+#info {
+    width: 100%;
+    height: 2fr;
+    border: solid dimgrey;
+}
+
+#term {
+    border: solid dimgrey;
+    width: 100%;
+    height: 15fr;
+    overflow: auto scroll;
+}
+#term:focus {
+    border: solid white;
+}
+
+#constraint {
+    border: solid dimgrey;
+    width: 100%;
+    height: 5fr;
+    overflow: auto scroll;
+}
+#constraint:focus {
+    border: solid white;
+}
+
+#custom {
+    border: solid dimgrey;
+    width: 100%;
+    height: 15fr;
+    overflow: auto scroll;
+}
+#custom:focus {
+    border: solid white;
 }
 
 .cfg-node {
@@ -22,32 +62,7 @@
 #display {
     layout: vertical;
 }
-#info-content {
-    width: auto;
-    height: 2fr;
-    border: solid dimgrey;
-    overflow: auto scroll;
-}
-#term-content {
-    width: auto;
-    height: 15fr;
-    overflow: auto scroll;
-}
-/* #term { */
-/*     width: auto; */
-/*     height: 15fr; */
-/*     overflow: auto scroll; */
-/* } */
-#constraint {
-    width: auto;
-    height: 5fr;
-    overflow: auto scroll;
-}
-#custom {
-    width: auto;
-    height: 15fr;
-    overflow: auto scroll;
-}
+
 .selected {
     border: solid white;
 }

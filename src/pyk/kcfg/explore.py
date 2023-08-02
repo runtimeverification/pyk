@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, ContextManager
+from typing import TYPE_CHECKING
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
@@ -16,109 +16,56 @@ from ..kast.manip import (
     ml_pred_to_bool,
     push_down_rewrites,
 )
-from ..kore.rpc import KoreClient, KoreServer, StopReason
-from ..ktool.kprove import KoreExecLogFormat
+from ..kast.outer import KRule
+from ..konvert import krule_to_kore
+from ..kore.rpc import SatResult, StopReason, UnknownResult, UnsatResult
+from ..kore.syntax import Import, Module
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import notBool
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
+from .semantics import DefaultSemantics
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from pathlib import Path
-    from typing import Any, Final
+    from typing import Final
 
     from ..kast import KInner
-    from ..kore.rpc import LogEntry
+    from ..kast.outer import KClaim
+    from ..kore.rpc import KoreClient, LogEntry
+    from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
-    from ..utils import BugReport
     from .kcfg import NodeIdLike
+    from .semantics import KCFGSemantics
 
 
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class KCFGExplore(ContextManager['KCFGExplore']):
+class KCFGExplore:
     kprint: KPrint
-    id: str
-    _port: int | None
-    _kore_rpc_command: str | Iterable[str]
-    _smt_timeout: int | None
-    _smt_retry_limit: int | None
-    _bug_report: BugReport | None
+    _kore_client: KoreClient
 
-    _kore_server: KoreServer | None
-    _kore_client: KoreClient | None
-    _rpc_closed: bool
+    kcfg_semantics: KCFGSemantics
+    id: str
     _trace_rewrites: bool
 
     def __init__(
         self,
         kprint: KPrint,
+        kore_client: KoreClient,
         *,
+        kcfg_semantics: KCFGSemantics | None = None,
         id: str | None = None,
-        port: int | None = None,
-        kore_rpc_command: str | Iterable[str] = 'kore-rpc',
-        smt_timeout: int | None = None,
-        smt_retry_limit: int | None = None,
-        bug_report: BugReport | None = None,
-        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-        haskell_log_entries: Iterable[str] = (),
-        log_axioms_file: Path | None = None,
         trace_rewrites: bool = False,
     ):
         self.kprint = kprint
+        self._kore_client = kore_client
+        self.kcfg_semantics = kcfg_semantics if kcfg_semantics is not None else DefaultSemantics()
         self.id = id if id is not None else 'NO ID'
-        self._port = port
-        self._kore_rpc_command = kore_rpc_command
-        self._smt_timeout = smt_timeout
-        self._smt_retry_limit = smt_retry_limit
-        self._bug_report = bug_report
-        self._haskell_log_format = haskell_log_format
-        self._haskell_log_entries = haskell_log_entries
-        self._log_axioms_file = log_axioms_file
-        self._kore_server = None
-        self._kore_client = None
-        self._rpc_closed = False
         self._trace_rewrites = trace_rewrites
-
-    def __enter__(self) -> KCFGExplore:
-        return self
-
-    def __exit__(self, *args: Any) -> None:
-        self.close()
-
-    @property
-    def _kore_rpc(self) -> tuple[KoreServer, KoreClient]:
-        if self._rpc_closed:
-            raise ValueError('RPC server already closed!')
-        if not self._kore_server:
-            self._kore_server = KoreServer(
-                self.kprint.definition_dir,
-                self.kprint.main_module,
-                port=self._port,
-                bug_report=self._bug_report,
-                command=self._kore_rpc_command,
-                smt_timeout=self._smt_timeout,
-                smt_retry_limit=self._smt_retry_limit,
-                haskell_log_format=self._haskell_log_format,
-                haskell_log_entries=self._haskell_log_entries,
-                log_axioms_file=self._log_axioms_file,
-            )
-        if not self._kore_client:
-            self._kore_client = KoreClient('localhost', self._kore_server._port, bug_report=self._bug_report)
-        return (self._kore_server, self._kore_client)
-
-    def close(self) -> None:
-        self._rpc_closed = True
-        if self._kore_server is not None:
-            self._kore_server.close()
-            self._kore_server = None
-        if self._kore_client is not None:
-            self._kore_client.close()
-            self._kore_client = None
 
     def cterm_execute(
         self,
@@ -126,15 +73,16 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         depth: int | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
+        module_name: str | None = None,
     ) -> tuple[int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
-        er = kore_client.execute(
+        er = self._kore_client.execute(
             kore,
             max_depth=depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
+            module_name=module_name,
             log_successful_rewrites=self._trace_rewrites,
             log_failed_rewrites=self._trace_rewrites,
             log_successful_simplifications=self._trace_rewrites,
@@ -156,18 +104,43 @@ class KCFGExplore(ContextManager['KCFGExplore']):
     def cterm_simplify(self, cterm: CTerm) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
-        kore_simplified, logs = kore_client.simplify(kore)
+        kore_simplified, logs = self._kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
     def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
-        kore_simplified, logs = kore_client.simplify(kore)
+        kore_simplified, logs = self._kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified, logs
+
+    def cterm_get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
+        _LOGGER.info(f'Getting model: {cterm}')
+        kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
+        result = self._kore_client.get_model(kore, module_name=module_name)
+        if type(result) is UnknownResult:
+            _LOGGER.debug('Result is Unknown')
+            return None
+        elif type(result) is UnsatResult:
+            _LOGGER.debug('Result is UNSAT')
+            return None
+        elif type(result) is SatResult:
+            _LOGGER.debug('Result is SAT')
+            if not result.model:
+                return Subst({})
+            model_subst = self.kprint.kore_to_kast(result.model)
+            _subst: dict[str, KInner] = {}
+            for subst_pred in flatten_label('#And', model_subst):
+                subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
+                m = subst_pattern.match(subst_pred)
+                if m is not None and type(m['###VAR']) is KVariable:
+                    _subst[m['###VAR'].name] = m['###TERM']
+                else:
+                    raise AssertionError(f'Received a non-substitution from get-model endpoint: {subst_pred}')
+            return Subst(_subst)
+        else:
+            raise AssertionError('Received an invalid response from get-model endpoint')
 
     def cterm_implies(
         self,
@@ -184,8 +157,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
         consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
-        result = kore_client.implies(antecedent_kore, consequent_kore)
+        result = self._kore_client.implies(antecedent_kore, consequent_kore)
         if not result.satisfiable:
             if result.substitution is not None:
                 _LOGGER.debug(f'Received a non-empty substitution for unsatisfiable implication: {result.substitution}')
@@ -293,8 +265,7 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        _, kore_client = self._kore_rpc
-        kore_simplified, _logs = kore_client.simplify(kore)
+        kore_simplified, _logs = self._kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
@@ -314,7 +285,14 @@ class KCFGExplore(ContextManager['KCFGExplore']):
                 else:
                     logs[node.id] = next_node_logs
 
-    def step(self, cfg: KCFG, node_id: NodeIdLike, logs: dict[int, tuple[LogEntry, ...]], depth: int = 1) -> int:
+    def step(
+        self,
+        cfg: KCFG,
+        node_id: NodeIdLike,
+        logs: dict[int, tuple[LogEntry, ...]],
+        depth: int = 1,
+        module_name: str | None = None,
+    ) -> int:
         if depth <= 0:
             raise ValueError(f'Expected positive depth, got: {depth}')
         node = cfg.node(node_id)
@@ -322,7 +300,9 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(node.cterm, depth=depth)
+        actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+            node.cterm, depth=depth, module_name=module_name
+        )
         if actual_depth != depth:
             raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
         if len(next_cterms) > 0:
@@ -369,6 +349,15 @@ class KCFGExplore(ContextManager['KCFGExplore']):
             new_depth += section_depth
         return tuple(new_nodes)
 
+    def _check_abstract(self, node: KCFG.Node, kcfg: KCFG) -> bool:
+        new_cterm = self.kcfg_semantics.abstract_node(node.cterm)
+        if new_cterm == node.cterm:
+            return False
+
+        new_node = kcfg.create_node(new_cterm)
+        kcfg.create_cover(node.id, new_node.id)
+        return True
+
     def extend(
         self,
         kcfg: KCFG,
@@ -377,15 +366,32 @@ class KCFGExplore(ContextManager['KCFGExplore']):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
+        module_name: str | None = None,
     ) -> None:
         if not kcfg.is_leaf(node.id):
             raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
         if kcfg.is_stuck(node.id):
             raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
 
+        if self._check_abstract(node, kcfg):
+            return
+
+        if not kcfg.splits(target_id=node.id):
+            branches = self.kcfg_semantics.extract_branches(node.cterm)
+            if branches:
+                kcfg.split_on_constraints(node.id, branches)
+                _LOGGER.info(
+                    f'Found {len(branches)} branches using heuristic for node {node.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+                )
+                return
+
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
         depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
-            node.cterm, depth=execute_depth, cut_point_rules=cut_point_rules, terminal_rules=terminal_rules
+            node.cterm,
+            depth=execute_depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
         )
 
         # Basic block
@@ -443,3 +449,19 @@ class KCFGExplore(ContextManager['KCFGExplore']):
 
         else:
             raise ValueError('Unhandled case.')
+
+    def add_dependencies_module(
+        self, old_module_name: str, new_module_name: str, dependencies: Iterable[KClaim], priority: int = 1
+    ) -> None:
+        kast_rules = [
+            KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=c.att.update({'priority': priority}))
+            for c in dependencies
+        ]
+        kore_axioms: list[Sentence] = [
+            krule_to_kore(self.kprint.definition, self.kprint.kompiled_kore, r) for r in kast_rules
+        ]
+        sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
+        sentences = sentences + kore_axioms
+        m = Module(name=new_module_name, sentences=sentences)
+        _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
+        self._kore_client.add_module(m)

@@ -20,8 +20,8 @@ from pyk.kore.rpc import (
     UnknownResult,
     UnsatResult,
 )
-from pyk.kore.syntax import And, Bottom, Equals, EVar, Implies, Module, Top
-from pyk.testing import KoreClientTest
+from pyk.kore.syntax import And, App, Bottom, Equals, EVar, Implies, Module, Top
+from pyk.testing import BoosterClientTest, KoreClientTest
 
 from ..utils import K_FILES
 
@@ -157,6 +157,90 @@ GET_MODEL_TEST_DATA: Final = (
 
 ADD_MODULE_TEST_DATA: Final = (('empty-module', Module('HELLO')),)
 
+GET_MODEL_WITH_SMT_TEST_DATA: Final = (
+    (
+        'sat-chop-single-int',
+        # chop(x) == x && x == 1
+        And(
+            INT,
+            Equals(
+                BOOL,
+                INT,
+                TRUE,
+                eq_int(App("Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int", (), (EVar('x', INT),)), EVar('x', INT)),
+            ),
+            Equals(BOOL, INT, TRUE, eq_int(EVar('x', INT), int_dv(1))),
+        ),
+        None,
+        # x == 1
+        SatResult(Equals(INT, INT, x, int_dv(1))),
+    ),
+    (
+        'sat-chop-sub-ints',
+        # chop(1 - x) == 0 && x == 1
+        And(
+            INT,
+            Equals(
+                BOOL,
+                INT,
+                TRUE,
+                eq_int(
+                    App(
+                        "Lblchop'LParUndsRParUnds'SMT'Unds'Int'Unds'Int",
+                        (),
+                        (
+                            App(
+                                "Lbl'Unds'-Int'Unds'",
+                                (),
+                                (
+                                    int_dv(1),
+                                    EVar('x', INT),
+                                ),
+                            ),
+                        ),
+                    ),
+                    int_dv(0),
+                ),
+            ),
+            Equals(BOOL, INT, TRUE, eq_int(EVar('x', INT), int_dv(1))),
+        ),
+        None,
+        # x == 1
+        SatResult(Equals(INT, INT, x, int_dv(1))),
+    ),
+)
+
+
+class TestBooster(BoosterClientTest):
+    MAIN_FILE = K_FILES / 'kore-rpc-test.k'
+    MODULE_NAME = 'KORE-RPC-TEST'
+
+    @pytest.mark.parametrize(
+        'test_id,n,params,expected',
+        EXECUTE_TEST_DATA,
+        ids=[test_id for test_id, *_ in EXECUTE_TEST_DATA],
+    )
+    def test_execute_booster(
+        self,
+        booster_client: KoreClient,
+        test_id: str,
+        n: int,
+        params: Mapping[str, Any],
+        expected: ExecuteResult,
+    ) -> None:
+        # When
+        actual = booster_client.execute(term(n), **params)
+        # Then
+        assert actual.__class__ == expected.__class__
+        assert actual.reason == expected.reason
+        assert actual.state == expected.state
+        assert actual.depth == expected.depth
+        assert actual.rule == expected.rule
+        if actual.next_states is not None and expected.next_states is not None:
+            assert set(actual.next_states) == set(expected.next_states)
+        else:
+            assert actual.next_states == expected.next_states
+
 
 class TestKoreClient(KoreClientTest):
     KOMPILE_MAIN_FILE = K_FILES / 'kore-rpc-test.k'
@@ -268,3 +352,27 @@ class TestKoreClient(KoreClientTest):
         module: Module,
     ) -> None:
         kore_client.add_module(module)
+
+
+class TestKoreClientWithSMTLemmas(KoreClientTest):
+    KOMPILE_MAIN_FILE = K_FILES / 'smt.k'
+    KORE_MODULE_NAME = 'SMT'
+
+    @pytest.mark.parametrize(
+        'test_id,pattern,module_name,expected',
+        GET_MODEL_WITH_SMT_TEST_DATA,
+        ids=[test_id for test_id, *_ in GET_MODEL_WITH_SMT_TEST_DATA],
+    )
+    def test_get_model_with_smt(
+        self,
+        kore_client: KoreClient,
+        test_id: str,
+        pattern: Pattern,
+        module_name: str | None,
+        expected: GetModelResult,
+    ) -> None:
+        # When
+        actual = kore_client.get_model(pattern, module_name)
+
+        # Then
+        assert actual == expected

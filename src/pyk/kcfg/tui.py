@@ -4,11 +4,13 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Union
 
 from textual.app import App
-from textual.containers import Container, Horizontal, ScrollableContainer, VerticalScroll, HorizontalScroll
+from textual.containers import Horizontal, ScrollableContainer
+from textual.events import Focus
 from textual.geometry import Offset, Region
 from textual.message import Message
+from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import Static
+from textual.widgets import Label, Static
 
 from ..cterm import CTerm
 from ..kast.inner import KApply, KRewrite
@@ -42,6 +44,10 @@ class GraphChunk(Static):
             self.chunk_id = chunk_id
             super().__init__()
 
+    class Focused(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
     def __init__(self, id: str, node_text: Iterable[str] = ()) -> None:
         self._node_text = '\n'.join(node_text)
         super().__init__(self._node_text, id=id, classes='cfg-node')
@@ -53,12 +59,35 @@ class GraphChunk(Static):
         self.styles.text_opacity = '100%'
 
     def on_click(self, click: Click) -> None:
-        self.post_message(GraphChunk.Selected(self.id or ''))
         click.stop()
+        self.post_message(GraphChunk.Selected(self.id or ''))
+
+    def on_focus(self, focus: Focus) -> None:
+        focus.stop()
+        self.post_message(GraphChunk.Focused())
+
+
+class Info(Widget, can_focus=False):
+    text: reactive[str] = reactive('', init=False)
+
+    def __init__(self):
+        super().__init__(id='info')
+
+    def update(self, text: str) -> None:
+        self._text = text
+
+    def render(self) -> str:
+        return self._text
 
 
 class Term(ScrollableContainer, can_focus=True):
+    text: reactive[str] = reactive('', init=False)
+
     class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
+    class Focused(Message):
         def __init__(self) -> None:
             super().__init__()
 
@@ -66,12 +95,28 @@ class Term(ScrollableContainer, can_focus=True):
         super().__init__(id='term')
 
     def on_click(self, click: Click) -> None:
-        self.post_message(Term.Selected())
         click.stop()
+        self.post_message(Term.Selected())
+
+    def on_focus(self, focus: Focus) -> None:
+        focus.stop()
+        self.post_message(Term.Focused())
+
+    def compose(self) -> ComposeResult:
+        yield Static(self.text)
+
+    def watch_text(self) -> None:
+        self.query_one(Static).update(self.text)
 
 
 class Constraint(ScrollableContainer, can_focus=True):
+    text: reactive[str] = reactive('', init=False)
+
     class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
+    class Focused(Message):
         def __init__(self) -> None:
             super().__init__()
 
@@ -79,12 +124,28 @@ class Constraint(ScrollableContainer, can_focus=True):
         super().__init__(id='constraint')
 
     def on_click(self, click: Click) -> None:
-        self.post_message(Constraint.Selected())
         click.stop()
+        self.post_message(Constraint.Selected())
+
+    def on_focus(self, focus: Focus) -> None:
+        focus.stop()
+        self.post_message(Constraint.Focused())
+
+    def compose(self) -> ComposeResult:
+        yield Static(self.text)
+
+    def watch_text(self) -> None:
+        self.query_one(Static).update(self.text)
 
 
 class Custom(ScrollableContainer, can_focus=True):
+    text: reactive[str] = reactive('', init=False)
+
     class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
+    class Focused(Message):
         def __init__(self) -> None:
             super().__init__()
 
@@ -92,11 +153,18 @@ class Custom(ScrollableContainer, can_focus=True):
         super().__init__(id='custom')
 
     def on_click(self, click: Click) -> None:
-        self.post_message(Custom.Selected())
         click.stop()
+        self.post_message(Custom.Selected())
 
-    def render(self) -> str:
-        return 'I\'m going to bang my head'
+    def on_focus(self, focus: Focus) -> None:
+        focus.stop()
+        self.post_message(Custom.Focused())
+
+    def compose(self) -> ComposeResult:
+        yield Static(self.text)
+
+    def watch_text(self) -> None:
+        self.query_one(Static).update(self.text)
 
 
 class NodeView(Widget):
@@ -110,9 +178,6 @@ class NodeView(Widget):
     _constraint_on: bool
     _custom_on: bool
     _info_text: str = ''
-    _term_text: str = ''
-    _constraint_text: str = ''
-    _custom_text: str = ''
 
     def __init__(
         self,
@@ -139,23 +204,20 @@ class NodeView(Widget):
         custom_str = '✅' if self._custom_on else '❌'
         minimize_str = '✅' if self._minimize else '❌'
         element_str = 'NOTHING'
-        if type(self._element) is KCFG.Node:
-            element_str = f'node({shorten_hashes(self._element.id)})'
-        elif type(self._element) is KCFG.Edge:
-            element_str = f'edge({shorten_hashes(self._element.source.id)},{shorten_hashes(self._element.target.id)})'
-        elif type(self._element) is KCFG.Cover:
-            element_str = f'cover({shorten_hashes(self._element.source.id)},{shorten_hashes(self._element.target.id)})'
+        if self._element is not None:
+            if type(self._element) is KCFG.Node:
+                element_str = f'node({shorten_hashes(self._element.id)})'
+            elif type(self._element) is KCFG.Edge:
+                element_str = f'edge({shorten_hashes(self._element.source.id)},{shorten_hashes(self._element.target.id)})'
+            elif type(self._element) is KCFG.Cover:
+                element_str = f'cover({shorten_hashes(self._element.source.id)},{shorten_hashes(self._element.target.id)})'
         return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View.'
 
     def compose(self) -> ComposeResult:
-        # yield Horizontal(Static(self.info_text(), id='info-content'), id='info')
-        yield Horizontal(Static('Info', id='info-content'), id='info')
-        with Term():
-            yield Horizontal(Static(self._term_text, id='term-content'))
-        with Constraint():
-            yield Horizontal(Static(self._constraint_text, id='constraint-content'))
-        with Custom():
-            yield Horizontal(Static(self._custom_text, id='custom-content'))
+        yield Info()
+        yield Term()
+        yield Constraint()
+        yield Custom()
 
     def toggle_option(self, field: str) -> bool:
         assert field in ['minimize', 'term_on', 'constraint_on', 'custom_on']
@@ -166,10 +228,12 @@ class NodeView(Widget):
         if field == 'custom_on' and self._custom_view is None:
             new_value = False
         setattr(self, field_attr, new_value)
-        self._info_text = self.info_text()
-        self.query_one('#info-content', Static).update(self._info_text)
-        self._update()
+        self.update_info()
         return new_value
+
+    def update_info(self) -> None:
+        self.query_one(Info).update(self.info_text())
+        self._update()
 
     def toggle_view(self, field: str) -> None:
         assert field in ['term', 'constraint', 'custom']
@@ -246,13 +310,9 @@ class NodeView(Widget):
                 elif type(self._element) is KCFG.Successor:
                     custom_str = '\n'.join(self._custom_view(self._element))
 
-        # self._term_text = term_str
-        # self._constraint_text = constraint_str
-        # self._custom_text = custom_str
-
-        self.query_one('#term-content', Static).update(term_str)
-        self.query_one('#constraint-content', Static).update(constraint_str)
-        self.query_one('#custom-content', Static).update(custom_str)
+        self.query_one(Term).text = term_str
+        self.query_one(Constraint).text = constraint_str
+        self.query_one(Custom).text = custom_str
 
 
 class Window(Enum):
@@ -411,10 +471,9 @@ class KCFGViewer(App):
             raise ValueError(f'unsupported kcfg node {kcfg_id}')
 
     def on_mount(self) -> None:
-        for win in Window:
-            self.query_one(f'#{win.value}').set_class(True, 'deselected')
         self.focus_window(Window.BEHAVIOR)
         next_node = self.next_node_from(0)
+        self.query_one('#node-view', NodeView).update_info()
         if next_node is not None:
             self._selected_chunk = next_node
             self.query_one(f'#{self._selected_chunk}', GraphChunk).set_styles('border-left: double red;')
@@ -437,6 +496,15 @@ class KCFGViewer(App):
     def on_custom_selected(self) -> None:
         self.focus_window(Window.CUSTOM)
 
+    def on_term_focused(self) -> None:
+        self.focus_window(Window.TERM)
+
+    def on_constraint_focused(self) -> None:
+        self.focus_window(Window.CONSTRAINT)
+
+    def on_custom_focused(self) -> None:
+        self.focus_window(Window.CUSTOM)
+
     BINDINGS = [
         ('f', 'keystroke("f")', 'Fold node'),
         ('F', 'keystroke("F")', 'Unfold all nodes'),
@@ -449,25 +517,20 @@ class KCFGViewer(App):
         ('j', 'keystroke("j")', 'Go down'),
         ('k', 'keystroke("k")', 'Go up'),
         ('l', 'keystroke("l")', 'Go right'),
-        ('g', 'keystroke("g")', 'Go to vert start'),
-        ('G', 'keystroke("G")', 'Go to vert end'),
-        ('0', 'keystroke("0")', 'Go to hor end'),
-        ('$', 'keystroke("$")', 'Go to hor end'),
+        ('g', 'scroll_home', 'Go to vert start'),
+        ('G', 'scroll_end', 'Go to vert end'),
+        ('0', 'scroll_page_left', 'Go to hor start'),
+        ('$', 'scroll_page_right', 'Go to hor end'),
         ('z', 'keystroke("z")', 'Center vertically'),
-        ('ctrl+d', 'keystroke("page-down")', 'Page down'),
-        ('ctrl+u', 'keystroke("page-up")', 'Page up'),
+        ('ctrl+d', 'scroll_page_down', 'Page down'),
+        ('ctrl+u', 'scroll_page_up', 'Page up'),
         ('q', 'keystroke("q")', 'Quit'),
     ]
 
     def focus_window(self, to: Window) -> None:
         curr_win = self._curr_win
         self._last_win = curr_win
-        last_win = self.query_one(f'#{curr_win.value}')
-        last_win.set_class(False, 'selected')
-        last_win.set_class(True, 'deselected')
         new_win = self.query_one(f'#{to.value}')
-        new_win.set_class(False, 'deselected')
-        new_win.set_class(True, 'selected')
         new_win.focus(scroll_visible=False)
         self._curr_win = to
 
@@ -521,7 +584,7 @@ class KCFGViewer(App):
                 if self._curr_win == Window.BEHAVIOR:
                     self.goto_next_node()
                 else:
-                    self.query_one(f'#{self._curr_win.value}').scroll_page_down(animate=False)
+                    self.query_one(f'#{self._curr_win.value}').scroll_down(animate=False)
             case MoveKind.PAGE:
                 self.query_one(f'#{self._curr_win.value}').scroll_page_down(animate=False)
             case MoveKind.BOUND:
@@ -622,10 +685,10 @@ class KCFGViewer(App):
             self.query_one('#node-view', NodeView).toggle_option(key)
         elif key == 'z':
             self.move(Direction.DOWN, MoveKind.CENTER)
-        elif key == 'page-up':
-            self.move(Direction.UP, MoveKind.PAGE)
-        elif key == 'page-down':
-            self.move(Direction.DOWN, MoveKind.PAGE)
+        # elif key == 'page-up':
+        #     self.move(Direction.UP, MoveKind.PAGE)
+        # elif key == 'page-down':
+        #     self.move(Direction.DOWN, MoveKind.PAGE)
         elif key == 'q':
             await self.action_quit()
 

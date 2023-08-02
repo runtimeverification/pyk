@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from textual.containers import Horizontal, ScrollableContainer
-from textual.widget import Widget
-from textual.widgets import Footer
 from textual.message import Message
+from textual.widgets import Footer
 
 from ..kcfg.tui import GraphChunk, KCFGViewer, NodeView, Window
 from .show import APRProofShow

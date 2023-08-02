@@ -8,7 +8,7 @@ from functools import reduce
 from itertools import chain
 from typing import TYPE_CHECKING, final, overload
 
-from ..utils import EMPTY_FROZEN_DICT, FrozenDict, some
+from ..utils import EMPTY_FROZEN_DICT, FrozenDict
 from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt
 
 if TYPE_CHECKING:
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     T = TypeVar('T', bound='KAst')
     W = TypeVar('W', bound='WithKAtt')
     KI = TypeVar('KI', bound='KInner')
+    A = TypeVar('A', bound='Any')
+    B = TypeVar('B', bound='Any')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -134,6 +136,18 @@ class Subst(Mapping[str, KInner]):
             ml_term = KApply('#And', [ml_term, _i])
         return ml_term
 
+    @property
+    def pred(self) -> KInner:
+        conjuncts = [
+            KApply('_==K_', KVariable(name), val)
+            for name, val in self.items()
+            if type(val) is not KVariable or val.name != name
+        ]
+        if not conjuncts:
+            return KToken('true', 'Bool')
+
+        return reduce(KLabel('_andBool_'), conjuncts)
+
 
 @final
 @dataclass(frozen=True)
@@ -229,25 +243,6 @@ class KVariable(KInner):
             sort = KSort.from_dict(att[KAtt.SORT])
         else:
             sort = None
-
-        ignored_atts = {
-            KAtt.SORT,
-            KAtt.LOCATION,
-            KAtt.SOURCE,
-            'org.kframework.definition.Production',
-            'anonymous',
-            'cellSort',
-            'withConfig',
-            'prettyPrintWithSortAnnotation',
-            'fresh',
-        }
-
-        problem_att = some(a for a in att if a not in ignored_atts)
-        if problem_att:
-            raise ValueError(f'Attribute other than {KAtt.SORT} attached to KVariable: {problem_att}')
-
-        if att:
-            _LOGGER.debug(f'Removing attributes: {list(att)} from KVariable: {d}')
 
         return KVariable(name=d['name'], sort=sort)
 
@@ -419,7 +414,7 @@ class KApply(KInner):
         return KApply(label=label, args=args)
 
     def map_inner(self: KApply, f: Callable[[KInner], KInner]) -> KApply:
-        return self.let(args=(f(arg) for arg in self.args))
+        return self.let(args=tuple(f(arg) for arg in self.args))
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KApply and term.label.name == self.label.name and term.arity == self.arity:
@@ -624,7 +619,7 @@ class KSequence(KInner, Sequence[KInner]):
         return KSequence(items=items)
 
     def map_inner(self: KSequence, f: Callable[[KInner], KInner]) -> KSequence:
-        return self.let(items=(f(item) for item in self.items))
+        return self.let(items=tuple(f(item) for item in self.items))
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KSequence:
@@ -640,6 +635,19 @@ class KSequence(KInner, Sequence[KInner]):
                 return _subst
         _LOGGER.debug(f'Matching failed: ({self}.match({term}))')
         return None
+
+
+def bottom_up_with_summary(f: Callable[[KInner, list[A]], tuple[KInner, A]], kinner: KInner) -> tuple[KInner, A]:
+    child_summaries = []
+
+    def map_child(child: KInner) -> KInner:
+        nonlocal child_summaries
+        (mapped_child, summarized_child) = bottom_up_with_summary(f, child)
+        child_summaries.append(summarized_child)
+        return mapped_child
+
+    mapped = kinner.map_inner(map_child)
+    return f(mapped, child_summaries)
 
 
 # TODO make method of KInner

@@ -1,8 +1,10 @@
 from ._kompiler import (
+    BoosterClientTest,
     KCFGExploreTest,
     KompiledTest,
     Kompiler,
     KoreClientTest,
+    KoreServerPoolTest,
     KPrintTest,
     KProveTest,
     KRunTest,
