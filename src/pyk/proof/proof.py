@@ -177,6 +177,14 @@ class Proof(ABC):
         ...
 
     @property
+    def failed(self) -> bool:
+        return self.status == ProofStatus.FAILED
+
+    @property
+    def passed(self) -> bool:
+        return self.status == ProofStatus.PASSED
+
+    @property
     def dict(self) -> dict[str, Any]:
         return {
             'id': self.id,
