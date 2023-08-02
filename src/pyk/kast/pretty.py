@@ -44,10 +44,25 @@ _LOGGER: Final = logging.getLogger(__name__)
 SymbolTable = dict[str, Callable[..., str]]
 
 
-class PrettyPrinter:
+class BasePrinter:
+    _lazy_symbol_table: Callable[[], SymbolTable]
+
+    def __init__(self, lazy_symbol_table: Callable[[], SymbolTable]):
+        self._lazy_symbol_table = lazy_symbol_table
+
+    @cached_property
+    def symbol_table(self) -> SymbolTable:
+        return self._lazy_symbol_table()
+
+    def _applied_label_str(self, symbol: str) -> Callable[..., str]:
+        return lambda *args: symbol + ' ( ' + ' , '.join(args) + ' )'
+
+    def get_unparser_for(self, label: str) -> Callable[..., str]:
+        return self._applied_label_str(label) if label not in self.symbol_table else self.symbol_table[label]
+
+
+class PrettyPrinter(BasePrinter):
     definition: KDefinition
-    _extra_unparsing_modules: Iterable[KFlatModule]
-    _patch_symbol_table: Callable[[SymbolTable], None] | None
     _unalias: bool
     _sort_collections: bool
 
@@ -59,22 +74,21 @@ class PrettyPrinter:
         unalias: bool = True,
         sort_collections: bool = False,
     ):
+        def lazy_symbol_table() -> SymbolTable:
+            symb_table = build_symbol_table(
+                definition,
+                extra_modules=extra_unparsing_modules,
+                opinionated=True,
+            )
+            if patch_symbol_table is not None:
+                patch_symbol_table(symb_table)
+            return symb_table
+
+        super().__init__(lazy_symbol_table)
+
         self.definition = definition
-        self._extra_unparsing_modules = extra_unparsing_modules
-        self._patch_symbol_table = patch_symbol_table
         self._unalias = unalias
         self._sort_collections = sort_collections
-
-    @cached_property
-    def symbol_table(self) -> SymbolTable:
-        symb_table = build_symbol_table(
-            self.definition,
-            extra_modules=self._extra_unparsing_modules,
-            opinionated=True,
-        )
-        if self._patch_symbol_table is not None:
-            self._patch_symbol_table(symb_table)
-        return symb_table
 
     def print(self, kast: KAst) -> str:
         """Print out KAST terms/outer syntax.
@@ -172,7 +186,7 @@ class PrettyPrinter:
             cell_contents = '\n'.join(unparsed_args).rstrip()
             cell_str = label + '\n' + indent(cell_contents) + '\n</' + label[1:]
             return cell_str.rstrip()
-        unparser = self._applied_label_str(label) if label not in self.symbol_table else self.symbol_table[label]
+        unparser = self.get_unparser_for(label)
         return unparser(*unparsed_args)
 
     def _print_kas(self, kas: KAs) -> str:
@@ -339,9 +353,6 @@ class PrettyPrinter:
             return '\n'.join(clauses)
         else:
             return self.print(kast)
-
-    def _applied_label_str(self, symbol: str) -> Callable[..., str]:
-        return lambda *args: symbol + ' ( ' + ' , '.join(args) + ' )'
 
 
 def build_symbol_table(
