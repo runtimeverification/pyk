@@ -89,6 +89,18 @@ class ExplorationProof(Proof):
     def add_terminal(self, node_id: NodeIdLike) -> None:
         self._terminal_node_ids.add(self.kcfg._resolve(node_id))
 
+    def remove_terminal(self, node_id: NodeIdLike) -> None:
+        node_id = self.kcfg._resolve(node_id)
+        if node_id not in self._terminal_node_ids:
+            raise ValueError(f'Node is not terminal: {node_id}')
+        self._terminal_node_ids.remove(node_id)
+
+    def prune_from(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike]) -> list[NodeIdLike]:
+        pruned_nodes = self.kcfg.prune(node_id, keep_nodes=list(keep_nodes) + [self.init])
+        for nid in pruned_nodes:
+            self._terminal_node_ids.discard(self.kcfg._resolve(nid))
+        return pruned_nodes
+
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
         spb = self.kcfg.shortest_path_between(self.init, node_id)
         assert spb is not None
