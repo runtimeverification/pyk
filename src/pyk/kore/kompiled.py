@@ -75,10 +75,10 @@ class KompiledKore:
         if sort1 == sort2:
             return True
 
-        if sort2 == SortApp('SortK'):
+        if sort2 == SortApp('SortKItem'):
             return True
 
-        if sort1 == SortApp('SortK'):
+        if sort1 == SortApp('SortKItem'):
             return False
 
         return sort1 in self._subsort_table.get(sort2, frozenset())
@@ -121,5 +121,8 @@ class KompiledKore:
 
         if self.is_subsort(actual_sort, sort):
             return App('inj', (actual_sort, sort), (pattern,))
+
+        if sort == SortApp('SortK'):
+            return App('kseq', (), (App('inj', (actual_sort, SortApp('SortKItem')), (pattern,)), App('dotk')))
 
         raise ValueError(f'Sort {actual_sort.name} is not a subsort of {sort.name}: {pattern}')
