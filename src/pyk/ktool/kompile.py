@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class KompileNotFoundException(Exception):
+class KompileNotFoundError(RuntimeError):
     def __init__(self, kompile_command: str):
         super().__init__(f'Kompile command not found: {str}')
 
@@ -121,7 +121,7 @@ class Kompile(ABC):
 
         command = list(command) if command is not None else ['kompile']
         if not shutil.which(command[0]):
-            raise KompileNotFoundException(command[0])
+            raise KompileNotFoundError(command[0])
         args = command + self.args()
 
         if output_dir is not None:

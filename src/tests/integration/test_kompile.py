@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.ktool.kompile import KompileBackend, KompileNotFoundException, kompile
+from pyk.ktool.kompile import KompileBackend, KompileNotFoundError, kompile
 from pyk.testing import KompiledTest
 
 from .utils import K_FILES
@@ -37,9 +37,8 @@ class TestLlvmKompile(KompiledTest):
 
 def test_kompile_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     k_file = K_FILES / 'imp-verification.k'
-    # this is supposed to NOT be found on $PATH
     bad_kompile = 'bad-name-of-kompile'
     monkeypatch.setenv('PATH', '')
 
-    with pytest.raises(KompileNotFoundException):
+    with pytest.raises(KompileNotFoundError):
         kompile(k_file, command=[bad_kompile])
