@@ -48,8 +48,10 @@ class ExplorationProof(Proof):
         admitted: bool = False,
     ):
         if type(self) == ExplorationProof:
-            assert subproof_ids == ()
-            assert not admitted
+            if not subproof_ids:
+                raise ValueError('Subproofs provided for an ExplorationProof')
+            if not admitted:
+                raise ValueError('Admitted ExplorationProof')
 
         super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         self.kcfg = kcfg
@@ -79,6 +81,10 @@ class ExplorationProof(Proof):
     @property
     def pending(self) -> list[KCFG.Node]:
         return [nd for nd in self.kcfg.leaves if self.is_pending(nd.id)]
+
+    @property
+    def failing(self) -> list[KCFG.Node]:
+        return []
 
     def add_terminal(self, node_id: NodeIdLike) -> None:
         self._terminal_node_ids.add(self.kcfg._resolve(node_id))
@@ -307,12 +313,16 @@ class ExplorationProver(Prover):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         implication_every_block: bool = True,
+        fail_fast: bool = False,
     ) -> None:
+        if self.proof.admitted:
+            raise ValueError('Attempting to advance an admitted proof')
+
         iterations = 0
 
         self._update_terminals()
 
-        while self.proof.pending:
+        while not (fail_fast and self.proof.status == ProofStatus.FAILED) and self.proof.pending:
             self.proof.write_proof_data()
 
             if max_iterations is not None and max_iterations <= iterations:
