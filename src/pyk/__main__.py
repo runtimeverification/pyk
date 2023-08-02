@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from graphviz import Digraph
 
 from .cli.args import KCLIArgs
-from .cli.utils import LOG_FORMAT, dir_path, loglevel
+from .cli.utils import LOG_FORMAT, PrintInput, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import split_config_and_constraints
 from .kast.inner import KInner
@@ -53,12 +53,12 @@ def main() -> None:
 def exec_print(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     printer = KPrint(kompiled_dir)
-    if args.input == 'kore-json':
-        _LOGGER.info(f'Reading KoreJSON from file: {args.term.name}')
+    if args.input == PrintInput.KOREJSON:
+        _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
         kore = Pattern.from_json(args.term.read())
         term = printer.kore_to_kast(kore)
     else:
-        _LOGGER.info(f'Reading Kast from file: {args.term.name}')
+        _LOGGER.info(f'Reading Kast JSON from file: {args.term.name}')
         term = KInner.from_json(args.term.read())
     if is_top(term):
         args.output_file.write(printer.pretty_print(term))
@@ -153,7 +153,10 @@ def create_argument_parser() -> ArgumentParser:
         parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
     )
     print_args.add_argument('term', type=FileType('r'), help='Input term (in format specified with --input).')
-    print_args.add_argument('--input', default='kast', type=str, help='')
+    input_formats = '|'.join([pi.value for pi in PrintInput])
+    print_args.add_argument(
+        '--input', default=PrintInput.KASTJSON, type=PrintInput, help=f'Format of input: [{input_formats}]'
+    )
     print_args.add_argument('--omit-labels', default='', nargs='?', help='List of labels to omit from output.')
     print_args.add_argument(
         '--keep-cells', default='', nargs='?', help='List of cells with primitive values to keep in output.'
