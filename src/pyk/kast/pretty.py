@@ -54,6 +54,12 @@ class BasePrinter:
     def symbol_table(self) -> SymbolTable:
         return self._lazy_symbol_table()
 
+    def _applied_label_str(self, symbol: str) -> Callable[..., str]:
+        return lambda *args: symbol + ' ( ' + ' , '.join(args) + ' )'
+
+    def get_unparser_for(self, label: str) -> Callable[..., str]:
+        return self._applied_label_str(label) if label not in self.symbol_table else self.symbol_table[label]
+
 
 class PrettyPrinter(BasePrinter):
     definition: KDefinition
@@ -180,7 +186,7 @@ class PrettyPrinter(BasePrinter):
             cell_contents = '\n'.join(unparsed_args).rstrip()
             cell_str = label + '\n' + indent(cell_contents) + '\n</' + label[1:]
             return cell_str.rstrip()
-        unparser = self._applied_label_str(label) if label not in self.symbol_table else self.symbol_table[label]
+        unparser = self.get_unparser_for(label)
         return unparser(*unparsed_args)
 
     def _print_kas(self, kas: KAs) -> str:
@@ -347,9 +353,6 @@ class PrettyPrinter(BasePrinter):
             return '\n'.join(clauses)
         else:
             return self.print(kast)
-
-    def _applied_label_str(self, symbol: str) -> Callable[..., str]:
-        return lambda *args: symbol + ' ( ' + ' , '.join(args) + ' )'
 
 
 def build_symbol_table(
