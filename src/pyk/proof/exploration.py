@@ -44,8 +44,14 @@ class ExplorationProof(Proof):
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         terminal_node_ids: Iterable[NodeIdLike] | None = None,
+        subproof_ids: Iterable[str] = (),
+        admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir, subproof_ids=[], admitted=False)
+        if type(self) == ExplorationProof:
+            assert subproof_ids == ()
+            assert not admitted
+
+        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         self.kcfg = kcfg
         self.init = kcfg._resolve(init)
         self.logs = logs

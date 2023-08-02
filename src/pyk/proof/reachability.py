@@ -60,8 +60,16 @@ class APRProof(ExplorationProof):
         circularity: bool = False,
         admitted: bool = False,
     ):
-        super().__init__(id, kcfg, init, logs, proof_dir=proof_dir, terminal_node_ids=terminal_node_ids)
-        Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
+        super().__init__(
+            id,
+            kcfg,
+            init,
+            logs,
+            proof_dir=proof_dir,
+            terminal_node_ids=terminal_node_ids,
+            subproof_ids=subproof_ids,
+            admitted=admitted,
+        )
 
         self.target = kcfg._resolve(target)
         self.circularity = circularity
