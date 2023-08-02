@@ -500,12 +500,8 @@ class TestKonvertSimpleProofs(KompiledTest):
         # Given
         kore = KoreParser(kore_text).pattern()
 
-        print(kore)
-
         # When
         actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
-
-        print(actual_kore)
 
         # Then
         assert actual_kore == kore
