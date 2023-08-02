@@ -10,7 +10,7 @@ from pyk.konvert import kast_to_kore, kore_to_kast, krule_to_kore
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
 from pyk.prelude.bytes import bytesToken
-from pyk.prelude.kbool import BOOL, TRUE
+from pyk.prelude.kbool import BOOL, TRUE, orBool
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
@@ -231,6 +231,32 @@ BIDIRECTIONAL_TEST_DATA: Final = (
 )
 
 KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
+    (
+        'equals-k-encoding',
+        KSort('KItem'),
+        """
+        inj{SortBool{}, SortKItem{}}(
+        Lbl'UndsEqlsEqls'K'Unds'{}(
+          kseq{}(
+            inj{SortInt{}, SortKItem{}}(VarX:SortInt{}),
+            dotk{}()
+          ),
+          kseq{}(
+            inj{SortInt{}, SortKItem{}}(\\dv{SortInt{}}("0")),
+            dotk{}()
+          )
+        ))
+        """,
+#          """
+#          inj{SortBool{}, SortKItem{}}(
+#              Lbl'UndsEqlsEqls'K'Unds'{}(
+#                  inj{SortInt{}, SortK{}}(VarX:SortInt{}),
+#                  inj{SortInt{}, SortK{}}(\\dv{SortInt{}}("0"))
+#              )
+#          )
+#          """,
+        KApply('_==K_', [KVariable('X', 'Int'), KToken('0', 'Int')]),
+    ),
     (
         'variable-without-sort',
         KSort('Bar'),
@@ -482,8 +508,12 @@ class TestKonvertSimpleProofs(KompiledTest):
         # Given
         kore = KoreParser(kore_text).pattern()
 
+        print(kore)
+
         # When
         actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
+
+        print(actual_kore)
 
         # Then
         assert actual_kore == kore
