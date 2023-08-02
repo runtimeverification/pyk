@@ -10,7 +10,7 @@ from pyk.konvert import kast_to_kore, kore_to_kast, krule_to_kore
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
 from pyk.prelude.bytes import bytesToken
-from pyk.prelude.kbool import BOOL, TRUE, orBool
+from pyk.prelude.kbool import BOOL, TRUE
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
@@ -247,14 +247,6 @@ KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
           )
         ))
         """,
-#          """
-#          inj{SortBool{}, SortKItem{}}(
-#              Lbl'UndsEqlsEqls'K'Unds'{}(
-#                  inj{SortInt{}, SortK{}}(VarX:SortInt{}),
-#                  inj{SortInt{}, SortK{}}(\\dv{SortInt{}}("0"))
-#              )
-#          )
-#          """,
         KApply('_==K_', [KVariable('X', 'Int'), KToken('0', 'Int')]),
     ),
     (

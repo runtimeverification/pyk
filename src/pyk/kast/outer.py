@@ -1137,6 +1137,15 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             return sort2
         return None
 
+    def add_ksequence_under_kequal(self, kast: KInner) -> KInner:
+        def _add_ksequence_under_kequal(kast: KInner) -> KInner:
+            if type(kast) is KApply and kast.label.name == '_==K_':
+                return KApply('_==K_', [KSequence(arg) for arg in kast.args])
+            else:
+                return kast
+
+        return top_down(_add_ksequence_under_kequal, kast)
+
     def sort_vars(self, kast: KInner, sort: KSort | None = None) -> KInner:
         if type(kast) is KVariable and kast.sort is None and sort is not None:
             return kast.let(sort=sort)
