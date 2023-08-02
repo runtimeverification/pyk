@@ -1137,6 +1137,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             return sort2
         return None
 
+    # Sorts like Int cannot be injected directly into sort K so they are embedded in a KSequence.
     def add_ksequence_under_kequal(self, kast: KInner) -> KInner:
         def _add_ksequence_under_kequal(kast: KInner) -> KInner:
             if type(kast) is KApply and kast.label.name == '_==K_':
