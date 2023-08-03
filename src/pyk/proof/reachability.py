@@ -94,6 +94,10 @@ class APRProof(Proof):
         return [self.kcfg.node(nid) for nid in self._terminal_nodes]
 
     @property
+    def vacuous(self) -> list[KCFG.Node]:
+        return [self.kcfg.node(nid) for nid in self._vacuous_nodes]
+
+    @property
     def pending(self) -> list[KCFG.Node]:
         return [nd for nd in self.kcfg.leaves if self.is_pending(nd.id)]
 
@@ -254,6 +258,7 @@ class APRProof(Proof):
                     len(self.pending),
                     len(self.failing),
                     len(self.kcfg.stuck),
+                    len(self.vacuous),
                     len(self.terminal),
                     len(self.node_refutations),
                     len(self.subproof_ids),
@@ -389,6 +394,7 @@ class APRBMCProof(APRProof):
                     len(self.pending),
                     len(self.failing),
                     len(self.kcfg.stuck),
+                    len(self.vacuous),
                     len(self.terminal),
                     len(self.node_refutations),
                     len(self._bounded_nodes),
@@ -655,6 +661,7 @@ class APRSummary(ProofSummary):
     pending: int
     failing: int
     stuck: int
+    vacuous: int
     terminal: int
     refuted: int
     subproofs: int
@@ -669,6 +676,7 @@ class APRSummary(ProofSummary):
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
             f'    stuck: {self.stuck}',
+            f'    vacuous: {self.vacuous}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
             f'Subproofs: {self.subproofs}',
@@ -679,16 +687,24 @@ class APRSummary(ProofSummary):
 class APRFailureInfo:
     failing_nodes: FrozenDict[int, tuple[str, str]]
     pending_nodes: frozenset[int]
+    vacuous_nodes: FrozenDict[int, str]
 
-    def __init__(self, failing_nodes: Mapping[int, tuple[str, str]], pending_nodes: Iterable[int]):
+    def __init__(
+        self,
+        failing_nodes: Mapping[int, tuple[str, str]],
+        pending_nodes: Iterable[int],
+        vacuous_nodes: Iterable[int],
+    ):
         object.__setattr__(self, 'failing_nodes', FrozenDict(failing_nodes))
         object.__setattr__(self, 'pending_nodes', frozenset(pending_nodes))
+        object.__setattr__(self, 'vacuous_nodes', frozenset(vacuous_nodes))
 
     @staticmethod
     def from_proof(proof: APRProof, kcfg_explore: KCFGExplore) -> APRFailureInfo:
         target = proof.kcfg.node(proof.target)
         pending_nodes = {node.id for node in proof.pending}
         failing_nodes = {}
+        vacuous_nodes = {}
         for node in proof.failing:
             simplified_node, _ = kcfg_explore.cterm_simplify(node.cterm)
             simplified_target, _ = kcfg_explore.cterm_simplify(target.cterm)
@@ -697,16 +713,26 @@ class APRFailureInfo:
             _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
             path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
             failing_nodes[node.id] = (reason, path_condition)
-        return APRFailureInfo(failing_nodes=failing_nodes, pending_nodes=pending_nodes)
+        for node in proof.vacuous:
+            vacuous_nodes[node.id] = path_condition
+
+        return APRFailureInfo(failing_nodes=failing_nodes, pending_nodes=pending_nodes, vacuous_nodes=vacuous_nodes)
 
     def print(self) -> list[str]:
         res_lines: list[str] = []
 
         num_pending = len(self.pending_nodes)
         num_failing = len(self.failing_nodes)
+        num_vacuous = len(self.vacuous_nodes)
         res_lines.append(
             f'{num_pending + num_failing} Failure nodes. ({num_pending} pending and {num_failing} failing)'
         )
+
+        if num_vacuous > 0:
+            res_lines.append('')
+            res_lines.append(f'{num_vacuous} Vacuous nodes.')
+            res_lines.append('')
+            res_lines.append(f'Vacuous nodes: {sorted(self.vacuous_nodes)}')
 
         if num_pending > 0:
             res_lines.append('')
@@ -802,6 +828,7 @@ class APRBMCSummary(ProofSummary):
     pending: int
     failing: int
     stuck: int
+    vacuous: int
     terminal: int
     refuted: int
     bounded: int
@@ -816,6 +843,7 @@ class APRBMCSummary(ProofSummary):
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
             f'    stuck: {self.stuck}',
+            f'    vacuous: {self.vacuous}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
             f'    bounded: {self.bounded}',

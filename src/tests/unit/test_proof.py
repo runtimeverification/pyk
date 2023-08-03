@@ -253,10 +253,15 @@ def test_print_failure_info() -> None:
         '#Top',
     )
     pending_nodes = [6, 7, 8]
-    failure_info = APRFailureInfo(failing_nodes=failing_nodes, pending_nodes=pending_nodes)
+    vacuous_nodes = [11]
+    failure_info = APRFailureInfo(failing_nodes=failing_nodes, pending_nodes=pending_nodes, vacuous_nodes=vacuous_nodes)
 
     actual_output = '\n'.join(failure_info.print())
     expected_output = r"""5 Failure nodes. (3 pending and 2 failing)
+
+1 Vacuous nodes.
+
+Vacuous nodes: [11]
 
 Pending nodes: [6, 7, 8]
 
@@ -295,6 +300,7 @@ def test_apr_proof_summary(proof_dir: Path) -> None:
                 pending=0,
                 failing=0,
                 stuck=0,
+                vacuous=0,
                 terminal=0,
                 refuted=0,
                 subproofs=0,
@@ -317,6 +323,7 @@ def test_aprbmc_proof_summary(proof_dir: Path) -> None:
                 pending=0,
                 failing=0,
                 stuck=0,
+                vacuous=0,
                 terminal=0,
                 refuted=0,
                 subproofs=0,
@@ -353,6 +360,7 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
         pending=0,
         failing=0,
         stuck=0,
+        vacuous=0,
         terminal=0,
         refuted=0,
         subproofs=1,
@@ -368,6 +376,7 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
                 pending=1,
                 failing=0,
                 stuck=0,
+                vacuous=0,
                 terminal=0,
                 refuted=0,
                 subproofs=1,
