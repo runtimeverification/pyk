@@ -8,10 +8,8 @@ from functools import reduce
 from itertools import chain
 from typing import TYPE_CHECKING, final, overload
 
-from ..prelude.ml import mlEquals
 from ..utils import EMPTY_FROZEN_DICT, FrozenDict
 from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt
-from .manip import flatten_label
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -127,9 +125,15 @@ class Subst(Mapping[str, KInner]):
 
     @staticmethod
     def from_pred(substs_pred: KInner) -> Subst:
+        def _flatten_label(label: str, kast: KInner) -> list[KInner]:
+            if type(kast) is KApply and kast.label.name == label:
+                items = (_flatten_label(label, arg) for arg in kast.args)
+                return [c for cs in items for c in cs]
+            return [kast]
+
         _subst: dict[str, KInner] = {}
-        for subst_pred in flatten_label('#And', substs_pred):
-            subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
+        for subst_pred in _flatten_label('#And', substs_pred):
+            subst_pattern = KApply('#Equals', [KVariable('###VAR'), KVariable('###TERM')])
             m = subst_pattern.match(subst_pred)
             if m is not None and type(m['###VAR']) is KVariable:
                 _subst[m['###VAR'].name] = m['###TERM']
