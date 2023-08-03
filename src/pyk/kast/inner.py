@@ -8,8 +8,10 @@ from functools import reduce
 from itertools import chain
 from typing import TYPE_CHECKING, final, overload
 
+from ..prelude.ml import mlEquals
 from ..utils import EMPTY_FROZEN_DICT, FrozenDict
 from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt
+from .manip import flatten_label
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -122,6 +124,18 @@ class Subst(Mapping[str, KInner]):
             rhs = KVariable(var_name)
             new_term = KRewrite(lhs, rhs).replace(new_term)
         return new_term
+
+    @staticmethod
+    def from_pred(substs_pred: KInner) -> Subst:
+        _subst: dict[str, KInner] = {}
+        for subst_pred in flatten_label('#And', substs_pred):
+            subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
+            m = subst_pattern.match(subst_pred)
+            if m is not None and type(m['###VAR']) is KVariable:
+                _subst[m['###VAR'].name] = m['###TERM']
+            else:
+                raise AssertionError(f'Received a non-substitution from get-model endpoint: {subst_pred}')
+        return Subst(_subst)
 
     @property
     def ml_pred(self) -> KInner:
