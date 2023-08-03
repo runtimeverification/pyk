@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import socket
@@ -124,6 +125,54 @@ class SingleSocketTransport(Transport):
         server_addr = str(self)
         _LOGGER.debug(f'Waiting for response from {server_addr}...')
         return self._file.readline().rstrip()
+
+    def __str__(self) -> str:
+        return f'{self._host}:{self._port}'
+
+
+@final
+class HttpTransport(Transport):
+    _host: str
+    _port: int
+    _timeout: int | None
+
+    def __init__(self, host: str, port: int, *, timeout: int | None = None):
+        self._host = host
+        self._port = port
+        self._timeout = timeout
+
+    def __enter__(self) -> HttpTransport:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+    def command(self, bug_report_id: str, old_id: int, bug_report_request: str) -> list[str]:
+        return [
+            'curl',
+            '-X',
+            'POST',
+            '-H',
+            'Content-Type: application/json',
+            '-d',
+            '@' + bug_report_request,
+            'http://' + self._host + ':' + str(self._port),
+            '>',
+            f'rpc_{bug_report_id}/{old_id:03}_actual.json',
+        ]
+
+    def request(self, req: str) -> str:
+        connection = http.client.HTTPConnection(self._host, self._port, timeout=self._timeout)
+        connection.request('POST', '/', body=req, headers={'Content-Type': 'application/json'})
+        server_addr = str(self)
+        _LOGGER.debug(f'Waiting for response from {server_addr}...')
+        response = connection.getresponse()
+        if response.status != 200:
+            raise JsonRpcError('Internal server error', -32603)
+        return str(response.read())
 
     def __str__(self) -> str:
         return f'{self._host}:{self._port}'
