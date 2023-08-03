@@ -4,14 +4,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.markdown import CodeBlock, code_blocks
+from pyk.kast.markdown import And, Atom, CodeBlock, Not, Or, SelectorParser, code_blocks
 
 from ..utils import TEST_DATA_DIR
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Collection, Iterator
     from pathlib import Path
     from typing import Final
+
+    from pyk.kast.markdown import Selector
 
 
 CODE_BLOCKS_TEST_DIR: Final = TEST_DATA_DIR / 'markdown-code-blocks'
@@ -74,3 +76,86 @@ def _parse_code_blocks_test_data(test_file: Path) -> tuple[str, list[CodeBlock]]
     text = _text(it)
     blocks = _blocks(it)
     return text, blocks
+
+
+PARSER_TEST_DATA: Final = (
+    ('a', Atom('a')),
+    (' a ', Atom('a')),
+    ('(a)', Atom('a')),
+    ('((a))', Atom('a')),
+    ('foo', Atom('foo')),
+    ('!a', Not(Atom('a'))),
+    ('a & b', And((Atom('a'), Atom('b')))),
+    ('a & b & c', And((Atom('a'), Atom('b'), Atom('c')))),
+    ('a & (b & c)', And((Atom('a'), And((Atom('b'), Atom('c')))))),
+    ('!(a & b)', Not(And((Atom('a'), Atom('b'))))),
+    ('(a & b) & c', And((And((Atom('a'), Atom('b'))), Atom('c')))),
+    ('a & !b & !c', And((Atom('a'), Not(Atom('b')), Not(Atom('c'))))),
+    ('a | b', Or((Atom('a'), Atom('b')))),
+    ('a | b | c', Or((Atom('a'), Atom('b'), Atom('c')))),
+    ('!a | !b | c', Or((Not(Atom('a')), Not(Atom('b')), Atom('c')))),
+    ('a | b & !c', Or((Atom('a'), And((Atom('b'), Not(Atom('c'))))))),
+    ('!(a | b)', Not(Or((Atom('a'), Atom('b'))))),
+    ('(a | b) & !c', And((Or((Atom('a'), Atom('b'))), Not(Atom('c'))))),
+    ('!a & b | c', Or((And((Not(Atom('a')), Atom('b'))), Atom('c')))),
+    ('!a & (b | c)', And((Not(Atom('a')), Or((Atom('b'), Atom('c')))))),
+)
+
+
+@pytest.mark.parametrize('text,expected', PARSER_TEST_DATA, ids=[text for text, _ in PARSER_TEST_DATA])
+def test_selector_parser(text: str, expected: Selector) -> None:
+    # Given
+    parser = SelectorParser(text)
+
+    # When
+    actual = parser.parse()
+
+    # Then
+    assert actual == expected
+
+
+EVAL_TEST_DATA: Final[tuple[tuple[str, list[str], bool], ...]] = (
+    ('a', [], False),
+    ('a', ['a'], True),
+    ('a', ['a', 'b'], True),
+    ('a', ['b'], False),
+    ('!a', [], True),
+    ('!a', ['a'], False),
+    ('!a', ['a', 'b'], False),
+    ('!a', ['b'], True),
+    ('a & b', [], False),
+    ('a & b', ['a'], False),
+    ('a & b', ['b'], False),
+    ('a & b', ['a', 'b'], True),
+    ('a | b', [], False),
+    ('a | b', ['a'], True),
+    ('a | b', ['b'], True),
+    ('a | b', ['a', 'b'], True),
+    ('!a | b & c', [], True),
+    ('!a | b & c', ['a'], False),
+    ('!a | b & c', ['b, c'], True),
+    ('a & (!b | c)', [], False),
+    ('a & (!b | c)', ['a'], True),
+    ('a & (!b | c)', ['a', 'b'], False),
+    ('a & (!b | c)', ['a', 'b', 'c'], True),
+)
+
+
+def _eval_id(text: str, atoms: Collection[str], expected: bool) -> str:
+    models = '|==' if expected else '|=/='
+    return '{' + ','.join(atoms) + '} ' + f'{models} {text}'
+
+
+@pytest.mark.parametrize(
+    'text,atoms,expected', EVAL_TEST_DATA, ids=[_eval_id(*test_data) for test_data in EVAL_TEST_DATA]
+)
+def test_selector_eval(text: str, atoms: Collection[str], expected: bool) -> None:
+    # Given
+    parser = SelectorParser(text)
+    selector = parser.parse()
+
+    # When
+    actual = selector.eval(atoms)
+
+    # Then
+    assert actual == expected
