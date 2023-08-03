@@ -31,6 +31,8 @@ if TYPE_CHECKING:
 
     T = TypeVar('T', bound='Proof')
 
+FOUNDRY_ASSUME_LABEL: Final = KLabel(name='foundry_assume', params=())
+BOTTOM_LABEL: Final = KApply(label=KLabel(name='#Bottom', params=(KSort(name='GeneratedTopCell'),)), args=())
 _LOGGER: Final = logging.getLogger(__name__)
 
 
@@ -460,16 +462,14 @@ class APRProver(Prover):
 
         kcell = curr_node.cterm.cell('K_CELL')
         if isinstance(kcell, KSequence):
-            foundry_assume_label = KLabel(name='foundry_assume', params=())
-            bottom_label = KApply(label=KLabel(name='#Bottom', params=(KSort(name='GeneratedTopCell'),)), args=()), ()
-            if isinstance(kcell.items[0], KApply) and kcell.items[0].label == foundry_assume_label:
+            if isinstance(kcell.items[0], KApply) and kcell.items[0].label == FOUNDRY_ASSUME_LABEL:
                 constraints = kcell.items[0].args
                 constraint = KApply(
                     label=KLabel(name='#Equals', params=(KSort(name='Bool'), KSort(name='GeneratedTopCell'))),
                     args=(TRUE, mlAnd(constraints)),
                 )
                 result = self.kcfg_explore.cterm_simplify(curr_node.cterm.add_constraint(constraint))
-                if result == bottom_label:
+                if result == BOTTOM_LABEL:
                     _LOGGER.info(f'Vacuous node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
                     self.proof.add_vacuous(curr_node.id)
 
