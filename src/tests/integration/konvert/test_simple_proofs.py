@@ -299,13 +299,17 @@ KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
         Lbl'UndsEqlsEqls'K'Unds'{}(
           kseq{}(
             inj{SortInt{}, SortKItem{}}(VarX:SortInt{}),
-            inj{SortInt{}, SortKItem{}}(VarY:SortInt{}),
-            dotk{}()
+            kseq{}(
+              inj{SortInt{}, SortKItem{}}(VarY:SortInt{}),
+              dotk{}()
+            )
           ),
           kseq{}(
             inj{SortInt{}, SortKItem{}}(\\dv{SortInt{}}("0")),
-            inj{SortInt{}, SortKItem{}}(\\dv{SortInt{}}("1")),
-            dotk{}()
+            kseq{}(
+              inj{SortInt{}, SortKItem{}}(\\dv{SortInt{}}("1")),
+              dotk{}()
+            )
           )
         ))
         """,
@@ -570,13 +574,6 @@ class TestKonvertSimpleProofs(KompiledTest):
 
         # When
         actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
-
-        print('expected kore')
-        print(kore)
-
-        print('')
-        print('actual kore')
-        print(actual_kore)
 
         # Then
         assert actual_kore == kore
