@@ -17,7 +17,7 @@ from pyk.kore.prelude import (
     k,
     kseq,
 )
-from pyk.kore.rpc import BranchingResult, KoreClient, StuckResult
+from pyk.kore.rpc import BranchingResult, DefaultTransport, KoreClient, StuckResult
 from pyk.testing import KoreServerPoolTest
 from pyk.utils import chain
 
@@ -74,7 +74,7 @@ def expand(port: int, state: str) -> list[str]:
         (k(kseq((inj(STRING, SORT_K_ITEM, dv(state)),))), generated_counter(dv(0))),
     )
 
-    with KoreClient(host='localhost', port=port) as client:
+    with KoreClient(DefaultTransport(host='localhost', port=port)) as client:
         exec_res = client.execute(pattern)
 
     if isinstance(exec_res, StuckResult):

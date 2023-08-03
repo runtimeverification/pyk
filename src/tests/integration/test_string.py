@@ -13,7 +13,7 @@ from pyk.kllvm.importer import import_runtime
 from pyk.konvert import _kast_to_kore, _kore_to_kast
 from pyk.kore.parser import KoreParser
 from pyk.kore.prelude import SORT_K_ITEM, STRING, generated_counter, generated_top, inj, int_dv, k, kseq, str_dv
-from pyk.kore.rpc import KoreClient, KoreServer, StuckResult
+from pyk.kore.rpc import DefaultTransport, KoreClient, KoreServer, StuckResult
 from pyk.kore.syntax import App
 from pyk.ktool.kprint import _kast
 from pyk.ktool.krun import KRun
@@ -232,7 +232,7 @@ def test_kore_rpc(haskell_dir: Path, text: str) -> None:
 
     # When
     with KoreServer(haskell_dir, KOMPILE_MAIN_MODULE) as server:
-        with KoreClient('localhost', server.port) as client:
+        with KoreClient(DefaultTransport('localhost', server.port)) as client:
             result = client.execute(kore)
 
     assert isinstance(result, StuckResult)
