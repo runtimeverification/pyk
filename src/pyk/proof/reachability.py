@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     T = TypeVar('T', bound='Proof')
 
 FOUNDRY_ASSUME_LABEL: Final = KLabel(name='foundry_assume', params=())
-BOTTOM_LABEL: Final = KApply(label=KLabel(name='#Bottom', params=(KSort(name='GeneratedTopCell'),)), args=())
+BOTTOM_LABEL: Final = (KApply(label=KLabel(name='#Bottom', params=(KSort(name='GeneratedTopCell'),)), args=()), ())
 _LOGGER: Final = logging.getLogger(__name__)
 
 
@@ -472,7 +472,6 @@ class APRProver(Prover):
                 if result == BOTTOM_LABEL:
                     _LOGGER.info(f'Vacuous node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
                     self.proof.add_vacuous(curr_node.id)
-
                     return True
         return False
 
