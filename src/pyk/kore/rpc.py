@@ -44,6 +44,24 @@ class JsonRpcError(Exception):
         self.data = data
 
 
+class Transport(ABC):
+    @abstractmethod
+    def request(self, req: str) -> str:
+        ...
+
+    @abstractmethod
+    def __exit__(self, *args: Any) -> None:
+        ...
+
+    @abstractmethod
+    def close(self) -> None:
+        ...
+
+    @abstractmethod
+    def command(self, bug_report_id: str, old_id: int, bug_report_request: str) -> list[str]:
+        ...
+
+
 class JsonRpcClient(ContextManager['JsonRpcClient']):
     _JSON_RPC_VERSION: Final = '2.0'
 
