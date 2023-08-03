@@ -309,8 +309,13 @@ KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
           )
         ))
         """,
-        KApply('_==K_', [KSequence((KVariable('X', 'Int'),KVariable('Y', 'Int'))), KSequence((KToken('0',
-            'Int'),KToken('1', 'Int')))]),
+        KApply(
+            '_==K_',
+            [
+                KSequence((KVariable('X', 'Int'), KVariable('Y', 'Int'))),
+                KSequence((KToken('0', 'Int'), KToken('1', 'Int'))),
+            ],
+        ),
     ),
     (
         'variable-without-sort',
