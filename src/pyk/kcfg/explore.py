@@ -130,7 +130,11 @@ class KCFGExplore:
             if not result.model:
                 return Subst({})
             model_subst = self.kprint.kore_to_kast(result.model)
-            return Subst.from_pred(model_subst)
+            try:
+                return Subst.from_pred(model_subst)
+            except ValueError as err:
+                raise AssertionError(f'Received a non-substitution from get-model endpoint: {model_subst}') from err
+
         else:
             raise AssertionError('Received an invalid response from get-model endpoint')
 
