@@ -130,15 +130,7 @@ class KCFGExplore:
             if not result.model:
                 return Subst({})
             model_subst = self.kprint.kore_to_kast(result.model)
-            _subst: dict[str, KInner] = {}
-            for subst_pred in flatten_label('#And', model_subst):
-                subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
-                m = subst_pattern.match(subst_pred)
-                if m is not None and type(m['###VAR']) is KVariable:
-                    _subst[m['###VAR'].name] = m['###TERM']
-                else:
-                    raise AssertionError(f'Received a non-substitution from get-model endpoint: {subst_pred}')
-            return Subst(_subst)
+            return Subst.from_pred(model_subst)
         else:
             raise AssertionError('Received an invalid response from get-model endpoint')
 
