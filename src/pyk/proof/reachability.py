@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from pyk.kore.rpc import LogEntry
 
 from ..cterm import CTerm
-from ..kast.inner import KRewrite, KSort
+from ..kast.inner import KApply, KLabel, KRewrite, KSequence, KSort
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KClaim
 from ..kcfg import KCFG
@@ -46,6 +46,7 @@ class APRProof(Proof):
     node_refutations: dict[NodeIdLike, RefutationProof]  # TODO _node_refutatations
     init: NodeIdLike
     target: NodeIdLike
+    _vacuous_nodes: list[NodeIdLike]
     _terminal_nodes: list[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
@@ -59,6 +60,7 @@ class APRProof(Proof):
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         node_refutations: dict[int, str] | None = None,
+        vacuous_nodes: Iterable[NodeIdLike] | None = None,
         terminal_nodes: Iterable[NodeIdLike] | None = None,
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
@@ -70,6 +72,7 @@ class APRProof(Proof):
         self.target = target
         self.logs = logs
         self.circularity = circularity
+        self._vacuous_nodes = list(vacuous_nodes) if vacuous_nodes is not None else []
         self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
         self.node_refutations = {}
 
@@ -104,12 +107,16 @@ class APRProof(Proof):
     def is_terminal(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) in (self.kcfg._resolve(nid) for nid in self._terminal_nodes)
 
+    def is_vacuous(self, node_id: NodeIdLike) -> bool:
+        return self.kcfg._resolve(node_id) in (self.kcfg._resolve(nid) for nid in self._vacuous_nodes)
+
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
             self.is_terminal(node_id)
             or self.kcfg.is_stuck(node_id)
             or self.is_target(node_id)
             or self.is_refuted(node_id)
+            or self.is_vacuous(node_id)
         )
 
     def is_init(self, node_id: NodeIdLike) -> bool:
@@ -120,7 +127,7 @@ class APRProof(Proof):
 
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
-            self.is_pending(node_id) or self.is_target(node_id) or self.is_refuted(node_id)
+            self.is_pending(node_id) or self.is_target(node_id) or self.is_refuted(node_id) or self.is_vacuous(node_id)
         )
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
@@ -227,6 +234,9 @@ class APRProof(Proof):
 
     def add_terminal(self, nid: NodeIdLike) -> None:
         self._terminal_nodes.append(self.kcfg._resolve(nid))  # TODO remove
+
+    def add_vacuous(self, nid: NodeIdLike) -> None:
+        self._vacuous_nodes.append(self.kcfg._resolve(nid))  # TODO remove
 
     def remove_terminal(self, nid: NodeIdLike) -> None:
         self._terminal_nodes.remove(self.kcfg._resolve(nid))  # TODO remove
@@ -439,6 +449,27 @@ class APRProver(Prover):
             priority=1,
         )
 
+    def _check_vacuous(self, curr_node: KCFG.Node) -> bool:
+        _LOGGER.info(f'Checking vacuous {self.proof.id}: {shorten_hashes(curr_node.id)}')
+
+        kcell = curr_node.cterm.cell('K_CELL')
+        if isinstance(kcell, KSequence):
+            foundry_assume_label = KLabel(name='foundry_assume', params=())
+            bottom_label = KApply(label=KLabel(name='#Bottom', params=(KSort(name='GeneratedTopCell'),)), args=()), ()
+            if isinstance(kcell.items[0], KApply) and kcell.items[0].label == foundry_assume_label:
+                constraints = kcell.items[0].args
+                constraint = KApply(
+                    label=KLabel(name='#Equals', params=(KSort(name='Bool'), KSort(name='GeneratedTopCell'))),
+                    args=(TRUE, mlAnd(constraints)),
+                )
+                result = self.kcfg_explore.cterm_simplify(curr_node.cterm.add_constraint(constraint))
+                if result == bottom_label:
+                    _LOGGER.info(f'Vacuous node {self.proof.id}: {shorten_hashes(curr_node.id)}.')
+                    self.proof.add_vacuous(curr_node.id)
+
+                    return True
+        return False
+
     def _check_terminal(self, curr_node: KCFG.Node) -> bool:
         if self._is_terminal is not None:
             _LOGGER.info(f'Checking terminal {self.proof.id}: {shorten_hashes(curr_node.id)}')
@@ -486,6 +517,9 @@ class APRProver(Prover):
         if implication_every_block or self._is_terminal is None or self._is_terminal(node.cterm):
             if self._check_subsume(node):
                 return
+
+        if self._check_vacuous(node):
+            return
 
         if self._check_terminal(node):
             return
