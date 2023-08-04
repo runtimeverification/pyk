@@ -49,8 +49,6 @@ class APRProofBehaviorView(ScrollableContainer, can_focus=True):
 
 
 class APRProofViewer(KCFGViewer):
-    CSS_PATH = "../kcfg/style.css"
-
     _proof: APRProof
 
     def __init__(
