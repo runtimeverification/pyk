@@ -8,7 +8,7 @@ import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import Enum, auto
 from pathlib import Path
 from signal import SIGINT
 from subprocess import Popen
@@ -67,6 +67,11 @@ class Transport(ContextManager['Transport'], ABC):
     @abstractmethod
     def description(self) -> str:
         ...
+
+
+class TransportType(Enum):
+    SINGLE_SOCKET = auto
+    HTTP = auto
 
 
 @final
