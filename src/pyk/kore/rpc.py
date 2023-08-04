@@ -189,9 +189,6 @@ class HttpTransport(Transport):
         return f'{self._host}:{self._port}'
 
 
-DefaultTransport = SingleSocketTransport
-
-
 class JsonRpcClient(ContextManager['JsonRpcClient']):
     _JSON_RPC_VERSION: Final = '2.0'
 
