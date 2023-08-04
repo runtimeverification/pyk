@@ -196,8 +196,21 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
     _req_id: int
     _bug_report: BugReport | None
 
-    def __init__(self, transport: Transport, *, bug_report: BugReport | None = None):
-        self._transport = transport
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        *,
+        timeout: int | None = None,
+        bug_report: BugReport | None = None,
+        transport: TransportType = TransportType.SINGLE_SOCKET,
+    ):
+        if transport is TransportType.SINGLE_SOCKET:
+            self._transport = SingleSocketTransport(host, port, timeout=timeout)
+        elif transport is TransportType.HTTP:
+            self._transport = HttpTransport(host, port, timeout=timeout)
+        else:
+            raise AssertionError
         self._req_id = 1
         self._bug_report = bug_report
 
@@ -624,8 +637,16 @@ class KoreClient(ContextManager['KoreClient']):
 
     _client: JsonRpcClient
 
-    def __init__(self, transport: Transport, *, bug_report: BugReport | None = None):
-        self._client = JsonRpcClient(transport, bug_report=bug_report)
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        *,
+        timeout: int | None = None,
+        bug_report: BugReport | None = None,
+        transport: TransportType = TransportType.SINGLE_SOCKET,
+    ):
+        self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report, transport=transport)
 
     def __enter__(self) -> KoreClient:
         return self
