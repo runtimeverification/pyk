@@ -70,8 +70,8 @@ class Transport(ContextManager['Transport'], ABC):
 
 
 class TransportType(Enum):
-    SINGLE_SOCKET = auto
-    HTTP = auto
+    SINGLE_SOCKET = auto()
+    HTTP = auto()
 
 
 @final
@@ -106,13 +106,6 @@ class SingleSocketTransport(Transport):
                 sleep(0.1)
 
         raise RuntimeError(f'Connection timed out: {host}:{port}')
-
-    def __enter__(self) -> SingleSocketTransport:
-        return self
-
-    def __exit__(self, *args: Any) -> None:
-        self._file.__exit__(*args)
-        self._sock.__exit__(*args)
 
     def close(self) -> None:
         self._file.close()
@@ -151,12 +144,6 @@ class HttpTransport(Transport):
         self._host = host
         self._port = port
         self._timeout = timeout
-
-    def __enter__(self) -> HttpTransport:
-        return self
-
-    def __exit__(self, *args: Any) -> None:
-        pass
 
     def close(self) -> None:
         pass
@@ -210,7 +197,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         elif transport is TransportType.HTTP:
             self._transport = HttpTransport(host, port, timeout=timeout)
         else:
-            raise AssertionError
+            raise AssertionError()
         self._req_id = 1
         self._bug_report = bug_report
 
