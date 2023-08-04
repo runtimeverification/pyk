@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import socket
@@ -44,23 +45,36 @@ class JsonRpcError(Exception):
         self.data = data
 
 
-class JsonRpcClient(ContextManager['JsonRpcClient']):
-    _JSON_RPC_VERSION: Final = '2.0'
+class Transport(ABC):
+    @abstractmethod
+    def request(self, req: str) -> str:
+        ...
 
+    @abstractmethod
+    def __exit__(self, *args: Any) -> None:
+        ...
+
+    @abstractmethod
+    def close(self) -> None:
+        ...
+
+    @abstractmethod
+    def command(self, bug_report_id: str, old_id: int, bug_report_request: str) -> list[str]:
+        ...
+
+
+@final
+class SingleSocketTransport(Transport):
     _host: str
     _port: int
     _sock: socket.socket
     _file: TextIO
-    _req_id: int
-    _bug_report: BugReport | None
 
-    def __init__(self, host: str, port: int, *, timeout: int | None = None, bug_report: BugReport | None = None):
+    def __init__(self, host: str, port: int, *, timeout: int | None = None):
         self._host = host
         self._port = port
         self._sock = self._create_connection(host, port, timeout)
         self._file = self._sock.makefile('r')
-        self._req_id = 1
-        self._bug_report = bug_report
 
     @staticmethod
     def _create_connection(host: str, port: int, timeout: int | None) -> socket.socket:
@@ -82,7 +96,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
         raise RuntimeError(f'Connection timed out: {host}:{port}')
 
-    def __enter__(self) -> JsonRpcClient:
+    def __enter__(self) -> SingleSocketTransport:
         return self
 
     def __exit__(self, *args: Any) -> None:
@@ -92,6 +106,101 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
     def close(self) -> None:
         self._file.close()
         self._sock.close()
+
+    def command(self, bug_report_id: str, old_id: int, bug_report_request: str) -> list[str]:
+        return [
+            'cat',
+            bug_report_request,
+            '|',
+            'nc',
+            '-Nv',
+            self._host,
+            str(self._port),
+            '>',
+            f'rpc_{bug_report_id}/{old_id:03}_actual.json',
+        ]
+
+    def request(self, req: str) -> str:
+        self._sock.sendall(req.encode())
+        server_addr = str(self)
+        _LOGGER.debug(f'Waiting for response from {server_addr}...')
+        return self._file.readline().rstrip()
+
+    def __str__(self) -> str:
+        return f'{self._host}:{self._port}'
+
+
+@final
+class HttpTransport(Transport):
+    _host: str
+    _port: int
+    _timeout: int | None
+
+    def __init__(self, host: str, port: int, *, timeout: int | None = None):
+        self._host = host
+        self._port = port
+        self._timeout = timeout
+
+    def __enter__(self) -> HttpTransport:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+    def command(self, bug_report_id: str, old_id: int, bug_report_request: str) -> list[str]:
+        return [
+            'curl',
+            '-X',
+            'POST',
+            '-H',
+            'Content-Type: application/json',
+            '-d',
+            '@' + bug_report_request,
+            'http://' + self._host + ':' + str(self._port),
+            '>',
+            f'rpc_{bug_report_id}/{old_id:03}_actual.json',
+        ]
+
+    def request(self, req: str) -> str:
+        connection = http.client.HTTPConnection(self._host, self._port, timeout=self._timeout)
+        connection.request('POST', '/', body=req, headers={'Content-Type': 'application/json'})
+        server_addr = str(self)
+        _LOGGER.debug(f'Waiting for response from {server_addr}...')
+        response = connection.getresponse()
+        if response.status != 200:
+            raise JsonRpcError('Internal server error', -32603)
+        return response.read().decode()
+
+    def __str__(self) -> str:
+        return f'{self._host}:{self._port}'
+
+
+DefaultTransport = SingleSocketTransport
+
+
+class JsonRpcClient(ContextManager['JsonRpcClient']):
+    _JSON_RPC_VERSION: Final = '2.0'
+
+    _transport: Transport
+    _req_id: int
+    _bug_report: BugReport | None
+
+    def __init__(self, transport: Transport, *, bug_report: BugReport | None = None):
+        self._transport = transport
+        self._req_id = 1
+        self._bug_report = bug_report
+
+    def __enter__(self) -> JsonRpcClient:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self._transport.__exit__(*args)
+
+    def close(self) -> None:
+        self._transport.close()
 
     def request(self, method: str, **params: Any) -> dict[str, Any]:
         old_id = self._req_id
@@ -105,30 +214,16 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
             'params': params,
         }
 
-        server_addr = f'{self._host}:{self._port}'
+        server_addr = str(self._transport)
         _LOGGER.info(f'Sending request to {server_addr}: {old_id} - {method}')
         req = json.dumps(payload)
         if self._bug_report:
             bug_report_request = f'rpc_{bug_report_id}/{old_id:03}_request.json'
             self._bug_report.add_file_contents(req, Path(bug_report_request))
-            self._bug_report.add_command(
-                [
-                    'cat',
-                    bug_report_request,
-                    '|',
-                    'nc',
-                    '-Nv',
-                    self._host,
-                    str(self._port),
-                    '>',
-                    f'rpc_{bug_report_id}/{old_id:03}_actual.json',
-                ]
-            )
+            self._bug_report.add_command(self._transport.command(bug_report_id, old_id, bug_report_request))
 
         _LOGGER.debug(f'Sending request to {server_addr}: {req}')
-        self._sock.sendall(req.encode())
-        _LOGGER.debug(f'Waiting for response from {server_addr}...')
-        resp = self._file.readline().rstrip()
+        resp = self._transport.request(req)
         _LOGGER.debug(f'Received response from {server_addr}: {resp}')
 
         if self._bug_report:
@@ -521,8 +616,8 @@ class KoreClient(ContextManager['KoreClient']):
 
     _client: JsonRpcClient
 
-    def __init__(self, host: str, port: int, *, timeout: int | None = None, bug_report: BugReport | None = None):
-        self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report)
+    def __init__(self, transport: Transport, *, bug_report: BugReport | None = None):
+        self._client = JsonRpcClient(transport, bug_report=bug_report)
 
     def __enter__(self) -> KoreClient:
         return self

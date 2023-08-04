@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from itertools import count
 from typing import TYPE_CHECKING
 from unittest.mock import patch
@@ -9,9 +10,9 @@ import pytest
 from pyk.kore.prelude import INT, int_dv
 from pyk.kore.rpc import (
     ImpliesResult,
-    JsonRpcClient,
     KoreClient,
     SatResult,
+    SingleSocketTransport,
     State,
     StuckResult,
     UnknownResult,
@@ -46,15 +47,17 @@ class MockClient:
         self.mock = mock
 
     def assume_response(self, response: Any) -> None:
-        self.mock.request.return_value = response
+        self.mock.request.return_value = json.dumps({'jsonrpc': '2.0', 'id': 1, 'result': response})
 
-    def assert_request(self, method: str, **params: Any) -> None:
-        self.mock.request.assert_called_with(method, **params)
+    def assert_request(self, method: str, params: dict[str, Any]) -> None:
+        self.mock.request.assert_called_with(
+            json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': method, 'params': params})
+        )
 
 
 @pytest.fixture
 def mock_class() -> Iterator[Mock]:
-    patcher = patch('pyk.kore.rpc.JsonRpcClient', spec=True)
+    patcher = patch('pyk.kore.rpc.SingleSocketTransport', spec=True)
     yield patcher.start()
     patcher.stop()
 
@@ -62,7 +65,7 @@ def mock_class() -> Iterator[Mock]:
 @pytest.fixture
 def mock(mock_class: Mock) -> Mock:
     mock = mock_class.return_value
-    assert isinstance(mock, JsonRpcClient)
+    assert isinstance(mock, SingleSocketTransport)
     return mock  # type: ignore
 
 
@@ -73,9 +76,8 @@ def rpc_client(mock: Mock) -> MockClient:
 
 @pytest.fixture
 def kore_client(mock: Mock, mock_class: Mock) -> Iterator[KoreClient]:  # noqa: N803
-    client = KoreClient('localhost', 3000)
-    mock_class.assert_called_with('localhost', 3000, timeout=None, bug_report=None)
-    assert client._client == mock
+    client = KoreClient(mock_class('localhost', 3000))
+    assert client._client._transport == mock
     yield client
     client.close()
     mock.close.assert_called()
@@ -111,7 +113,7 @@ def test_execute(
     actual = kore_client.execute(pattern)
 
     # Then
-    rpc_client.assert_request('execute', **params)
+    rpc_client.assert_request('execute', params)
     assert actual == expected
 
 
@@ -143,7 +145,7 @@ def test_implies(
     actual = kore_client.implies(antecedent, consequent)
 
     # Then
-    rpc_client.assert_request('implies', **params)
+    rpc_client.assert_request('implies', params)
     assert actual == expected
 
 
@@ -173,7 +175,7 @@ def test_simplify(
     actual, _logs = kore_client.simplify(pattern)
 
     # Then
-    rpc_client.assert_request('simplify', **params)
+    rpc_client.assert_request('simplify', params)
     assert actual == expected
 
 
@@ -226,7 +228,7 @@ def test_get_model(
     actual = kore_client.get_model(pattern, module_name)
 
     # Then
-    rpc_client.assert_request('get-model', **params)
+    rpc_client.assert_request('get-model', params)
     assert actual == expected
 
 
@@ -252,4 +254,4 @@ def test_add_module(
     kore_client.add_module(module)
 
     # Then
-    rpc_client.assert_request('add-module', **params)
+    rpc_client.assert_request('add-module', params)
