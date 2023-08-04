@@ -172,7 +172,7 @@ class HttpTransport(Transport):
         response = connection.getresponse()
         if response.status != 200:
             raise JsonRpcError('Internal server error', -32603)
-        return str(response.read())
+        return response.read().decode()
 
     def __str__(self) -> str:
         return f'{self._host}:{self._port}'
