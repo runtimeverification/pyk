@@ -222,4 +222,4 @@ def test_subst_from_pred(test_id: str, pred: KInner, expected_subst: Subst) -> N
         assert subst == expected_subst
     else:
         with pytest.raises(ValueError):
-            _ = Subst.from_pred(pred)
+            Subst.from_pred(pred)
