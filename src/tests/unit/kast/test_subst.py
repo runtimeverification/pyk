@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.inner import KApply, KLabel, KVariable, Subst
+from pyk.kast.inner import KApply, KLabel, KVariable, Subst, KToken
 from pyk.kast.manip import extract_subst
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import mlAnd, mlEquals, mlEqualsTrue, mlTop
+from pyk.prelude.ml import mlAnd, mlOr, mlEquals, mlEqualsTrue, mlTop
 
 from ..utils import a, b, c, f, g, h, x, y, z
 
@@ -174,3 +174,48 @@ def test_propagate_subst() -> None:
     expected = mlAnd([expected_config, expected_conjunct])
 
     assert actual == expected
+
+
+ML_SUBST_FROM_PRED_TEST_DATA: Final = (
+    (
+        'positive',
+        mlAnd(
+            [
+                mlEquals(KVariable('X'), intToken(1)),
+                mlEquals(KVariable('Y'), intToken(2)),
+            ]
+        ),
+        Subst({'X': intToken(1), 'Y': intToken(2)}),
+    ),
+    (
+        'wrong-connective',
+        mlOr(
+            [
+                mlEquals(KVariable('X'), intToken(1)),
+                mlEquals(KVariable('Y'), intToken(2)),
+            ]
+        ),
+        None,
+    ),
+    (
+        'not-subst',
+        mlAnd(
+            [
+                mlEquals(KVariable('X'), intToken(1)),
+                mlEquals(KVariable('Y'), intToken(2)),
+                mlEqualsTrue(KApply('_==K_', [KVariable('Y'), intToken(2)])),
+            ]
+        ),
+        None,
+    ),
+)
+
+
+@pytest.mark.parametrize('test_id,pred,expected_subst', ML_SUBST_FROM_PRED_TEST_DATA, ids=[test_id for test_id, *_ in ML_SUBST_FROM_PRED_TEST_DATA])
+def test_subst_from_pred(test_id, pred, expected_subst) -> None:
+    if expected_subst:
+        subst = Subst.from_pred(pred)
+        assert subst == expected_subst
+    else:
+        with pytest.raises(ValueError):
+            _ = Subst.from_pred(pred)
