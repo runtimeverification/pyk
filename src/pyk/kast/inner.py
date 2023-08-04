@@ -129,7 +129,6 @@ class Subst(Mapping[str, KInner]):
 
         subst: dict[str, KInner] = {}
         for conjunct in flatten_label('#And', pred):
-            print(conjunct)
             match conjunct:
                 case KApply(KLabel('#Equals'), [KVariable(var), term]):
                     subst[var] = term
