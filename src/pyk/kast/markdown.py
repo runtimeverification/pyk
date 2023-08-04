@@ -24,8 +24,24 @@ def code_blocks(text: str) -> Iterator[CodeBlock]:
     return (CodeBlock(match['info'], match['code'].rstrip()) for match in _CODE_BLOCK_PATTERN.finditer(text))
 
 
-def filter_md_tags(text: str) -> str:
-    return '\n'.join(code_block.code for code_block in code_blocks(text))
+def select_code_blocks(text: str, selector: str | None = None) -> str:
+    _selector = SelectorParser(selector).parse() if selector else None
+
+    def check_tag(tag: str) -> None:
+        if not all(c.isalnum() or c == '_' for c in tag):
+            raise ValueError(f'Invalid tag: {tag!r}')
+
+    def selected(code_block: CodeBlock) -> bool:
+        if _selector is None:
+            return True
+
+        tags = code_block.info.split(',')
+        for tag in tags:
+            check_tag(tag)
+
+        return _selector.eval(tags)
+
+    return '\n'.join(code_block.code for code_block in code_blocks(text) if selected(code_block))
 
 
 # ----------------------

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.markdown import And, Atom, CodeBlock, Not, Or, SelectorParser, code_blocks
+from pyk.kast.markdown import And, Atom, CodeBlock, Not, Or, SelectorParser, code_blocks, select_code_blocks
 
 from ..utils import TEST_DATA_DIR
 
@@ -159,3 +159,49 @@ def test_selector_eval(text: str, atoms: Collection[str], expected: bool) -> Non
 
     # Then
     assert actual == expected
+
+
+SELECT_TEST_DIR: Final = TEST_DATA_DIR / 'markdown-select'
+SELECT_TEST_FILES: Final = tuple(SELECT_TEST_DIR.glob('*.test'))
+assert SELECT_TEST_FILES
+
+
+@pytest.mark.parametrize(
+    'test_file',
+    SELECT_TEST_FILES,
+    ids=[test_file.stem for test_file in SELECT_TEST_FILES],
+)
+def test_select_code_blocks(test_file: Path) -> None:
+    # Given
+    selector, text, expected = _parse_select_test_data(test_file)
+
+    # When
+    actual = select_code_blocks(text, selector)
+
+    # Then
+    assert actual == expected
+
+
+def _parse_select_test_data(test_file: Path) -> tuple[str | None, str, str]:
+    lines = test_file.read_text().splitlines()
+    it = iter(lines)
+
+    selector = next(it) or None
+
+    text_lines: list[str] = []
+    while True:
+        text_line = next(it)
+        if text_line == '===':
+            break
+        text_lines.append(text_line)
+    text = '\n'.join(text_lines)
+
+    expected_lines: list[str] = []
+    while True:
+        expected_line = next(it, None)
+        if expected_line is None:
+            break
+        expected_lines.append(expected_line)
+    expected = '\n'.join(expected_lines)
+
+    return selector, text, expected
