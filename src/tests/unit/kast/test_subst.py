@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.inner import KApply, KLabel, KVariable, Subst, KToken
+from pyk.kast.inner import KApply, KLabel, KVariable, Subst
 from pyk.kast.manip import extract_subst
 from pyk.prelude.kbool import TRUE
 from pyk.prelude.kint import intToken
-from pyk.prelude.ml import mlAnd, mlOr, mlEquals, mlEqualsTrue, mlTop
+from pyk.prelude.ml import mlAnd, mlEquals, mlEqualsTrue, mlOr, mlTop
 
 from ..utils import a, b, c, f, g, h, x, y, z
 
@@ -211,8 +211,12 @@ ML_SUBST_FROM_PRED_TEST_DATA: Final = (
 )
 
 
-@pytest.mark.parametrize('test_id,pred,expected_subst', ML_SUBST_FROM_PRED_TEST_DATA, ids=[test_id for test_id, *_ in ML_SUBST_FROM_PRED_TEST_DATA])
-def test_subst_from_pred(test_id, pred, expected_subst) -> None:
+@pytest.mark.parametrize(
+    'test_id,pred,expected_subst',
+    ML_SUBST_FROM_PRED_TEST_DATA,
+    ids=[test_id for test_id, *_ in ML_SUBST_FROM_PRED_TEST_DATA],
+)
+def test_subst_from_pred(test_id: str, pred: KInner, expected_subst: Subst) -> None:
     if expected_subst:
         subst = Subst.from_pred(pred)
         assert subst == expected_subst
