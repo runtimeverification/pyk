@@ -148,6 +148,10 @@ class BehaviorView(ScrollableContainer, can_focus=True):
     _node_printer: NodePrinter | None
     _kcfg_nodes: Iterable[GraphChunk]
 
+    class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
     def __init__(
         self,
         kcfg: KCFG,
@@ -168,6 +172,10 @@ class BehaviorView(ScrollableContainer, can_focus=True):
 
     def compose(self) -> ComposeResult:
         return self._kcfg_nodes
+
+    def on_click(self, click: Click) -> None:
+        click.stop()
+        self.post_message(BehaviorView.Selected())
 
 
 class NodeView(Widget):
@@ -315,6 +323,18 @@ class NodeView(Widget):
         self.query_one('#constraint', Constraint).text = constraint_str
         self.query_one('#custom', Custom).text = custom_str
 
+    def on_behavior_view_selected(self) -> None:
+        self.query_one('#behavior').focus()
+
+    def on_term_selected(self) -> None:
+        self.query_one(Term).focus()
+
+    def on_constraint_selected(self) -> None:
+        self.query_one(Constraint).focus()
+
+    def on_custom_selected(self) -> None:
+        self.query_one(Custom).focus()
+
 
 class KCFGViewer(App):
     CSS_PATH = ROOT / 'kcfg/style.css'
@@ -358,6 +378,8 @@ class KCFGViewer(App):
         yield Footer()
 
     def on_graph_chunk_selected(self, message: GraphChunk.Selected) -> None:
+        self.query_one('#behavior').focus()
+
         if message.chunk_id.startswith('node_'):
             self._selected_chunk = message.chunk_id
             node, *_ = message.chunk_id[5:].split('_')
