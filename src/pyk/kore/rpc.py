@@ -435,7 +435,7 @@ class ExecuteResult(ABC):  # noqa: B024
 
     state: State
     depth: int
-    next_states: tuple[State, ...] | None
+    next_states: set[State] | None
     rule: str | None
     logs: tuple[LogEntry, ...]
 
@@ -504,7 +504,7 @@ class BranchingResult(ExecuteResult):
 
     state: State
     depth: int
-    next_states: tuple[State, ...]
+    next_states: set[State]
     logs: tuple[LogEntry, ...]
 
     @classmethod
@@ -514,7 +514,7 @@ class BranchingResult(ExecuteResult):
         return BranchingResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
-            next_states=tuple(State.from_dict(next_state) for next_state in dct['next-states']),
+            next_states={State.from_dict(next_state) for next_state in dct['next-states']},
             logs=logs,
         )
 
@@ -526,7 +526,7 @@ class CutPointResult(ExecuteResult):
 
     state: State
     depth: int
-    next_states: tuple[State, ...]
+    next_states: set[State]
     rule: str
     logs: tuple[LogEntry, ...]
 
@@ -537,7 +537,7 @@ class CutPointResult(ExecuteResult):
         return CutPointResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
-            next_states=tuple(State.from_dict(next_state) for next_state in dct['next-states']),
+            next_states={State.from_dict(next_state) for next_state in dct['next-states']},
             rule=dct['rule'],
             logs=logs,
         )

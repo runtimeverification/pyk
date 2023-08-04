@@ -64,14 +64,14 @@ def state(n: int) -> State:
 
 
 EXECUTE_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult], ...]] = (
-    ('branching', 0, {}, BranchingResult(state=state(2), depth=2, next_states=(state(4), state(3)), logs=())),
+    ('branching', 0, {}, BranchingResult(state=state(2), depth=2, next_states={state(4), state(3)}, logs=())),
     ('depth-bound', 0, {'max_depth': 2}, DepthBoundResult(state=state(2), depth=2, logs=())),
     ('stuck', 4, {}, StuckResult(state=state(6), depth=2, logs=())),
     (
         'cut-point',
         4,
         {'cut_point_rules': ['KORE-RPC-TEST.r56']},
-        CutPointResult(state=state(5), depth=1, next_states=(state(6),), rule='KORE-RPC-TEST.r56', logs=()),
+        CutPointResult(state=state(5), depth=1, next_states={state(6)}, rule='KORE-RPC-TEST.r56', logs=()),
     ),
     (
         'terminal',
