@@ -125,19 +125,14 @@ class Subst(Mapping[str, KInner]):
 
     @staticmethod
     def from_pred(pred: KInner) -> Subst:
-        def _flatten_label(label: str, kast: KInner) -> list[KInner]:
-            if type(kast) is KApply and kast.label.name == label:
-                items = (_flatten_label(label, arg) for arg in kast.args)
-                return [c for cs in items for c in cs]
-            return [kast]
+        from .manip import flatten_label
 
         subst: dict[str, KInner] = {}
-        for conjunct in _flatten_label('#And', pred):
-            subst_pattern = KApply('#Equals', [KVariable('###VAR'), KVariable('###TERM')])
-            m = subst_pattern.match(conjunct)
+        for conjunct in flatten_label('#And', pred):
+            print(conjunct)
             match conjunct:
-                case KApply('#Equals', [KVariable('###VAR'), KVariable('###TERM')]):
-                    subst[m['###VAR'].name] = m['###TERM']
+                case KApply(KLabel('#Equals'), [KVariable(var), term]):
+                    subst[var] = term
                 case _:
                     raise ValueError(f'Invalid substitution predicate: {conjunct}')
         return Subst(subst)
