@@ -64,6 +64,10 @@ class Transport(ABC, ContextManager['Transport']):
     def command(self, bug_report_id: str, old_id: int, bug_report_request: str) -> list[str]:
         ...
 
+    @abstractmethod
+    def description(self) -> str:
+        ...
+
 
 @final
 class SingleSocketTransport(Transport):
@@ -124,11 +128,11 @@ class SingleSocketTransport(Transport):
 
     def request(self, req: str) -> str:
         self._sock.sendall(req.encode())
-        server_addr = str(self)
+        server_addr = self.description()
         _LOGGER.debug(f'Waiting for response from {server_addr}...')
         return self._file.readline().rstrip()
 
-    def __str__(self) -> str:
+    def description(self) -> str:
         return f'{self._host}:{self._port}'
 
 
@@ -169,14 +173,14 @@ class HttpTransport(Transport):
     def request(self, req: str) -> str:
         connection = http.client.HTTPConnection(self._host, self._port, timeout=self._timeout)
         connection.request('POST', '/', body=req, headers={'Content-Type': 'application/json'})
-        server_addr = str(self)
+        server_addr = self.description()
         _LOGGER.debug(f'Waiting for response from {server_addr}...')
         response = connection.getresponse()
         if response.status != 200:
             raise JsonRpcError('Internal server error', -32603)
         return response.read().decode()
 
-    def __str__(self) -> str:
+    def description(self) -> str:
         return f'{self._host}:{self._port}'
 
 
@@ -216,7 +220,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
             'params': params,
         }
 
-        server_addr = str(self._transport)
+        server_addr = self._transport.description()
         _LOGGER.info(f'Sending request to {server_addr}: {old_id} - {method}')
         req = json.dumps(payload)
         if self._bug_report:
