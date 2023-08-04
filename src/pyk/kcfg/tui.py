@@ -140,6 +140,7 @@ class Custom(NavWidget):
         click.stop()
         self.post_message(Custom.Selected())
 
+
 class BehaviorView(ScrollableContainer, can_focus=True):
     _kcfg: KCFG
     _kprint: KPrint
@@ -402,7 +403,7 @@ class KCFGViewer(App):
         ('c', 'keystroke("constraint")', 'Toggle constraint.'),
         ('v', 'keystroke("custom")', 'Toggle custom.'),
         ('m', 'keystroke("minimize")', 'Toggle minimization.'),
-        Binding('q', 'quit', priority=True)
+        Binding('q', 'quit', priority=True),
     ]
 
     def action_keystroke(self, key: str) -> None:

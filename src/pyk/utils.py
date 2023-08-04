@@ -43,6 +43,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 ROOT: Final = Path(os.path.dirname(os.path.abspath(__file__)))
 
+
 # Based on: https://stackoverflow.com/a/2704866
 # Perhaps one day: https://peps.python.org/pep-0603/
 class FrozenDict(Mapping[K, V]):
