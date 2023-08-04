@@ -60,6 +60,10 @@ class GraphChunk(Static):
 class NavWidget(ScrollableContainer, can_focus=True):
     text: reactive[str] = reactive('', init=False)
 
+    class Selected(Message):
+        def __init__(self) -> None:
+            super().__init__()
+
     BINDINGS = [
         ('h', 'scroll_left', 'Go left'),
         ('j', 'scroll_left', 'Go down'),
@@ -103,10 +107,6 @@ class Info(Widget, can_focus=False):
 
 
 class Term(NavWidget):
-    class Selected(Message):
-        def __init__(self) -> None:
-            super().__init__()
-
     def __init__(self) -> None:
         super().__init__(id='term')
 
@@ -116,10 +116,6 @@ class Term(NavWidget):
 
 
 class Constraint(NavWidget):
-    class Selected(Message):
-        def __init__(self) -> None:
-            super().__init__()
-
     def __init__(self) -> None:
         super().__init__(id='constraint')
 
@@ -129,10 +125,6 @@ class Constraint(NavWidget):
 
 
 class Custom(NavWidget):
-    class Selected(Message):
-        def __init__(self) -> None:
-            super().__init__()
-
     def __init__(self) -> None:
         super().__init__(id='custom')
 
