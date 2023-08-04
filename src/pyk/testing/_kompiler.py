@@ -10,7 +10,7 @@ from ..kcfg import KCFGExplore
 from ..kllvm.compiler import compile_runtime
 from ..kllvm.importer import import_runtime
 from ..kore.pool import KoreServerPool
-from ..kore.rpc import BoosterServer, DefaultTransport, KoreClient, KoreServer
+from ..kore.rpc import BoosterServer, KoreClient, KoreServer
 from ..ktool.kompile import DefinitionInfo, Kompile
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
@@ -137,7 +137,7 @@ class KCFGExploreTest(KPrintTest):
         main_module_name = kprint.main_module
         semantics = self.semantics(kprint.definition)
         with KoreServer(definition_dir, main_module_name, bug_report=bug_report) as server:
-            with KoreClient(DefaultTransport('localhost', server.port), bug_report=bug_report) as client:
+            with KoreClient('localhost', server.port, bug_report=bug_report) as client:
                 yield KCFGExplore(kprint, client, kcfg_semantics=semantics)
 
 
@@ -150,9 +150,7 @@ class KoreClientTest(KompiledTest):
     @pytest.fixture
     def kore_client(self, definition_dir: Path, bug_report: BugReport | None) -> Iterator[KoreClient]:
         server = KoreServer(definition_dir, self.KORE_MODULE_NAME, bug_report=bug_report)
-        client = KoreClient(
-            DefaultTransport('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT), bug_report=bug_report
-        )
+        client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
         yield client
         client.close()
         server.close()
@@ -185,9 +183,7 @@ class BoosterClientTest:
         self, haskell_dir: Path, llvm_dir: Path, bug_report: BugReport | None = None
     ) -> Iterator[KoreClient]:
         server = BoosterServer(haskell_dir, llvm_dir, self.MODULE_NAME, bug_report=bug_report, command=None)
-        client = KoreClient(
-            DefaultTransport('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT), bug_report=bug_report
-        )
+        client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
         yield client
         client.close()
         server.close()
