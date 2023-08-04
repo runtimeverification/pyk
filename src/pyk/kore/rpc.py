@@ -45,14 +45,16 @@ class JsonRpcError(Exception):
         self.data = data
 
 
-class Transport(ABC):
+class Transport(ABC, ContextManager['Transport']):
     @abstractmethod
     def request(self, req: str) -> str:
         ...
 
-    @abstractmethod
+    def __enter__(self) -> Transport:
+        return self
+
     def __exit__(self, *args: Any) -> None:
-        ...
+        self.close()
 
     @abstractmethod
     def close(self) -> None:
