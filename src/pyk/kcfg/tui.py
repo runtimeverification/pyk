@@ -65,16 +65,8 @@ class NavWidget(ScrollableContainer, can_focus=True):
             super().__init__()
 
     BINDINGS = [
-        ('h', 'scroll_left', 'Go left'),
-        ('j', 'scroll_left', 'Go down'),
-        ('k', 'scroll_left', 'Go up'),
-        ('l', 'scroll_left', 'Go right'),
         ('g', 'scroll_home', 'Go to vert start'),
         ('G', 'scroll_end', 'Go to vert end'),
-        ('0', 'scroll_page_left', 'Go to hor start'),
-        ('$', 'scroll_page_right', 'Go to hor end'),
-        ('ctrl+d', 'scroll_page_down', 'Page down'),
-        ('ctrl+u', 'scroll_page_up', 'Page up'),
     ]
 
     def __init__(self, id: str):
