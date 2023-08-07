@@ -69,6 +69,8 @@ class KRun(KPrint):
         config: Mapping[str, KInner] | None = None,
         depth: int | None = None,
         expand_macros: bool = False,
+        search_final: bool = False,
+        no_pattern: bool = False,
         expect_rc: int | Iterable[int] = 0,
     ) -> CTerm:
         if config is not None and 'PGM' in config:
@@ -91,6 +93,8 @@ class KRun(KPrint):
                 pmap=pmap,
                 temp_dir=self.use_directory,
                 no_expand_macros=not expand_macros,
+                search_final=search_final,
+                no_pattern=no_pattern,
                 bug_report=self._bug_report,
                 check=(expect_rc == 0),
             )
@@ -213,8 +217,8 @@ def _krun(
     output: KRunOutput | None = None,
     parser: str | None = None,
     depth: int | None = None,
-    pmap: Mapping[str, str] | None = None,
     cmap: Mapping[str, str] | None = None,
+    pmap: Mapping[str, str] | None = None,
     term: bool = False,
     temp_dir: Path | None = None,
     no_expand_macros: bool = False,
