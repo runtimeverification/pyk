@@ -31,6 +31,17 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
+class KRunOutput(Enum):
+    PRETTY = 'pretty'
+    PROGRAM = 'program'
+    KAST = 'kast'
+    BINARY = 'binary'
+    JSON = 'json'
+    LATEX = 'latex'
+    KORE = 'kore'
+    NONE = 'none'
+
+
 class KRun(KPrint):
     command: str
 
@@ -184,17 +195,6 @@ class KRun(KPrint):
 
         if actual not in expected:
             raise RuntimeError(f'Expected {expected} as exit code from krun, but got {actual}')
-
-
-class KRunOutput(Enum):
-    PRETTY = 'pretty'
-    PROGRAM = 'program'
-    KAST = 'kast'
-    BINARY = 'binary'
-    JSON = 'json'
-    LATEX = 'latex'
-    KORE = 'kore'
-    NONE = 'none'
 
 
 def _krun(
