@@ -52,7 +52,7 @@ class KRun(KPrint):
         )
         self.command = command
 
-    def run(
+    def run_pgm(
         self,
         pgm: KInner,
         *,

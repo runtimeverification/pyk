@@ -27,7 +27,7 @@ class TestImpRun(KRunTest):
     def test_run(self, krun: KRun) -> None:
         # Given
         init_pgm_token = KToken('int n , s ; n = 2 ; s = 0 ; while ( 0 <= n ) { s = s + n ; n = n + -1 ; }', 'Pgm')
-        final_cterm = krun.run(init_pgm_token)
+        final_cterm = krun.run_pgm(init_pgm_token)
 
         expected_k = KSequence([])
         expected_map_items = [
@@ -120,18 +120,18 @@ class TestReturnCodeRun(KRunTest):
         return KToken(f'foo({value})', 'Foo')
 
     def test_run_expect_rc(self, krun: KRun) -> None:
-        krun.run(self._input(0))
-        krun.run(self._input(67), expect_rc=67)
-        krun.run(self._input(3), expect_rc=[1, 2, 3, 4])
+        krun.run_pgm(self._input(0))
+        krun.run_pgm(self._input(67), expect_rc=67)
+        krun.run_pgm(self._input(3), expect_rc=[1, 2, 3, 4])
 
         with pytest.raises(RuntimeError):
-            krun.run(self._input(7))
+            krun.run_pgm(self._input(7))
 
         with pytest.raises(RuntimeError):
-            krun.run(self._input(7), expect_rc=8)
+            krun.run_pgm(self._input(7), expect_rc=8)
 
         with pytest.raises(RuntimeError):
-            krun.run(self._input(2), expect_rc=[])
+            krun.run_pgm(self._input(2), expect_rc=[])
 
         with pytest.raises(RuntimeError):
-            krun.run(self._input(2), expect_rc=(1, 4, 5))
+            krun.run_pgm(self._input(2), expect_rc=(1, 4, 5))
