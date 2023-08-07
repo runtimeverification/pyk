@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-import json
 import logging
+import sys
 from enum import Enum
 from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import CTerm
-from ..kast import kast_term
-from ..kast.inner import KInner, KLabel, KSort
-from ..konvert import unmunge
 from ..kore.parser import KoreParser
-from ..kore.syntax import DV, App, SortApp, String
 from ..utils import run_process
 from .kprint import KPrint
 
@@ -29,6 +24,17 @@ if TYPE_CHECKING:
     from ..utils import BugReport
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class KRunOutput(Enum):
+    PRETTY = 'pretty'
+    PROGRAM = 'program'
+    KAST = 'kast'
+    BINARY = 'binary'
+    JSON = 'json'
+    LATEX = 'latex'
+    KORE = 'kore'
+    NONE = 'none'
 
 
 class KRun(KPrint):
@@ -52,55 +58,23 @@ class KRun(KPrint):
         )
         self.command = command
 
-    def run(
-        self,
-        pgm: KInner,
-        *,
-        config: Mapping[str, KInner] | None = None,
-        depth: int | None = None,
-        expand_macros: bool = False,
-        expect_rc: int | Iterable[int] = 0,
-    ) -> CTerm:
-        if config is not None and 'PGM' in config:
-            raise ValueError('Cannot supply both pgm and config with PGM variable.')
-        pmap = {k: 'cat' for k in config} if config is not None else None
-        cmap = {k: self.kast_to_kore(v).text for k, v in config.items()} if config is not None else None
-        with self._temp_file() as ntf:
-            ntf.write(self.pretty_print(pgm))
-            ntf.flush()
-
-            result = _krun(
-                command=self.command,
-                input_file=Path(ntf.name),
-                definition_dir=self.definition_dir,
-                output=KRunOutput.JSON,
-                depth=depth,
-                cmap=cmap,
-                pmap=pmap,
-                temp_dir=self.use_directory,
-                no_expand_macros=not expand_macros,
-                bug_report=self._bug_report,
-                check=(expect_rc == 0),
-            )
-
-        self._check_return_code(result.returncode, expect_rc)
-
-        result_kast = kast_term(json.loads(result.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
-        return CTerm.from_kast(result_kast)
-
     def run_kore(
         self,
-        pgm: KInner,
+        pgm: Pattern,
         *,
-        sort: KSort | None = None,
+        cmap: Mapping[str, str] | None = None,
+        pmap: Mapping[str, str] | None = None,
+        term: bool = False,
         depth: int | None = None,
-        expand_macros: bool = False,
-        expect_rc: int | Iterable[int] = 0,
-    ) -> CTerm:
-        kore_pgm = self.kast_to_kore(pgm, sort=sort)
+        expand_macros: bool = True,
+        search_final: bool = False,
+        no_pattern: bool = False,
+        output: KRunOutput | None = KRunOutput.PRETTY,
+        check: bool = False,
+        bug_report: BugReport | None = None,
+    ) -> CompletedProcess:
         with self._temp_file() as ntf:
-            kore_pgm.write(ntf)
-            ntf.write('\n')
+            ntf.write(pgm.text)
             ntf.flush()
 
             result = _krun(
@@ -108,19 +82,40 @@ class KRun(KPrint):
                 input_file=Path(ntf.name),
                 definition_dir=self.definition_dir,
                 output=KRunOutput.KORE,
-                parser='cat',
                 depth=depth,
+                parser='cat',
+                cmap=cmap,
+                pmap=pmap,
+                term=term,
                 temp_dir=self.use_directory,
                 no_expand_macros=not expand_macros,
+                search_final=search_final,
+                no_pattern=no_pattern,
                 bug_report=self._bug_report,
-                check=(expect_rc == 0),
+                check=False,
             )
 
-        self._check_return_code(result.returncode, expect_rc)
+        if output != KRunOutput.NONE:
+            output_kore = KoreParser(result.stdout).pattern()
+            match output:
+                case KRunOutput.PRETTY:
+                    print(self.kore_to_pretty(output_kore) + '\n')
+                case KRunOutput.JSON:
+                    print(self.kore_to_kast(output_kore).to_json() + '\n')
+                case KRunOutput.KORE:
+                    print(output_kore.text + '\n')
+                case KRunOutput.PROGRAM | KRunOutput.KAST | KRunOutput.BINARY | KRunOutput.LATEX:
+                    raise NotImplementedError(f'Option --output {output} unsupported!')
+                case KRunOutput.NONE:
+                    pass
 
-        result_kore = KoreParser(result.stdout).pattern()
-        result_kast = self.kore_to_kast(result_kore)
-        return CTerm.from_kast(result_kast)
+        sys.stderr.write(result.stderr + '\n')
+        sys.stderr.flush()
+
+        if check and result.returncode != 0:
+            sys.exit(result.returncode)
+
+        return result
 
     def run_kore_term(
         self,
@@ -133,26 +128,17 @@ class KRun(KPrint):
         bug_report: BugReport | None = None,
         expect_rc: int | Iterable[int] = 0,
     ) -> Pattern:
-        with self._temp_file() as ntf:
-            pattern.write(ntf)
-            ntf.write('\n')
-            ntf.flush()
-
-            proc_res = _krun(
-                command=self.command,
-                input_file=Path(ntf.name),
-                definition_dir=self.definition_dir,
-                output=KRunOutput.KORE,
-                parser='cat',
-                term=True,
-                depth=depth,
-                temp_dir=self.use_directory,
-                no_expand_macros=not expand_macros,
-                search_final=search_final,
-                no_pattern=no_pattern,
-                bug_report=self._bug_report,
-                check=(expect_rc == 0),
-            )
+        proc_res = self.run_kore(
+            pattern,
+            depth=depth,
+            term=True,
+            expand_macros=expand_macros,
+            search_final=search_final,
+            no_pattern=no_pattern,
+            output=KRunOutput.NONE,
+            check=False,
+            bug_report=bug_report,
+        )
 
         self._check_return_code(proc_res.returncode, expect_rc)
 
@@ -160,54 +146,6 @@ class KRun(KPrint):
         res = parser.pattern()
         assert parser.eof
         return res
-
-    def run_kore_config(
-        self,
-        config: Mapping[str, Pattern],
-        *,
-        depth: int | None = None,
-        expand_macros: bool = False,
-        search_final: bool = False,
-        no_pattern: bool = False,
-        # ---
-        bug_report: BugReport | None = None,
-        expect_rc: int = 0,
-    ) -> Pattern:
-        def _config_var_token(s: str) -> DV:
-            return DV(SortApp('SortKConfigVar'), String(f'${s}'))
-
-        def _map_item(s: str, p: Pattern, sort: KSort) -> Pattern:
-            _map_key = self._add_sort_injection(_config_var_token(s), KSort('KConfigVar'), KSort('KItem'))
-            _map_value = self._add_sort_injection(p, sort, KSort('KItem'))
-            return App("Lbl'UndsPipe'-'-GT-Unds'", [], [_map_key, _map_value])
-
-        def _map(ps: list[Pattern]) -> Pattern:
-            if len(ps) == 0:
-                return App("Lbl'Stop'Map{}()", [], [])
-            if len(ps) == 1:
-                return ps[0]
-            return App("Lbl'Unds'Map'Unds'", [], [ps[0], _map(ps[1:])])
-
-        def _sort(p: Pattern) -> KSort:
-            if type(p) is DV:
-                return KSort(p.sort.name[4:])
-            if type(p) is App:
-                label = KLabel(unmunge(p.symbol[3:]))
-                return self.definition.return_sort(label)
-            raise ValueError(f'Cannot fast-compute sort for pattern: {p}')
-
-        config_var_map = _map([_map_item(k, v, _sort(v)) for k, v in config.items()])
-        term = App('LblinitGeneratedTopCell', [], [config_var_map])
-
-        return self.run_kore_term(
-            term,
-            depth=depth,
-            expand_macros=expand_macros,
-            search_final=search_final,
-            no_pattern=no_pattern,
-            bug_report=bug_report,
-            expect_rc=expect_rc,
-        )
 
     @staticmethod
     def _check_return_code(actual: int, expected: int | Iterable[int]) -> None:
@@ -218,17 +156,6 @@ class KRun(KPrint):
             raise RuntimeError(f'Expected {expected} as exit code from krun, but got {actual}')
 
 
-class KRunOutput(Enum):
-    PRETTY = 'pretty'
-    PROGRAM = 'program'
-    KAST = 'kast'
-    BINARY = 'binary'
-    JSON = 'json'
-    LATEX = 'latex'
-    KORE = 'kore'
-    NONE = 'none'
-
-
 def _krun(
     command: str = 'krun',
     *,
@@ -237,8 +164,8 @@ def _krun(
     output: KRunOutput | None = None,
     parser: str | None = None,
     depth: int | None = None,
-    pmap: Mapping[str, str] | None = None,
     cmap: Mapping[str, str] | None = None,
+    pmap: Mapping[str, str] | None = None,
     term: bool = False,
     temp_dir: Path | None = None,
     no_expand_macros: bool = False,
@@ -258,6 +185,9 @@ def _krun(
 
     if depth and depth < 0:
         raise ValueError(f'Expected non-negative depth, got: {depth}')
+
+    if term and (cmap is not None or pmap is not None):
+        raise ValueError('Cannot supply both term and cmap/pmap')
 
     args = _build_arg_list(
         command=command,
