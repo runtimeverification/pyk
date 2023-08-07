@@ -88,40 +88,6 @@ class KRun(KPrint):
         result_kast = kast_term(json.loads(result.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
         return CTerm.from_kast(result_kast)
 
-    def run_kore(
-        self,
-        pgm: KInner,
-        *,
-        sort: KSort | None = None,
-        depth: int | None = None,
-        expand_macros: bool = False,
-        expect_rc: int | Iterable[int] = 0,
-    ) -> CTerm:
-        kore_pgm = self.kast_to_kore(pgm, sort=sort)
-        with self._temp_file() as ntf:
-            kore_pgm.write(ntf)
-            ntf.write('\n')
-            ntf.flush()
-
-            result = _krun(
-                command=self.command,
-                input_file=Path(ntf.name),
-                definition_dir=self.definition_dir,
-                output=KRunOutput.KORE,
-                parser='cat',
-                depth=depth,
-                temp_dir=self.use_directory,
-                no_expand_macros=not expand_macros,
-                bug_report=self._bug_report,
-                check=(expect_rc == 0),
-            )
-
-        self._check_return_code(result.returncode, expect_rc)
-
-        result_kore = KoreParser(result.stdout).pattern()
-        result_kast = self.kore_to_kast(result_kore)
-        return CTerm.from_kast(result_kast)
-
     def run_kore_term(
         self,
         pattern: Pattern,
