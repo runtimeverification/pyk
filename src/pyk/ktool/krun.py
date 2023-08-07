@@ -126,26 +126,16 @@ class KRun(KPrint):
         bug_report: BugReport | None = None,
         expect_rc: int | Iterable[int] = 0,
     ) -> Pattern:
-        with self._temp_file() as ntf:
-            pattern.write(ntf)
-            ntf.write('\n')
-            ntf.flush()
-
-            proc_res = _krun(
-                command=self.command,
-                input_file=Path(ntf.name),
-                definition_dir=self.definition_dir,
-                output=KRunOutput.KORE,
-                parser='cat',
-                term=True,
-                depth=depth,
-                temp_dir=self.use_directory,
-                no_expand_macros=not expand_macros,
-                search_final=search_final,
-                no_pattern=no_pattern,
-                bug_report=self._bug_report,
-                check=(expect_rc == 0),
-            )
+        proc_res = self.run_kore(
+            pattern,
+            depth=depth,
+            expand_macros=expand_macros,
+            search_final=search_final,
+            no_pattern=no_pattern,
+            output=KRunOutput.NONE,
+            check=False,
+            bug_report=bug_report,
+        )
 
         self._check_return_code(proc_res.returncode, expect_rc)
 
