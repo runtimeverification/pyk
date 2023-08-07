@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from enum import Enum
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -100,6 +101,59 @@ class KRun(KPrint):
 
         result_kast = kast_term(json.loads(result.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
         return CTerm.from_kast(result_kast)
+
+    def run_kore(
+        self,
+        pgm: Pattern,
+        *,
+        depth: int | None = None,
+        expand_macros: bool = True,
+        search_final: bool = False,
+        no_pattern: bool = False,
+        output: KRunOutput | None = KRunOutput.PRETTY,
+        check: bool = False,
+        bug_report: BugReport | None = None,
+    ) -> CompletedProcess:
+        with self._temp_file() as ntf:
+            ntf.write(pgm.text)
+            ntf.flush()
+
+            result = _krun(
+                command=self.command,
+                input_file=Path(ntf.name),
+                definition_dir=self.definition_dir,
+                output=KRunOutput.KORE,
+                depth=depth,
+                parser='cat',
+                temp_dir=self.use_directory,
+                no_expand_macros=not expand_macros,
+                search_final=search_final,
+                no_pattern=no_pattern,
+                bug_report=self._bug_report,
+                check=False,
+            )
+
+        if output != KRunOutput.NONE:
+            output_kore = KoreParser(result.stdout).pattern()
+            match output:
+                case KRunOutput.PRETTY:
+                    print(self.kore_to_pretty(output_kore) + '\n')
+                case KRunOutput.JSON:
+                    print(self.kore_to_kast(output_kore).to_json() + '\n')
+                case KRunOutput.KORE:
+                    print(output_kore.text + '\n')
+                case KRunOutput.PROGRAM | KRunOutput.KAST | KRunOutput.BINARY | KRunOutput.LATEX:
+                    raise NotImplementedError(f'Option --output {output} unsupported!')
+                case KRunOutput.NONE:
+                    pass
+
+        sys.stderr.write(result.stderr + '\n')
+        sys.stderr.flush()
+
+        if check and result.returncode != 0:
+            sys.exit(result.returncode)
+
+        return result
 
     def run_kore_term(
         self,
