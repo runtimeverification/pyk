@@ -72,6 +72,7 @@ class KRun(KPrint):
         no_pattern: bool = False,
         output: KRunOutput | None = KRunOutput.PRETTY,
         check: bool = False,
+        pipe_stderr: bool = True,
         bug_report: BugReport | None = None,
     ) -> CompletedProcess:
         with self._temp_file() as ntf:
@@ -94,6 +95,7 @@ class KRun(KPrint):
                 no_pattern=no_pattern,
                 bug_report=self._bug_report,
                 check=False,
+                pipe_stderr=pipe_stderr,
             )
 
         if output != KRunOutput.NONE:
@@ -124,6 +126,7 @@ class KRun(KPrint):
         expand_macros: bool = False,
         search_final: bool = False,
         no_pattern: bool = False,
+        pipe_stderr: bool = True,
         bug_report: BugReport | None = None,
         expect_rc: int | Iterable[int] = 0,
     ) -> Pattern:
@@ -136,6 +139,7 @@ class KRun(KPrint):
             no_pattern=no_pattern,
             output=KRunOutput.NONE,
             check=False,
+            pipe_stderr=pipe_stderr,
             bug_report=bug_report,
         )
 
@@ -172,7 +176,7 @@ def _krun(
     no_pattern: bool = False,
     # ---
     check: bool = True,
-    pipe_stderr: bool = False,
+    pipe_stderr: bool = True,
     logger: Logger | None = None,
     bug_report: BugReport | None = None,
 ) -> CompletedProcess:
