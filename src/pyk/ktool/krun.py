@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
 from ..kore.parser import KoreParser
+from ..kore.tools import PrintOutput, kore_print
 from ..utils import run_process
 from .kprint import KPrint
 
@@ -98,16 +99,14 @@ class KRun(KPrint):
         if output != KRunOutput.NONE:
             output_kore = KoreParser(result.stdout).pattern()
             match output:
-                case KRunOutput.PRETTY:
-                    print(self.kore_to_pretty(output_kore) + '\n')
-                case KRunOutput.JSON:
-                    print(self.kore_to_kast(output_kore).to_json() + '\n')
-                case KRunOutput.KORE:
-                    print(output_kore.text + '\n')
-                case KRunOutput.PROGRAM | KRunOutput.KAST | KRunOutput.BINARY | KRunOutput.LATEX:
-                    raise NotImplementedError(f'Option --output {output} unsupported!')
                 case KRunOutput.NONE:
                     pass
+                case KRunOutput.JSON:
+                    print(self.kore_to_kast(output_kore).to_json())
+                case KRunOutput.KORE:
+                    print(output_kore.text)
+                case KRunOutput.PRETTY | KRunOutput.PROGRAM | KRunOutput.KAST | KRunOutput.BINARY | KRunOutput.LATEX:
+                    print(kore_print(output_kore, self.definition_dir, PrintOutput(output.value)))
 
         sys.stderr.write(result.stderr + '\n')
         sys.stderr.flush()
