@@ -66,7 +66,8 @@ class KRun(KPrint):
         pmap = {k: 'cat' for k in config} if config is not None else None
         cmap = {k: self.kast_to_kore(v).text for k, v in config.items()} if config is not None else None
         with self._temp_file() as ntf:
-            ntf.write(self.pretty_print(pgm))
+            kore_pgm = self.kast_to_kore(pgm)
+            ntf.write(kore_pgm.text)
             ntf.flush()
 
             result = _krun(
@@ -75,6 +76,7 @@ class KRun(KPrint):
                 definition_dir=self.definition_dir,
                 output=KRunOutput.JSON,
                 depth=depth,
+                parser='cat',
                 cmap=cmap,
                 pmap=pmap,
                 temp_dir=self.use_directory,
