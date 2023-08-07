@@ -6,8 +6,6 @@ import pytest
 
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, Subst
 from pyk.kast.manip import flatten_label
-from pyk.kore.prelude import int_dv
-from pyk.kore.syntax import App
 from pyk.prelude.collections import map_item
 from pyk.prelude.kint import intToken
 from pyk.testing import KRunTest
@@ -73,40 +71,6 @@ class TestImpRun(KRunTest):
 
         # When
         actual = krun.run_kore_term(pattern)
-
-        # Then
-        assert actual == expected
-
-
-class TestConfigRun(KRunTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'config.k'
-
-    def test_run_kore_config(self, krun: KRun) -> None:
-        # Given
-        fst = int_dv(0)
-        snd = int_dv(1)
-        expected = App(
-            "Lbl'-LT-'generatedTop'-GT-'",
-            (),
-            (
-                App(
-                    "Lbl'-LT-'T'-GT-'",
-                    (),
-                    (
-                        App("Lbl'-LT-'first'-GT-'", (), (fst,)),
-                        App("Lbl'-LT-'second'-GT-'", (), (snd,)),
-                    ),
-                ),
-                App(
-                    "Lbl'-LT-'generatedCounter'-GT-'",
-                    (),
-                    (int_dv(0),),
-                ),
-            ),
-        )
-
-        # When
-        actual = krun.run_kore_config({'FST': fst, 'SND': snd}, depth=0)
 
         # Then
         assert actual == expected

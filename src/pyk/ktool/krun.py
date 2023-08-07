@@ -11,10 +11,8 @@ from typing import TYPE_CHECKING
 from ..cli.utils import check_dir_path, check_file_path
 from ..cterm import CTerm
 from ..kast import kast_term
-from ..kast.inner import KInner, KLabel, KSort
-from ..konvert import unmunge
+from ..kast.inner import KInner
 from ..kore.parser import KoreParser
-from ..kore.syntax import DV, App, SortApp, String
 from ..utils import run_process
 from .kprint import KPrint
 
@@ -193,54 +191,6 @@ class KRun(KPrint):
         res = parser.pattern()
         assert parser.eof
         return res
-
-    def run_kore_config(
-        self,
-        config: Mapping[str, Pattern],
-        *,
-        depth: int | None = None,
-        expand_macros: bool = False,
-        search_final: bool = False,
-        no_pattern: bool = False,
-        # ---
-        bug_report: BugReport | None = None,
-        expect_rc: int = 0,
-    ) -> Pattern:
-        def _config_var_token(s: str) -> DV:
-            return DV(SortApp('SortKConfigVar'), String(f'${s}'))
-
-        def _map_item(s: str, p: Pattern, sort: KSort) -> Pattern:
-            _map_key = self._add_sort_injection(_config_var_token(s), KSort('KConfigVar'), KSort('KItem'))
-            _map_value = self._add_sort_injection(p, sort, KSort('KItem'))
-            return App("Lbl'UndsPipe'-'-GT-Unds'", [], [_map_key, _map_value])
-
-        def _map(ps: list[Pattern]) -> Pattern:
-            if len(ps) == 0:
-                return App("Lbl'Stop'Map{}()", [], [])
-            if len(ps) == 1:
-                return ps[0]
-            return App("Lbl'Unds'Map'Unds'", [], [ps[0], _map(ps[1:])])
-
-        def _sort(p: Pattern) -> KSort:
-            if type(p) is DV:
-                return KSort(p.sort.name[4:])
-            if type(p) is App:
-                label = KLabel(unmunge(p.symbol[3:]))
-                return self.definition.return_sort(label)
-            raise ValueError(f'Cannot fast-compute sort for pattern: {p}')
-
-        config_var_map = _map([_map_item(k, v, _sort(v)) for k, v in config.items()])
-        term = App('LblinitGeneratedTopCell', [], [config_var_map])
-
-        return self.run_kore_term(
-            term,
-            depth=depth,
-            expand_macros=expand_macros,
-            search_final=search_final,
-            no_pattern=no_pattern,
-            bug_report=bug_report,
-            expect_rc=expect_rc,
-        )
 
     @staticmethod
     def _check_return_code(actual: int, expected: int | Iterable[int]) -> None:
