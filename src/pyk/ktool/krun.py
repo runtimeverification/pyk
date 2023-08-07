@@ -64,6 +64,7 @@ class KRun(KPrint):
         *,
         cmap: Mapping[str, str] | None = None,
         pmap: Mapping[str, str] | None = None,
+        term: bool = False,
         depth: int | None = None,
         expand_macros: bool = True,
         search_final: bool = False,
@@ -85,6 +86,7 @@ class KRun(KPrint):
                 parser='cat',
                 cmap=cmap,
                 pmap=pmap,
+                term=term,
                 temp_dir=self.use_directory,
                 no_expand_macros=not expand_macros,
                 search_final=search_final,
@@ -129,6 +131,7 @@ class KRun(KPrint):
         proc_res = self.run_kore(
             pattern,
             depth=depth,
+            term=True,
             expand_macros=expand_macros,
             search_final=search_final,
             no_pattern=no_pattern,
