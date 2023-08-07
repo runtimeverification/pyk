@@ -183,6 +183,9 @@ def _krun(
     if depth and depth < 0:
         raise ValueError(f'Expected non-negative depth, got: {depth}')
 
+    if term and (cmap is not None or pmap is not None):
+        raise ValueError('Cannot supply both term and cmap/pmap')
+
     args = _build_arg_list(
         command=command,
         input_file=input_file,
