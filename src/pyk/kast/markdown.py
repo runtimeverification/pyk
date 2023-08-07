@@ -24,21 +24,40 @@ def code_blocks(text: str) -> Iterator[CodeBlock]:
     return (CodeBlock(match['info'], match['code'].rstrip()) for match in _CODE_BLOCK_PATTERN.finditer(text))
 
 
+def parse_tags(text: str) -> set[str]:
+    def check_tag(tag: str) -> None:
+        if not (tag and all(c.isalnum() or c == '_' for c in tag)):
+            raise ValueError(f'Invalid tag: {tag!r}')
+
+    if not text:
+        return set()
+
+    if text[0] != '{':
+        check_tag(text)
+        return {text}
+
+    if text[-1] != '}':
+        raise ValueError("Expected '}', found: {text[-1]!r}")
+
+    res: set[str] = set()
+    tags = text[1:-1].split()
+    for tag in tags:
+        if tag[0] != '.':
+            raise ValueError("Expected '.', found: {tag[0]!r}")
+        check_tag(tag[1:])
+        res.add(tag[1:])
+
+    return res
+
+
 def select_code_blocks(text: str, selector: str | None = None) -> str:
     _selector = SelectorParser(selector).parse() if selector else None
-
-    def check_tag(tag: str) -> None:
-        if not all(c.isalnum() or c == '_' for c in tag):
-            raise ValueError(f'Invalid tag: {tag!r}')
 
     def selected(code_block: CodeBlock) -> bool:
         if _selector is None:
             return True
 
-        tags = code_block.info.split(',')
-        for tag in tags:
-            check_tag(tag)
-
+        tags = parse_tags(code_block.info)
         return _selector.eval(tags)
 
     return '\n'.join(code_block.code for code_block in code_blocks(text) if selected(code_block))

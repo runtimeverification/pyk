@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kast.markdown import And, Atom, CodeBlock, Not, Or, SelectorParser, code_blocks, select_code_blocks
+from pyk.kast.markdown import And, Atom, CodeBlock, Not, Or, SelectorParser, code_blocks, parse_tags, select_code_blocks
 
 from ..utils import TEST_DATA_DIR
 
@@ -156,6 +156,22 @@ def test_selector_eval(text: str, atoms: Collection[str], expected: bool) -> Non
 
     # When
     actual = selector.eval(atoms)
+
+    # Then
+    assert actual == expected
+
+
+PARSE_TAGS_TEST_DATA: Final[tuple[tuple[str, set[str]], ...]] = (
+    ('', set()),
+    ('k', {'k'}),
+    ('{.foo .bar .baz}', {'foo', 'bar', 'baz'}),
+)
+
+
+@pytest.mark.parametrize('text,expected', PARSE_TAGS_TEST_DATA, ids=[text for text, _ in PARSE_TAGS_TEST_DATA])
+def test_parse_tags(text: str, expected: set[str]) -> None:
+    # When
+    actual = parse_tags(text)
 
     # Then
     assert actual == expected
