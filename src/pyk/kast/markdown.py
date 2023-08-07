@@ -10,14 +10,27 @@ if TYPE_CHECKING:
     from typing import Final
 
 
-_CODE_BLOCK_PATTERN: Final = re.compile(
-    r'(^|(?<=\n)) {0,3}(?P<fence>```+)(?!`)(?P<info>.*)\n(?P<code>(.*\n)*?) {0,3}(?P=fence)`*'
-)
+def select_code_blocks(text: str, selector: str | None = None) -> str:
+    _selector = SelectorParser(selector).parse() if selector else None
+
+    def selected(code_block: CodeBlock) -> bool:
+        if _selector is None:
+            return True
+
+        tags = parse_tags(code_block.info)
+        return _selector.eval(tags)
+
+    return '\n'.join(code_block.code for code_block in code_blocks(text) if selected(code_block))
 
 
 class CodeBlock(NamedTuple):
     info: str
     code: str
+
+
+_CODE_BLOCK_PATTERN: Final = re.compile(
+    r'(^|(?<=\n)) {0,3}(?P<fence>```+)(?!`)(?P<info>.*)\n(?P<code>(.*\n)*?) {0,3}(?P=fence)`*'
+)
 
 
 def code_blocks(text: str) -> Iterator[CodeBlock]:
@@ -48,19 +61,6 @@ def parse_tags(text: str) -> set[str]:
         res.add(tag[1:])
 
     return res
-
-
-def select_code_blocks(text: str, selector: str | None = None) -> str:
-    _selector = SelectorParser(selector).parse() if selector else None
-
-    def selected(code_block: CodeBlock) -> bool:
-        if _selector is None:
-            return True
-
-        tags = parse_tags(code_block.info)
-        return _selector.eval(tags)
-
-    return '\n'.join(code_block.code for code_block in code_blocks(text) if selected(code_block))
 
 
 # ----------------------
