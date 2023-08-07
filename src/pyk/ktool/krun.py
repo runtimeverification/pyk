@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from enum import Enum
@@ -9,9 +8,6 @@ from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import CTerm
-from ..kast import kast_term
-from ..kast.inner import KInner
 from ..kore.parser import KoreParser
 from ..utils import run_process
 from .kprint import KPrint
@@ -61,48 +57,6 @@ class KRun(KPrint):
             patch_symbol_table=patch_symbol_table,
         )
         self.command = command
-
-    def run_pgm_config(
-        self,
-        pgm: KInner,
-        *,
-        config: Mapping[str, KInner] | None = None,
-        depth: int | None = None,
-        expand_macros: bool = False,
-        search_final: bool = False,
-        no_pattern: bool = False,
-        expect_rc: int | Iterable[int] = 0,
-    ) -> CTerm:
-        if config is not None and 'PGM' in config:
-            raise ValueError('Cannot supply both pgm and config with PGM variable.')
-        pmap = {k: 'cat' for k in config} if config is not None else None
-        cmap = {k: self.kast_to_kore(v).text for k, v in config.items()} if config is not None else None
-        with self._temp_file() as ntf:
-            kore_pgm = self.kast_to_kore(pgm)
-            ntf.write(kore_pgm.text)
-            ntf.flush()
-
-            result = _krun(
-                command=self.command,
-                input_file=Path(ntf.name),
-                definition_dir=self.definition_dir,
-                output=KRunOutput.JSON,
-                depth=depth,
-                parser='cat',
-                cmap=cmap,
-                pmap=pmap,
-                temp_dir=self.use_directory,
-                no_expand_macros=not expand_macros,
-                search_final=search_final,
-                no_pattern=no_pattern,
-                bug_report=self._bug_report,
-                check=(expect_rc == 0),
-            )
-
-        self._check_return_code(result.returncode, expect_rc)
-
-        result_kast = kast_term(json.loads(result.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
-        return CTerm.from_kast(result_kast)
 
     def run_kore(
         self,
