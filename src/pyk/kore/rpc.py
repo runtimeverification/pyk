@@ -279,6 +279,7 @@ class StopReason(str, Enum):
     BRANCHING = 'branching'
     CUT_POINT_RULE = 'cut-point-rule'
     TERMINAL_RULE = 'terminal-rule'
+    VACUOUS = 'vacuous'
 
 
 @final
@@ -429,6 +430,7 @@ class ExecuteResult(ABC):  # noqa: B024
         StopReason.BRANCHING: 'BranchingResult',
         StopReason.CUT_POINT_RULE: 'CutPointResult',
         StopReason.TERMINAL_RULE: 'TerminalResult',
+        StopReason.VACUOUS: 'VacuousResult',
     }
 
     reason: ClassVar[StopReason]
@@ -441,6 +443,7 @@ class ExecuteResult(ABC):  # noqa: B024
 
     @classmethod
     def from_dict(cls: type[ER], dct: Mapping[str, Any]) -> ER:
+        _LOGGER.info(dct)
         return globals()[ExecuteResult._TYPES[StopReason(dct['reason'])]].from_dict(dct)  # type: ignore
 
     @classmethod
@@ -448,6 +451,28 @@ class ExecuteResult(ABC):  # noqa: B024
         reason = StopReason(dct['reason'])
         if reason is not cls.reason:
             raise ValueError(f"Expected {cls.reason} as 'reason', found: {reason}")
+
+
+@final
+@dataclass(frozen=True)
+class VacuousResult(ExecuteResult):
+    reason = StopReason.VACUOUS
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+    logs: tuple[LogEntry, ...]
+
+    @classmethod
+    def from_dict(cls: type[VacuousResult], dct: Mapping[str, Any]) -> VacuousResult:
+        cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
+        return VacuousResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
+            logs=logs,
+        )
 
 
 @final
