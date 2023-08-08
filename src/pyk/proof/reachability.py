@@ -113,6 +113,7 @@ class APRProof(Proof):
         return self.kcfg.is_leaf(node_id) and not (
             self.is_terminal(node_id)
             or self.kcfg.is_stuck(node_id)
+            or self.kcfg.is_vacuous(node_id)
             or self.is_target(node_id)
             or self.is_refuted(node_id)
         )
@@ -125,7 +126,10 @@ class APRProof(Proof):
 
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return self.kcfg.is_leaf(node_id) and not (
-            self.is_pending(node_id) or self.is_target(node_id) or self.is_refuted(node_id)
+            self.is_pending(node_id)
+            or self.is_target(node_id)
+            or self.is_refuted(node_id)
+            or self.kcfg.is_vacuous(node_id)
         )
 
     def add_terminal(self, node_id: NodeIdLike) -> None:

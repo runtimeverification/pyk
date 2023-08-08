@@ -443,7 +443,6 @@ class ExecuteResult(ABC):  # noqa: B024
 
     @classmethod
     def from_dict(cls: type[ER], dct: Mapping[str, Any]) -> ER:
-        _LOGGER.info(dct)
         return globals()[ExecuteResult._TYPES[StopReason(dct['reason'])]].from_dict(dct)  # type: ignore
 
     @classmethod
