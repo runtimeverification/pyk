@@ -454,28 +454,6 @@ class ExecuteResult(ABC):  # noqa: B024
 
 @final
 @dataclass(frozen=True)
-class VacuousResult(ExecuteResult):
-    reason = StopReason.VACUOUS
-    next_states = None
-    rule = None
-
-    state: State
-    depth: int
-    logs: tuple[LogEntry, ...]
-
-    @classmethod
-    def from_dict(cls: type[VacuousResult], dct: Mapping[str, Any]) -> VacuousResult:
-        cls._check_reason(dct)
-        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
-        return VacuousResult(
-            state=State.from_dict(dct['state']),
-            depth=dct['depth'],
-            logs=logs,
-        )
-
-
-@final
-@dataclass(frozen=True)
 class StuckResult(ExecuteResult):
     # These fields should be Final, but it makes mypy crash
     # https://github.com/python/mypy/issues/10090
@@ -583,6 +561,28 @@ class TerminalResult(ExecuteResult):
         cls._check_reason(dct)
         logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
         return TerminalResult(state=State.from_dict(dct['state']), depth=dct['depth'], rule=dct['rule'], logs=logs)
+
+
+@final
+@dataclass(frozen=True)
+class VacuousResult(ExecuteResult):
+    reason = StopReason.VACUOUS
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+    logs: tuple[LogEntry, ...]
+
+    @classmethod
+    def from_dict(cls: type[VacuousResult], dct: Mapping[str, Any]) -> VacuousResult:
+        cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
+        return VacuousResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
+            logs=logs,
+        )
 
 
 @final
