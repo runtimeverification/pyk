@@ -217,10 +217,10 @@ def assert_execute_result_equals(actual: ExecuteResult, expected: ExecuteResult)
 
     actual_dict = asdict(actual)  # type: ignore
     expected_dict = asdict(expected)  # type: ignore
-    if 'next_states' in actual_dict and 'next_states' in expected_dict:
-        if actual_dict['next_states'] is not None and expected_dict['next_states'] is not None:
-            actual_dict['next_states'] = set(actual.next_states)  # type: ignore
-            expected_dict['next_states'] = set(expected.next_states)  # type: ignore
+    if 'next_states' in actual_dict and actual.next_states is not None:
+        actual_dict['next_states'] = set(actual.next_states)
+    if 'next_states' in expected_dict and expected.next_states is not None:
+        expected_dict['next_states'] = set(expected.next_states)
 
     assert actual_dict == expected_dict
 
