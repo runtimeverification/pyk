@@ -88,7 +88,7 @@ class KCFGExplore:
             log_successful_simplifications=self._trace_rewrites,
             log_failed_simplifications=self._trace_rewrites,
         )
-        _is_vacuous = er.reason == StopReason.VACUOUS
+        _is_vacuous = er.reason is StopReason.VACUOUS
         depth = er.depth
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None else []
