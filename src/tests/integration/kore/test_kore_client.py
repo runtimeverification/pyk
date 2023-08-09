@@ -213,7 +213,7 @@ GET_MODEL_WITH_SMT_TEST_DATA: Final = (
 
 
 def assert_execute_result_equals(actual: ExecuteResult, expected: ExecuteResult) -> None:
-    assert actual.__class__ == expected.__class__
+    assert type(actual) == type(expected)
 
     actual_dict = asdict(actual)  # type: ignore
     expected_dict = asdict(expected)  # type: ignore
