@@ -70,7 +70,6 @@ class KRun(KPrint):
         search_final: bool = False,
         no_pattern: bool = False,
         output: KRunOutput | None = KRunOutput.PRETTY,
-        check: bool = False,
         pipe_stderr: bool = True,
         bug_report: BugReport | None = None,
     ) -> CompletedProcess:
@@ -123,7 +122,6 @@ class KRun(KPrint):
             search_final=search_final,
             no_pattern=no_pattern,
             output=output,
-            check=check,
             pipe_stderr=pipe_stderr,
             bug_report=bug_report,
         )
@@ -152,8 +150,8 @@ class KRun(KPrint):
         search_final: bool = False,
         no_pattern: bool = False,
         pipe_stderr: bool = True,
+        check: bool = False,
         bug_report: BugReport | None = None,
-        expect_rc: int | Iterable[int] = 0,
     ) -> Pattern:
         proc_res = self.run_kore_process(
             pattern,
@@ -163,25 +161,17 @@ class KRun(KPrint):
             search_final=search_final,
             no_pattern=no_pattern,
             output=KRunOutput.NONE,
-            check=False,
             pipe_stderr=pipe_stderr,
             bug_report=bug_report,
         )
 
-        self._check_return_code(proc_res.returncode, expect_rc)
+        if check:
+            proc_res.check_returncode()
 
         parser = KoreParser(proc_res.stdout)
         res = parser.pattern()
         assert parser.eof
         return res
-
-    @staticmethod
-    def _check_return_code(actual: int, expected: int | Iterable[int]) -> None:
-        if isinstance(expected, int):
-            expected = [expected]
-
-        if actual not in expected:
-            raise RuntimeError(f'Expected {expected} as exit code from krun, but got {actual}')
 
 
 def _krun(
