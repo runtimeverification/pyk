@@ -59,7 +59,7 @@ class KRun(KPrint):
         )
         self.command = command
 
-    def run_kore(
+    def run_kore_process(
         self,
         pgm: Pattern,
         *,
@@ -79,7 +79,7 @@ class KRun(KPrint):
             pgm.write(ntf)
             ntf.flush()
 
-            result = _krun(
+            return _krun(
                 command=self.command,
                 input_file=Path(ntf.name),
                 definition_dir=self.definition_dir,
@@ -97,6 +97,37 @@ class KRun(KPrint):
                 check=False,
                 pipe_stderr=pipe_stderr,
             )
+
+    def run_kore(
+        self,
+        pgm: Pattern,
+        *,
+        cmap: Mapping[str, str] | None = None,
+        pmap: Mapping[str, str] | None = None,
+        term: bool = False,
+        depth: int | None = None,
+        expand_macros: bool = True,
+        search_final: bool = False,
+        no_pattern: bool = False,
+        output: KRunOutput | None = KRunOutput.PRETTY,
+        check: bool = False,
+        pipe_stderr: bool = True,
+        bug_report: BugReport | None = None,
+    ) -> None:
+        result = self.run_kore_process(
+            pgm,
+            cmap=cmap,
+            pmap=pmap,
+            term=term,
+            depth=depth,
+            expand_macros=expand_macros,
+            search_final=search_final,
+            no_pattern=no_pattern,
+            output=output,
+            check=check,
+            pipe_stderr=pipe_stderr,
+            bug_report=bug_report,
+        )
 
         if output != KRunOutput.NONE:
             output_kore = KoreParser(result.stdout).pattern()
@@ -116,8 +147,6 @@ class KRun(KPrint):
         if check and result.returncode != 0:
             sys.exit(result.returncode)
 
-        return result
-
     def run_kore_term(
         self,
         pattern: Pattern,
@@ -130,7 +159,7 @@ class KRun(KPrint):
         bug_report: BugReport | None = None,
         expect_rc: int | Iterable[int] = 0,
     ) -> Pattern:
-        proc_res = self.run_kore(
+        proc_res = self.run_kore_process(
             pattern,
             depth=depth,
             term=True,
