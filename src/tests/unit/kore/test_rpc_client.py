@@ -57,9 +57,7 @@ def kore_client(mock: Mock, mock_class: Mock) -> Iterator[KoreClient]:  # noqa: 
     mock.close.assert_called()
 
 
-EXCEPTION_TEST_DATA: Final = (
-    (App('IntAdd', (), (int_dv(1), int_dv(1))), '', RuntimeError('Parse error: Empty response received')),
-)
+EXCEPTION_TEST_DATA: Final = ((App('IntAdd', (), (int_dv(1), int_dv(1))), '', RuntimeError('Empty response received')),)
 
 
 @pytest.mark.parametrize('pattern,response,expected', EXCEPTION_TEST_DATA, ids=count())
