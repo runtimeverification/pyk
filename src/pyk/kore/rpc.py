@@ -232,7 +232,6 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
 
         _LOGGER.debug(f'Sending request to {server_addr}: {req}')
         resp = self._transport.request(req)
-        print(resp)
         if len(resp) == 0:
             raise JsonRpcError('Parse error: Empty response received', -32700)
         _LOGGER.debug(f'Received response from {server_addr}: {resp}')
