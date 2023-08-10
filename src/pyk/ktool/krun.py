@@ -76,7 +76,7 @@ class KRun(KPrint):
         bug_report: BugReport | None = None,
     ) -> CompletedProcess:
         with self._temp_file() as ntf:
-            ntf.write(pgm.text)
+            pgm.write(ntf)
             ntf.flush()
 
             result = _krun(
