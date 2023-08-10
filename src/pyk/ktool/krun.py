@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 from enum import Enum
 from pathlib import Path
 from subprocess import CalledProcessError
@@ -141,11 +140,8 @@ class KRun(KPrint):
                 case KRunOutput.PRETTY | KRunOutput.PROGRAM | KRunOutput.KAST | KRunOutput.BINARY | KRunOutput.LATEX:
                     print(kore_print(output_kore, self.definition_dir, PrintOutput(output.value)))
 
-        sys.stderr.write(result.stderr + '\n')
-        sys.stderr.flush()
-
-        if check and result.returncode != 0:
-            sys.exit(result.returncode)
+        if check:
+            result.check_returncode()
 
     def run_kore_term(
         self,
