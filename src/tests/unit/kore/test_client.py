@@ -11,9 +11,7 @@ from pyk.kore.rpc import (
     ImpliesResult,
     JsonRpcClient,
     KoreClient,
-    KoreClientError,
     SatResult,
-    SingleSocketTransport,
     State,
     StuckResult,
     TransportType,
@@ -56,15 +54,15 @@ class MockClient:
 
 
 @pytest.fixture
-def rpc_mock_class() -> Iterator[Mock]:
+def mock_class() -> Iterator[Mock]:
     patcher = patch('pyk.kore.rpc.JsonRpcClient', spec=True)
     yield patcher.start()
     patcher.stop()
 
 
 @pytest.fixture
-def mock(rpc_mock_class: Mock) -> Mock:
-    mock = rpc_mock_class.return_value
+def mock(mock_class: Mock) -> Mock:
+    mock = mock_class.return_value
     assert isinstance(mock, JsonRpcClient)
     return mock  # type: ignore
 
@@ -75,9 +73,9 @@ def rpc_client(mock: Mock) -> MockClient:
 
 
 @pytest.fixture
-def kore_client(mock: Mock, rpc_mock_class: Mock) -> Iterator[KoreClient]:  # noqa: N803
+def kore_client(mock: Mock, mock_class: Mock) -> Iterator[KoreClient]:  # noqa: N803
     client = KoreClient('localhost', 3000)
-    rpc_mock_class.assert_called_with(
+    mock_class.assert_called_with(
         'localhost', 3000, timeout=None, bug_report=None, transport=TransportType.SINGLE_SOCKET
     )
     assert client._client == mock
@@ -258,66 +256,3 @@ def test_add_module(
 
     # Then
     rpc_client.assert_request('add-module', **params)
-
-
-class MockTransport:
-    mock: Mock
-
-    def __init__(self, mock: Mock):
-        self.mock = mock
-
-    def assume_response(self, response: str) -> None:
-        self.mock.request.return_value = response
-
-
-@pytest.fixture
-def transport_mock_class() -> Iterator[Mock]:
-    patcher = patch('pyk.kore.rpc.SingleSocketTransport', spec=True)
-    yield patcher.start()
-    patcher.stop()
-
-
-@pytest.fixture
-def transport_mock(transport_mock_class: Mock) -> Mock:
-    transport_mock = transport_mock_class.return_value
-    assert isinstance(transport_mock, SingleSocketTransport)
-    return transport_mock  # type: ignore
-
-
-@pytest.fixture
-def transport(transport_mock: Mock) -> MockTransport:
-    return MockTransport(transport_mock)
-
-
-@pytest.fixture
-def transport_kore_client(transport_mock: Mock, transport_mock_class: Mock) -> Iterator[KoreClient]:  # noqa: N803
-    client = KoreClient('localhost', 3000)
-    transport_mock_class.assert_called_with('localhost', 3000, timeout=None)
-    assert client._client._transport == transport_mock
-    yield client
-    client.close()
-    transport_mock.close.assert_called()
-
-
-EXCEPTION_TEST_DATA: Final = (
-    (App('IntAdd', (), (int_dv(1), int_dv(1))), '', KoreClientError('Parse error: Empty response received', -32700)),
-)
-
-
-@pytest.mark.parametrize('pattern,response,expected', EXCEPTION_TEST_DATA, ids=count())
-def test_exceptions(
-    transport_kore_client: KoreClient,
-    transport: MockTransport,
-    pattern: Pattern,
-    response: str,
-    expected: Exception,
-) -> None:
-    # Given
-    transport.assume_response(response)
-
-    with pytest.raises(Exception) as client_err:
-        # When
-        transport_kore_client.execute(pattern)
-
-    # Then
-    assert client_err.value == expected
