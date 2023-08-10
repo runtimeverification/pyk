@@ -129,14 +129,14 @@ class KRun(KPrint):
         if output != KRunOutput.NONE:
             output_kore = KoreParser(result.stdout).pattern()
             match output:
-                case KRunOutput.NONE:
-                    pass
                 case KRunOutput.JSON:
                     print(self.kore_to_kast(output_kore).to_json())
                 case KRunOutput.KORE:
                     print(output_kore.text)
                 case KRunOutput.PRETTY | KRunOutput.PROGRAM | KRunOutput.KAST | KRunOutput.BINARY | KRunOutput.LATEX:
                     print(kore_print(output_kore, self.definition_dir, PrintOutput(output.value)))
+                case KRunOutput.NONE:
+                    raise AssertionError()
 
         if check:
             result.check_returncode()
