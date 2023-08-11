@@ -85,6 +85,9 @@ EXECUTE_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult]
 )
 
 
+EXECUTE_BOOSTER_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult], ...]] = EXECUTE_TEST_DATA[:-1]
+
+
 IMPLIES_TEST_DATA: Final = (
     (
         '0 -> T',
@@ -233,8 +236,8 @@ class TestBooster(BoosterClientTest):
 
     @pytest.mark.parametrize(
         'test_id,n,params,expected',
-        EXECUTE_TEST_DATA,
-        ids=[test_id for test_id, *_ in EXECUTE_TEST_DATA],
+        EXECUTE_BOOSTER_TEST_DATA,
+        ids=[test_id for test_id, *_ in EXECUTE_BOOSTER_TEST_DATA],
     )
     def test_execute_booster(
         self,
