@@ -59,7 +59,9 @@ class APRProofViewer(KCFGViewer):
         custom_view: Callable[[KCFGElem], Iterable[str]] | None = None,
         minimize: bool = True,
     ) -> None:
-        super().__init__(proof.kcfg, kprint, node_printer=node_printer, custom_view=custom_view, minimize=minimize)
+        super().__init__(
+            proof.kcfg_exploration.kcfg, kprint, node_printer=node_printer, custom_view=custom_view, minimize=minimize
+        )
         self._proof = proof
 
     def on_mount(self) -> None:
