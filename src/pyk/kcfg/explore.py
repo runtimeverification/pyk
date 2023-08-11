@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
     from ..kast import KInner
     from ..kast.outer import KClaim
+    from ..kcfg.exploration import KCFGExploration
     from ..kore.rpc import KoreClient, LogEntry
     from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
@@ -354,9 +355,16 @@ class KCFGExplore:
         kcfg.create_cover(node.id, new_node.id)
         return True
 
+    def _check_terminal(self, node: KCFG.Node) -> bool:
+        _LOGGER.info(f'Checking terminal: {shorten_hashes(node.id)}')
+        if self.kcfg_semantics.is_terminal(node.cterm):
+            _LOGGER.info(f'Terminal node: {shorten_hashes(node.id)}.')
+            return True
+        return False
+
     def extend(
         self,
-        kcfg: KCFG,
+        kcfg_exploration: KCFGExploration,
         node: KCFG.Node,
         logs: dict[int, tuple[LogEntry, ...]],
         execute_depth: int | None = None,
@@ -364,10 +372,19 @@ class KCFGExplore:
         terminal_rules: Iterable[str] = (),
         module_name: str | None = None,
     ) -> None:
+        kcfg: KCFG = kcfg_exploration.kcfg
+
+        def check_terminals(node_ids: list[int]) -> None:
+            for node_id in node_ids:
+                if self._check_terminal(kcfg.node(node_id)):
+                    kcfg_exploration.add_terminal(node_id)
+
         if not kcfg.is_leaf(node.id):
             raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
         if kcfg.is_stuck(node.id):
             raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
+        if kcfg_exploration.is_terminal(node.id):
+            raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
 
         if self._check_abstract(node, kcfg):
             return
@@ -375,11 +392,14 @@ class KCFGExplore:
         if not kcfg.splits(target_id=node.id):
             branches = self.kcfg_semantics.extract_branches(node.cterm)
             if branches:
-                kcfg.split_on_constraints(node.id, branches)
+                splits = kcfg.split_on_constraints(node.id, branches)
                 _LOGGER.info(
                     f'Found {len(branches)} branches using heuristic for node {node.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
                 )
+                check_terminals(splits)
                 return
+
+        nodes_to_check: list[int] = []
 
         _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
         depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
@@ -395,6 +415,7 @@ class KCFGExplore:
             next_node = kcfg.create_node(cterm)
             logs[next_node.id] = next_node_logs
             kcfg.create_edge(node.id, next_node.id, depth)
+            nodes_to_check = [next_node.id]
             _LOGGER.info(
                 f'Found basic block at depth {depth} for {self.id}: {shorten_hashes((node.id, next_node.id))}.'
             )
@@ -409,6 +430,7 @@ class KCFGExplore:
             next_node = kcfg.create_node(next_cterms[0])
             logs[next_node.id] = next_node_logs
             kcfg.create_edge(node.id, next_node.id, 1)
+            nodes_to_check = [next_node.id]
             _LOGGER.info(
                 f'Inserted cut-rule basic block at depth 1 for {self.id}: {shorten_hashes((node.id, next_node.id))}'
             )
@@ -428,7 +450,8 @@ class KCFGExplore:
 
             # Split on branch patterns
             if any(branch_pattern.match(branch_and) for branch_pattern in branch_patterns):
-                kcfg.split_on_constraints(node.id, branches)
+                splits = kcfg.split_on_constraints(node.id, branches)
+                nodes_to_check = splits
                 _LOGGER.info(
                     f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
                 )
@@ -439,12 +462,15 @@ class KCFGExplore:
                 for i in next_ids:
                     logs[i] = next_node_logs
                 kcfg.create_ndbranch(node.id, next_ids)
+                nodes_to_check = next_ids
                 _LOGGER.info(
                     f'Found {len(next_ids)} non-deterministic branches for node {self.id}: {shorten_hashes(node.id)}'
                 )
 
         else:
             raise ValueError('Unhandled case.')
+
+        check_terminals(nodes_to_check)
 
     def add_dependencies_module(
         self, old_module_name: str, new_module_name: str, dependencies: Iterable[KClaim], priority: int = 1
