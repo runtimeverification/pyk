@@ -11,12 +11,6 @@ if TYPE_CHECKING:
     from .ast import Definition, Pattern
 
 
-def _parser_from_path(path: str | Path) -> Parser:
-    path = Path(path)
-    check_file_path(path)
-    return Parser(str(path))
-
-
 def parse_pattern(text: str) -> Pattern:
     return Parser.from_string(text).pattern()
 
@@ -31,3 +25,9 @@ def parse_pattern_file(path: str | Path) -> Pattern:
 
 def parse_definition_file(path: str | Path) -> Definition:
     return _parser_from_path(path).definition()
+
+
+def _parser_from_path(path: str | Path) -> Parser:
+    path = Path(path)
+    check_file_path(path)
+    return Parser(str(path))

@@ -35,13 +35,18 @@ def test_parse_pattern() -> None:
 
 def test_parse_definition_file(tmp_path: Path) -> None:
     # Given
-    kore_text = """[]
 
-module FOO
-  axiom {S}A{}(B{}(),C{}()) [group{}("foo")]
-endmodule
-[concrete{}()]
-"""
+    # fmt: off
+    kore_text = (
+        '[]\n'
+        '\n'
+        'module FOO\n'
+        '  axiom {S}A{}(B{}(),C{}()) [group{}("foo")]\n'
+        'endmodule\n'
+        '[concrete{}()]\n'
+    )
+    # fmt: on
+
     kore_file = tmp_path / 'test.kore'
     kore_file.write_text(kore_text)
 
@@ -54,6 +59,8 @@ endmodule
 
 def test_parse_definition() -> None:
     # Given
+
+    # fmt: off
     kore_text = (
         '[]\n'
         '\n'
@@ -62,6 +69,7 @@ def test_parse_definition() -> None:
         'endmodule\n'
         '[concrete{}()]\n'
     )
+    # fmt: on
 
     # When
     actual = parse_definition(kore_text)
