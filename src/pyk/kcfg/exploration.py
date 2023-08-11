@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 from pyk.kcfg.kcfg import KCFG
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable, Mapping
+    from collections.abc import Iterable, Mapping
+    from typing import Any
 
     from pyk.kcfg.kcfg import NodeIdLike
 
