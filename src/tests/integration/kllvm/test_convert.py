@@ -5,16 +5,15 @@ from typing import TYPE_CHECKING
 import pytest
 
 import pyk.kllvm.load  # noqa: F401
-from pyk.kllvm.convert import (
-    kore_definition_to_llvm,
-    kore_pattern_to_llvm,
-    llvm_definition_to_kore,
-    llvm_pattern_to_kore,
-)
+from pyk.kllvm.convert import definition_to_llvm, llvm_to_definition, llvm_to_pattern, pattern_to_llvm
 from pyk.kore.parser import KoreParser
 
 if TYPE_CHECKING:
     from typing import Final
+
+
+def _in_module(kore_text: str) -> str:
+    return f'[] module FOO {kore_text} endmodule []'
 
 
 PAT_TEST_DATA: Final = (
@@ -50,11 +49,6 @@ PAT_TEST_DATA: Final = (
     ('right-assoc', r'\right-assoc{}(foo{}(X : SortInt{}, Y :  SortInt{}, Z : SortInt{}))'),
 )
 
-
-def _in_module(kore_text: str) -> str:
-    return f'[] module FOO {kore_text} endmodule []'
-
-
 DEF_TEST_DATA: Final = (
     ('empty-modules', '[DefAttr{}("foo")] module FOO endmodule [ModAttr{}("bar")]'),
     ('import', '[] module FOO endmodule [] module BAR import FOO [ImportAttr{}()] endmodule []'),
@@ -72,38 +66,38 @@ DEF_TEST_DATA: Final = (
 
 
 @pytest.mark.parametrize('test_id,kore_text', PAT_TEST_DATA, ids=[test_id for test_id, *_ in PAT_TEST_DATA])
-def test_kore_pattern_to_llvm(test_id: str, kore_text: str) -> None:
+def test_pattern_to_llvm(test_id: str, kore_text: str) -> None:
     # Given
     expected = KoreParser(kore_text).pattern()
 
     # When
-    kore_llvm = kore_pattern_to_llvm(expected)
+    kore_llvm = pattern_to_llvm(expected)
     actual1 = KoreParser(str(kore_llvm)).pattern()
 
     # Then
     assert actual1 == expected
 
     # And when
-    actual2 = llvm_pattern_to_kore(kore_llvm)
+    actual2 = llvm_to_pattern(kore_llvm)
 
     # Then
     assert actual2 == expected
 
 
 @pytest.mark.parametrize('test_id,kore_text', DEF_TEST_DATA, ids=[test_id for test_id, *_ in DEF_TEST_DATA])
-def test_kore_definition_to_llvm(test_id: str, kore_text: str) -> None:
+def test_definition_to_llvm(test_id: str, kore_text: str) -> None:
     # Given
     expected = KoreParser(kore_text).definition()
 
     # When
-    kore_llvm = kore_definition_to_llvm(expected)
+    kore_llvm = definition_to_llvm(expected)
     actual1 = KoreParser(str(kore_llvm)).definition()
 
     # Then
     assert actual1 == expected
 
     # And when
-    actual2 = llvm_definition_to_kore(kore_llvm)
+    actual2 = llvm_to_definition(kore_llvm)
 
     # Then
     assert actual2 == expected

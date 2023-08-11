@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyk.kllvm.load  # noqa: F401
-from pyk.kllvm.parser import parse_definition_file, parse_definition_text, parse_pattern_file, parse_pattern_text
+from pyk.kllvm.parser import parse_definition, parse_definition_file, parse_pattern, parse_pattern_file
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,12 +22,12 @@ def test_parse_pattern_file(tmp_path: Path) -> None:
     assert str(actual) == kore_text
 
 
-def test_parse_pattern_text() -> None:
+def test_parse_pattern() -> None:
     # Given
     kore_text = 'A{}(X : S,Y : Z,Int{}())'
 
     # When
-    actual = parse_pattern_text(kore_text)
+    actual = parse_pattern(kore_text)
 
     # Then
     assert str(actual) == kore_text
@@ -52,18 +52,19 @@ endmodule
     assert str(actual) == kore_text
 
 
-def test_parse_definition_text() -> None:
+def test_parse_definition() -> None:
     # Given
-    kore_text = """[]
-
-module FOO
-  axiom {S}A{}(X : S,Y : Z,Int{}()) [group{}("foo")]
-endmodule
-[concrete{}()]
-"""
+    kore_text = (
+        '[]\n'
+        '\n'
+        'module FOO\n'
+        '  axiom {S}A{}(X : S,Y : Z,Int{}()) [group{}("foo")]\n'
+        'endmodule\n'
+        '[concrete{}()]\n'
+    )
 
     # When
-    actual = parse_definition_text(kore_text)
+    actual = parse_definition(kore_text)
 
     # Then
     assert str(actual) == kore_text

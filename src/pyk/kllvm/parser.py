@@ -17,11 +17,11 @@ def _parser_from_path(path: str | Path) -> Parser:
     return Parser(str(path))
 
 
-def parse_pattern_text(text: str) -> Pattern:
+def parse_pattern(text: str) -> Pattern:
     return Parser.from_string(text).pattern()
 
 
-def parse_definition_text(text: str) -> Definition:
+def parse_definition(text: str) -> Definition:
     return Parser.from_string(text).definition()
 
 
