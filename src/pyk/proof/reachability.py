@@ -599,7 +599,7 @@ class APRProver(Prover):
                 self.proof.kcfg_exploration.add_terminal(node.id)
 
         # Subsumption checks
-        self._subsumption_checks = { }
+        self._subsumption_checks = {}
 
         for node in self.proof.terminals:
             self._check_subsume(node)
