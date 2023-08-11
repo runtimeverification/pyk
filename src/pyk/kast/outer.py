@@ -10,8 +10,8 @@ from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING, final
 
-from ..prelude.kbool import TRUE, orBool
-from ..prelude.ml import ML_QUANTIFIERS, mlAnd, mlEqualsTrue, mlImplies, mlOr, mlTop
+from ..prelude.kbool import TRUE
+from ..prelude.ml import ML_QUANTIFIERS
 from ..utils import filter_none, single, unique
 from .inner import (
     KApply,
@@ -34,8 +34,6 @@ if TYPE_CHECKING:
     from dataclasses import InitVar
     from os import PathLike
     from typing import Any, Final, TypeVar
-
-    from ..cterm import CTerm
 
     RL = TypeVar('RL', bound='KRuleLike')
 
@@ -1058,61 +1056,6 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             except ValueError as err:
                 raise ValueError(f'Expected a single production for label {klabel}, not: {prods}') from err
         return self._production_for_klabel[klabel]
-
-    def anti_unify(self, state1: KInner, state2: KInner) -> tuple[KInner, Subst, Subst]:
-        from .manip import abstract_term_safely, push_down_rewrites
-
-        def _rewrites_to_abstractions(_kast: KInner) -> KInner:
-            if type(_kast) is KRewrite:
-                return abstract_term_safely(_kast, sort=self.sort(_kast))
-            return _kast
-
-        minimized_rewrite = push_down_rewrites(KRewrite(state1, state2))
-        abstracted_state = bottom_up(_rewrites_to_abstractions, minimized_rewrite)
-        subst1 = abstracted_state.match(state1)
-        subst2 = abstracted_state.match(state2)
-        if subst1 is None or subst2 is None:
-            raise ValueError('Anti-unification failed to produce a more general state!')
-        return (abstracted_state, subst1, subst2)
-
-    def anti_unify_with_constraints(
-        self,
-        constrained_term_1: CTerm,
-        constrained_term_2: CTerm,
-        implications: bool = False,
-        constraint_disjunct: bool = False,
-        abstracted_disjunct: bool = False,
-    ) -> KInner:
-        from .manip import flatten_label, split_config_and_constraints
-
-        def disjunction_from_substs(subst1: Subst, subst2: Subst) -> KInner:
-            if KToken('true', 'Bool') in [subst1.pred, subst2.pred]:
-                return mlTop()
-            return mlEqualsTrue(orBool([subst1.pred, subst2.pred]))
-
-        state1, constraint1 = split_config_and_constraints(constrained_term_1.kast)
-        state2, constraint2 = split_config_and_constraints(constrained_term_2.kast)
-        constraints1 = flatten_label('#And', constraint1)
-        constraints2 = flatten_label('#And', constraint2)
-        state, subst1, subst2 = self.anti_unify(state1, state2)
-
-        constraints = [c for c in constraints1 if c in constraints2]
-        constraint1 = mlAnd([c for c in constraints1 if c not in constraints])
-        constraint2 = mlAnd([c for c in constraints2 if c not in constraints])
-        implication1 = mlImplies(constraint1, subst1.ml_pred)
-        implication2 = mlImplies(constraint2, subst2.ml_pred)
-
-        if abstracted_disjunct:
-            constraints.append(disjunction_from_substs(subst1, subst2))
-
-        if implications:
-            constraints.append(implication1)
-            constraints.append(implication2)
-
-        if constraint_disjunct:
-            constraints.append(mlOr([constraint1, constraint2]))
-
-        return mlAnd([state] + constraints)
 
     def production_for_cell_sort(self, sort: KSort) -> KProduction:
         # Typical cell production has 3 productions:

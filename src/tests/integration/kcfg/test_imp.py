@@ -1148,7 +1148,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert len(proof.terminal) == 1
         assert len(proof.failing) == 1
 
-    def test_anti_unify_with_constraints(
+    def test_anti_unify(
         self,
         kprint: KPrint,
     ) -> None:
@@ -1156,16 +1156,16 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             kprint=kprint,
             k='int $n ; { }',
             state='$s |-> 0',
-            constraint=KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')]),
+            constraint=mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
         )
         cterm2 = self.config(
             kprint=kprint,
             k='int $n ; { }',
             state='$s |-> 1',
-            constraint=KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')]),
+            constraint=mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
         )
 
-        anti_unifier = kprint.definition.anti_unify_with_constraints(cterm1, cterm2, abstracted_disjunct=True)
+        anti_unifier = cterm1.anti_unify(cterm2, kprint.definition)
 
         k_cell = get_cell(anti_unifier, 'STATE_CELL')
         assert type(k_cell) is KApply
@@ -1179,7 +1179,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             state=f'$s |-> {abstracted_var.name}:Int',
             constraint=mlAnd(
                 [
-                    KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')]),
+                    mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(
                         orBool(
                             [
@@ -1194,7 +1194,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         assert anti_unifier == expected_anti_unifier
 
-    def test_anti_unify_with_constraints_subst_true(
+    def test_anti_unify_subst_true(
         self,
         kprint: KPrint,
     ) -> None:
@@ -1202,15 +1202,15 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             kprint=kprint,
             k='int $n ; { }',
             state='$s |-> 0',
-            constraint=KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')]),
+            constraint=mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
         )
         cterm2 = self.config(
             kprint=kprint,
             k='int $n ; { }',
             state='$s |-> 0',
-            constraint=KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')]),
+            constraint=mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
         )
 
-        anti_unifier = kprint.definition.anti_unify_with_constraints(cterm1, cterm2, abstracted_disjunct=True)
+        anti_unifier = cterm1.anti_unify(cterm2, kprint.definition)
 
         assert anti_unifier == cterm1.kast

@@ -5,8 +5,9 @@ from functools import cached_property
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from .kast.inner import KApply, KAtt, KInner, KRewrite, KVariable, Subst
+from .kast.inner import KApply, KAtt, KInner, KRewrite, KToken, KVariable, Subst, bottom_up
 from .kast.manip import (
+    abstract_term_safely,
     apply_existential_substitutions,
     count_vars,
     flatten_label,
@@ -21,12 +22,15 @@ from .kast.manip import (
 )
 from .kast.outer import KClaim, KRule
 from .prelude.k import GENERATED_TOP_CELL
-from .prelude.ml import is_top, mlAnd, mlImplies, mlTop
+from .prelude.kbool import orBool
+from .prelude.ml import is_top, mlAnd, mlEqualsTrue, mlImplies, mlTop
 from .utils import unique
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from typing import Any
+
+    from .kast.outer import KDefinition
 
 
 @dataclass(frozen=True, order=True)
@@ -136,6 +140,33 @@ class CTerm:
 
     def add_constraint(self, new_constraint: KInner) -> CTerm:
         return CTerm(self.config, [new_constraint] + list(self.constraints))
+
+    def anti_unify(self, other_term: CTerm, kdef: KDefinition | None = None) -> KInner:
+        def disjunction_from_substs(subst1: Subst, subst2: Subst) -> KInner:
+            if KToken('true', 'Bool') in [subst1.pred, subst2.pred]:
+                return mlTop()
+            return mlEqualsTrue(orBool([subst1.pred, subst2.pred]))
+
+        new_config, self_subst, other_subst = anti_unify(self.config, other_term.config, kdef)
+        constraints = [c for c in self.constraints if c in other_term.constraints]
+        constraints.append(disjunction_from_substs(self_subst, other_subst))
+        return mlAnd([new_config] + constraints)
+
+
+def anti_unify(state1: KInner, state2: KInner, kdef: KDefinition | None = None) -> tuple[KInner, Subst, Subst]:
+    def _rewrites_to_abstractions(_kast: KInner) -> KInner:
+        if type(_kast) is KRewrite:
+            sort = kdef.sort(_kast) if kdef else None
+            return abstract_term_safely(_kast, sort=sort)
+        return _kast
+
+    minimized_rewrite = push_down_rewrites(KRewrite(state1, state2))
+    abstracted_state = bottom_up(_rewrites_to_abstractions, minimized_rewrite)
+    subst1 = abstracted_state.match(state1)
+    subst2 = abstracted_state.match(state2)
+    if subst1 is None or subst2 is None:
+        raise ValueError('Anti-unification failed to produce a more general state!')
+    return (abstracted_state, subst1, subst2)
 
 
 @dataclass(frozen=True, order=True)
