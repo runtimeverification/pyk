@@ -382,6 +382,7 @@ def run_process(
     cwd: str | Path | None = None,
     env: Mapping[str, str] | None = None,
     logger: Logger | None = None,
+    exec_process: bool = False,
 ) -> CompletedProcess:
     if cwd is not None:
         cwd = Path(cwd)
@@ -400,6 +401,12 @@ def run_process(
     stderr = subprocess.PIPE if pipe_stderr else None
 
     logger.info(f'Running: {command}')
+
+    if exec_process:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os.execvp(args[0], args)
+
     start_time = time.time()
 
     res = subprocess.run(args, input=input, cwd=cwd, env=env, stdout=stdout, stderr=stderr, text=True)
