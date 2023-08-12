@@ -798,7 +798,9 @@ class APRFailureInfo:
         object.__setattr__(self, 'pending_nodes', frozenset(pending_nodes))
         object.__setattr__(self, 'path_conditions', FrozenDict(path_conditions))
         object.__setattr__(self, 'failure_reasons', FrozenDict(failure_reasons))
-        object.__setattr__(self, 'models', FrozenDict(models))
+        object.__setattr__(
+            self, 'models', FrozenDict({node_id: frozenset(model) for (node_id, model) in models.items()})
+        )
 
     @staticmethod
     def from_proof(proof: APRProof, kcfg_explore: KCFGExplore, counterexample_info: bool = False) -> APRFailureInfo:
@@ -862,7 +864,7 @@ class APRFailureInfo:
                 res_lines.append('  Path condition:')
                 res_lines += [f'    {path_condition}']
 
-                if self.models[node_id]:
+                if node_id in self.models:
                     res_lines.append('  Model:')
                     for var, term in self.models[node_id]:
                         res_lines.append(f'    {var} = {term}')

@@ -286,7 +286,6 @@ def test_print_failure_info() -> None:
     ] = 'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\nSTATE_CELL: $n |-> 5 #Implies 6'
 
     models: dict[int, list[tuple[str, str]]] = {}
-    models[3] = []
     models[5] = [('X', '101')]
 
     failure_info = APRFailureInfo(
