@@ -60,7 +60,7 @@ class CTerm:
     @staticmethod
     def _check_config(config: KInner) -> None:
         if not isinstance(config, KApply) or not config.is_cell:
-            raise ValueError(f'Expected cell label, found: {config.label.name}')
+            raise ValueError(f'Expected cell label, found: {config}')
 
     @staticmethod
     def _normalize_constraints(constraints: Iterable[KInner]) -> tuple[KInner, ...]:
@@ -153,7 +153,9 @@ class CTerm:
         new_config, self_subst, other_subst = anti_unify(self.config, other.config, kdef=kdef)
         common_constraints = [constraint for constraint in self.constraints if constraint in other.constraints]
 
-        new_cterm = CTerm(config=new_config, constraints=([disjunction_from_substs(self_subst, other_subst)] if keep_values else []))
+        new_cterm = CTerm(
+            config=new_config, constraints=([disjunction_from_substs(self_subst, other_subst)] if keep_values else [])
+        )
 
         new_constraints = []
         fvs = free_vars(new_cterm.kast)
