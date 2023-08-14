@@ -249,21 +249,16 @@ class KVariable(KInner):
     @classmethod
     def from_dict(cls: type[KVariable], d: Mapping[str, Any]) -> KVariable:
         cls._check_node(d)
-        att = KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT
-
-        sort: KSort | None
-        if KAtt.SORT in att:
-            sort = KSort.from_dict(att[KAtt.SORT])
-        else:
-            sort = None
-
+        sort = None
+        if 'sort' in d:
+            sort = KSort.from_dict(d['sort'])
         return KVariable(name=d['name'], sort=sort)
 
     def to_dict(self) -> dict[str, Any]:
-        _att = KAtt({})
+        _d: dict[str, Any] = {'node': 'KVariable', 'name': self.name}
         if self.sort is not None:
-            _att = _att.update({KAtt.SORT: self.sort.to_dict()})
-        return {'node': 'KVariable', 'name': self.name, 'att': _att.to_dict()}
+            _d['sort'] = self.sort.to_dict()
+        return _d
 
     def let(self, *, name: str | None = None, sort: str | KSort | None = None) -> KVariable:
         name = name if name is not None else self.name
