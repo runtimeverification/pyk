@@ -406,9 +406,9 @@ def run_process(
         sys.stdout.flush()
         sys.stderr.flush()
         if type(args) is str:
-            args = tuple(shlex.split(args))
-        argstup = cast('tuple', args)
-        os.execvp(argstup[0], argstup)
+            args = shlex.split(args)
+        argslist = list(args)
+        os.execvp(argslist[0], argslist)
 
     start_time = time.time()
 
