@@ -175,7 +175,7 @@ def kast_term(dct: Mapping[str, Any], cls: type[T] = KAst) -> T:  # type: ignore
     if dct['format'] != 'KAST':
         raise ValueError(f"Invalid format: {dct['format']}")
 
-    if dct['version'] != 2:
+    if dct['version'] != 3:
         raise ValueError(f"Invalid version: {dct['version']}")
 
     return cls.from_dict(dct['term'])
