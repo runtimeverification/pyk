@@ -142,16 +142,41 @@ class CTerm:
     def add_constraint(self, new_constraint: KInner) -> CTerm:
         return CTerm(self.config, [new_constraint] + list(self.constraints))
 
-    def anti_unify(self, other_term: CTerm, kdef: KDefinition | None = None) -> KInner:
+    def anti_unify(
+        self, other: CTerm, keep_values: bool = False, kdef: KDefinition | None = None
+    ) -> tuple[CTerm, CSubst, CSubst]:
         def disjunction_from_substs(subst1: Subst, subst2: Subst) -> KInner:
             if KToken('true', 'Bool') in [subst1.pred, subst2.pred]:
                 return mlTop()
             return mlEqualsTrue(orBool([subst1.pred, subst2.pred]))
 
-        new_config, self_subst, other_subst = anti_unify(self.config, other_term.config, kdef)
-        constraints = [c for c in self.constraints if c in other_term.constraints]
-        constraints.append(disjunction_from_substs(self_subst, other_subst))
-        return mlAnd([new_config] + constraints)
+        new_config, self_subst, other_subst = anti_unify(self.config, other.config, kdef=kdef)
+        common_constraints = [constraint for constraint in self.constraints if constraint in other.constraints]
+
+        if keep_values:
+            new_constraints = common_constraints
+            new_constraints.append(disjunction_from_substs(self_subst, other_subst))
+        else:
+            new_constraints = []
+            fvs = free_vars(new_config)
+            len_fvs = 0
+            while len_fvs < len(fvs):
+                len_fvs = len(fvs)
+                for constraint in common_constraints:
+                    if constraint not in new_constraints:
+                        constraint_fvs = free_vars(constraint)
+                        if any(fv in fvs for fv in constraint_fvs):
+                            new_constraints.append(constraint)
+                            fvs.extend(constraint_fvs)
+
+        new_cterm = CTerm(config=new_config, constraints=new_constraints)
+        self_csubst = new_cterm.match_with_constraint(self)
+        other_csubst = new_cterm.match_with_constraint(other)
+        if self_csubst is None or other_csubst is None:
+            raise ValueError(
+                f'Anti-unification failed to produce a more general state: {(new_cterm, (self, self_csubst), (other, other_csubst))}'
+            )
+        return (new_cterm, self_csubst, other_csubst)
 
 
 def anti_unify(state1: KInner, state2: KInner, kdef: KDefinition | None = None) -> tuple[KInner, Subst, Subst]:
