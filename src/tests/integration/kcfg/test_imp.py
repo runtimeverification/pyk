@@ -8,10 +8,10 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import minimize_term
+from pyk.kast.manip import get_cell, minimize_term
 from pyk.kcfg.semantics import KCFGSemantics
 from pyk.kcfg.show import KCFGShow
-from pyk.prelude.kbool import BOOL, notBool
+from pyk.prelude.kbool import BOOL, notBool, orBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
@@ -1147,3 +1147,70 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert len(proof.pending) == 1
         assert len(proof.terminal) == 1
         assert len(proof.failing) == 1
+
+    def test_anti_unify(
+        self,
+        kprint: KPrint,
+    ) -> None:
+        cterm1 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='$s |-> 0',
+            constraint=mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
+        )
+        cterm2 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='$s |-> 1',
+            constraint=mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
+        )
+
+        anti_unifier = cterm1.anti_unify(cterm2, kprint.definition)
+
+        k_cell = get_cell(anti_unifier, 'STATE_CELL')
+        assert type(k_cell) is KApply
+        assert k_cell.label.name == '_|->_'
+        assert type(k_cell.args[1]) is KVariable
+        abstracted_var: KVariable = k_cell.args[1]
+
+        expected_anti_unifier = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state=f'$s |-> {abstracted_var.name}:Int',
+            constraint=mlAnd(
+                [
+                    mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(
+                        orBool(
+                            [
+                                KApply('_==K_', [KVariable(name=abstracted_var.name), intToken(0)]),
+                                KApply('_==K_', [KVariable(name=abstracted_var.name), intToken(1)]),
+                            ]
+                        )
+                    ),
+                ]
+            ),
+        ).kast
+
+        assert anti_unifier == expected_anti_unifier
+
+    def test_anti_unify_subst_true(
+        self,
+        kprint: KPrint,
+    ) -> None:
+        cterm1 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='$s |-> 0',
+            constraint=mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
+        )
+        cterm2 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='$s |-> 0',
+            constraint=mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
+        )
+
+        anti_unifier = cterm1.anti_unify(cterm2, kprint.definition)
+
+        assert anti_unifier == cterm1.kast
