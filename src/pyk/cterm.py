@@ -5,7 +5,8 @@ from functools import cached_property
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from .kast.inner import KApply, KAtt, KInner, KRewrite, KToken, KVariable, Subst, bottom_up
+from .kast.inner import KApply, KInner, KRewrite, KToken, KVariable, Subst, bottom_up
+from .kast.kast import KAtt
 from .kast.manip import (
     abstract_term_safely,
     apply_existential_substitutions,
