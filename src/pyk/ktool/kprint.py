@@ -270,7 +270,7 @@ class KPrint:
             _LOGGER.warning(ve)
 
         _LOGGER.warning(f'Falling back to using `kast` for KAst -> Kore: {kast}')
-        kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
+        kast_json = {'format': 'KAST', 'version': 3, 'term': kast.to_dict()}
         proc_res = self._expression_kast(
             json.dumps(kast_json),
             input=KAstInput.JSON,
