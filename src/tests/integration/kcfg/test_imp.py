@@ -1159,6 +1159,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             state='N |-> X:Int',
             constraint=mlAnd(
                 [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('K', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
@@ -1171,6 +1172,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             state='N |-> Y:Int',
             constraint=mlAnd(
                 [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('K', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
@@ -1206,6 +1208,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             state='N |-> X:Int',
             constraint=mlAnd(
                 [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('K', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
@@ -1218,6 +1221,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             state='N |-> Y:Int',
             constraint=mlAnd(
                 [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('K', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),

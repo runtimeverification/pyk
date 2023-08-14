@@ -60,7 +60,7 @@ class CTerm:
     @staticmethod
     def _check_config(config: KInner) -> None:
         if not isinstance(config, KApply) or not config.is_cell:
-            raise ValueError('Expected cell label, found: {config.label.name}')
+            raise ValueError(f'Expected cell label, found: {config.label.name}')
 
     @staticmethod
     def _normalize_constraints(constraints: Iterable[KInner]) -> tuple[KInner, ...]:
@@ -153,23 +153,22 @@ class CTerm:
         new_config, self_subst, other_subst = anti_unify(self.config, other.config, kdef=kdef)
         common_constraints = [constraint for constraint in self.constraints if constraint in other.constraints]
 
-        if keep_values:
-            new_constraints = common_constraints
-            new_constraints.append(disjunction_from_substs(self_subst, other_subst))
-        else:
-            new_constraints = []
-            fvs = free_vars(new_config)
-            len_fvs = 0
-            while len_fvs < len(fvs):
-                len_fvs = len(fvs)
-                for constraint in common_constraints:
-                    if constraint not in new_constraints:
-                        constraint_fvs = free_vars(constraint)
-                        if any(fv in fvs for fv in constraint_fvs):
-                            new_constraints.append(constraint)
-                            fvs.extend(constraint_fvs)
+        new_cterm = CTerm(config=new_config, constraints=([disjunction_from_substs(self_subst, other_subst)] if keep_values else []))
 
-        new_cterm = CTerm(config=new_config, constraints=new_constraints)
+        new_constraints = []
+        fvs = free_vars(new_cterm.kast)
+        len_fvs = 0
+        while len_fvs < len(fvs):
+            len_fvs = len(fvs)
+            for constraint in common_constraints:
+                if constraint not in new_constraints:
+                    constraint_fvs = free_vars(constraint)
+                    if any(fv in fvs for fv in constraint_fvs):
+                        new_constraints.append(constraint)
+                        fvs.extend(constraint_fvs)
+
+        for constraint in new_constraints:
+            new_cterm = new_cterm.add_constraint(constraint)
         self_csubst = new_cterm.match_with_constraint(self)
         other_csubst = new_cterm.match_with_constraint(other)
         if self_csubst is None or other_csubst is None:
