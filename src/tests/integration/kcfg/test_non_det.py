@@ -62,7 +62,7 @@ class TestNonDetProof(KCFGExploreTest, KProveTest):
         kcfg_show = KCFGShow(
             kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
         )
-        cfg_lines = kcfg_show.show(proof.kcfg)
+        cfg_lines = kcfg_show.show(proof.kcfg_exploration.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 
         # We expect this graph, in which all splits are non-deterministic:
@@ -78,21 +78,23 @@ class TestNonDetProof(KCFGExploreTest, KProveTest):
         id1 = proof.init
 
         def assert_nd_branch(id: NodeIdLike) -> tuple[int, int]:
-            assert len(proof.kcfg.successors(source_id=id)) == 1
-            ndbranches = proof.kcfg.ndbranches(source_id=id)
+            assert len(proof.kcfg_exploration.kcfg.successors(source_id=id)) == 1
+            ndbranches = proof.kcfg_exploration.kcfg.ndbranches(source_id=id)
             assert len(ndbranches) == 1
             assert len(ndbranches[0].target_ids) == 2
             ida, idb = ndbranches[0].target_ids
             return ida, idb
 
         def assert_edge(id: int) -> int:
-            assert len(proof.kcfg.successors(source_id=id)) == 1
-            edges = proof.kcfg.edges(source_id=id)
+            assert len(proof.kcfg_exploration.kcfg.successors(source_id=id)) == 1
+            edges = proof.kcfg_exploration.kcfg.edges(source_id=id)
             assert len(edges) == 1
             return edges[0].target.id
 
         id1a, id1b = assert_nd_branch(id1)
-        if len(proof.kcfg.ndbranches(source_id=id1a)) > len(proof.kcfg.ndbranches(source_id=id1b)):
+        if len(proof.kcfg_exploration.kcfg.ndbranches(source_id=id1a)) > len(
+            proof.kcfg_exploration.kcfg.ndbranches(source_id=id1b)
+        ):
             (tmp, id1a) = (id1a, id1b)
             id1b = tmp
         id1b1, id1b2 = assert_nd_branch(id1b)
