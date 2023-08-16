@@ -1101,8 +1101,11 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             case KToken(_, sort) | KVariable(_, sort):
                 return sort
             case KRewrite(lhs, rhs):
-                sort = self.sort(lhs)
-                return sort if sort == self.sort(rhs) else None
+                lhs_sort = self.sort(lhs)
+                rhs_sort = self.sort(rhs)
+                if lhs_sort and rhs_sort:
+                    return self.least_common_supersort(lhs_sort, rhs_sort)
+                return None
             case KSequence(_):
                 return KSort('K')
             case KApply(label, _):
@@ -1127,6 +1130,15 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         if sort is None:
             raise ValueError(f'Could not determine sort of term: {kast}')
         return sort
+
+    def least_common_supersort(self, sort1: KSort, sort2: KSort) -> KSort | None:
+        if sort1 == sort2:
+            return sort1
+        if sort1 in self.subsorts(sort2):
+            return sort2
+        if sort2 in self.subsorts(sort1):
+            return sort1
+        return None
 
     def greatest_common_subsort(self, sort1: KSort, sort2: KSort) -> KSort | None:
         if sort1 == sort2:
