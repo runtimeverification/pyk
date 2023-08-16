@@ -1138,6 +1138,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             return sort2
         if sort2 in self.subsorts(sort1):
             return sort1
+        # Computing least common supersort is not currently supported if sort1 is not a subsort of sort2 or
+        # vice versa. In that case there may be more than one LCS.
         return None
 
     def greatest_common_subsort(self, sort1: KSort, sort2: KSort) -> KSort | None:
@@ -1147,6 +1149,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             return sort1
         if sort2 in self.subsorts(sort1):
             return sort2
+        # Computing greatest common subsort is not currently supported if sort1 is not a subsort of sort2 or
+        # vice versa. In that case there may be more than one GCS.
         return None
 
     # Sorts like Int cannot be injected directly into sort K so they are embedded in a KSequence.
