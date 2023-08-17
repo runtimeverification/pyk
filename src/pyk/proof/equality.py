@@ -54,6 +54,7 @@ class ImpliesProof(Proof):
         if not self.up_to_date:
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
+            self.update_file_digest()
             _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
 
 
