@@ -77,9 +77,7 @@ class Proof(ABC):
         if not self.up_to_date:
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
-            digest_path = self.proof_dir / 'digest'
-            open(digest_path, 'w')
-            digest_path.write_text(self.digest)
+            self.update_file_digest()
             _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
         if subproofs:
             for sp in self.subproofs:
@@ -96,12 +94,20 @@ class Proof(ABC):
         return proof_path.exists() and proof_path.is_file()
 
     @property
-    def __file_digest(self) -> str:
-        if self.proof_dir is not None:
-            digest_path = self.proof_dir / 'digest'
+    def file_digest(self) -> str:
+        if self.proof_subdir is not None:
+            digest_path = self.proof_subdir / 'digest'
             if digest_path.is_file():
                 return digest_path.read_text()
         return ''
+
+    def update_file_digest(self) -> None:
+        if not self.up_to_date:
+            assert self.proof_subdir
+            ensure_dir_path(self.proof_subdir)
+            digest_path = self.proof_subdir / 'digest'
+            open(digest_path, 'w+')
+            digest_path.write_text(self.digest)
 
     @property
     def digest(self) -> str:
@@ -112,11 +118,11 @@ class Proof(ABC):
         """
         Check that the proof's representation on disk is up-to-date.
         """
-        if self.proof_dir is None:
+        if self.proof_subdir is None:
             raise ValueError(f'Cannot check if proof {self.id} with no proof_dir is up-to-date')
-        proof_path = self.proof_dir / f'{hash_str(id)}.json'
+        proof_path = self.proof_subdir / 'proof.json'
         if proof_path.exists() and proof_path.is_file():
-            return self.digest == self.__file_digest
+            return self.digest == self.file_digest
         else:
             return False
 

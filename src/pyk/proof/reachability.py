@@ -334,6 +334,7 @@ class APRProof(Proof):
         dct['logs'] = logs
 
         proof_json.write_text(json.dumps(dct))
+        self.update_file_digest()
 
         self.kcfg.write_cfg_data()
 

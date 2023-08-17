@@ -442,8 +442,13 @@ def test_apr_proof_digest(proof_dir: Path) -> None:
     proof.init = init.id
     proof.target = target.id
 
+    assert not proof.up_to_date
+
     proof.write_proof_data()
 
     proof_from_disk = APRProof.read_proof_data(id=proof.id, proof_dir=proof_dir)
+    proof_from_disk.write_proof_data()
 
     assert proof_from_disk.digest != ''
+    assert proof_from_disk.digest == proof_from_disk.file_digest
+    assert proof_from_disk.up_to_date
