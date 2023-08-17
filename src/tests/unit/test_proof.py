@@ -423,3 +423,32 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
             ),
         ]
     )
+
+
+def test_apr_proof_digest(proof_dir: Path) -> None:
+    kcfg = KCFG(proof_dir / 'apr_proof_1' / 'kcfg')
+    proof = APRProof(
+        id='apr_proof_1',
+        kcfg=kcfg,
+        init=0,
+        target=0,
+        logs={},
+        proof_dir=proof_dir,
+    )
+
+    init = kcfg.create_node(term(1))
+    target = kcfg.create_node(term(2))
+
+    proof.init = init.id
+    proof.target = target.id
+
+    assert not proof.up_to_date
+
+    proof.write_proof_data()
+
+    proof_from_disk = APRProof.read_proof_data(id=proof.id, proof_dir=proof_dir)
+    proof_from_disk.write_proof_data()
+
+    assert proof_from_disk.digest != ''
+    assert proof_from_disk.digest == proof_from_disk.file_digest
+    assert proof_from_disk.up_to_date
