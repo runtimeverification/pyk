@@ -73,7 +73,7 @@ def bool_to_ml_pred(kast: KInner) -> KInner:
     return mlAnd([mlEqualsTrue(cond) for cond in flatten_label('_andBool_', kast)])
 
 
-def ml_pred_to_bool(kast: KInner, unsafe: bool = False) -> KInner:
+def ml_pred_to_bool(kast: KInner, unsafe: bool = True) -> KInner:
     def _ml_constraint_to_bool(_kast: KInner) -> KInner:
         if type(_kast) is KApply:
             if _kast.label.name == '#Top':
