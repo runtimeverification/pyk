@@ -8,7 +8,7 @@ from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from ..utils import ensure_dir_path, hash_file, hash_str
+from ..utils import ensure_dir_path, hash_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -77,6 +77,9 @@ class Proof(ABC):
         if not self.up_to_date:
             proof_json = json.dumps(self.dict)
             proof_path.write_text(proof_json)
+            digest_path = self.proof_dir / 'digest'
+            open(digest_path, 'w')
+            digest_path.write_text(self.digest)
             _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
         if subproofs:
             for sp in self.subproofs:
@@ -93,6 +96,14 @@ class Proof(ABC):
         return proof_path.exists() and proof_path.is_file()
 
     @property
+    def __file_digest(self) -> str:
+        if self.proof_dir is not None:
+            digest_path = self.proof_dir / 'digest'
+            if digest_path.is_file():
+                return digest_path.read_text()
+        return ''
+
+    @property
     def digest(self) -> str:
         return hash_str(json.dumps(self.dict))
 
@@ -105,7 +116,7 @@ class Proof(ABC):
             raise ValueError(f'Cannot check if proof {self.id} with no proof_dir is up-to-date')
         proof_path = self.proof_dir / f'{hash_str(id)}.json'
         if proof_path.exists() and proof_path.is_file():
-            return self.digest == hash_file(proof_path)
+            return self.digest == self.__file_digest
         else:
             return False
 
