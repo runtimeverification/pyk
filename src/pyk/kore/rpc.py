@@ -231,6 +231,8 @@ class JsonRpcClientFacade(ContextManager['JsonRpcClientFacade']):
         if method in self._clients:
             for client in self._clients[method]:
                 response = client.request(method, **params)
+                if 'error' in response:
+                    return response
             return response
         else:
             return self._default_client.request(method, **params)
