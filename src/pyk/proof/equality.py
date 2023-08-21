@@ -146,6 +146,7 @@ class EqualityProof(ImpliesProof):
     @classmethod
     def from_dict(cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> EqualityProof:
         id = dct['id']
+        proof_digest = dct['proof_digest']
         lhs_body = KInner.from_dict(dct['lhs_body'])
         rhs_body = KInner.from_dict(dct['rhs_body'])
         sort = KSort.from_dict(dct['sort'])
@@ -166,6 +167,7 @@ class EqualityProof(ImpliesProof):
             simplified_constraints=simplified_constraints,
             simplified_equality=simplified_equality,
             proof_dir=proof_dir,
+            proof_digest=proof_digest,
             admitted=admitted,
         )
 
@@ -173,6 +175,7 @@ class EqualityProof(ImpliesProof):
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'EqualityProof'
+        dct['proof_digest'] = self.proof_digest
         dct['lhs_body'] = self.lhs_body.to_dict()
         dct['rhs_body'] = self.rhs_body.to_dict()
         dct['sort'] = self.sort.to_dict()
@@ -237,8 +240,9 @@ class RefutationProof(ImpliesProof):
         csubst: CSubst | None = None,
         simplified_constraints: KInner | None = None,
         proof_dir: Path | None = None,
+        proof_digest: str = '',
     ):
-        super().__init__(id, proof_dir=proof_dir)
+        super().__init__(id, proof_dir=proof_dir, proof_digest=proof_digest)
         self.sort = sort
         self.pre_constraints = tuple(pre_constraints)
         self.last_constraint = last_constraint
@@ -273,6 +277,7 @@ class RefutationProof(ImpliesProof):
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'RefutationProof'
+        dct['proof_digest'] = self.proof_digest
         dct['sort'] = self.sort.to_dict()
         dct['pre_constraints'] = [c.to_dict() for c in self.pre_constraints]
         dct['last_constraint'] = self.last_constraint.to_dict()
@@ -285,6 +290,7 @@ class RefutationProof(ImpliesProof):
     @classmethod
     def from_dict(cls: type[RefutationProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> RefutationProof:
         id = dct['id']
+        proof_digest = dct['proof_digest']
         sort = KSort.from_dict(dct['sort'])
         pre_constraints = [KInner.from_dict(c) for c in dct['pre_constraints']]
         last_constraint = KInner.from_dict(dct['last_constraint'])
@@ -300,6 +306,7 @@ class RefutationProof(ImpliesProof):
             csubst=csubst,
             simplified_constraints=simplified_constraints,
             proof_dir=proof_dir,
+            proof_digest=proof_digest,
         )
 
     @property
