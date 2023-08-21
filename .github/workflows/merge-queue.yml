@@ -2,7 +2,6 @@ name: 'Run Merge Tests'
 on:
   merge_group:
   workflow_dispatch:
-
 jobs:
   version-bump:
     name: 'Version Bump'
@@ -25,60 +24,7 @@ jobs:
             git push origin HEAD:${GITHUB_HEAD_REF}
           fi
 
-  code-quality-checks:
-    needs: version-bump
-    name: 'Code Quality Checks'
-    runs-on: ubuntu-latest
-    steps:
-      - name: 'Check out code'
-        uses: actions/checkout@v3
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
-      - name: 'Run code quality checks'
-        run: make check
-      - name: 'Run pyupgrade'
-        run: make pyupgrade
-
-  unit-tests:
-    needs: code-quality-checks
-    name: 'Unit Tests'
-    runs-on: ubuntu-latest
-    steps:
-      - name: 'Check out code'
-        uses: actions/checkout@v3
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
-      - name: 'Run unit tests'
-        run: make cov-unit
-
-  profile:
-    needs: code-quality-checks
-    name: 'Profiling'
-    runs-on: [self-hosted, linux, normal-ephemeral]
-    steps:
-      - name: 'Check out code'
-        uses: actions/checkout@v3
-      - name: 'Install Python'
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
-      - name: 'Install K'
-        run: |
-          K_VERSION=$(cat deps/k_release)
-          DEB_PACKAGE_NAME=kframework_${K_VERSION}_amd64_ubuntu_jammy.deb
-          wget https://github.com/runtimeverification/k/releases/download/v${K_VERSION}/${DEB_PACKAGE_NAME}
-          sudo apt-get update
-          sudo apt-get -y install ./${DEB_PACKAGE_NAME}
-          kompile --version
-      - name: 'Run profiling'
-        run: |
-          make profile
-          find /tmp/pytest-of-${USER}/pytest-current/ -type f -name '*.prof' | sort | xargs tail -n +1
-
   integration-tests:
-    needs: code-quality-checks
     name: 'Integration Tests'
     runs-on: [self-hosted, linux, normal-ephemeral]
     strategy:
@@ -105,7 +51,6 @@ jobs:
         run: make cov-integration COV_ARGS='-n8'
 
   build-on-nix:
-    needs: code-quality-checks
     name: 'Build on Nix'
     strategy:
       matrix:
