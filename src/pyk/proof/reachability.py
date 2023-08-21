@@ -56,6 +56,7 @@ class APRProof(Proof):
         init: NodeIdLike,
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
+        proof_digest: str = '',
         proof_dir: Path | None = None,
         node_refutations: dict[int, str] | None = None,
         terminal_nodes: Iterable[NodeIdLike] | None = None,
@@ -63,7 +64,9 @@ class APRProof(Proof):
         circularity: bool = False,
         admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
+        super().__init__(
+            id, proof_dir=proof_dir, proof_digest=proof_digest, subproof_ids=subproof_ids, admitted=admitted
+        )
         self.kcfg = kcfg
         self.init = init
         self.target = target
@@ -352,6 +355,7 @@ class APRBMCProof(APRProof):
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
         bmc_depth: int,
+        proof_digest: str = '',
         bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
@@ -365,6 +369,7 @@ class APRBMCProof(APRProof):
             init,
             target,
             logs,
+            proof_digest=proof_digest,
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,

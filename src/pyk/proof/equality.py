@@ -36,10 +36,13 @@ class ImpliesProof(Proof):
         self,
         id: str,
         proof_dir: Path | None = None,
+        proof_digest: str = '',
         subproof_ids: Iterable[str] = (),
         admitted: bool = False,
     ):
-        super().__init__(id=id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
+        super().__init__(
+            id=id, proof_dir=proof_dir, proof_digest=proof_digest, subproof_ids=subproof_ids, admitted=admitted
+        )
 
     def set_csubst(self, csubst: CSubst) -> None:
         self.csubst = csubst
@@ -69,6 +72,7 @@ class EqualityProof(ImpliesProof):
         lhs_body: KInner,
         rhs_body: KInner,
         sort: KSort,
+        proof_digest: str = '',
         constraints: Iterable[KInner] = (),
         csubst: CSubst | None = None,
         simplified_constraints: KInner | None = None,
@@ -76,7 +80,7 @@ class EqualityProof(ImpliesProof):
         proof_dir: Path | None = None,
         admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir, admitted=admitted)
+        super().__init__(id, proof_dir=proof_dir, proof_digest=proof_digest, admitted=admitted)
         self.lhs_body = lhs_body
         self.rhs_body = rhs_body
         self.sort = sort
