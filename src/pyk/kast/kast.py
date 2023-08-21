@@ -23,7 +23,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 class KAst(ABC):
     @staticmethod
     def version() -> int:
-        return 3
+        return 2
 
     @classmethod
     def from_dict(cls: type[T], d: Mapping[str, Any]) -> T:

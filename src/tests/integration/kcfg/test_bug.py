@@ -23,4 +23,5 @@ def test_split_conf() -> None:
             KApply(label=KLabel(name='#Bottom', params=(KSort(name='GeneratedTopCell'),)), args=()),
         ),
     )
+    print("jcazheazechaziehiuaz")
     config, constraints = split_config_and_constraints(kast)
