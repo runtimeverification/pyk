@@ -326,6 +326,7 @@ class APRProof(Proof):
         dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
 
         dct['id'] = self.id
+        dct['proof_digest'] = self.proof_digest
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
         dct['type'] = 'APRProof'
@@ -424,6 +425,7 @@ class APRBMCProof(APRProof):
         dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
 
         dct['id'] = self.id
+        dct['proof_digest'] = self.proof_digest
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
         dct['type'] = 'APRBMCProof'
