@@ -295,6 +295,7 @@ class APRProof(Proof):
         kcfg = KCFG.read_cfg_data(cfg_dir, id)
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
+        proof_digest = str(proof_dict['proof_digest'])
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
         terminal_nodes = proof_dict['terminal_nodes']
@@ -309,6 +310,7 @@ class APRProof(Proof):
             target=target,
             logs=logs,
             terminal_nodes=terminal_nodes,
+            proof_digest=proof_digest,
             circularity=circularity,
             admitted=admitted,
             proof_dir=proof_dir,
@@ -393,6 +395,7 @@ class APRBMCProof(APRProof):
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
         circularity = bool(proof_dict['circularity'])
+        proof_digest = str(proof_dict['proof_digest'])
         admitted = bool(proof_dict['admitted'])
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
@@ -406,6 +409,7 @@ class APRBMCProof(APRProof):
             init=init,
             target=target,
             logs=logs,
+            proof_digest=proof_digest,
             circularity=circularity,
             admitted=admitted,
             bounded_nodes=bounded_nodes,
