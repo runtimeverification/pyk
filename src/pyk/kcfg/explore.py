@@ -356,9 +356,9 @@ class KCFGExplore:
         return True
 
     def _check_terminal(self, node: KCFG.Node) -> bool:
-        _LOGGER.info(f'Checking terminal: {shorten_hashes(node.id)}')
+        _LOGGER.info(f'Checking terminal: {node.id}')
         if self.kcfg_semantics.is_terminal(node.cterm):
-            _LOGGER.info(f'Terminal node: {shorten_hashes(node.id)}.')
+            _LOGGER.info(f'Terminal node: {node.id}.')
             return True
         return False
 

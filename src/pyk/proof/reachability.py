@@ -94,7 +94,7 @@ class APRProof(Proof):
 
     @property
     def pending(self) -> list[KCFG.Node]:
-        return [node for node in self.kcfg_exploration.explorables if self.is_pending(node.id)]
+        return [node for node in self.kcfg_exploration.explorable if self.is_pending(node.id)]
 
     @property
     def failing(self) -> list[KCFG.Node]:
@@ -189,19 +189,14 @@ class APRProof(Proof):
         defn: KDefinition,
         claim: KClaim,
         logs: dict[int, tuple[LogEntry, ...]],
-        *args: Any,
         **kwargs: Any,
     ) -> APRProof:
-        apr_proof = APRProof(claim.label, KCFGExploration(KCFG()), init=0, target=0, logs=logs, **kwargs)
-
-        kcfg_dir = apr_proof.proof_subdir / 'kcfg' if apr_proof.proof_subdir else None
+        kcfg_dir = kwargs['proof_dir'] / claim.label / 'kcfg' if kwargs['proof_dir'] else None
 
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
-        apr_proof.kcfg_exploration.kcfg = kcfg
-        apr_proof.init = init_node
-        apr_proof.target = target_node
-
-        return apr_proof
+        return APRProof(
+            claim.label, KCFGExploration(kcfg, terminals=[]), init=init_node, target=target_node, logs=logs, **kwargs
+        )
 
     def as_claim(self, kprint: KPrint) -> KClaim:
         fr: CTerm = self.kcfg_exploration.kcfg.node(self.init).cterm
@@ -253,7 +248,7 @@ class APRProof(Proof):
                     len(self.pending),
                     len(self.failing),
                     len(self.kcfg_exploration.kcfg.stuck),
-                    len(self.kcfg_exploration._terminals),
+                    len(self.kcfg_exploration._terminal),
                     len(self.node_refutations),
                     len(self.subproof_ids),
                 ),
@@ -308,7 +303,7 @@ class APRProof(Proof):
         dct['type'] = 'APRProof'
         dct['init'] = self.kcfg_exploration.kcfg._resolve(self.init)
         dct['target'] = self.kcfg_exploration.kcfg._resolve(self.target)
-        dct['terminals'] = sorted(self.kcfg_exploration._terminals)
+        dct['terminals'] = sorted(self.kcfg_exploration._terminal)
         dct['node_refutations'] = {
             self.kcfg_exploration.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
         }
@@ -411,7 +406,7 @@ class APRBMCProof(APRProof):
         dct['circularity'] = self.circularity
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
-        dct['terminals'] = sorted(self.kcfg_exploration._terminals)
+        dct['terminals'] = sorted(self.kcfg_exploration._terminal)
         dct['bounded'] = sorted(self._bounded)
         dct['bmc_depth'] = self.bmc_depth
 
@@ -522,7 +517,7 @@ class APRBMCProof(APRProof):
                     len(self.pending),
                     len(self.failing),
                     len(self.kcfg_exploration.kcfg.stuck),
-                    len(self.kcfg_exploration._terminals),
+                    len(self.kcfg_exploration._terminal),
                     len(self.node_refutations),
                     len(self._bounded),
                     len(self.subproof_ids),
@@ -586,7 +581,7 @@ class APRProver(Prover):
             assert kcfg_explore._check_terminal(node)
 
         # Target node is not marked as terminal
-        assert self._target.id not in self.proof.kcfg_exploration._terminals
+        assert self._target.id not in self.proof.kcfg_exploration._terminal
 
         # All non-target leaves not marked as terminal are checked for terminalness
         for node in [

@@ -13,11 +13,11 @@ if TYPE_CHECKING:
 
 class KCFGExploration:
     kcfg: KCFG
-    _terminals: set[int]
+    _terminal: set[int]
 
     def __init__(self, kcfg: KCFG, terminals: Iterable[int] | None = None) -> None:
         self.kcfg = kcfg
-        self._terminals = set(terminals) if terminals is not None else set()
+        self._terminal = set(terminals) if terminals is not None else set()
 
     #
     # Recognisers
@@ -25,7 +25,7 @@ class KCFGExploration:
 
     # Terminal node recogniser
     def is_terminal(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg._resolve(node_id) in self._terminals
+        return self.kcfg._resolve(node_id) in self._terminal
 
     # Explorable node recogniser
     def is_explorable(self, node_id: NodeIdLike) -> bool:
@@ -38,11 +38,11 @@ class KCFGExploration:
     # Terminal node collector
     @property
     def terminals(self) -> list[KCFG.Node]:
-        return [node for node in self.kcfg.nodes if node.id in self._terminals]
+        return [node for node in self.kcfg.nodes if node.id in self._terminal]
 
     # Explorable node collector
     @property
-    def explorables(self) -> list[KCFG.Node]:
+    def explorable(self) -> list[KCFG.Node]:
         return [node for node in self.kcfg.leaves if self.is_explorable(node.id)]
 
     #
@@ -51,11 +51,11 @@ class KCFGExploration:
 
     # Marking a given node as terminal
     def add_terminal(self, node_id: NodeIdLike) -> None:
-        self._terminals.add(self.kcfg._resolve(node_id))
+        self._terminal.add(self.kcfg._resolve(node_id))
 
     # Unmarking a given node as terminal
     def remove_terminal(self, node_id: NodeIdLike) -> None:
-        self._terminals.discard(self.kcfg._resolve(node_id))
+        self._terminal.discard(self.kcfg._resolve(node_id))
 
     #
     # Lifted KCFG functions that may affect terminal nodes
@@ -89,5 +89,5 @@ class KCFGExploration:
     def to_dict(self) -> dict[str, Any]:
         dct: dict[str, Any] = {}
         dct['kcfg'] = self.kcfg.to_dict()
-        dct['terminals'] = sorted(self._terminals)
+        dct['terminals'] = sorted(self._terminal)
         return dct
