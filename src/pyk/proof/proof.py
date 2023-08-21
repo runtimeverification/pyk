@@ -32,24 +32,21 @@ class Proof(ABC):
     _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof', 'RefutationProof'}
 
     id: str
+    proof_digest: str
     proof_dir: Path | None
     _subproofs: dict[str, Proof]
     admitted: bool
 
-    @property
-    def proof_subdir(self) -> Path | None:
-        if self.proof_dir is None:
-            return None
-        return self.proof_dir / self.id
-
     def __init__(
         self,
         id: str,
+        proof_digest: str = '',
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
         admitted: bool = False,
     ) -> None:
         self.id = id
+        self.proof_digest = proof_digest
         self.admitted = admitted
         self.proof_dir = proof_dir
         self._subproofs = {}
@@ -65,6 +62,12 @@ class Proof(ABC):
 
     def admit(self) -> None:
         self.admitted = True
+
+    @property
+    def proof_subdir(self) -> Path | None:
+        if self.proof_dir is None:
+            return None
+        return self.proof_dir / self.id
 
     @property
     def subproof_ids(self) -> list[str]:
@@ -186,6 +189,7 @@ class Proof(ABC):
     def dict(self) -> dict[str, Any]:
         return {
             'id': self.id,
+            'proof_digest': self.proof_digest,
             'subproof_ids': self.subproof_ids,
             'admitted': self.admitted,
         }

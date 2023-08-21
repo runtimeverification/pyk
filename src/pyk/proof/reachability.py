@@ -56,6 +56,7 @@ class APRProof(Proof):
         init: NodeIdLike,
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
+        proof_digest: str = '',
         proof_dir: Path | None = None,
         node_refutations: dict[int, str] | None = None,
         terminal_nodes: Iterable[NodeIdLike] | None = None,
@@ -63,7 +64,9 @@ class APRProof(Proof):
         circularity: bool = False,
         admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
+        super().__init__(
+            id, proof_dir=proof_dir, proof_digest=proof_digest, subproof_ids=subproof_ids, admitted=admitted
+        )
         self.kcfg = kcfg
         self.init = init
         self.target = target
@@ -174,6 +177,7 @@ class APRProof(Proof):
         terminal_nodes = dct['terminal_nodes']
         target_node = dct['target']
         id = dct['id']
+        proof_digest = dct['proof_digest']
         circularity = dct.get('circularity', False)
         admitted = dct.get('admitted', False)
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
@@ -191,6 +195,7 @@ class APRProof(Proof):
             init_node,
             target_node,
             logs=logs,
+            proof_digest=proof_digest,
             terminal_nodes=terminal_nodes,
             circularity=circularity,
             admitted=admitted,
@@ -246,6 +251,7 @@ class APRProof(Proof):
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'APRProof'
+        dct['proof_digest'] = self.proof_digest
         dct['cfg'] = self.kcfg.to_dict()
         dct['init'] = self.init
         dct['target'] = self.target
@@ -289,6 +295,7 @@ class APRProof(Proof):
         kcfg = KCFG.read_cfg_data(cfg_dir, id)
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
+        proof_digest = str(proof_dict['proof_digest'])
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
         terminal_nodes = proof_dict['terminal_nodes']
@@ -303,6 +310,7 @@ class APRProof(Proof):
             target=target,
             logs=logs,
             terminal_nodes=terminal_nodes,
+            proof_digest=proof_digest,
             circularity=circularity,
             admitted=admitted,
             proof_dir=proof_dir,
@@ -320,6 +328,7 @@ class APRProof(Proof):
         dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
 
         dct['id'] = self.id
+        dct['proof_digest'] = self.proof_digest
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
         dct['type'] = 'APRProof'
@@ -352,6 +361,7 @@ class APRBMCProof(APRProof):
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
         bmc_depth: int,
+        proof_digest: str = '',
         bounded_nodes: Iterable[int] | None = None,
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
@@ -365,6 +375,7 @@ class APRBMCProof(APRProof):
             init,
             target,
             logs,
+            proof_digest=proof_digest,
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
@@ -384,6 +395,7 @@ class APRBMCProof(APRProof):
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
         circularity = bool(proof_dict['circularity'])
+        proof_digest = str(proof_dict['proof_digest'])
         admitted = bool(proof_dict['admitted'])
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
@@ -397,6 +409,7 @@ class APRBMCProof(APRProof):
             init=init,
             target=target,
             logs=logs,
+            proof_digest=proof_digest,
             circularity=circularity,
             admitted=admitted,
             bounded_nodes=bounded_nodes,
@@ -416,6 +429,7 @@ class APRBMCProof(APRProof):
         dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
 
         dct['id'] = self.id
+        dct['proof_digest'] = self.proof_digest
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
         dct['type'] = 'APRBMCProof'
@@ -463,6 +477,7 @@ class APRBMCProof(APRProof):
     @classmethod
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
+        proof_digest = dct['proof_digest']
         init = dct['init']
         target = dct['target']
         bounded_nodes = dct['bounded_nodes']
@@ -487,6 +502,7 @@ class APRBMCProof(APRProof):
             target,
             logs,
             bmc_depth,
+            proof_digest=proof_digest,
             bounded_nodes=bounded_nodes,
             proof_dir=proof_dir,
             circularity=circularity,
@@ -499,6 +515,7 @@ class APRBMCProof(APRProof):
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'APRBMCProof'
+        dct['proof_digest'] = self.proof_digest
         dct['bmc_depth'] = self.bmc_depth
         dct['bounded_nodes'] = list(self._bounded_nodes)
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
