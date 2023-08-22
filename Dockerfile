@@ -8,6 +8,7 @@ RUN    apt-get -y update             \
     && apt-get -y install            \
          curl                        \
          graphviz                    \
+	 vim			     \
          python${PYTHON_VERSION}     \
          python${PYTHON_VERSION}-dev \
     && apt-get -y clean
