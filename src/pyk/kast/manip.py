@@ -67,6 +67,7 @@ def is_term_like(kast: KInner) -> bool:
                     '#Bottom',
                     '#Implies',
                     '#Not',
+                    '#Ceil',
                 }:
                     non_term_found = True
 
