@@ -181,7 +181,7 @@ class APRProof(Proof, KCFGExploration):
         logs: dict[int, tuple[LogEntry, ...]],
         **kwargs: Any,
     ) -> APRProof:
-        kcfg_dir = kwargs['proof_dir'] / claim.label / 'kcfg' if kwargs['proof_dir'] else None
+        kcfg_dir = kwargs['proof_dir'] / claim.label / 'kcfg' if 'proof_dir' in kwargs else None
 
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
         return APRProof(claim.label, kcfg, [], init=init_node, target=target_node, logs=logs, **kwargs)
