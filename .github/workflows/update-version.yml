@@ -9,7 +9,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   update-versions:
     name: 'Update K Version'
     runs-on: ubuntu-latest
