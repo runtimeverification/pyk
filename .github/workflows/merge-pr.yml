@@ -2,8 +2,30 @@ name: 'Merge Queue'
 on:
   merge_group:
 jobs:
+  version-bump:
+    name: 'Version Bump'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Check out code'
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.JENKINS_GITHUB_PAT }}
+          # fetch-depth 0 means deep clone the repo
+          fetch-depth: 0
+      - name: 'Version Bump'
+        run: |
+          set -x
+          git config user.name devops
+          git config user.email devops@runtimeverification.com
+          ./package/version.sh bump $(git show origin/${GITHUB_BASE_REF}:package/version)
+          ./package/version.sh sub
+          if git add --update && git commit --message "Set Version: $(cat package/version)"; then
+            git push origin HEAD:${GITHUB_HEAD_REF}
+          fi    
+
   code-quality-checks:
     name: 'Code Quality Checks'
+    needs: version-bump
     runs-on: ubuntu-latest
     steps:
       - name: 'Check out code'
