@@ -38,7 +38,7 @@ class KCFGExploration:
     # Terminal node collector
     @property
     def terminal(self) -> list[KCFG.Node]:
-        return [node for node in self.kcfg.nodes if node.id in self._terminal]
+        return [node for node in self.kcfg.nodes if self.is_terminal(node.id)]
 
     # Explorable node collector
     @property
