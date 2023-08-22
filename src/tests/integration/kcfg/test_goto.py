@@ -80,8 +80,8 @@ APRBMC_PROVE_TEST_DATA: Iterable[
 
 
 def leaf_number(proof: APRProof) -> int:
-    non_target_leaves = [nd for nd in proof.kcfg_exploration.kcfg.leaves if not proof.is_target(nd.id)]
-    return len(non_target_leaves) + len(proof.kcfg_exploration.kcfg.predecessors(proof.target))
+    non_target_leaves = [nd for nd in proof.kcfg.leaves if not proof.is_target(nd.id)]
+    return len(non_target_leaves) + len(proof.kcfg.predecessors(proof.target))
 
 
 class TestGoToProof(KCFGExploreTest, KProveTest):
@@ -116,7 +116,7 @@ class TestGoToProof(KCFGExploreTest, KProveTest):
         )
 
         proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, bmc_depth)
-        kcfg_explore.simplify(proof.kcfg_exploration.kcfg, {})
+        kcfg_explore.simplify(proof.kcfg, {})
         prover = APRBMCProver(
             proof,
             kcfg_explore=kcfg_explore,
@@ -131,7 +131,7 @@ class TestGoToProof(KCFGExploreTest, KProveTest):
         kcfg_show = KCFGShow(
             kcfg_explore.kprint, node_printer=APRBMCProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
         )
-        cfg_lines = kcfg_show.show(proof.kcfg_exploration.kcfg)
+        cfg_lines = kcfg_show.show(proof.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 
         assert proof.status == proof_status

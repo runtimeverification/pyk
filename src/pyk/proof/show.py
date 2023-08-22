@@ -65,12 +65,10 @@ class APRProofShow:
         self.kcfg_show = KCFGShow(kprint, node_printer=node_printer)
 
     def pretty_segments(self, proof: APRProof, minimize: bool = True) -> Iterable[tuple[str, Iterable[str]]]:
-        ret_lines = list(self.kcfg_show.pretty_segments(proof.kcfg_exploration.kcfg, minimize=minimize))
+        ret_lines = list(self.kcfg_show.pretty_segments(proof.kcfg, minimize=minimize))
         if len(proof.pending) > 0:
             target_node_lines = ['', 'Target Node:']
-            target_node_lines += self.kcfg_show.node_printer.print_node(
-                proof.kcfg_exploration.kcfg, proof.kcfg_exploration.kcfg.node(proof.target)
-            )
+            target_node_lines += self.kcfg_show.node_printer.print_node(proof.kcfg, proof.kcfg.node(proof.target))
             ret_lines.append((f'node_{proof.target}', target_node_lines))
         return KCFGShow.make_unique_segments(ret_lines)
 
@@ -88,7 +86,7 @@ class APRProofShow:
         omit_cells: Iterable[str] = (),
     ) -> list[str]:
         res_lines = self.kcfg_show.show(
-            proof.kcfg_exploration.kcfg,
+            proof.kcfg,
             nodes=nodes,
             node_deltas=node_deltas,
             to_module=to_module,
@@ -100,11 +98,11 @@ class APRProofShow:
         return res_lines
 
     def dot(self, proof: APRProof) -> Digraph:
-        graph = self.kcfg_show.dot(proof.kcfg_exploration.kcfg)
+        graph = self.kcfg_show.dot(proof.kcfg)
         attrs = {'class': 'target', 'style': 'solid'}
         for node in proof.pending:
             graph.edge(tail_name=node.id, head_name=proof.target, label=' ???', **attrs)
-        for node in proof.kcfg_exploration.kcfg.stuck:
+        for node in proof.kcfg.stuck:
             graph.edge(tail_name=node.id, head_name=proof.target, label=' false', **attrs)
         return graph
 
@@ -121,4 +119,4 @@ class APRProofShow:
             dot_file.write_text(proof_dot.source)
             _LOGGER.info(f'Wrote DOT file {proof.id}: {dot_file}')
 
-        self.kcfg_show.dump(f'{proof.id}_cfg', proof.kcfg_exploration.kcfg, dump_dir, dot=False)
+        self.kcfg_show.dump(f'{proof.id}_cfg', proof.kcfg, dump_dir, dot=False)

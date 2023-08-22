@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class APRProof(Proof):
+class APRProof(Proof, KCFGExploration):
     """APRProof and APRProver implement all-path reachability logic,
     as introduced by A. Stefanescu and others in their paper 'All-Path Reachability Logic':
     https://doi.org/10.23638/LMCS-15(2:5)2019
@@ -42,7 +42,6 @@ class APRProof(Proof):
     as CTL/CTL*'s `phi -> AF psi`, since reachability logic ignores infinite traces.
     """
 
-    kcfg_exploration: KCFGExploration
     node_refutations: dict[NodeIdLike, RefutationProof]  # TODO _node_refutatations
     init: NodeIdLike
     target: NodeIdLike
@@ -52,7 +51,8 @@ class APRProof(Proof):
     def __init__(
         self,
         id: str,
-        kcfg_exploration: KCFGExploration,
+        kcfg: KCFG,
+        terminal: Iterable[int],
         init: NodeIdLike,
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
@@ -62,14 +62,15 @@ class APRProof(Proof):
         circularity: bool = False,
         admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
-        self.kcfg_exploration = kcfg_exploration
+        Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
+        KCFGExploration.__init__(self, kcfg, terminal)
+
         self.init = init
         self.target = target
         self.logs = logs
         self.circularity = circularity
         self.node_refutations = {}
-        self.kcfg_exploration.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
+        self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
 
         if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)
@@ -89,46 +90,35 @@ class APRProof(Proof):
                 self.node_refutations[node_id] = subproof
 
     @property
-    def terminals(self) -> list[KCFG.Node]:
-        return self.kcfg_exploration.terminals
-
-    @property
     def pending(self) -> list[KCFG.Node]:
-        return [node for node in self.kcfg_exploration.explorable if self.is_pending(node.id)]
+        return [node for node in self.explorable if self.is_pending(node.id)]
 
     @property
     def failing(self) -> list[KCFG.Node]:
-        return [nd for nd in self.kcfg_exploration.kcfg.leaves if self.is_failing(nd.id)]
+        return [nd for nd in self.kcfg.leaves if self.is_failing(nd.id)]
 
     def is_refuted(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg_exploration.kcfg._resolve(node_id) in self.node_refutations.keys()
-
-    def is_terminal(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg_exploration.is_terminal(node_id)
+        return self.kcfg._resolve(node_id) in self.node_refutations.keys()
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
-        return (
-            self.kcfg_exploration.is_explorable(node_id)
-            and not self.is_target(node_id)
-            and not self.is_refuted(node_id)
-        )
+        return self.is_explorable(node_id) and not self.is_target(node_id) and not self.is_refuted(node_id)
 
     def is_init(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg_exploration.kcfg._resolve(node_id) == self.kcfg_exploration.kcfg._resolve(self.init)
+        return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.init)
 
     def is_target(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg_exploration.kcfg._resolve(node_id) == self.kcfg_exploration.kcfg._resolve(self.target)
+        return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.target)
 
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return (
-            self.kcfg_exploration.kcfg.is_leaf(node_id)
-            and not self.kcfg_exploration.is_explorable(node_id)
+            self.kcfg.is_leaf(node_id)
+            and not self.is_explorable(node_id)
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
         )
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
-        spb = self.kcfg_exploration.kcfg.shortest_path_between(self.init, node_id)
+        spb = self.kcfg.shortest_path_between(self.init, node_id)
         assert spb is not None
         return spb
 
@@ -154,7 +144,8 @@ class APRProof(Proof):
 
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
-        kcfg_exploration = KCFGExploration.from_dict(dct['kcfg_exploration'])
+        kcfg = KCFG.from_dict(dct['kcfg'])
+        terminal = dct['terminal']
         init_node = dct['init']
         target_node = dct['target']
         id = dct['id']
@@ -163,9 +154,7 @@ class APRProof(Proof):
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
         if 'node_refutation' in dct:
-            node_refutations = {
-                kcfg_exploration.kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']
-            }
+            node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
         if 'logs' in dct:
             logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
@@ -173,7 +162,8 @@ class APRProof(Proof):
 
         return APRProof(
             id,
-            kcfg_exploration,
+            kcfg,
+            terminal,
             init_node,
             target_node,
             logs=logs,
@@ -194,13 +184,11 @@ class APRProof(Proof):
         kcfg_dir = kwargs['proof_dir'] / claim.label / 'kcfg' if kwargs['proof_dir'] else None
 
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
-        return APRProof(
-            claim.label, KCFGExploration(kcfg, terminals=[]), init=init_node, target=target_node, logs=logs, **kwargs
-        )
+        return APRProof(claim.label, kcfg, [], init=init_node, target=target_node, logs=logs, **kwargs)
 
     def as_claim(self, kprint: KPrint) -> KClaim:
-        fr: CTerm = self.kcfg_exploration.kcfg.node(self.init).cterm
-        to: CTerm = self.kcfg_exploration.kcfg.node(self.target).cterm
+        fr: CTerm = self.kcfg.node(self.init).cterm
+        to: CTerm = self.kcfg.node(self.target).cterm
         fr_config_sorted = kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
         to_config_sorted = kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
         kc = KClaim(
@@ -226,7 +214,8 @@ class APRProof(Proof):
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'APRProof'
-        dct['kcfg_exploration'] = self.kcfg_exploration.to_dict()
+        dct['kcfg'] = self.kcfg.to_dict()
+        dct['terminal'] = sorted(self._terminal)
         dct['init'] = self.init
         dct['target'] = self.target
         dct['node_refutations'] = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
@@ -244,11 +233,11 @@ class APRProof(Proof):
                     self.id,
                     self.status,
                     self.admitted,
-                    len(self.kcfg_exploration.kcfg.nodes),
+                    len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
-                    len(self.kcfg_exploration.kcfg.stuck),
-                    len(self.kcfg_exploration._terminal),
+                    len(self.kcfg.stuck),
+                    len(self._terminal),
                     len(self.node_refutations),
                     len(self.subproof_ids),
                 ),
@@ -270,14 +259,15 @@ class APRProof(Proof):
         target = int(proof_dict['target'])
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
-        terminals = proof_dict['terminals']
+        terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
         node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in proof_dict['node_refutations']}
 
         return APRProof(
             id=id,
-            kcfg_exploration=KCFGExploration(kcfg, terminals),
+            kcfg=kcfg,
+            terminal=terminal,
             init=init,
             target=target,
             logs=logs,
@@ -301,11 +291,11 @@ class APRProof(Proof):
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
         dct['type'] = 'APRProof'
-        dct['init'] = self.kcfg_exploration.kcfg._resolve(self.init)
-        dct['target'] = self.kcfg_exploration.kcfg._resolve(self.target)
-        dct['terminals'] = sorted(self.kcfg_exploration._terminal)
+        dct['init'] = self.kcfg._resolve(self.init)
+        dct['target'] = self.kcfg._resolve(self.target)
+        dct['terminal'] = sorted(self._terminal)
         dct['node_refutations'] = {
-            self.kcfg_exploration.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
+            self.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
         }
         dct['circularity'] = self.circularity
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
@@ -313,7 +303,7 @@ class APRProof(Proof):
 
         proof_json.write_text(json.dumps(dct))
 
-        self.kcfg_exploration.kcfg.write_cfg_data()
+        self.kcfg.write_cfg_data()
 
 
 class APRBMCProof(APRProof):
@@ -325,7 +315,8 @@ class APRBMCProof(APRProof):
     def __init__(
         self,
         id: str,
-        kcfg_exploration: KCFGExploration,
+        kcfg: KCFG,
+        terminal: Iterable[int],
         init: NodeIdLike,
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
@@ -339,7 +330,8 @@ class APRBMCProof(APRProof):
     ):
         super().__init__(
             id,
-            kcfg_exploration,
+            kcfg,
+            terminal,
             init,
             target,
             logs,
@@ -362,7 +354,7 @@ class APRBMCProof(APRProof):
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
         circularity = bool(proof_dict['circularity'])
-        terminals = proof_dict['terminals']
+        terminal = proof_dict['terminal']
         admitted = bool(proof_dict['admitted'])
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
@@ -372,7 +364,8 @@ class APRBMCProof(APRProof):
 
         return APRBMCProof(
             id=id,
-            kcfg_exploration=KCFGExploration(kcfg, terminals),
+            kcfg=kcfg,
+            terminal=terminal,
             init=init,
             target=target,
             logs=logs,
@@ -398,28 +391,28 @@ class APRBMCProof(APRProof):
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
         dct['type'] = 'APRBMCProof'
-        dct['init'] = self.kcfg_exploration.kcfg._resolve(self.init)
-        dct['target'] = self.kcfg_exploration.kcfg._resolve(self.target)
+        dct['init'] = self.kcfg._resolve(self.init)
+        dct['target'] = self.kcfg._resolve(self.target)
         dct['node_refutations'] = {
-            self.kcfg_exploration.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
+            self.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
         }
         dct['circularity'] = self.circularity
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
-        dct['terminals'] = sorted(self.kcfg_exploration._terminal)
+        dct['terminal'] = sorted(self._terminal)
         dct['bounded'] = sorted(self._bounded)
         dct['bmc_depth'] = self.bmc_depth
 
         proof_json.write_text(json.dumps(dct))
 
-        self.kcfg_exploration.kcfg.write_cfg_data()
+        self.kcfg.write_cfg_data()
 
     @property
     def bounded(self) -> list[KCFG.Node]:
-        return [nd for nd in self.kcfg_exploration.kcfg.leaves if self.is_bounded(nd.id)]
+        return [nd for nd in self.kcfg.leaves if self.is_bounded(nd.id)]
 
     def is_bounded(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg_exploration.kcfg._resolve(node_id) in self._bounded
+        return self.kcfg._resolve(node_id) in self._bounded
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return super().is_pending(node_id) and not self.is_bounded(node_id)
@@ -428,14 +421,15 @@ class APRBMCProof(APRProof):
         return super().is_failing(node_id) and not self.is_bounded(node_id)
 
     def prune(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[int]:
-        pruned_nodes = self.kcfg_exploration.prune(node_id, keep_nodes=keep_nodes)
+        pruned_nodes = self.prune(node_id, keep_nodes=keep_nodes)
         for nid in pruned_nodes:
             self.remove_bounded(nid)
         return pruned_nodes
 
     @classmethod
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
-        kcfg_exploration = KCFGExploration.from_dict(dct['kcfg_exploration'])
+        kcfg = KCFG.from_dict(dct['kcfg'])
+        terminal = dct['terminal']
         init = dct['init']
         target = dct['target']
         bounded = dct['bounded']
@@ -446,9 +440,7 @@ class APRBMCProof(APRProof):
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
         if 'node_refutation' in dct:
-            node_refutations = {
-                kcfg_exploration.kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']
-            }
+            node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
         id = dct['id']
         if 'logs' in dct:
             logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
@@ -457,7 +449,8 @@ class APRBMCProof(APRProof):
 
         return APRBMCProof(
             id,
-            kcfg_exploration,
+            kcfg,
+            terminal,
             init,
             target,
             logs,
@@ -486,23 +479,23 @@ class APRBMCProof(APRProof):
         defn: KDefinition, claim: KClaim, bmc_depth: int, proof_dir: Path | None = None
     ) -> APRBMCProof:
         aprbmc_proof = APRBMCProof(
-            claim.label, KCFGExploration(KCFG()), bmc_depth=bmc_depth, init=0, target=0, logs={}, proof_dir=proof_dir
+            claim.label, KCFG(), [], bmc_depth=bmc_depth, init=0, target=0, logs={}, proof_dir=proof_dir
         )
 
         kcfg_dir = aprbmc_proof.proof_subdir / 'kcfg' if aprbmc_proof.proof_subdir else None
 
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
-        aprbmc_proof.kcfg_exploration.kcfg = kcfg
+        aprbmc_proof.kcfg = kcfg
         aprbmc_proof.init = init_node
         aprbmc_proof.target = target_node
 
         return aprbmc_proof
 
     def add_bounded(self, nid: NodeIdLike) -> None:
-        self._bounded.add(self.kcfg_exploration.kcfg._resolve(nid))
+        self._bounded.add(self.kcfg._resolve(nid))
 
     def remove_bounded(self, node_id: NodeIdLike) -> None:
-        self._bounded.discard(self.kcfg_exploration.kcfg._resolve(node_id))
+        self._bounded.discard(self.kcfg._resolve(node_id))
 
     @property
     def summary(self) -> CompositeSummary:
@@ -513,11 +506,11 @@ class APRBMCProof(APRProof):
                     self.id,
                     self.bmc_depth,
                     self.status,
-                    len(self.kcfg_exploration.kcfg.nodes),
+                    len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
-                    len(self.kcfg_exploration.kcfg.stuck),
-                    len(self.kcfg_exploration._terminal),
+                    len(self.kcfg.stuck),
+                    len(self._terminal),
                     len(self.node_refutations),
                     len(self._bounded),
                     len(self.subproof_ids),
@@ -573,7 +566,7 @@ class APRProver(Prover):
             priority=1,
         )
 
-        self._target = self.proof.kcfg_exploration.kcfg.node(self.proof.target)
+        self._target = self.proof.kcfg.node(self.proof.target)
         self._target_is_terminal = kcfg_explore._check_terminal(self._target)
 
         # All nodes marked as terminal are semantically terminal
@@ -581,16 +574,16 @@ class APRProver(Prover):
             assert kcfg_explore._check_terminal(node)
 
         # Target node is not marked as terminal
-        assert self._target.id not in self.proof.kcfg_exploration._terminal
+        assert self._target.id not in self.proof._terminal
 
         # All non-target leaves not marked as terminal are checked for terminalness
         for node in [
             node
-            for node in self.proof.kcfg_exploration.kcfg.nodes
+            for node in self.proof.kcfg.nodes
             if not self.proof.is_terminal(node.id) and not self.proof.is_target(node.id)
         ]:
             if kcfg_explore._check_terminal(node):
-                self.proof.kcfg_exploration.add_terminal(node.id)
+                self.proof.add_terminal(node.id)
 
         # Subsumption checks
         self._subsumption_checks = {}
@@ -599,7 +592,7 @@ class APRProver(Prover):
             self._check_subsume(node)
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
-        return not self.proof.kcfg_exploration.kcfg.zero_depth_between(self.proof.init, node.id)
+        return not self.proof.kcfg.zero_depth_between(self.proof.init, node.id)
 
     def _check_subsume(self, node: KCFG.Node) -> bool:
         if node.id not in self._subsumption_checks:
@@ -608,7 +601,7 @@ class APRProver(Prover):
             )
             csubst = self.kcfg_explore.cterm_implies(node.cterm, self._target.cterm)
             if csubst is not None:
-                self.proof.kcfg_exploration.kcfg.create_cover(node.id, self._target.id, csubst=csubst)
+                self.proof.kcfg.create_cover(node.id, self._target.id, csubst=csubst)
                 _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, self._target.id))}')
                 self._subsumption_checks[node.id] = True
             else:
@@ -629,7 +622,7 @@ class APRProver(Prover):
 
         module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
         self.kcfg_explore.extend(
-            self.proof.kcfg_exploration,
+            self.proof,
             node,
             self.proof.logs,
             execute_depth=execute_depth,
@@ -695,7 +688,7 @@ class APRProver(Prover):
         _LOGGER.info(f'Disabled refutation of node {node.id}.')
 
     def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:  # TODO put into prover class
-        path = single(self.proof.kcfg_exploration.kcfg.paths_between(source_id=self.proof.init, target_id=node.id))
+        path = single(self.proof.kcfg.paths_between(source_id=self.proof.init, target_id=node.id))
         branches_on_path = list(filter(lambda x: type(x) is KCFG.Split or type(x) is KCFG.NDBranch, reversed(path)))
         if len(branches_on_path) == 0:
             _LOGGER.error(f'Cannot refute node {node.id} in linear KCFG')
@@ -799,7 +792,7 @@ class APRFailureInfo:
 
     @staticmethod
     def from_proof(proof: APRProof, kcfg_explore: KCFGExplore, counterexample_info: bool = False) -> APRFailureInfo:
-        target = proof.kcfg_exploration.kcfg.node(proof.target)
+        target = proof.kcfg.node(proof.target)
         pending_nodes = {node.id for node in proof.pending}
         failing_nodes = {node.id for node in proof.failing}
         path_conditions = {}
@@ -904,8 +897,8 @@ class APRBMCProver(APRProver):
             prior_loops: list[NodeIdLike] = []
             for _pl in _prior_loops:
                 if not (
-                    self.proof.kcfg_exploration.kcfg.zero_depth_between(_pl, node.id)
-                    or any(self.proof.kcfg_exploration.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+                    self.proof.kcfg.zero_depth_between(_pl, node.id)
+                    or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
                 ):
                     prior_loops.append(_pl)
             _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')

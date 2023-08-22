@@ -7,7 +7,6 @@ import pytest
 
 from pyk.kast.inner import KApply, KSequence, KVariable
 from pyk.kcfg import KCFG
-from pyk.kcfg.exploration import KCFGExploration
 from pyk.kcfg.semantics import KCFGSemantics
 from pyk.prelude.kint import gtInt, intToken, leInt
 from pyk.prelude.ml import mlEqualsTrue
@@ -106,7 +105,8 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         kcfg_pre, init_node, target_node = KCFG.from_claim(kprove.definition, claim, proof_dir)
         proof = APRProof(
             f'{spec_module}.{claim_id}',
-            KCFGExploration(kcfg_pre),
+            kcfg_pre,
+            [],
             init=init_node,
             target=target_node,
             logs={},
@@ -154,7 +154,8 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         kcfg_pre, init_node, target_node = KCFG.from_claim(kprove.definition, claim, proof_dir)
         proof = APRProof(
             f'{spec_module}.{claim_id}',
-            KCFGExploration(kcfg_pre),
+            kcfg_pre,
+            [],
             init=init_node,
             target=target_node,
             logs={},

@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kcfg.exploration import KCFGExploration
 from pyk.kcfg.kcfg import KCFG
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import intToken
@@ -28,9 +27,10 @@ def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
 def apr_proof(i: int, proof_dir: Path) -> APRProof:
     return APRProof(
         id=f'apr_proof_{i}',
+        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
+        terminal=[],
         init=node(1).id,
         target=node(1).id,
-        kcfg_exploration=KCFGExploration(KCFG.from_dict({'nodes': node_dicts(i)})),
         logs={},
         proof_dir=proof_dir,
     )
@@ -42,7 +42,8 @@ def aprbmc_proof(i: int, proof_dir: Path) -> APRBMCProof:
         init=node(1).id,
         target=node(1).id,
         bmc_depth=i,
-        kcfg_exploration=KCFGExploration(KCFG.from_dict({'nodes': node_dicts(i)})),
+        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
+        terminal=[],
         logs={},
         proof_dir=proof_dir,
     )
@@ -58,7 +59,8 @@ class TestProof:
     def test_read_proof_apr(self, proof_dir: Path) -> None:
         sample_proof = APRProof(
             id='apr_proof_1',
-            kcfg_exploration=KCFGExploration(KCFG.from_dict({'nodes': node_dicts(1)})),
+            kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            terminal=[],
             init=node(1).id,
             target=node(1).id,
             logs={},
@@ -80,7 +82,8 @@ class TestProof:
         sample_proof = APRBMCProof(
             id='aprbmc_proof_1',
             bmc_depth=1,
-            kcfg_exploration=KCFGExploration(KCFG.from_dict({'nodes': node_dicts(1)})),
+            kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            terminal=[],
             init=node(1).id,
             target=node(1).id,
             logs={},
@@ -131,7 +134,8 @@ def test_read_write_proof_data(proof_dir: Path) -> None:
 
     proof = APRProof(
         id='apr_proof_1',
-        kcfg_exploration=KCFGExploration(kcfg),
+        kcfg=kcfg,
+        terminal=[],
         init=node1.id,
         target=node2.id,
         logs={},
