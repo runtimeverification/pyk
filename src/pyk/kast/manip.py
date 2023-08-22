@@ -8,7 +8,7 @@ from ..prelude.k import DOTS, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
 from ..prelude.ml import mlAnd, mlEqualsTrue, mlOr
 from ..utils import find_common_items, hash_str
-from .inner import KApply, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
+from .inner import KApply, KLabel, KRewrite, KSequence, KToken, KVariable, Subst, bottom_up, top_down, var_occurrences
 from .kast import EMPTY_ATT, KAtt, WithKAtt
 from .outer import KDefinition, KFlatModule, KRuleLike
 
@@ -74,11 +74,21 @@ def bool_to_ml_pred(kast: KInner) -> KInner:
 
 
 def ml_pred_to_bool(kast: KInner, unsafe: bool = False) -> KInner:
-    def _are_all_element_vars(kast_term: KInner) -> bool:
-        if type(kast_term) == KVariable and kast_term.name.startswith('#'):
+    def _check_safe_term(kast_term: KInner) -> bool:
+        if type(kast_term) is KVariable and kast_term.name.startswith('@'):
+            return False
+        if type(kast_term) is KLabel and kast_term.name in {
+            '#Equals',
+            '#And',
+            '#Or',
+            '#Top',
+            '#Bottom',
+            '#Implies',
+            '#Not',
+        }:
             return False
         if hasattr(kast_term, 'args'):
-            return all(_are_all_element_vars(arg) for arg in kast_term.args)
+            return all(_check_safe_term(arg) for arg in kast_term.args)
         return True
 
     def _ml_constraint_to_bool(_kast: KInner) -> KInner:
@@ -110,7 +120,7 @@ def ml_pred_to_bool(kast: KInner, unsafe: bool = False) -> KInner:
                 if type(first) is KSequence and type(second) is KSequence:
                     if first.arity == 1 and second.arity == 1:
                         return KApply('_==K_', (first.items[0], second.items[0]))
-                if _are_all_element_vars(first) and _are_all_element_vars(second):
+                if _check_safe_term(first) and _check_safe_term(second):
                     return KApply('_==K_', first, second)
             if unsafe:
                 if _kast.label.name == '#Equals':
