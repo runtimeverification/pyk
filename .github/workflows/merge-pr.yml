@@ -1,4 +1,4 @@
-name: 'Run Tests'
+name: 'Merge Queue'
 on:
   merge_group:
 jobs:
