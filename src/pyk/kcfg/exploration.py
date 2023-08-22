@@ -15,9 +15,9 @@ class KCFGExploration:
     kcfg: KCFG
     _terminal: set[int]
 
-    def __init__(self, kcfg: KCFG, terminals: Iterable[int] | None = None) -> None:
+    def __init__(self, kcfg: KCFG, terminal: Iterable[int] | None = None) -> None:
         self.kcfg = kcfg
-        self._terminal = set(terminals) if terminals is not None else set()
+        self._terminal = set(terminal) if terminal is not None else set()
 
     #
     # Recognisers
@@ -37,7 +37,7 @@ class KCFGExploration:
 
     # Terminal node collector
     @property
-    def terminals(self) -> list[KCFG.Node]:
+    def terminal(self) -> list[KCFG.Node]:
         return [node for node in self.kcfg.nodes if node.id in self._terminal]
 
     # Explorable node collector
@@ -81,13 +81,13 @@ class KCFGExploration:
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> KCFGExploration:
         kcfg = KCFG.from_dict(dct['kcfg'])
-        terminals = dct['terminals']
+        terminal = dct['terminal']
 
-        return KCFGExploration(kcfg, terminals)
+        return KCFGExploration(kcfg, terminal)
 
     # Conversion to dictionary
     def to_dict(self) -> dict[str, Any]:
         dct: dict[str, Any] = {}
         dct['kcfg'] = self.kcfg.to_dict()
-        dct['terminals'] = sorted(self._terminal)
+        dct['terminal'] = sorted(self._terminal)
         return dct

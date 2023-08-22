@@ -179,9 +179,10 @@ class APRProof(Proof, KCFGExploration):
         defn: KDefinition,
         claim: KClaim,
         logs: dict[int, tuple[LogEntry, ...]],
+        proof_dir: Path | None = None,
         **kwargs: Any,
     ) -> APRProof:
-        kcfg_dir = kwargs['proof_dir'] / claim.label / 'kcfg' if 'proof_dir' in kwargs else None
+        kcfg_dir = proof_dir / claim.label / 'kcfg' if proof_dir is not None else None
 
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
         return APRProof(claim.label, kcfg, [], init=init_node, target=target_node, logs=logs, **kwargs)
@@ -570,7 +571,7 @@ class APRProver(Prover):
         self._target_is_terminal = kcfg_explore._check_terminal(self._target)
 
         # All nodes marked as terminal are semantically terminal
-        for node in self.proof.terminals:
+        for node in self.proof.terminal:
             assert kcfg_explore._check_terminal(node)
 
         # Target node is not marked as terminal
@@ -588,7 +589,7 @@ class APRProver(Prover):
         # Subsumption checks
         self._subsumption_checks = {}
 
-        for node in self.proof.terminals:
+        for node in self.proof.terminal:
             self._check_subsume(node)
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
@@ -662,7 +663,7 @@ class APRProver(Prover):
                 terminal_rules=terminal_rules,
             )
 
-            for node in self.proof.terminals:
+            for node in self.proof.terminal:
                 self._check_subsume(node)
 
         self.proof.write_proof_data()
