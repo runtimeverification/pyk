@@ -15,9 +15,9 @@ class KCFGExploration:
     kcfg: KCFG
     _terminal: set[int]
 
-    def __init__(self, kcfg: KCFG, terminal: Iterable[int] | None = None) -> None:
+    def __init__(self, kcfg: KCFG, terminal: Iterable[NodeIdLike] | None = None) -> None:
         self.kcfg = kcfg
-        self._terminal = set(terminal) if terminal is not None else set()
+        self._terminal = {kcfg._resolve(node_id) for node_id in terminal} if terminal is not None else set()
 
     #
     # Recognisers

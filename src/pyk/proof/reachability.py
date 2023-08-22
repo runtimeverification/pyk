@@ -42,9 +42,9 @@ class APRProof(Proof, KCFGExploration):
     as CTL/CTL*'s `phi -> AF psi`, since reachability logic ignores infinite traces.
     """
 
-    node_refutations: dict[NodeIdLike, RefutationProof]  # TODO _node_refutatations
-    init: NodeIdLike
-    target: NodeIdLike
+    node_refutations: dict[int, RefutationProof]  # TODO _node_refutatations
+    init: int
+    target: int
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
 
@@ -65,8 +65,8 @@ class APRProof(Proof, KCFGExploration):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
 
-        self.init = init
-        self.target = target
+        self.init = kcfg._resolve(init)
+        self.target = kcfg._resolve(target)
         self.logs = logs
         self.circularity = circularity
         self.node_refutations = {}
@@ -185,7 +185,9 @@ class APRProof(Proof, KCFGExploration):
         kcfg_dir = proof_dir / claim.label / 'kcfg' if proof_dir is not None else None
 
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
-        return APRProof(claim.label, kcfg, [], init=init_node, target=target_node, logs=logs, **kwargs)
+        return APRProof(
+            claim.label, kcfg, [], init=init_node, target=target_node, logs=logs, proof_dir=proof_dir, **kwargs
+        )
 
     def as_claim(self, kprint: KPrint) -> KClaim:
         fr: CTerm = self.kcfg.node(self.init).cterm
@@ -479,18 +481,13 @@ class APRBMCProof(APRProof):
     def from_claim_with_bmc_depth(
         defn: KDefinition, claim: KClaim, bmc_depth: int, proof_dir: Path | None = None
     ) -> APRBMCProof:
-        aprbmc_proof = APRBMCProof(
-            claim.label, KCFG(), [], bmc_depth=bmc_depth, init=0, target=0, logs={}, proof_dir=proof_dir
-        )
-
-        kcfg_dir = aprbmc_proof.proof_subdir / 'kcfg' if aprbmc_proof.proof_subdir else None
+        kcfg_dir = proof_dir / claim.label / 'kcfg' if proof_dir is not None else None
 
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
-        aprbmc_proof.kcfg = kcfg
-        aprbmc_proof.init = init_node
-        aprbmc_proof.target = target_node
 
-        return aprbmc_proof
+        return APRBMCProof(
+            claim.label, kcfg, [], bmc_depth=bmc_depth, init=init_node, target=target_node, logs={}, proof_dir=proof_dir
+        )
 
     def add_bounded(self, nid: NodeIdLike) -> None:
         self._bounded.add(self.kcfg._resolve(nid))
@@ -528,10 +525,7 @@ class APRProver(Prover):
     dependencies_module_name: str
     circularities_module_name: str
 
-    _target: KCFG.Node
-    _target_is_terminal: bool
-
-    _subsumption_checks: dict[int, bool]
+    _checked_terminals: set[int]
 
     def __init__(
         self,
@@ -567,48 +561,35 @@ class APRProver(Prover):
             priority=1,
         )
 
-        self._target = self.proof.kcfg.node(self.proof.target)
-        self._target_is_terminal = kcfg_explore._check_terminal(self._target)
-
-        # All nodes marked as terminal are semantically terminal
-        for node in self.proof.terminal:
-            assert kcfg_explore._check_terminal(node)
-
-        # Target node is not marked as terminal
-        assert self._target.id not in self.proof._terminal
-
-        # All non-target leaves not marked as terminal are checked for terminalness
-        for node in [
-            node
-            for node in self.proof.kcfg.nodes
-            if not self.proof.is_terminal(node.id) and not self.proof.is_target(node.id)
-        ]:
-            if kcfg_explore._check_terminal(node):
-                self.proof.add_terminal(node.id)
-
-        # Subsumption checks
-        self._subsumption_checks = {}
-
-        for node in self.proof.terminal:
-            self._check_subsume(node)
+        self._checked_terminals = set()
+        self._check_all_terminals()
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
         return not self.proof.kcfg.zero_depth_between(self.proof.init, node.id)
 
-    def _check_subsume(self, node: KCFG.Node) -> bool:
-        if node.id not in self._subsumption_checks:
-            _LOGGER.info(
-                f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self._target.id))}'
-            )
-            csubst = self.kcfg_explore.cterm_implies(node.cterm, self._target.cterm)
-            if csubst is not None:
-                self.proof.kcfg.create_cover(node.id, self._target.id, csubst=csubst)
-                _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, self._target.id))}')
-                self._subsumption_checks[node.id] = True
-            else:
-                self._subsumption_checks[node.id] = False
+    def _check_terminal(self, node: KCFG.Node) -> None:
+        if node.id not in self._checked_terminals:
+            _LOGGER.info(f'Checking terminal: {node.id}')
+            self._checked_terminals.add(node.id)
+            if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
+                _LOGGER.info(f'Terminal node: {node.id}.')
+                self.proof._terminal.add(node.id)
 
-        return self._subsumption_checks[node.id]
+    def _check_all_terminals(self) -> None:
+        for node in self.proof.kcfg.nodes:
+            self._check_terminal(node)
+
+    def _check_subsume(self, node: KCFG.Node) -> bool:
+        _LOGGER.info(
+            f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
+        )
+        csubst = self.kcfg_explore.cterm_implies(node.cterm, self.proof.kcfg.node(self.proof.target).cterm)
+        if csubst is not None:
+            self.proof.kcfg.create_cover(node.id, self.proof.target, csubst=csubst)
+            _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}')
+            return True
+        else:
+            return False
 
     def advance_pending_node(
         self,
@@ -617,7 +598,7 @@ class APRProver(Prover):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
     ) -> None:
-        if not self._target_is_terminal:
+        if self.proof.target not in self.proof._terminal:
             if self._check_subsume(node):
                 return
 
@@ -642,6 +623,8 @@ class APRProver(Prover):
     ) -> None:
         iterations = 0
 
+        self._check_all_terminals()
+
         while self.proof.pending:
             self.proof.write_proof_data()
             if fail_fast and self.proof.failed:
@@ -663,8 +646,11 @@ class APRProver(Prover):
                 terminal_rules=terminal_rules,
             )
 
+            self._check_all_terminals()
+
             for node in self.proof.terminal:
-                self._check_subsume(node)
+                if self.proof.kcfg.is_leaf(node.id) and not self.proof.is_target(node.id):
+                    self._check_subsume(node)
 
         self.proof.write_proof_data()
 
