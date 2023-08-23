@@ -100,7 +100,7 @@ def exec_prove(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     kprover = KProve(kompiled_dir, args.main_file)
     final_state = kprover.prove(Path(args.spec_file), spec_module_name=args.spec_module, args=args.kArgs)
-    args.output_file.write(json.dumps([state.to_dict() for state in final_state]))
+    args.output_file.write(json.dumps(mlOr([state.kast for state in final_state]).to_dict()))
     _LOGGER.info(f'Wrote file: {args.output_file.name}')
 
 
