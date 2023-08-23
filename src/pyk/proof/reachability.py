@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from pyk.kore.rpc import LogEntry
 
 from ..cterm import CTerm
-from ..kast.inner import KRewrite, KSort
+from ..kast.inner import KInner, KRewrite, KSort, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KClaim
 from ..kcfg import KCFG
@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    from ..kast.inner import KInner
     from ..kast.outer import KDefinition
     from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
@@ -46,7 +45,7 @@ class APRProof(Proof):
     node_refutations: dict[NodeIdLike, RefutationProof]  # TODO _node_refutatations
     init: NodeIdLike
     target: NodeIdLike
-    _terminal_nodes: list[NodeIdLike]
+    _terminal_nodes: set[NodeIdLike]
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
 
@@ -70,7 +69,7 @@ class APRProof(Proof):
         self.target = target
         self.logs = logs
         self.circularity = circularity
-        self._terminal_nodes = list(terminal_nodes) if terminal_nodes is not None else []
+        self._terminal_nodes = set(terminal_nodes) if terminal_nodes is not None else set()
         self.node_refutations = {}
         self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
 
@@ -129,13 +128,19 @@ class APRProof(Proof):
         )
 
     def add_terminal(self, node_id: NodeIdLike) -> None:
-        self._terminal_nodes.append(self.kcfg._resolve(node_id))
+        self._terminal_nodes.add(self.kcfg._resolve(node_id))
 
     def remove_terminal(self, node_id: NodeIdLike) -> None:
         node_id = self.kcfg._resolve(node_id)
         if node_id not in self._terminal_nodes:
             raise ValueError(f'Node is not terminal: {node_id}')
         self._terminal_nodes.remove(node_id)
+
+    def prune_from(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[NodeIdLike]:
+        pruned_nodes = self.kcfg.prune(node_id, keep_nodes=list(keep_nodes) + [self.target, self.init])
+        for nid in pruned_nodes:
+            self._terminal_nodes.discard(nid)
+        return pruned_nodes
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
         spb = self.kcfg.shortest_path_between(self.init, node_id)
@@ -244,7 +249,7 @@ class APRProof(Proof):
         dct['cfg'] = self.kcfg.to_dict()
         dct['init'] = self.init
         dct['target'] = self.target
-        dct['terminal_nodes'] = self._terminal_nodes
+        dct['terminal_nodes'] = list(self._terminal_nodes)
         dct['node_refutations'] = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
         dct['circularity'] = self.circularity
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
@@ -337,7 +342,7 @@ class APRBMCProof(APRProof):
     """APRBMCProof and APRBMCProver perform bounded model-checking of an all-path reachability logic claim."""
 
     bmc_depth: int
-    _bounded_nodes: list[NodeIdLike]
+    _bounded_nodes: set[NodeIdLike]
 
     def __init__(
         self,
@@ -367,7 +372,7 @@ class APRBMCProof(APRProof):
             admitted=admitted,
         )
         self.bmc_depth = bmc_depth
-        self._bounded_nodes = list(bounded_nodes) if bounded_nodes is not None else []
+        self._bounded_nodes = set(bounded_nodes) if bounded_nodes is not None else set()
 
     @staticmethod
     def read_proof_data(proof_dir: Path, id: str) -> APRBMCProof:
@@ -449,6 +454,12 @@ class APRBMCProof(APRProof):
             or self.is_target(node_id)
         )
 
+    def prune_from(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[NodeIdLike]:
+        pruned_nodes = super().prune_from(node_id, keep_nodes=keep_nodes)
+        for nid in pruned_nodes:
+            self._bounded_nodes.discard(nid)
+        return pruned_nodes
+
     @classmethod
     def from_dict(cls: type[APRBMCProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRBMCProof:
         cfg = KCFG.from_dict(dct['cfg'])
@@ -489,7 +500,7 @@ class APRBMCProof(APRProof):
         dct = super().dict
         dct['type'] = 'APRBMCProof'
         dct['bmc_depth'] = self.bmc_depth
-        dct['bounded_nodes'] = self._bounded_nodes
+        dct['bounded_nodes'] = list(self._bounded_nodes)
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         dct['circularity'] = self.circularity
@@ -513,7 +524,7 @@ class APRBMCProof(APRProof):
         return aprbmc_proof
 
     def add_bounded(self, nid: NodeIdLike) -> None:
-        self._bounded_nodes.append(self.kcfg._resolve(nid))
+        self._bounded_nodes.add(self.kcfg._resolve(nid))
 
     @property
     def summary(self) -> CompositeSummary:
@@ -544,6 +555,8 @@ class APRProver(Prover):
     main_module_name: str
     dependencies_module_name: str
     circularities_module_name: str
+
+    _target_is_terminal: bool
 
     def __init__(
         self,
@@ -579,6 +592,10 @@ class APRProver(Prover):
             priority=1,
         )
 
+        self._target_is_terminal = kcfg_explore.kcfg_semantics.is_terminal(
+            self.proof.kcfg.node(self.proof.target).cterm
+        )
+
     def nonzero_depth(self, node: KCFG.Node) -> bool:
         return not self.proof.kcfg.zero_depth_between(self.proof.init, node.id)
 
@@ -608,13 +625,12 @@ class APRProver(Prover):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-        implication_every_block: bool = True,
     ) -> None:
         if self._check_terminal(node):
             _ = self._check_subsume(node)
             return
 
-        if implication_every_block:
+        if not self._target_is_terminal:
             if self._check_subsume(node):
                 return
 
@@ -635,13 +651,17 @@ class APRProver(Prover):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-        implication_every_block: bool = True,
         fail_fast: bool = False,
     ) -> KCFG:
         iterations = 0
 
         while self.proof.pending:
             self.proof.write_proof_data()
+            if fail_fast and self.proof.failed:
+                _LOGGER.warning(
+                    f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
+                )
+                break
 
             if max_iterations is not None and max_iterations <= iterations:
                 _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
@@ -654,17 +674,7 @@ class APRProver(Prover):
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
-                implication_every_block=implication_every_block,
             )
-            if (
-                fail_fast
-                and not self.proof.kcfg.is_covered(curr_node.id)
-                and self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm)
-            ):
-                _LOGGER.warning(
-                    f'Terminating proof early because fail_fast is set and a failing terminal node was reached: {curr_node.id}'
-                )
-                break
 
         self.proof.write_proof_data()
         return self.proof.kcfg
@@ -770,18 +780,36 @@ class APRSummary(ProofSummary):
 
 @dataclass(frozen=True)
 class APRFailureInfo:
-    failing_nodes: FrozenDict[int, tuple[str, str]]
     pending_nodes: frozenset[int]
+    failing_nodes: frozenset[int]
+    path_conditions: FrozenDict[int, str]
+    failure_reasons: FrozenDict[int, str]
+    models: FrozenDict[int, frozenset[tuple[str, str]]]
 
-    def __init__(self, failing_nodes: Mapping[int, tuple[str, str]], pending_nodes: Iterable[int]):
-        object.__setattr__(self, 'failing_nodes', FrozenDict(failing_nodes))
+    def __init__(
+        self,
+        failing_nodes: Iterable[int],
+        pending_nodes: Iterable[int],
+        path_conditions: Mapping[int, str],
+        failure_reasons: Mapping[int, str],
+        models: Mapping[int, Iterable[tuple[str, str]]],
+    ):
+        object.__setattr__(self, 'failing_nodes', frozenset(failing_nodes))
         object.__setattr__(self, 'pending_nodes', frozenset(pending_nodes))
+        object.__setattr__(self, 'path_conditions', FrozenDict(path_conditions))
+        object.__setattr__(self, 'failure_reasons', FrozenDict(failure_reasons))
+        object.__setattr__(
+            self, 'models', FrozenDict({node_id: frozenset(model) for (node_id, model) in models.items()})
+        )
 
     @staticmethod
-    def from_proof(proof: APRProof, kcfg_explore: KCFGExplore) -> APRFailureInfo:
+    def from_proof(proof: APRProof, kcfg_explore: KCFGExplore, counterexample_info: bool = False) -> APRFailureInfo:
         target = proof.kcfg.node(proof.target)
         pending_nodes = {node.id for node in proof.pending}
-        failing_nodes = {}
+        failing_nodes = {node.id for node in proof.failing}
+        path_conditions = {}
+        failure_reasons = {}
+        models = {}
         for node in proof.failing:
             simplified_node, _ = kcfg_explore.cterm_simplify(node.cterm)
             simplified_target, _ = kcfg_explore.cterm_simplify(target.cterm)
@@ -789,8 +817,24 @@ class APRFailureInfo:
             target_cterm = CTerm.from_kast(simplified_target)
             _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
             path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
-            failing_nodes[node.id] = (reason, path_condition)
-        return APRFailureInfo(failing_nodes=failing_nodes, pending_nodes=pending_nodes)
+            failure_reasons[node.id] = reason
+            path_conditions[node.id] = path_condition
+            if counterexample_info:
+                model_subst = kcfg_explore.cterm_get_model(node.cterm)
+                if type(model_subst) is Subst:
+                    model: list[tuple[str, str]] = []
+                    for var, term in model_subst.to_dict().items():
+                        term_kast = KInner.from_dict(term)
+                        term_pretty = kcfg_explore.kprint.pretty_print(term_kast)
+                        model.append((var, term_pretty))
+                    models[node.id] = model
+        return APRFailureInfo(
+            failing_nodes=failing_nodes,
+            pending_nodes=pending_nodes,
+            path_conditions=path_conditions,
+            failure_reasons=failure_reasons,
+            models=models,
+        )
 
     def print(self) -> list[str]:
         res_lines: list[str] = []
@@ -808,10 +852,9 @@ class APRFailureInfo:
         if num_failing > 0:
             res_lines.append('')
             res_lines.append('Failing nodes:')
-            print(self.failing_nodes)
-            for node_id, info in self.failing_nodes.items():
-                print(info)
-                (reason, path_condition) = info
+            for node_id in self.failing_nodes:
+                reason = self.failure_reasons[node_id]
+                path_condition = self.path_conditions[node_id]
                 res_lines.append('')
                 res_lines.append(f'  Node id: {str(node_id)}')
 
@@ -820,6 +863,13 @@ class APRFailureInfo:
 
                 res_lines.append('  Path condition:')
                 res_lines += [f'    {path_condition}']
+
+                if node_id in self.models:
+                    res_lines.append('  Model:')
+                    for var, term in self.models[node_id]:
+                        res_lines.append(f'    {var} = {term}')
+                else:
+                    res_lines.append('  Failed to generate a model.')
 
             res_lines.append('')
             res_lines.append('Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN')
@@ -847,7 +897,6 @@ class APRBMCProver(APRProver):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-        implication_every_block: bool = True,
     ) -> None:
         if node.id not in self._checked_nodes:
             _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {node.id}')
@@ -873,7 +922,6 @@ class APRBMCProver(APRProver):
             execute_depth=execute_depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
-            implication_every_block=implication_every_block,
         )
 
 

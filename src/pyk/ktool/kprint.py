@@ -11,7 +11,7 @@ from tempfile import NamedTemporaryFile
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..kast import kast_term
+from ..kast import KAst, kast_term
 from ..kast.inner import KInner
 from ..kast.outer import read_kast_definition
 from ..kast.pretty import PrettyPrinter
@@ -19,6 +19,7 @@ from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.kompiled import KompiledKore
 from ..kore.parser import KoreParser
 from ..kore.syntax import App, SortApp
+from ..kore.tools import PrintOutput, kore_print
 from ..utils import run_process
 from .kompile import DefinitionInfo
 
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
     from tempfile import _TemporaryFileWrapper
     from typing import Final
 
-    from ..kast import KAst
     from ..kast.inner import KSort, KToken
     from ..kast.outer import KDefinition, KFlatModule
     from ..kast.pretty import SymbolTable
@@ -258,13 +258,8 @@ class KPrint:
         except ValueError as err:
             _LOGGER.warning(err)
 
-        _LOGGER.warning(f'Falling back to using `kast` for Kore -> Kast: {kore.text}')
-        proc_res = self._expression_kast(
-            kore.text,
-            input=KAstInput.KORE,
-            output=KAstOutput.JSON,
-        )
-        return kast_term(json.loads(proc_res.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
+        _LOGGER.warning(f'Falling back to using `kore-print` for Kore -> Kast: {kore.text}')
+        return kast_term(json.loads(kore_print(kore, self.definition_dir, PrintOutput.JSON)), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
 
     def kast_to_kore(self, kast: KInner, sort: KSort | None = None) -> Pattern:
         try:
@@ -274,7 +269,7 @@ class KPrint:
             _LOGGER.warning(ve)
 
         _LOGGER.warning(f'Falling back to using `kast` for KAst -> Kore: {kast}')
-        kast_json = {'format': 'KAST', 'version': 2, 'term': kast.to_dict()}
+        kast_json = {'format': 'KAST', 'version': KAst.version(), 'term': kast.to_dict()}
         proc_res = self._expression_kast(
             json.dumps(kast_json),
             input=KAstInput.JSON,

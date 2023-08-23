@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import shlex
 import string
 import subprocess
@@ -39,6 +40,8 @@ K = TypeVar('K')
 V = TypeVar('V')
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+ROOT: Final = Path(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Based on: https://stackoverflow.com/a/2704866
@@ -379,6 +382,7 @@ def run_process(
     cwd: str | Path | None = None,
     env: Mapping[str, str] | None = None,
     logger: Logger | None = None,
+    exec_process: bool = False,
 ) -> CompletedProcess:
     if cwd is not None:
         cwd = Path(cwd)
@@ -397,6 +401,15 @@ def run_process(
     stderr = subprocess.PIPE if pipe_stderr else None
 
     logger.info(f'Running: {command}')
+
+    if exec_process:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        if type(args) is str:
+            args = shlex.split(args)
+        argslist = list(args)
+        os.execvp(argslist[0], argslist)
+
     start_time = time.time()
 
     res = subprocess.run(args, input=input, cwd=cwd, env=env, stdout=stdout, stderr=stderr, text=True)
