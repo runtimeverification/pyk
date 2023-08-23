@@ -24,8 +24,8 @@ from .kast.manip import (
 from .kast.outer import KClaim, KRule
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.kbool import orBool
-from .prelude.ml import is_top, mlAnd, mlEqualsTrue, mlImplies, mlTop
-from .utils import unique
+from .prelude.ml import is_bottom, is_top, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlTop
+from .utils import single, unique
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -47,6 +47,10 @@ class CTerm:
 
     @staticmethod
     def from_kast(kast: KInner) -> CTerm:
+        if CTerm._is_top(kast):
+            return CTermTop()
+        elif CTerm._is_bottom(kast):
+            return CTermBottom()
         config, constraint = split_config_and_constraints(kast)
         constraints = flatten_label('#And', constraint)
         return CTerm(config, constraints)
@@ -77,6 +81,20 @@ class CTerm:
         if is_top(term):
             return True
         return False
+
+    @staticmethod
+    def _is_top(kast: KInner) -> bool:
+        flat = flatten_label("#And", kast)
+        if len(flat) == 1:
+            return is_top(single(flat))
+        return all(CTerm._is_top(term) for term in flat)
+
+    @staticmethod
+    def _is_bottom(kast: KInner) -> bool:
+        flat = flatten_label("#And", kast)
+        if len(flat) == 1:
+            return is_bottom(single(flat))
+        return all(CTerm._is_bottom(term) for term in flat)
 
     @staticmethod
     def _constraint_sort_key(term: KInner) -> tuple[int, str]:
@@ -178,6 +196,34 @@ class CTerm:
                 f'Anti-unification failed to produce a more general state: {(new_cterm, (self, self_csubst), (other, other_csubst))}'
             )
         return (new_cterm, self_csubst, other_csubst)
+
+
+@dataclass(frozen=True, order=True)
+class CTermTop(CTerm):
+    def __init__(self) -> None:
+        pass
+
+    @property
+    def config(self) -> KInner:
+        return mlTop()
+
+    @property
+    def constraints(self) -> tuple[KInner, ...]:
+        return ()
+
+
+@dataclass(frozen=True, order=True)
+class CTermBottom(CTerm):
+    def __init__(self) -> None:
+        pass
+
+    @property
+    def config(self) -> KInner:
+        return mlBottom()
+
+    @property
+    def constraints(self) -> tuple[KInner, ...]:
+        return ()
 
 
 def anti_unify(state1: KInner, state2: KInner, kdef: KDefinition | None = None) -> tuple[KInner, Subst, Subst]:
