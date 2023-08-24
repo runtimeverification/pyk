@@ -26,7 +26,7 @@ def pytest_addoption(parser: Parser) -> None:
 @pytest.fixture
 def bug_report(request: FixtureRequest, tmp_path: Path) -> BugReport | None:
     bug_report = request.config.getoption('--bug-report')
-    return BugReport(tmp_path / 'bug-report') if bug_report else None
+    return BugReport(tmp_path / f'bug_report_{request.node.name}') if bug_report else None
 
 
 @pytest.fixture
