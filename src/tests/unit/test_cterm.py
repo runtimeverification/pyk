@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.cterm import CTerm, CTermBottom, CTermTop, build_claim, build_rule
+from pyk.cterm import CTerm, build_claim, build_rule
 from pyk.kast import KAtt
 from pyk.kast.inner import KApply, KLabel, KRewrite, KSequence, KSort, KVariable
 from pyk.kast.outer import KClaim
@@ -159,8 +159,8 @@ def test_build_claim(test_id: str, init: KInner, target: KInner, expected: KClai
 
 
 KAST_TEST_DATA: Final = (
-    ('simple-bottom', KApply('#Bottom'), CTermBottom),
-    ('simple-top', KApply('#Top'), CTermTop),
+    ('simple-bottom', KApply('#Bottom'), CTerm.cterm_bottom()),
+    ('simple-top', KApply('#Top'), CTerm.cterm_top()),
     (
         'double-and-bottom',
         KApply(
@@ -170,7 +170,7 @@ KAST_TEST_DATA: Final = (
                 KApply(label=KLabel(name='#Bottom', params=(KSort(name='GeneratedTopCell'),)), args=()),
             ),
         ),
-        CTermBottom,
+        CTerm.cterm_bottom(),
     ),
 )
 
@@ -185,4 +185,4 @@ def test_from_kast(test_id: str, kast: KInner, expected: CTerm) -> None:
     cterm = CTerm.from_kast(kast)
 
     # Then
-    assert type(cterm) is expected
+    assert cterm == expected

@@ -12,7 +12,7 @@ from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import CTerm, CTermBottom, CTermTop, build_claim
+from ..cterm import CTerm, build_claim
 from ..kast import kast_term
 from ..kast.inner import KInner
 from ..kast.manip import extract_subst, flatten_label, free_vars
@@ -245,7 +245,7 @@ class KProve(KPrint):
             raise RuntimeError('kprove failed!')
 
         if dry_run:
-            return [CTermBottom()]
+            return [CTerm.cterm_bottom()]
 
         debug_log = _get_rule_log(log_file)
         final_state = kast_term(json.loads(proc_result.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
@@ -310,7 +310,7 @@ class KProve(KPrint):
         next_states = [
             CTerm.from_kast(mlAnd([constraint_subst.unapply(ns.kast), constraint_subst.ml_pred])) for ns in next_states
         ]
-        return next_states if len(next_states) > 0 else [CTermTop()]
+        return next_states if len(next_states) > 0 else [CTerm.cterm_top()]
 
     def get_claim_modules(
         self,

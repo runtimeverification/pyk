@@ -943,6 +943,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         max_id = 0
         for node_id in dct.get('nodes') or []:
+            print(node_id)
             max_id = max(max_id, node_id)
             node_json = nodes_dir / (str(node_id) + '.json')
             node_dict = json.loads(node_json.read_text())

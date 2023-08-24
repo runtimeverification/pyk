@@ -40,26 +40,42 @@ class CTerm:
     constraints: tuple[KInner, ...]
 
     def __init__(self, config: KInner, constraints: Iterable[KInner] = ()) -> None:
-        self._check_config(config)
-        constraints = self._normalize_constraints(constraints)
+        if CTerm._is_top(config):
+            config = mlTop()
+            constraints = ()
+        elif CTerm._is_bottom(config):
+            config = mlBottom()
+            constraints = ()
+        else:
+            self._check_config(config)
+            constraints = self._normalize_constraints(constraints)
         object.__setattr__(self, 'config', config)
         object.__setattr__(self, 'constraints', constraints)
 
     @staticmethod
     def from_kast(kast: KInner) -> CTerm:
         if CTerm._is_top(kast):
-            return CTermTop()
+            return CTerm.cterm_top()
         elif CTerm._is_bottom(kast):
-            return CTermBottom()
-        config, constraint = split_config_and_constraints(kast)
-        constraints = flatten_label('#And', constraint)
-        return CTerm(config, constraints)
+            return CTerm.cterm_bottom()
+        else:
+            config, constraint = split_config_and_constraints(kast)
+            constraints = flatten_label('#And', constraint)
+            return CTerm(config, constraints)
 
     @staticmethod
     def from_dict(dct: dict[str, Any]) -> CTerm:
         config = KInner.from_dict(dct['config'])
         constraints = [KInner.from_dict(c) for c in dct['constraints']]
         return CTerm(config, constraints)
+
+    @staticmethod
+    def cterm_top() -> CTerm:
+        return CTerm(mlTop(), ())
+
+    @staticmethod
+    def cterm_bottom() -> CTerm:
+        return CTerm(mlBottom(), ())
 
     @staticmethod
     def _check_config(config: KInner) -> None:
@@ -125,6 +141,9 @@ class CTerm:
 
     def cell(self, cell: str) -> KInner:
         return self.cells[cell]
+
+    def try_cell(self, cell: str) -> KInner | None:
+        return self.cells.get(cell)
 
     def match(self, cterm: CTerm) -> Subst | None:
         csubst = self.match_with_constraint(cterm)
@@ -198,18 +217,18 @@ class CTerm:
         return (new_cterm, self_csubst, other_csubst)
 
 
-@dataclass(frozen=True, order=True)
-class CTermTop(CTerm):
-    def __init__(self) -> None:
-        object.__setattr__(self, 'config', mlTop())
-        object.__setattr__(self, 'constraints', ())
+# @dataclass(frozen=True, order=True)
+# class CTermTop(CTerm):
+#     def __init__(self) -> None:
+#         object.__setattr__(self, 'config', mlTop())
+#         object.__setattr__(self, 'constraints', ())
 
 
-@dataclass(frozen=True, order=True)
-class CTermBottom(CTerm):
-    def __init__(self) -> None:
-        object.__setattr__(self, 'config', mlBottom())
-        object.__setattr__(self, 'constraints', ())
+# @dataclass(frozen=True, order=True)
+# class CTermBottom(CTerm):
+#     def __init__(self) -> None:
+#         object.__setattr__(self, 'config', mlBottom())
+#         object.__setattr__(self, 'constraints', ())
 
 
 def anti_unify(state1: KInner, state2: KInner, kdef: KDefinition | None = None) -> tuple[KInner, Subst, Subst]:
