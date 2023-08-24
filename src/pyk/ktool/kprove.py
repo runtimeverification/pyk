@@ -12,7 +12,7 @@ from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import CSubst, CTerm, CTermBottom, CTermTop, build_claim
+from ..cterm import CTerm, CTermBottom, CTermTop, build_claim
 from ..kast import kast_term
 from ..kast.inner import KInner
 from ..kast.manip import extract_subst, flatten_label, free_vars
@@ -305,7 +305,7 @@ class KProve(KPrint):
             allow_zero_step=allow_zero_step,
             depth=depth,
         )
-        next_states = list(unique(CSubst(var_map).apply(ns) for ns in next_state))
+        next_states = list(unique(CTerm.from_kast(var_map(ns.kast)) for ns in next_state if not CTerm._is_top(ns.kast)))
         constraint_subst, _ = extract_subst(init_cterm.kast)
         next_states = [
             CTerm.from_kast(mlAnd([constraint_subst.unapply(ns.kast), constraint_subst.ml_pred])) for ns in next_states
