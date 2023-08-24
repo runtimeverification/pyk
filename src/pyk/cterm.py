@@ -217,20 +217,6 @@ class CTerm:
         return (new_cterm, self_csubst, other_csubst)
 
 
-# @dataclass(frozen=True, order=True)
-# class CTermTop(CTerm):
-#     def __init__(self) -> None:
-#         object.__setattr__(self, 'config', mlTop())
-#         object.__setattr__(self, 'constraints', ())
-
-
-# @dataclass(frozen=True, order=True)
-# class CTermBottom(CTerm):
-#     def __init__(self) -> None:
-#         object.__setattr__(self, 'config', mlBottom())
-#         object.__setattr__(self, 'constraints', ())
-
-
 def anti_unify(state1: KInner, state2: KInner, kdef: KDefinition | None = None) -> tuple[KInner, Subst, Subst]:
     def _rewrites_to_abstractions(_kast: KInner) -> KInner:
         if type(_kast) is KRewrite:
