@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from argparse import ArgumentParser
 from functools import cached_property
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..utils import ensure_dir_path
@@ -35,11 +34,6 @@ class KCLIArgs:
             '--bug-report',
             type=bug_report_arg,
             help='Generate bug report with given name',
-        )
-        args.add_argument(
-            '--bug-report-dir',
-            type=Path,
-            help='Directory to store bug reports',
         )
         return args
 
