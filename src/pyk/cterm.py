@@ -55,9 +55,9 @@ class CTerm:
     @staticmethod
     def from_kast(kast: KInner) -> CTerm:
         if CTerm._is_top(kast):
-            return CTerm.cterm_top()
+            return CTerm.top()
         elif CTerm._is_bottom(kast):
-            return CTerm.cterm_bottom()
+            return CTerm.bottom()
         else:
             config, constraint = split_config_and_constraints(kast)
             constraints = flatten_label('#And', constraint)
@@ -70,11 +70,11 @@ class CTerm:
         return CTerm(config, constraints)
 
     @staticmethod
-    def cterm_top() -> CTerm:
+    def top() -> CTerm:
         return CTerm(mlTop(), ())
 
     @staticmethod
-    def cterm_bottom() -> CTerm:
+    def bottom() -> CTerm:
         return CTerm(mlBottom(), ())
 
     @staticmethod

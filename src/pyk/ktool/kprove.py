@@ -245,7 +245,7 @@ class KProve(KPrint):
             raise RuntimeError('kprove failed!')
 
         if dry_run:
-            return [CTerm.cterm_bottom()]
+            return [CTerm.bottom()]
 
         debug_log = _get_rule_log(log_file)
         final_state = kast_term(json.loads(proc_result.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
@@ -310,7 +310,7 @@ class KProve(KPrint):
         next_states = [
             CTerm.from_kast(mlAnd([constraint_subst.unapply(ns.kast), constraint_subst.ml_pred])) for ns in next_states
         ]
-        return next_states if len(next_states) > 0 else [CTerm.cterm_top()]
+        return next_states if len(next_states) > 0 else [CTerm.top()]
 
     def get_claim_modules(
         self,
