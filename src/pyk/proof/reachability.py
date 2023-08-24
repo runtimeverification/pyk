@@ -215,6 +215,9 @@ class APRProof(Proof, KCFGExploration):
 
     @property
     def dict(self) -> dict[str, Any]:
+        # Note: We are relying on the order of inheritance to
+        # access `dict` of `Proof`, since mypy is having issues
+        # with the two correct solutions.
         dct = super().dict
         dct['type'] = 'APRProof'
         dct['kcfg'] = self.kcfg.to_dict()
