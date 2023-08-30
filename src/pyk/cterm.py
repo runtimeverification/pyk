@@ -145,11 +145,6 @@ class CTerm:
     def anti_unify(
         self, other: CTerm, keep_values: bool = False, kdef: KDefinition | None = None
     ) -> tuple[CTerm, CSubst, CSubst]:
-        def disjunction_from_substs(subst1: Subst, subst2: Subst) -> KInner:
-            if KToken('true', 'Bool') in [subst1.pred, subst2.pred]:
-                return mlTop()
-            return mlEqualsTrue(orBool([subst1.pred, subst2.pred]))
-
         new_config, self_subst, other_subst = anti_unify(self.config, other.config, kdef=kdef)
         common_constraints = [constraint for constraint in self.constraints if constraint in other.constraints]
         self_unique_constraints = [
