@@ -12,7 +12,7 @@ from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import CTerm, build_claim
+from ..cterm import build_claim, CTerm
 from ..kast import kast_term
 from ..kast.inner import KInner
 from ..kast.manip import extract_subst, flatten_label, free_vars
@@ -197,7 +197,7 @@ class KProve(KPrint):
         depth: int | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_debug_transition: bool = True,
-    ) -> list[CTerm]:
+    ) -> CTerm:
         log_file = spec_file.with_suffix('.debug-log') if log_axioms_file is None else log_axioms_file
         if log_file.exists():
             log_file.unlink()
@@ -245,13 +245,13 @@ class KProve(KPrint):
             raise RuntimeError('kprove failed!')
 
         if dry_run:
-            return [CTerm.bottom()]
+            return CTerm.bottom()
 
         debug_log = _get_rule_log(log_file)
-        final_state = kast_term(json.loads(proc_result.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
-        if is_top(final_state) and len(debug_log) == 0 and not allow_zero_step:
+        final_state = CTerm.from_kast(kast_term(json.loads(proc_result.stdout), KInner))  # type: ignore # https://github.com/python/mypy/issues/4717
+        if final_state.is_top() and len(debug_log) == 0 and not allow_zero_step:
             raise ValueError(f'Proof took zero steps, likely the LHS is invalid: {spec_file}')
-        return [CTerm.from_kast(disjunct) for disjunct in flatten_label('#Or', final_state)]
+        return final_state
 
     def prove_claim(
         self,
@@ -265,7 +265,7 @@ class KProve(KPrint):
         allow_zero_step: bool = False,
         dry_run: bool = False,
         depth: int | None = None,
-    ) -> list[CTerm]:
+    ) -> CTerm:
         with self._tmp_claim_definition(claim, claim_id, lemmas=lemmas) as (claim_path, claim_module_name):
             return self.prove(
                 claim_path,
@@ -305,12 +305,10 @@ class KProve(KPrint):
             allow_zero_step=allow_zero_step,
             depth=depth,
         )
-        next_states = list(unique(CTerm.from_kast(var_map(ns.kast)) for ns in next_state if not CTerm._is_top(ns.kast)))
+        next_states = list(unique(var_map(ns) for ns in flatten_label('#Or', next_state) if not is_top(ns)))
         constraint_subst, _ = extract_subst(init_cterm.kast)
-        next_states = [
-            CTerm.from_kast(mlAnd([constraint_subst.unapply(ns.kast), constraint_subst.ml_pred])) for ns in next_states
-        ]
-        return next_states if len(next_states) > 0 else [CTerm.top()]
+        next_states_cterm = [CTerm.from_kast(mlAnd([constraint_subst.unapply(ns), constraint_subst.ml_pred])) for ns in next_states]
+        return next_states_cterm if len(next_states_cterm) > 0 else [CTerm.top()]
 
     def get_claim_modules(
         self,
