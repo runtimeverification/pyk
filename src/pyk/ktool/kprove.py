@@ -249,7 +249,7 @@ class KProve(KPrint):
 
         debug_log = _get_rule_log(log_file)
         final_state = CTerm.from_kast(kast_term(json.loads(proc_result.stdout), KInner))  # type: ignore # https://github.com/python/mypy/issues/4717
-        if final_state.is_top() and len(debug_log) == 0 and not allow_zero_step:
+        if final_state.is_top and len(debug_log) == 0 and not allow_zero_step:
             raise ValueError(f'Proof took zero steps, likely the LHS is invalid: {spec_file}')
         return final_state
 
