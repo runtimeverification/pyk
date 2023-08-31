@@ -23,7 +23,7 @@ from ..kore.syntax import Import, Module
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import notBool
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
+from ..prelude.ml import is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
 from .semantics import DefaultSemantics
@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
     from ..kast import KInner
     from ..kast.outer import KClaim
+    from ..kcfg.exploration import KCFGExploration
     from ..kore.rpc import KoreClient, LogEntry
     from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
@@ -102,12 +103,12 @@ class KCFGExplore:
                 next_states = []
         return _is_vacuous, depth, next_state, next_states, er.logs
 
-    def cterm_simplify(self, cterm: CTerm) -> tuple[KInner, tuple[LogEntry, ...]]:
+    def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         kore_simplified, logs = self._kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
-        return kast_simplified, logs
+        return CTerm.from_kast(kast_simplified), logs
 
     def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
@@ -271,12 +272,8 @@ class KCFGExplore:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
             new_term, next_node_logs = self.cterm_simplify(node.cterm)
-            if is_top(new_term):
-                raise ValueError(f'Node simplified to #Top {self.id}: {shorten_hashes(node.id)}')
-            if is_bottom(new_term):
-                raise ValueError(f'Node simplified to #Bottom {self.id}: {shorten_hashes(node.id)}')
-            if new_term != node.cterm.kast:
-                cfg.replace_node(node.id, CTerm.from_kast(new_term))
+            if new_term != node.cterm:
+                cfg.replace_node(node.id, new_term)
                 if node.id in logs:
                     logs[node.id] += next_node_logs
                 else:
@@ -357,7 +354,7 @@ class KCFGExplore:
 
     def extend(
         self,
-        kcfg: KCFG,
+        kcfg_exploration: KCFGExploration,
         node: KCFG.Node,
         logs: dict[int, tuple[LogEntry, ...]],
         execute_depth: int | None = None,
@@ -365,12 +362,16 @@ class KCFGExplore:
         terminal_rules: Iterable[str] = (),
         module_name: str | None = None,
     ) -> None:
+        kcfg: KCFG = kcfg_exploration.kcfg
+
         if not kcfg.is_leaf(node.id):
             raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
         if kcfg.is_stuck(node.id):
             raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
         if kcfg.is_vacuous(node.id):
             raise ValueError(f'Cannot extend vacuous node {self.id}: {node.id}')
+        if kcfg_exploration.is_terminal(node.id):
+            raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
 
         if self._check_abstract(node, kcfg):
             return
