@@ -12,7 +12,7 @@ from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import build_claim, CTerm
+from ..cterm import CTerm, build_claim
 from ..kast import kast_term
 from ..kast.inner import KInner
 from ..kast.manip import extract_subst, flatten_label, free_vars
@@ -305,9 +305,11 @@ class KProve(KPrint):
             allow_zero_step=allow_zero_step,
             depth=depth,
         )
-        next_states = list(unique(var_map(ns) for ns in flatten_label('#Or', next_state) if not is_top(ns)))
+        next_states = list(unique(var_map(ns) for ns in flatten_label('#Or', next_state.kast) if not is_top(ns)))
         constraint_subst, _ = extract_subst(init_cterm.kast)
-        next_states_cterm = [CTerm.from_kast(mlAnd([constraint_subst.unapply(ns), constraint_subst.ml_pred])) for ns in next_states]
+        next_states_cterm = [
+            CTerm.from_kast(mlAnd([constraint_subst.unapply(ns), constraint_subst.ml_pred])) for ns in next_states
+        ]
         return next_states_cterm if len(next_states_cterm) > 0 else [CTerm.top()]
 
     def get_claim_modules(
