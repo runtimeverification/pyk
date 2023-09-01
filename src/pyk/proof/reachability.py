@@ -246,6 +246,7 @@ class APRProof(Proof, KCFGExploration):
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
+                    len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
@@ -514,6 +515,7 @@ class APRBMCProof(APRProof):
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
+                    len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
@@ -739,6 +741,7 @@ class APRSummary(ProofSummary):
     nodes: int
     pending: int
     failing: int
+    vacuous: int
     stuck: int
     terminal: int
     refuted: int
@@ -753,6 +756,7 @@ class APRSummary(ProofSummary):
             f'    nodes: {self.nodes}',
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
+            f'    vacuous: {self.vacuous}',
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
@@ -913,6 +917,7 @@ class APRBMCSummary(ProofSummary):
     nodes: int
     pending: int
     failing: int
+    vacuous: int
     stuck: int
     terminal: int
     refuted: int
@@ -927,6 +932,7 @@ class APRBMCSummary(ProofSummary):
             f'    nodes: {self.nodes}',
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
+            f'    vacuous: {self.vacuous}',
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',

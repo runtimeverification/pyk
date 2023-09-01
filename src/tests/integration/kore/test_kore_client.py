@@ -20,6 +20,7 @@ from pyk.kore.rpc import (
     TerminalResult,
     UnknownResult,
     UnsatResult,
+    VacuousResult,
 )
 from pyk.kore.syntax import And, App, Bottom, Equals, EVar, Implies, Module, Top
 from pyk.testing import BoosterClientTest, KoreClientTest
@@ -80,7 +81,11 @@ EXECUTE_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult]
         {'terminal_rules': ['KORE-RPC-TEST.r56']},
         TerminalResult(state=state(6), depth=2, rule='KORE-RPC-TEST.r56', logs=()),
     ),
+    ('vacuous', 3, {}, VacuousResult(state=state(4), depth=2, logs=())),
 )
+
+
+EXECUTE_BOOSTER_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult], ...]] = EXECUTE_TEST_DATA[:-1]
 
 
 IMPLIES_TEST_DATA: Final = (
@@ -231,8 +236,8 @@ class TestBooster(BoosterClientTest):
 
     @pytest.mark.parametrize(
         'test_id,n,params,expected',
-        EXECUTE_TEST_DATA,
-        ids=[test_id for test_id, *_ in EXECUTE_TEST_DATA],
+        EXECUTE_BOOSTER_TEST_DATA,
+        ids=[test_id for test_id, *_ in EXECUTE_BOOSTER_TEST_DATA],
     )
     def test_execute_booster(
         self,
