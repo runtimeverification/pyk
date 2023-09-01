@@ -115,6 +115,7 @@ class APRProof(Proof, KCFGExploration):
             and not self.is_explorable(node_id)
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
+            and not self.kcfg.is_vacuous(node_id)
         )
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
