@@ -655,9 +655,6 @@ class TestKonvertSimpleProofs(KompiledTest):
         # When
         actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
 
-        print(kore)
-        print(actual_kore)
-
         # Then
         assert actual_kore == kore
 
