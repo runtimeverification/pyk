@@ -627,6 +627,7 @@ class APRProver(Prover):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         fail_fast: bool = False,
+        max_branches: int | None = None,
     ) -> None:
         iterations = 0
 
@@ -634,6 +635,13 @@ class APRProver(Prover):
 
         while self.proof.pending:
             self.proof.write_proof_data()
+
+            if max_branches is not None and len(self.proof.pending) > max_branches:
+                _LOGGER.info(f'Reached max_branches={max_branches} bound on number of pending nodes. Nodes {self.proof.pending} will be turned into subproofs.')
+                for pending_node in self.proof.pending:
+                   self.delegate_to_subproof(pending_node)
+                break
+            
             if fail_fast and self.proof.failed:
                 _LOGGER.warning(
                     f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
@@ -660,6 +668,29 @@ class APRProver(Prover):
                     self._check_subsume(node)
 
         self.proof.write_proof_data()
+
+    def delegate_to_subproof(self, node: KCFG.Node) -> None:
+        _LOGGER.info(f'Delegating node {node.id} to a new proof.')
+        subproof = self.construct_node_subproof(node)
+        self.proof.add_subproof(subproof)
+        self.proof.kcfg.add_stuck(node.id)
+
+    def construct_node_subproof(self, node: KCFG.Node) -> APRProof:
+
+        kcfg = KCFG(self.proof.proof_dir)
+        kcfg.add_node(node)
+        target_node = self.proof.kcfg.node(self.proof.target)
+        kcfg.add_node(target_node)
+
+        return APRProof(
+            id=f'{self.proof.id}_node_{node.id}',
+            kcfg=kcfg,
+            terminal=[],
+            init=node.id,
+            target=target_node.id,
+            logs=[],
+            proof_dir=self.proof.proof_dir,
+        )
 
     def refute_node(self, node: KCFG.Node) -> RefutationProof | None:
         _LOGGER.info(f'Attempting to refute node {node.id}')
