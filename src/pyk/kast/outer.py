@@ -1168,12 +1168,6 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 ],
             )
 
-        #
-        #              if type(kast) is KApply and kast.label.name == '_==K_':
-        #                  return KApply('_==K_', [KSequence(arg) for arg in kast.args])
-        #              else:
-        #                  return kast
-
         return top_down(_add_ksequence_under_k_productions, kast)
 
     def sort_vars(self, kast: KInner, sort: KSort | None = None) -> KInner:
