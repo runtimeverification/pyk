@@ -243,6 +243,17 @@ KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
         KApply('_==K_', [KVariable('X', 'K'), KVariable('Y', 'K')]),
     ),
     (
+        'kitem-function-k-arg-2',
+        KSort('Bool'),
+        """
+        Lbl'UndsEqlsEqls'K'Unds'{}(
+          VarX:SortK{},
+          VarY:SortK{},
+        )
+        """,
+        KApply('_==K_', [KVariable('X'), KVariable('Y')]),
+    ),
+    (
         'kitem-function',
         KSort('Foo'),
         """
