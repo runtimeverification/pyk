@@ -106,9 +106,6 @@ class KompiledKore:
         return reduce(self.meet_sorts, sorts, unit)
 
     def replace_k_injections_with_ksequence(self, pattern: Pattern) -> Pattern:
-        print(pattern)
-        print('')
-
         if type(pattern) is not App:
             return pattern.let_patterns([self.replace_k_injections_with_ksequence(p) for p in pattern.patterns])
         if pattern.symbol != 'inj':
