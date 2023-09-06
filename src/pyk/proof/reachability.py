@@ -627,7 +627,7 @@ class APRProver(Prover):
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         fail_fast: bool = False,
-        max_branches: int | None = 1,
+        max_branches: int | None = None,
     ) -> None:
         iterations = 0
 
@@ -636,7 +636,7 @@ class APRProver(Prover):
         while self.proof.pending:
             self.proof.write_proof_data()
 
-            if len(self.proof.pending) > max_branches:
+            if max_branches is not None and len(self.proof.pending) > max_branches:
                 _LOGGER.info(f'Reached max_branches bound on number of pending nodes. Nodes {self.proof.pending} will be turned into subproofs.')
                 for pending_node in self.proof.pending:
                    self.delegate_to_subproof(pending_node)
