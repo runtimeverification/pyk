@@ -637,7 +637,7 @@ class APRProver(Prover):
             self.proof.write_proof_data()
 
             if max_branches is not None and len(self.proof.pending) > max_branches:
-                _LOGGER.info(f'Reached max_branches bound on number of pending nodes. Nodes {self.proof.pending} will be turned into subproofs.')
+                _LOGGER.info(f'Reached max_branches={max_branches} bound on number of pending nodes. Nodes {self.proof.pending} will be turned into subproofs.')
                 for pending_node in self.proof.pending:
                    self.delegate_to_subproof(pending_node)
                 break
