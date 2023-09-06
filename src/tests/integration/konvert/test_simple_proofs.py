@@ -232,6 +232,17 @@ BIDIRECTIONAL_TEST_DATA: Final = (
 
 KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
     (
+        'kitem-function',
+        KSort('Foo'),
+        """
+        Lblabcd{}(kseq{}(
+            VarX:SortKItem{},
+            dotk{}()
+        ))
+        """,
+        KApply('abcd', [KVariable('X', 'KItem')]),
+    ),
+    (
         'equals-k-encoding',
         KSort('KItem'),
         """
@@ -643,6 +654,9 @@ class TestKonvertSimpleProofs(KompiledTest):
 
         # When
         actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
+
+        print(kore)
+        print(actual_kore)
 
         # Then
         assert actual_kore == kore
