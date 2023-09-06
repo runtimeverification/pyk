@@ -1247,7 +1247,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         kcfg_explore: KCFGExplore,
         proof_dir: Path,
         kprove: KProve,
-    ):
+    ) -> None:
         claim = single(
             kprove.get_claims(
                 K_FILES / 'imp-simple-spec.k',
@@ -1268,14 +1268,13 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             kcfg_explore=kcfg_explore,
         )
 
-        assert len(proof.subproofs) == 0
+        assert len(list(proof.subproofs)) == 0
         assert len(proof.pending) == 1
 
         prover.advance_proof(max_branches=1)
 
-        assert len(proof.subproofs) == 2
+        assert len(list(proof.subproofs)) == 2
         assert len(proof.pending) == 0
-
 
     def test_anti_unify_keep_values(
         self,

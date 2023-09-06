@@ -637,11 +637,13 @@ class APRProver(Prover):
             self.proof.write_proof_data()
 
             if max_branches is not None and len(self.proof.pending) > max_branches:
-                _LOGGER.info(f'Reached max_branches={max_branches} bound on number of pending nodes. Nodes {self.proof.pending} will be turned into subproofs.')
+                _LOGGER.info(
+                    f'Reached max_branches={max_branches} bound on number of pending nodes. Nodes {self.proof.pending} will be turned into subproofs.'
+                )
                 for pending_node in self.proof.pending:
-                   self.delegate_to_subproof(pending_node)
+                    self.delegate_to_subproof(pending_node)
                 break
-            
+
             if fail_fast and self.proof.failed:
                 _LOGGER.warning(
                     f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
@@ -676,7 +678,6 @@ class APRProver(Prover):
         self.proof.kcfg.add_stuck(node.id)
 
     def construct_node_subproof(self, node: KCFG.Node) -> APRProof:
-
         kcfg = KCFG(self.proof.proof_dir)
         kcfg.add_node(node)
         target_node = self.proof.kcfg.node(self.proof.target)
@@ -688,7 +689,7 @@ class APRProver(Prover):
             terminal=[],
             init=node.id,
             target=target_node.id,
-            logs=[],
+            logs={},
             proof_dir=self.proof.proof_dir,
         )
 
