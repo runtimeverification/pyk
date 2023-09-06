@@ -1156,6 +1156,15 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
     # Sorts like Int cannot be injected directly into sort K so they are embedded in a KSequence.
     def add_ksequence_under_k_productions(self, kast: KInner) -> KInner:
         def _add_ksequence_under_k_productions(kast: KInner) -> KInner:
+            def _is_k(kast: KInner) -> bool:
+                if type(kast) is not KVariable:
+                    return False
+                if kast.sort is None:
+                    return True
+                if kast.sort.name == 'K':
+                    return True
+                return False
+
             if type(kast) is not KApply:
                 return kast
 
@@ -1163,7 +1172,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             return KApply(
                 kast.label,
                 [
-                    KSequence(kast.args[i]) if sort.name == 'K' else kast.args[i]
+                    KSequence(kast.args[i]) if sort.name == 'K' and not _is_k(kast.args[i]) else kast.args[i]
                     for i, sort in enumerate(prod.argument_sorts)
                 ],
             )
