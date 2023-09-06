@@ -87,7 +87,6 @@ def kast_to_kore(
 ) -> Pattern:
     if sort is None:
         sort = K
-    #      kast = kast_defn.add_ksequence_under_k_productions(kast)
     kast = kast_defn.sort_vars(kast, sort)
     kast = kast_defn.add_cell_map_items(kast)
     kast = kast_defn.add_sort_params(kast)
