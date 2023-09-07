@@ -11,7 +11,6 @@ from filelock import FileLock
 
 from ..ktool.kompile import kompile
 from ..utils import single
-from .config import KBUILD_DIR
 from .utils import k_version, sync_files
 
 if TYPE_CHECKING:
@@ -27,8 +26,7 @@ if TYPE_CHECKING:
 class KBuild:
     kdist_dir: Path
 
-    def __init__(self, kdist_dir: str | Path | None = None):
-        kdist_dir = kdist_dir if kdist_dir is not None else KBUILD_DIR
+    def __init__(self, kdist_dir: str | Path):
         kdist_dir = Path(kdist_dir).resolve()
         object.__setattr__(self, 'kdist_dir', kdist_dir)
 
