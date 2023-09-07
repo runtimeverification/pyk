@@ -6,7 +6,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, final
 
-from .project import Project, Source
+from .project import Project
 
 if TYPE_CHECKING:
     pass
@@ -27,7 +27,7 @@ class Package(ABC):
 
     @property
     @abstractmethod
-    def source(self) -> Source:
+    def source(self) -> Path:
         ...
 
     @property
@@ -73,8 +73,8 @@ class _RootPackage(Package):
         return self.project.name
 
     @property
-    def source(self) -> Source:
-        return Source(self.project.path)
+    def source(self) -> Path:
+        return self.project.path
 
     @property
     def project(self) -> Project:
@@ -91,7 +91,7 @@ class _DepsPackage(Package):
         return self.dependency.name
 
     @property
-    def source(self) -> Source:
+    def source(self) -> Path:
         return self.dependency.source
 
     @property
@@ -103,4 +103,4 @@ class _DepsPackage(Package):
         return project
 
     def sync_project(self) -> Path:
-        return self.source.path
+        return self.source

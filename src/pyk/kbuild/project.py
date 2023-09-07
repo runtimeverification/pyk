@@ -9,15 +9,7 @@ import tomli
 
 from ..cli.utils import relative_path
 from ..ktool.kompile import KompileBackend, LLVMKompileType
-from ..utils import (
-    FrozenDict,
-    abs_or_rel_to,
-    check_absolute_path,
-    check_dir_path,
-    check_file_path,
-    check_relative_path,
-    single,
-)
+from ..utils import FrozenDict, abs_or_rel_to, check_dir_path, check_file_path, check_relative_path, single
 from .config import PROJECT_FILE_NAME
 
 if TYPE_CHECKING:
@@ -27,27 +19,9 @@ if TYPE_CHECKING:
 
 @final
 @dataclass(frozen=True)
-class Source:
-    path: Path
-
-    def __init__(self, path: Path):
-        check_dir_path(path)
-        check_absolute_path(path)
-        check_file_path(path / PROJECT_FILE_NAME)
-        path = path.resolve()
-        object.__setattr__(self, 'path', path)
-
-    @staticmethod
-    def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> Source:
-        path = abs_or_rel_to(Path(dct['path']), project_dir).resolve()
-        return Source(path=path)
-
-
-@final
-@dataclass(frozen=True)
 class Dependency:  # TODO Maybe eliminate and store in project as Dict
     name: str
-    source: Source
+    source: Path
 
 
 @final
@@ -210,7 +184,7 @@ class Project:
             source_dir=dct['project']['source'],
             resources=dct['project'].get('resources'),
             dependencies=tuple(
-                Dependency(name=name, source=Source.from_dict(project_dir, source))
+                Dependency(name=name, source=abs_or_rel_to(Path(source), project_dir).resolve())
                 for name, source in dct.get('dependencies', {}).items()
             ),
             targets=tuple(Target.from_dict(name, target) for name, target in dct.get('targets', {}).items()),
