@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, final
 
@@ -193,6 +194,13 @@ class Project:
         project_dir = Path(project_dir)
         check_dir_path(project_dir)
         return Project.load(project_dir / PROJECT_FILE_NAME)
+
+    @cached_property
+    def sub_projects(self) -> tuple[Project, ...]:
+        res: tuple[Project, ...] = (self,)
+        for project in self.dependencies:
+            res += project.sub_projects
+        return res
 
     @property
     def project_file(self) -> Path:
