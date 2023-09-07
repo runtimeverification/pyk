@@ -341,6 +341,7 @@ def test_apr_proof_summary(proof_dir: Path) -> None:
                 failing=0,
                 stuck=0,
                 terminal=0,
+                subproof_nodes=0,
                 refuted=0,
                 subproofs=0,
             )
@@ -363,6 +364,7 @@ def test_aprbmc_proof_summary(proof_dir: Path) -> None:
                 failing=0,
                 stuck=0,
                 terminal=0,
+                subproof_nodes=0,
                 refuted=0,
                 subproofs=0,
                 bounded=0,
@@ -399,6 +401,7 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
         failing=0,
         stuck=0,
         terminal=0,
+        subproof_nodes=0,
         refuted=0,
         subproofs=1,
     )
@@ -414,6 +417,7 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
                 failing=0,
                 stuck=0,
                 terminal=0,
+                subproof_nodes=0,
                 refuted=0,
                 subproofs=1,
             ),

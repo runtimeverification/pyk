@@ -43,6 +43,7 @@ class APRProof(Proof, KCFGExploration):
     """
 
     node_refutations: dict[int, RefutationProof]  # TODO _node_refutatations
+    subproof_nodes: set[int]
     init: int
     target: int
     logs: dict[int, tuple[LogEntry, ...]]
@@ -57,6 +58,7 @@ class APRProof(Proof, KCFGExploration):
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
+        subproof_nodes: Iterable[int] | None = None,
         node_refutations: dict[int, str] | None = None,
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
@@ -75,6 +77,8 @@ class APRProof(Proof, KCFGExploration):
         if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)
             ensure_dir_path(self.proof_subdir)
+
+        self.subproof_nodes = set(subproof_nodes) if subproof_nodes is not None else set()
 
         if node_refutations is not None:
             refutations_not_in_subprroofs = set(node_refutations.values()).difference(
@@ -101,10 +105,18 @@ class APRProof(Proof, KCFGExploration):
         return self.kcfg._resolve(node_id) in self.node_refutations.keys()
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
-        return self.is_explorable(node_id) and not self.is_target(node_id) and not self.is_refuted(node_id)
+        return (
+            self.is_explorable(node_id)
+            and not self.is_target(node_id)
+            and not self.is_refuted(node_id)
+            and not self.is_subproof_node(node_id)
+        )
 
     def is_init(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.init)
+
+    def is_subproof_node(self, node_id: NodeIdLike) -> bool:
+        return self.kcfg._resolve(node_id) in self.subproof_nodes
 
     def is_target(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.target)
@@ -115,7 +127,11 @@ class APRProof(Proof, KCFGExploration):
             and not self.is_explorable(node_id)
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
+            and not self.is_subproof_node(node_id)
         )
+
+    def add_subproof_node(self, node_id: int) -> None:
+        self.subproof_nodes.add(node_id)
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
         spb = self.kcfg.shortest_path_between(self.init, node_id)
@@ -155,6 +171,7 @@ class APRProof(Proof, KCFGExploration):
         id = dct['id']
         circularity = dct.get('circularity', False)
         admitted = dct.get('admitted', False)
+        subproof_nodes = dct['subproof_nodes'] if 'subproof_nodes' in dct else []
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
         if 'node_refutation' in dct:
@@ -174,6 +191,7 @@ class APRProof(Proof, KCFGExploration):
             circularity=circularity,
             admitted=admitted,
             proof_dir=proof_dir,
+            subproof_nodes=subproof_nodes,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
         )
@@ -228,6 +246,7 @@ class APRProof(Proof, KCFGExploration):
         dct['terminal'] = sorted(self._terminal)
         dct['init'] = self.init
         dct['target'] = self.target
+        dct['subproof_nodes'] = sorted(self.subproof_nodes)
         dct['node_refutations'] = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
         dct['circularity'] = self.circularity
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
@@ -249,6 +268,7 @@ class APRProof(Proof, KCFGExploration):
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
+                    len(self.subproof_nodes),
                     len(self.subproof_ids),
                 ),
                 *subproofs_summaries,
@@ -517,6 +537,7 @@ class APRBMCProof(APRProof):
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
+                    len(self.subproof_nodes),
                     len(self._bounded),
                     len(self.subproof_ids),
                 ),
@@ -675,7 +696,7 @@ class APRProver(Prover):
         _LOGGER.info(f'Delegating node {node.id} to a new proof.')
         subproof = self.construct_node_subproof(node)
         self.proof.add_subproof(subproof)
-        self.proof.kcfg.add_stuck(node.id)
+        self.proof.add_subproof_node(node.id)
 
     def construct_node_subproof(self, node: KCFG.Node) -> APRProof:
         kcfg = KCFG(self.proof.proof_dir)
@@ -774,6 +795,7 @@ class APRSummary(ProofSummary):
     stuck: int
     terminal: int
     refuted: int
+    subproof_nodes: int
     subproofs: int
 
     @property
@@ -788,6 +810,7 @@ class APRSummary(ProofSummary):
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
+            f'    subproof_nodes: {self.subproof_nodes}',
             f'Subproofs: {self.subproofs}',
         ]
 
@@ -948,6 +971,7 @@ class APRBMCSummary(ProofSummary):
     stuck: int
     terminal: int
     refuted: int
+    subproof_nodes: int
     bounded: int
     subproofs: int
 
@@ -962,6 +986,7 @@ class APRBMCSummary(ProofSummary):
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
+            f'    subproof_nodes: {self.subproof_nodes}',
             f'    bounded: {self.bounded}',
             f'Subproofs: {self.subproofs}',
         ]
