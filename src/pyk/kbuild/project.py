@@ -144,13 +144,12 @@ class Project:
         path = Path(path).resolve()
         check_dir_path(path)
 
-        source_dir = (path / relative_path(source_dir)).resolve()
+        source_dir = path / relative_path(source_dir)
         check_dir_path(source_dir)
 
         resources = resources or {}
         resources = {
-            resource_name: (path / relative_path(resource_dir)).resolve()
-            for resource_name, resource_dir in resources.items()
+            resource_name: path / relative_path(resource_dir) for resource_name, resource_dir in resources.items()
         }
 
         object.__setattr__(self, 'path', path)
@@ -176,9 +175,8 @@ class Project:
                 raise ValueError(f'Invalid dependency, expected name {name}, got: {project.name}')
             return project
 
-        project_dir = project_file.parent.resolve()
         project = Project(
-            path=project_dir,
+            path=project_file.parent,
             name=dct['project']['name'],
             version=dct['project']['version'],
             source_dir=dct['project']['source'],

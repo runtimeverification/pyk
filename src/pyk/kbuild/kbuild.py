@@ -131,7 +131,7 @@ class KBuild:
             sub_project = single(
                 sub_project for sub_project in project.sub_projects if sub_project.name == project_name
             )
-            resource_path = self.resource_dir(sub_project, resource_name).resolve()
+            resource_path = self.resource_dir(sub_project, resource_name)
 
             if not resource_path.exists():
                 raise ValueError('Failed to resolve opt {opt}: resource path {resource_path} does not exist')
