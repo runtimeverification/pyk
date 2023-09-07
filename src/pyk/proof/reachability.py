@@ -581,7 +581,7 @@ class APRProver(Prover):
         if node.id not in self._checked_terminals:
             _LOGGER.info(f'Checking terminal: {node.id}')
             self._checked_terminals.add(node.id)
-            if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
+            if not self.proof.kcfg.is_vacuous(node.id) and self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
                 _LOGGER.info(f'Terminal node: {node.id}.')
                 self.proof._terminal.add(node.id)
 
