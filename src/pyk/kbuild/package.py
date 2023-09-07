@@ -6,7 +6,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, final
 
-from .project import GitSource, PathSource, Project
+from .project import PathSource, Project
 
 if TYPE_CHECKING:
     pass
@@ -106,6 +106,4 @@ class _DepsPackage(Package):
         if type(self.source) is PathSource:
             return self.source.path
 
-        # TODO Clone if necessary then checkout
-        assert type(self.source) is GitSource
-        raise RuntimeError('Git sources are not supported yet')
+        raise AssertionError()

@@ -32,9 +32,6 @@ class Source(ABC):  # noqa: B024
         if 'path' in dct:
             return PathSource.from_dict(project_dir, dct)
 
-        if 'git' in dct:
-            return GitSource(git=dct['git'], rev=dct['rev'])
-
         raise ValueError(f'Invalid source: {dct}')
 
 
@@ -54,13 +51,6 @@ class PathSource(Source):
     def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> PathSource:
         path = abs_or_rel_to(Path(dct['path']), project_dir).resolve()
         return PathSource(path=path)
-
-
-@final
-@dataclass(frozen=True)
-class GitSource(Source):
-    git: str
-    rev: str
 
 
 @final
