@@ -4,14 +4,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, final
+from typing import final
 
 from .project import Project
-
-if TYPE_CHECKING:
-    pass
-
-    from .project import Dependency
 
 
 class Package(ABC):
@@ -53,7 +48,7 @@ class Package(ABC):
 
     @cached_property
     def deps_packages(self) -> tuple[Package, ...]:
-        return tuple(_DepsPackage(dependency) for dependency in self.project.dependencies)
+        return tuple(_RootPackage(project) for project in self.project.dependencies)
 
     @cached_property
     def sub_packages(self) -> tuple[Package, ...]:
@@ -79,28 +74,3 @@ class _RootPackage(Package):
     @property
     def project(self) -> Project:
         return self._project
-
-
-@final
-@dataclass(frozen=True)
-class _DepsPackage(Package):
-    dependency: Dependency
-
-    @property
-    def name(self) -> str:
-        return self.dependency.name
-
-    @property
-    def source(self) -> Path:
-        return self.dependency.source
-
-    @property
-    def project(self) -> Project:
-        project_path = self.sync_project()
-        project = Project.load_from_dir(project_path)
-        if self.name != project.name:
-            raise ValueError(f'Expected {self.name} as project name, found: {project.name}')
-        return project
-
-    def sync_project(self) -> Path:
-        return self.source

@@ -19,13 +19,6 @@ if TYPE_CHECKING:
 
 @final
 @dataclass(frozen=True)
-class Dependency:  # TODO Maybe eliminate and store in project as Dict
-    name: str
-    source: Path
-
-
-@final
-@dataclass(frozen=True)
 class Target:
     name: str  # TODO Maybe remove name and store in project as Dict
 
@@ -133,7 +126,7 @@ class Project:
     version: str
     source_dir: Path
     resources: FrozenDict[str, Path]
-    dependencies: tuple[Dependency, ...]
+    dependencies: tuple[Project, ...]
     targets: tuple[Target, ...]
 
     def __init__(
@@ -144,7 +137,7 @@ class Project:
         version: str,
         source_dir: str | Path,
         resources: Mapping[str, str | Path] | None = None,
-        dependencies: Iterable[Dependency] = (),
+        dependencies: Iterable[Project] = (),
         targets: Iterable[Target] = (),
     ):
         path = Path(path).resolve()
@@ -175,20 +168,25 @@ class Project:
         with open(project_file, 'rb') as f:
             dct = tomli.load(f)
 
-        project_dir = project_file.parent.resolve()
+        def _load_dependency(name: str, path: str) -> Project:
+            dependency_path = abs_or_rel_to(Path(path), project_file.parent)
+            project = Project.load_from_dir(dependency_path)
+            if project.name != name:
+                raise ValueError(f'Invalid dependency, expected name {name}, got: {project.name}')
+            return project
 
-        return Project(
+        project_dir = project_file.parent.resolve()
+        project = Project(
             path=project_dir,
             name=dct['project']['name'],
             version=dct['project']['version'],
             source_dir=dct['project']['source'],
             resources=dct['project'].get('resources'),
-            dependencies=tuple(
-                Dependency(name=name, source=abs_or_rel_to(Path(source), project_dir).resolve())
-                for name, source in dct.get('dependencies', {}).items()
-            ),
+            dependencies=tuple(_load_dependency(name, path) for name, path in dct.get('dependencies', {}).items()),
             targets=tuple(Target.from_dict(name, target) for name, target in dct.get('targets', {}).items()),
         )
+
+        return project
 
     @staticmethod
     def load_from_dir(project_dir: str | Path) -> Project:
