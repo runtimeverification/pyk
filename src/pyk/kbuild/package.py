@@ -6,12 +6,12 @@ from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, final
 
-from .project import PathSource, Project
+from .project import Project, Source
 
 if TYPE_CHECKING:
     pass
 
-    from .project import Dependency, Source
+    from .project import Dependency
 
 
 class Package(ABC):
@@ -74,7 +74,7 @@ class _RootPackage(Package):
 
     @property
     def source(self) -> Source:
-        return PathSource(self.project.path)
+        return Source(self.project.path)
 
     @property
     def project(self) -> Project:
@@ -103,7 +103,4 @@ class _DepsPackage(Package):
         return project
 
     def sync_project(self) -> Path:
-        if type(self.source) is PathSource:
-            return self.source.path
-
-        raise AssertionError()
+        return self.source.path

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-from abc import ABC
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, final
@@ -26,18 +25,9 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-class Source(ABC):  # noqa: B024
-    @staticmethod
-    def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> Source:
-        if 'path' in dct:
-            return PathSource.from_dict(project_dir, dct)
-
-        raise ValueError(f'Invalid source: {dct}')
-
-
 @final
 @dataclass(frozen=True)
-class PathSource(Source):
+class Source:
     path: Path
 
     def __init__(self, path: Path):
@@ -48,9 +38,9 @@ class PathSource(Source):
         object.__setattr__(self, 'path', path)
 
     @staticmethod
-    def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> PathSource:
+    def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> Source:
         path = abs_or_rel_to(Path(dct['path']), project_dir).resolve()
-        return PathSource(path=path)
+        return Source(path=path)
 
 
 @final
