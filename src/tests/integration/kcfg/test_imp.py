@@ -11,7 +11,7 @@ from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import get_cell, minimize_term
 from pyk.kcfg.semantics import KCFGSemantics
 from pyk.kcfg.show import KCFGShow
-from pyk.prelude.kbool import BOOL, notBool, orBool
+from pyk.prelude.kbool import BOOL, andBool, notBool, orBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
@@ -343,7 +343,9 @@ GET_MODEL_TEST_DATA: Final = (
     ),
 )
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str], ProofStatus, int]] = (
+APR_PROVE_TEST_DATA: Iterable[
+    tuple[str, Path, str, str, int | None, int | None, Iterable[str], bool, ProofStatus, int]
+] = (
     (
         'imp-simple-addition-1',
         K_FILES / 'imp-simple-spec.k',
@@ -352,6 +354,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         1,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -363,6 +366,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         7,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -374,6 +378,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         1,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -385,6 +390,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         100,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -396,6 +402,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         1,
         ['IMP.while'],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -407,6 +414,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         4,
         100,
         ['IMP.while'],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -418,6 +426,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         10,
         1,
         [],
+        True,
         ProofStatus.FAILED,
         2,
     ),
@@ -429,6 +438,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -440,6 +450,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -451,6 +462,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -462,6 +474,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         2,
     ),
@@ -473,6 +486,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         2,
     ),
@@ -484,6 +498,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,  # We can reuse subproofs.
     ),
@@ -495,6 +510,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,  # We can reuse subproofs.
     ),
@@ -506,6 +522,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         ['IMP.while'],  # If we do not include `IMP.while` in this list, we get 4 branches instead of 2
+        True,
         ProofStatus.PASSED,
         2,
     ),
@@ -517,6 +534,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -528,7 +546,32 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        False,
         ProofStatus.FAILED,
+        1,
+    ),
+    (
+        'imp-dep-untrue-fail',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'dep-fail-1',
+        None,
+        None,
+        [],
+        False,
+        ProofStatus.PENDING,  # because we do NOT admit the dependency
+        1,
+    ),
+    (
+        'imp-dep-untrue-admitted',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'dep-fail-1',
+        None,
+        None,
+        [],
+        True,
+        ProofStatus.PASSED,  # because we DO admit the dependency, even though it is untrue
         1,
     ),
 )
@@ -824,7 +867,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,admit_deps,proof_status,expected_leaf_number',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -839,6 +882,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         max_iterations: int | None,
         max_depth: int | None,
         cut_rules: Iterable[str],
+        admit_deps: bool,
         proof_status: ProofStatus,
         expected_leaf_number: int,
         tmp_path_factory: TempPathFactory,
@@ -871,7 +915,8 @@ class TestImpProof(KCFGExploreTest, KProveTest):
                 for c in deps_claims
             ]
             for dp in deps_proofs:
-                dp.admit()
+                if admit_deps:
+                    dp.admit()
                 dp.write_proof_data()
             # </Admit all the dependencies >
 
@@ -1212,6 +1257,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
                     mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('R', 'Int'), KToken('1', 'Int')])),
                 ]
             ),
         )
@@ -1225,6 +1271,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
                     mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
                     mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<=Int_', [KVariable('R', 'Int'), KToken('1', 'Int')])),
                 ]
             ),
         )
@@ -1249,8 +1296,18 @@ class TestImpProof(KCFGExploreTest, KProveTest):
                     mlEqualsTrue(
                         orBool(
                             [
-                                KApply('_==K_', [KVariable(name=abstracted_var.name), KVariable('X', 'Int')]),
-                                KApply('_==K_', [KVariable(name=abstracted_var.name), KVariable('Y', 'Int')]),
+                                andBool(
+                                    [
+                                        KApply('_==K_', [KVariable(name=abstracted_var.name), KVariable('X', 'Int')]),
+                                        KApply('_>Int_', [KVariable('R', 'Int'), KToken('1', 'Int')]),
+                                    ]
+                                ),
+                                andBool(
+                                    [
+                                        KApply('_==K_', [KVariable(name=abstracted_var.name), KVariable('Y', 'Int')]),
+                                        KApply('_<=Int_', [KVariable('R', 'Int'), KToken('1', 'Int')]),
+                                    ]
+                                ),
                             ]
                         )
                     ),
