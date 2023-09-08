@@ -36,7 +36,7 @@ class KBuild:
         return k_version().text
 
     def definition_dir(self, project: Project, target_name: str) -> Path:
-        return self.kdist_dir / project.name / 'target' / self.k_version / target_name
+        return self.kdist_dir / self.k_version / target_name
 
     def kompile(self, project: Project, target_name: str) -> Path:
         self.kdist_dir.mkdir(parents=True, exist_ok=True)
