@@ -81,7 +81,7 @@ EXECUTE_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult]
         {'terminal_rules': ['KORE-RPC-TEST.r56']},
         TerminalResult(state=state(6), depth=2, rule='KORE-RPC-TEST.r56', logs=()),
     ),
-    ('vacuous', 3, {}, VacuousResult(state=state(4), depth=2, logs=())),
+    ('vacuous', 3, {}, VacuousResult(state=state(3), depth=0, logs=())),
 )
 
 
