@@ -94,6 +94,7 @@ class KCFGExplore:
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None else []
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
+        next_states = [cterm for cterm in next_states if not cterm.is_bottom]
         if len(next_states) == 1 and len(next_states) < len(_next_states):
             return _is_vacuous, depth + 1, next_states[0], [], er.logs
         elif len(next_states) == 1:
@@ -393,8 +394,6 @@ class KCFGExplore:
             terminal_rules=terminal_rules,
             module_name=module_name,
         )
-
-        next_cterms = [cterm for cterm in next_cterms if not cterm.is_bottom]
 
         # Basic block
         if depth > 0:
