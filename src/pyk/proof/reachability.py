@@ -115,6 +115,7 @@ class APRProof(Proof, KCFGExploration):
             and not self.is_explorable(node_id)
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
+            and not self.kcfg.is_vacuous(node_id)
         )
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
@@ -246,6 +247,7 @@ class APRProof(Proof, KCFGExploration):
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
+                    len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
@@ -514,6 +516,7 @@ class APRBMCProof(APRProof):
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
+                    len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
@@ -578,7 +581,7 @@ class APRProver(Prover):
         if node.id not in self._checked_terminals:
             _LOGGER.info(f'Checking terminal: {node.id}')
             self._checked_terminals.add(node.id)
-            if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
+            if not self.proof.kcfg.is_vacuous(node.id) and self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
                 _LOGGER.info(f'Terminal node: {node.id}.')
                 self.proof._terminal.add(node.id)
 
@@ -739,6 +742,7 @@ class APRSummary(ProofSummary):
     nodes: int
     pending: int
     failing: int
+    vacuous: int
     stuck: int
     terminal: int
     refuted: int
@@ -753,6 +757,7 @@ class APRSummary(ProofSummary):
             f'    nodes: {self.nodes}',
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
+            f'    vacuous: {self.vacuous}',
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
@@ -913,6 +918,7 @@ class APRBMCSummary(ProofSummary):
     nodes: int
     pending: int
     failing: int
+    vacuous: int
     stuck: int
     terminal: int
     refuted: int
@@ -927,6 +933,7 @@ class APRBMCSummary(ProofSummary):
             f'    nodes: {self.nodes}',
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
+            f'    vacuous: {self.vacuous}',
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
