@@ -394,6 +394,8 @@ class KCFGExplore:
             module_name=module_name,
         )
 
+        next_cterms = [cterm for cterm in next_cterms if not cterm.is_bottom]
+
         # Basic block
         if depth > 0:
             next_node = kcfg.create_node(cterm)
