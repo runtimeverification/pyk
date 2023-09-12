@@ -913,8 +913,8 @@ class KoreServer(ContextManager['KoreServer']):
         self._pid = self._proc.pid
         self._host, self._port = self._get_host_and_port(self._pid)
         if port:
-            assert self.port == port
-        _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
+            assert self._port == port
+        _LOGGER.info(f'KoreServer started: {self.host}:{self._port}, pid={self.pid}')
 
     @staticmethod
     def _gather_server_report(
@@ -966,7 +966,7 @@ class KoreServer(ContextManager['KoreServer']):
     def close(self) -> None:
         self._proc.send_signal(SIGINT)
         self._proc.wait()
-        _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
+        _LOGGER.info(f'KoreServer stopped: {self.host}:{self._port}, pid={self.pid}')
 
 
 class BoosterServer(KoreServer):
