@@ -23,7 +23,7 @@ from .kast.manip import (
 )
 from .kast.outer import KClaim, KRule
 from .prelude.k import GENERATED_TOP_CELL
-from .prelude.kbool import orBool
+from .prelude.kbool import andBool, orBool
 from .prelude.ml import is_bottom, is_top, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlTop
 from .utils import single, unique
 
@@ -110,7 +110,11 @@ class CTerm:
         flat = flatten_label('#And', kast)
         if len(flat) == 1:
             return is_bottom(single(flat))
-        return all(CTerm._is_bottom(term) for term in flat)
+        return any(CTerm._is_bottom(term) for term in flat)
+
+    @property
+    def is_bottom(self) -> bool:
+        return CTerm._is_bottom(self.config) or any(CTerm._is_bottom(cterm) for cterm in self.constraints)
 
     @staticmethod
     def _constraint_sort_key(term: KInner) -> tuple[int, str]:
@@ -182,17 +186,21 @@ class CTerm:
     def anti_unify(
         self, other: CTerm, keep_values: bool = False, kdef: KDefinition | None = None
     ) -> tuple[CTerm, CSubst, CSubst]:
-        def disjunction_from_substs(subst1: Subst, subst2: Subst) -> KInner:
-            if KToken('true', 'Bool') in [subst1.pred, subst2.pred]:
-                return mlTop()
-            return mlEqualsTrue(orBool([subst1.pred, subst2.pred]))
-
         new_config, self_subst, other_subst = anti_unify(self.config, other.config, kdef=kdef)
         common_constraints = [constraint for constraint in self.constraints if constraint in other.constraints]
+        self_unique_constraints = [
+            ml_pred_to_bool(constraint) for constraint in self.constraints if constraint not in other.constraints
+        ]
+        other_unique_constraints = [
+            ml_pred_to_bool(constraint) for constraint in other.constraints if constraint not in self.constraints
+        ]
 
-        new_cterm = CTerm(
-            config=new_config, constraints=([disjunction_from_substs(self_subst, other_subst)] if keep_values else [])
-        )
+        new_cterm = CTerm(config=new_config, constraints=())
+        if keep_values:
+            disjunct_lhs = andBool([self_subst.pred] + self_unique_constraints)
+            disjunct_rhs = andBool([other_subst.pred] + other_unique_constraints)
+            if KToken('true', 'Bool') not in [disjunct_lhs, disjunct_rhs]:
+                new_cterm = new_cterm.add_constraint(mlEqualsTrue(orBool([disjunct_lhs, disjunct_rhs])))
 
         new_constraints = []
         fvs = free_vars(new_cterm.kast)
