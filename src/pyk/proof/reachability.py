@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from pyk.kore.rpc import LogEntry
 
@@ -48,6 +48,7 @@ class APRProof(Proof, KCFGExploration):
     target: int
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
+    generate_subproof_name: Callable[[int], str] | None
 
     def __init__(
         self,
@@ -63,6 +64,7 @@ class APRProof(Proof, KCFGExploration):
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
         admitted: bool = False,
+        generate_subproof_name: Callable[[int], str] | None = None,
     ):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
@@ -73,6 +75,7 @@ class APRProof(Proof, KCFGExploration):
         self.circularity = circularity
         self.node_refutations = {}
         self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
+        self.generate_subproof_name = generate_subproof_name
 
         if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)
@@ -700,16 +703,25 @@ class APRProver(Prover):
 
     def construct_node_subproof(self, node: KCFG.Node) -> APRProof:
         kcfg = KCFG(self.proof.proof_dir)
-        kcfg.add_node(node)
         target_node = self.proof.kcfg.node(self.proof.target)
-        kcfg.add_node(target_node)
+
+        node_cterm, _ = self.kcfg_explore.cterm_simplify(node.cterm)
+        (
+            target_node_cterm,
+            _,
+        ) = self.kcfg_explore.cterm_simplify(target_node.cterm)
+
+        new_init = kcfg.create_node(node_cterm)
+        new_target = kcfg.create_node(target_node_cterm)
+
+        assert self.proof.generate_subproof_name is not None
 
         return APRProof(
-            id=f'{self.proof.id}_node_{node.id}',
+            id=self.proof.generate_subproof_name(node.id),
             kcfg=kcfg,
             terminal=[],
-            init=node.id,
-            target=target_node.id,
+            init=new_init.id,
+            target=new_target.id,
             logs={},
             proof_dir=self.proof.proof_dir,
         )
