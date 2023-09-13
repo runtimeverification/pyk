@@ -377,20 +377,34 @@ class KCFGExplore:
         if self._check_abstract(node, kcfg):
             return
 
-        branches = self.kcfg_semantics.extract_branches(node.cterm)
+        #          branches = self.kcfg_semantics.extract_branches(node.cterm)
+        #
+        #          branch_conditions = []
+        #          branch_cterms = []
+        #
+        #          for constraint in branches:
+        #              cterm = node.cterm.add_constraint(constraint)
+        #              cterm, _ = self.cterm_simplify(cterm)
+        #              if not cterm.is_bottom:
+        #                  branch_conditions.append(constraint)
+        #                  branch_cterms.append(cterm)
+        #
+        #          if len(branch_cterms) > 1 and branches:
+        #              kcfg.branch(node.id, zip(branch_cterms, branch_conditions, strict=True))
+        #              _LOGGER.info(
+        #                  f'Found {len(branches)} branches using heuristic for node {node.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+        #              )
+        #              return
 
-        branch_conditions = []
-        branch_cterms = []
-
-        for constraint in branches:
+        _branches = self.kcfg_semantics.extract_branches(node.cterm)
+        branches = []
+        for constraint in _branches:
             cterm = node.cterm.add_constraint(constraint)
             cterm, _ = self.cterm_simplify(cterm)
             if not cterm.is_bottom:
-                branch_conditions.append(constraint)
-                branch_cterms.append(cterm)
-
-        if len(branch_cterms) > 1 and branches:
-            kcfg.branch(node.id, zip(branch_cterms, branch_conditions, strict=True))
+                branches.append(constraint)
+        if len(branches) > 1:
+            kcfg.split_on_constraints(node.id, branches)
             _LOGGER.info(
                 f'Found {len(branches)} branches using heuristic for node {node.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
             )
@@ -447,9 +461,7 @@ class KCFGExplore:
 
             # Split on branch patterns
             if any(branch_pattern.match(branch_and) for branch_pattern in branch_patterns):
-                branch_cterms = [node.cterm.add_constraint(branch) for branch in branches]
-
-                kcfg.branch(node.id, zip(branch_cterms, branches, strict=True))
+                kcfg.split_on_constraints(node.id, branches)
                 _LOGGER.info(
                     f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
                 )
