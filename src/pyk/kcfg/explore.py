@@ -377,31 +377,12 @@ class KCFGExplore:
         if self._check_abstract(node, kcfg):
             return
 
-        #          branches = self.kcfg_semantics.extract_branches(node.cterm)
-        #
-        #          branch_conditions = []
-        #          branch_cterms = []
-        #
-        #          for constraint in branches:
-        #              cterm = node.cterm.add_constraint(constraint)
-        #              cterm, _ = self.cterm_simplify(cterm)
-        #              if not cterm.is_bottom:
-        #                  branch_conditions.append(constraint)
-        #                  branch_cterms.append(cterm)
-        #
-        #          if len(branch_cterms) > 1 and branches:
-        #              kcfg.branch(node.id, zip(branch_cterms, branch_conditions, strict=True))
-        #              _LOGGER.info(
-        #                  f'Found {len(branches)} branches using heuristic for node {node.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
-        #              )
-        #              return
-
         _branches = self.kcfg_semantics.extract_branches(node.cterm)
         branches = []
         for constraint in _branches:
-            cterm = node.cterm.add_constraint(constraint)
-            cterm, _ = self.cterm_simplify(cterm)
-            if not cterm.is_bottom:
+            kast = mlAnd(list(node.cterm.constraints) + [constraint])
+            kast, _ = self.kast_simplify(kast)
+            if not CTerm._is_bottom(kast):
                 branches.append(constraint)
         if len(branches) > 1:
             kcfg.split_on_constraints(node.id, branches)
