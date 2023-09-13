@@ -1163,10 +1163,10 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             return KApply(
                 kast.label,
                 [
-                    KSequence(kast.args[i])
-                    if sort.name == 'K' and not self.sort(kast.args[i]) == KSort('K')
-                    else kast.args[i]
-                    for i, sort in enumerate(prod.argument_sorts)
+                    KSequence(arg)
+                    if sort.name == 'K' and not self.sort(arg) == KSort('K')
+                    else arg
+                    for arg, sort in zip(kast.args, prod.argument_sorts, strict=True)
                 ],
             )
 
