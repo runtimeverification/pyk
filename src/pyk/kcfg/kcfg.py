@@ -724,10 +724,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         ndbranch = KCFG.NDBranch(self.node(source_id), tuple(self.node(nid) for nid in ndbranches))
         self._ndbranches[source_id] = ndbranch
 
-    def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
+    def branch(self, source_id: NodeIdLike, splits: Iterable[tuple[CTerm, KInner]]) -> list[int]:
         source = self.node(source_id)
-        branch_node_ids = [self.create_node(source.cterm.add_constraint(c)).id for c in constraints]
-        csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
+        branch_node_ids = []
+        csubsts = []
+        for cterm, constraint in splits:
+            branch_node_ids.append(self.create_node(cterm).id)
+            csubsts.append(CSubst(constraints=flatten_label('#And', constraint)))
         self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids
 
