@@ -105,32 +105,6 @@ class KompiledKore:
         unit: Sort = SortApp('SortK')
         return reduce(self.meet_sorts, sorts, unit)
 
-    def replace_k_injections_with_ksequence(self, pattern: Pattern) -> Pattern:
-        def _replace_k_injections(pattern: Pattern) -> Pattern:
-            if (
-                type(pattern) is App
-                and pattern.symbol == 'inj'
-                and pattern.sorts[0] != SortApp('SortK')
-                and pattern.sorts[1] == SortApp('SortK')
-            ):
-                return App(
-                    'kseq',
-                    (),
-                    [
-                        App(
-                            'inj',
-                            (pattern.sorts[0], SortApp('SortKItem')),
-                            [pattern.patterns[0]],
-                        )
-                        if pattern.sorts[0] != SortApp('SortKItem')
-                        else pattern.patterns[0],
-                        App('dotk'),
-                    ],
-                )
-            return pattern
-
-        return pattern.bottom_up(_replace_k_injections)
-
     def add_injections(self, pattern: Pattern, sort: Sort | None = None) -> Pattern:
         if sort is None:
             sort = SortApp('SortK')
