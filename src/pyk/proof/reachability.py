@@ -47,6 +47,7 @@ class APRProof(Proof, KCFGExploration):
     target: int
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
+    failure_info: str | None
 
     def __init__(
         self,
@@ -65,6 +66,7 @@ class APRProof(Proof, KCFGExploration):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
 
+        self.failure_info = None
         self.init = kcfg._resolve(init)
         self.target = kcfg._resolve(target)
         self.logs = logs
@@ -662,6 +664,9 @@ class APRProver(Prover):
                 if self.proof.kcfg.is_leaf(node.id) and not self.proof.is_target(node.id):
                     self._check_subsume(node)
 
+        if self.proof.failed:
+            self.save_failure_info()
+
         self.proof.write_proof_data()
 
     def refute_node(self, node: KCFG.Node) -> RefutationProof | None:
@@ -729,6 +734,9 @@ class APRProver(Prover):
 
         self.proof.add_subproof(refutation)
         return refutation
+
+    def save_failure_info(self) -> None:
+        self.proof.failure_info = self.failure_info
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore)
