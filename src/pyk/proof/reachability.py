@@ -47,7 +47,7 @@ class APRProof(Proof, KCFGExploration):
     target: int
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
-    failure_info: str | None
+    failure_info: APRFailureInfo | None
 
     def __init__(
         self,
@@ -536,6 +536,7 @@ class APRProver(Prover):
     main_module_name: str
     dependencies_module_name: str
     circularities_module_name: str
+    counterexample_info: bool
 
     _checked_terminals: set[int]
 
@@ -543,10 +544,12 @@ class APRProver(Prover):
         self,
         proof: APRProof,
         kcfg_explore: KCFGExplore,
+        counterexample_info: bool = False,
     ) -> None:
         super().__init__(kcfg_explore)
         self.proof = proof
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
+        self.counterexample_info = counterexample_info
 
         subproofs: list[Proof] = (
             [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
@@ -736,10 +739,10 @@ class APRProver(Prover):
         return refutation
 
     def save_failure_info(self) -> None:
-        self.proof.failure_info = self.failure_info
+        self.proof.failure_info = self.failure_info()
 
     def failure_info(self) -> APRFailureInfo:
-        return APRFailureInfo.from_proof(self.proof, self.kcfg_explore)
+        return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
 
 
 @dataclass(frozen=True)
