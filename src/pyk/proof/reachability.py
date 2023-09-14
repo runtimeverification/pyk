@@ -880,10 +880,12 @@ class APRBMCProver(APRProver):
         self,
         proof: APRBMCProof,
         kcfg_explore: KCFGExplore,
+        counterexample_info: bool = False,
     ) -> None:
         super().__init__(
             proof,
             kcfg_explore=kcfg_explore,
+            counterexample_info=counterexample_info,
         )
         self._checked_nodes = []
 
