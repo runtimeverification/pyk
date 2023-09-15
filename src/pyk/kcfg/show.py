@@ -282,6 +282,17 @@ class KCFGShow:
             return (init_nodes + init_leaf_nodes, remaining_nodes)
 
         init, _ = _sorted_init_nodes()
+
+        #          print([node.id for node in kcfg.nodes])
+        #          print([node.id for node in processed_nodes])
+
+        #          for node in kcfg.nodes:
+        #              print(kcfg.is_root(node.id))
+        #              print(kcfg.is_leaf(node.id))
+        #              print('')
+        #
+        #          print(init)
+        #
         while init:
             ret_lines.append(('unknown', ['']))
             _print_subgraph('', init[0], [])
