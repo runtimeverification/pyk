@@ -48,7 +48,7 @@ class APRProof(Proof, KCFGExploration):
     target: int
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
-    generate_subproof_name: Callable[[int], str] | None
+    generate_subproof_name: Callable[[APRProof, int], str] | None
 
     def __init__(
         self,
@@ -64,7 +64,7 @@ class APRProof(Proof, KCFGExploration):
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
         admitted: bool = False,
-        generate_subproof_name: Callable[[int], str] | None = None,
+        generate_subproof_name: Callable[[APRProof, int], str] | None = None,
     ):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
@@ -131,6 +131,7 @@ class APRProof(Proof, KCFGExploration):
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
             and not self.is_subproof_node(node_id)
+            and not self.kcfg.is_vacuous(node_id)
         )
 
     def add_subproof_node(self, node_id: int) -> None:
@@ -268,6 +269,7 @@ class APRProof(Proof, KCFGExploration):
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
+                    len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
@@ -537,6 +539,7 @@ class APRBMCProof(APRProof):
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
+                    len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
@@ -717,13 +720,14 @@ class APRProver(Prover):
         assert self.proof.generate_subproof_name is not None
 
         return APRProof(
-            id=self.proof.generate_subproof_name(node.id),
+            id=self.proof.generate_subproof_name(self.proof, node.id),
             kcfg=kcfg,
             terminal=[],
             init=new_init.id,
             target=new_target.id,
             logs={},
             proof_dir=self.proof.proof_dir,
+            generate_subproof_name=self.proof.generate_subproof_name,
         )
 
     def refute_node(self, node: KCFG.Node) -> RefutationProof | None:
@@ -804,6 +808,7 @@ class APRSummary(ProofSummary):
     nodes: int
     pending: int
     failing: int
+    vacuous: int
     stuck: int
     terminal: int
     refuted: int
@@ -819,6 +824,7 @@ class APRSummary(ProofSummary):
             f'    nodes: {self.nodes}',
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
+            f'    vacuous: {self.vacuous}',
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
@@ -980,6 +986,7 @@ class APRBMCSummary(ProofSummary):
     nodes: int
     pending: int
     failing: int
+    vacuous: int
     stuck: int
     terminal: int
     refuted: int
@@ -995,6 +1002,7 @@ class APRBMCSummary(ProofSummary):
             f'    nodes: {self.nodes}',
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
+            f'    vacuous: {self.vacuous}',
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
