@@ -459,6 +459,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         term = cterm.kast
         term = remove_source_attributes(term)
         cterm = CTerm.from_kast(term)
+        while self._node_id in self._nodes:
+            self._node_id += 1
         node = KCFG.Node(self._node_id, cterm)
         self._node_id += 1
         self._nodes[node.id] = node
