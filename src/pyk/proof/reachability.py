@@ -294,6 +294,7 @@ class APRProof(Proof, KCFGExploration):
         kcfg = KCFG.read_cfg_data(cfg_dir, id)
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
+        subproof_nodes = proof_dict['subproof_nodes']
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
         terminal = proof_dict['terminal']
@@ -307,6 +308,7 @@ class APRProof(Proof, KCFGExploration):
             terminal=terminal,
             init=init,
             target=target,
+            subproof_nodes=subproof_nodes,
             logs=logs,
             circularity=circularity,
             admitted=admitted,
@@ -330,6 +332,7 @@ class APRProof(Proof, KCFGExploration):
         dct['type'] = 'APRProof'
         dct['init'] = self.kcfg._resolve(self.init)
         dct['target'] = self.kcfg._resolve(self.target)
+        dct['subproof_nodes'] = sorted(self.subproof_nodes)
         dct['terminal'] = sorted(self._terminal)
         dct['node_refutations'] = {
             self.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
@@ -360,6 +363,7 @@ class APRBMCProof(APRProof):
         bmc_depth: int,
         bounded: Iterable[int] | None = None,
         proof_dir: Path | None = None,
+        subproof_nodes: Iterable[int] | None = None,
         subproof_ids: Iterable[str] = (),
         node_refutations: dict[int, str] | None = None,
         circularity: bool = False,
@@ -373,6 +377,7 @@ class APRBMCProof(APRProof):
             target,
             logs,
             proof_dir=proof_dir,
+            subproof_nodes=subproof_nodes,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
             circularity=circularity,
@@ -390,6 +395,7 @@ class APRBMCProof(APRProof):
         kcfg = KCFG.read_cfg_data(cfg_dir, id)
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
+        subproof_nodes = proof_dict['subproof_nodes']
         circularity = bool(proof_dict['circularity'])
         terminal = proof_dict['terminal']
         admitted = bool(proof_dict['admitted'])
@@ -405,6 +411,7 @@ class APRBMCProof(APRProof):
             terminal=terminal,
             init=init,
             target=target,
+            subproof_nodes=subproof_nodes,
             logs=logs,
             circularity=circularity,
             admitted=admitted,
@@ -430,6 +437,7 @@ class APRBMCProof(APRProof):
         dct['type'] = 'APRBMCProof'
         dct['init'] = self.kcfg._resolve(self.init)
         dct['target'] = self.kcfg._resolve(self.target)
+        dct['subproof_nodes'] = sorted(self.subproof_nodes)
         dct['node_refutations'] = {
             self.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
         }
