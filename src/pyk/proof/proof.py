@@ -183,6 +183,10 @@ class Proof(ABC):
         return self.status == ProofStatus.PASSED
 
     @property
+    def is_pending(self) -> bool:
+        return self.status == ProofStatus.PENDING
+
+    @property
     def dict(self) -> dict[str, Any]:
         return {
             'id': self.id,
