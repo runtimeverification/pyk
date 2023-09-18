@@ -282,7 +282,6 @@ class KCFGShow:
             return (init_nodes + init_leaf_nodes, remaining_nodes)
 
         init, _ = _sorted_init_nodes()
-
         while init:
             ret_lines.append(('unknown', ['']))
             _print_subgraph('', init[0], [])
