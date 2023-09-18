@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
@@ -19,7 +19,7 @@ from .equality import ProofSummary, Prover, RefutationProof
 from .proof import CompositeSummary, Proof, ProofStatus
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
