@@ -1261,6 +1261,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             claim,
             logs={},
             proof_dir=proof_dir,
+            generate_subproof_name=(lambda proof, node_id: str(node_id)),
         )
 
         prover = APRProver(
