@@ -45,6 +45,7 @@ pyk-covr = "pyk.kcovr:main"
 kbuild = "pyk.kbuild.__main__:main"
 krepl = "pyk.krepl.__main__:main"
 kore-exec-covr = "pyk.kore_exec_covr.__main__:main"
+booster-doctor = "pyk.booster_doctor.__main__:main"
 
 [tool.poetry.plugins.pytest11]
 pytest-pyk = "pyk.testing.plugin"
