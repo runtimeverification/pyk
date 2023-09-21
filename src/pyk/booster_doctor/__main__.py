@@ -61,12 +61,14 @@ def main() -> None:
 
 @final
 @dataclass(frozen=True)
-class KCalimWithComment:
-    claim: KClaim
+class KClaimWithComment:
+    claim: KClaim | None
     comment: Iterable[str]
 
 
-def process_single_response(definition_dir: Path, response_file: Path) -> Optional[dict[str, KCalimWithComment]]:
+def process_single_response(
+    definition_dir: Path, response_file: Path, build_claims: bool = False
+) -> Optional[dict[str, KClaimWithComment]]:
     """
     Process a single JSON response of the `kore-rpc-booster`'s exectute endpoint.
     Generate 'KClaim's and human-readable description of `kore-rpc-booster`'s abort and recovery.
@@ -78,31 +80,38 @@ def process_single_response(definition_dir: Path, response_file: Path) -> Option
     if not ('result' in response_dict and 'logs' in response_dict['result']):
         _LOGGER.warning(f'{response_file.name} does not contain logs, skipping')
         return None
-    fallback_logs_in_reponse = parse_fallback_logs_from_response(response_dict)
+    fallback_logs_in_reponse = list(parse_fallback_logs_from_response(response_dict))
+    _LOGGER.info(f'Found {len(fallback_logs_in_reponse)} fallback logs')
 
     fallback_claims = {}
     claim_counter = 1  # better use Depth, need to add it to response
     for fallback_log in fallback_logs_in_reponse:
         fallback_info = extract_basic_fallback_info(kprint.definition, fallback_log)
         claim_id = f'{response_file.stem}-{claim_counter}'
-        fallback_claims[f'{claim_id}'] = KCalimWithComment(
-            claim=build_fallback_claim(kprint, fallback_log, claim_id), comment=fallback_info
-        )
+        if build_claims:
+            fallback_claims[f'{claim_id}'] = KClaimWithComment(
+                claim=build_fallback_claim(kprint, fallback_log, claim_id), comment=fallback_info
+            )
+            _LOGGER.info(f'Generated claim {claim_id}')
+        else:
+            fallback_claims[f'{claim_id}'] = KClaimWithComment(claim=None, comment=fallback_info)
         claim_counter += 1
-        _LOGGER.info(f'Generated claim {claim_id}')
 
-    return None
+    _LOGGER.info(f'Generated {len(fallback_claims)} claims with comments')
+    return fallback_claims
 
 
-def process_bug_report(bug_report: Path, definition_dir: Optional[Path] = None, keep_going: bool = True) -> None:
+def process_bug_report(
+    bug_report: Path, definition_dir: Optional[Path] = None, build_claims: bool = False, keep_going: bool = True
+) -> None:
     """
     Process a 'bug_report.tar'.
 
-    For every exectute endpoin response, generate 'KClaim's and human-readable description of `kore-rpc-booster`'s abort and recovery.
+    For every execute endpoin response, generate 'KClaim's and human-readable description of `kore-rpc-booster`'s abort and recovery.
 
     Use definition.kore suppleid with the bug_report.tar, unless an explicit override definition_dir is provided.
     """
-    assert definition_dir, 'Plese supply definiton_dir, as we cannot for now produce it from bug_repor .tar.gz'
+    assert definition_dir, 'Plese supply definiton_dir, as we cannot for now produce it from bug_report.tar.gz'
 
     def extract_rpc_id(filename: str) -> str:
         pattern = re.compile(r'(\d*)[\_](?:response|request)\.json')
@@ -119,7 +128,7 @@ def process_bug_report(bug_report: Path, definition_dir: Optional[Path] = None, 
         fpath = PurePath(fname)
         return fpath.match('rpc_*/*_response.json') and extract_rpc_id(fpath.name) in request_ids
 
-    execute_responses: dict[str, dict[str, KCalimWithComment]] = {}
+    execute_responses: dict[str, dict[str, KClaimWithComment]] = {}
 
     with tarfile.open(bug_report, 'r') as bug_report_archive, tempfile.TemporaryDirectory() as tmpdirname:
         rpc_requests = [member for member in bug_report_archive.getmembers() if match_rpc_request_filename(member.name)]
@@ -131,7 +140,6 @@ def process_bug_report(bug_report: Path, definition_dir: Optional[Path] = None, 
                 json_str = (tmpdirname / Path(request_tarinfo.name)).read_text()
                 if match_rpc_request_method_execute(json_str):
                     _LOGGER.info(f'Found execute request {request_tarinfo.name}')
-                    print(PurePath(request_tarinfo.name).name)
                     execute_request_ids.add(extract_rpc_id(PurePath(request_tarinfo.name).name))
             except Exception as e:
                 _LOGGER.error(f'Error extracting {request_tarinfo.name} from {bug_report.name}, skipping.')
@@ -151,9 +159,16 @@ def process_bug_report(bug_report: Path, definition_dir: Optional[Path] = None, 
                     raise e
                 _LOGGER.error(f'Error extracting {response_tarinfo.name} from {bug_report.name}, skipping.')
                 continue
-            fallback_claims = process_single_response(definition_dir=definition_dir, response_file=response_file)
+            fallback_claims = process_single_response(
+                definition_dir=definition_dir, response_file=response_file, build_claims=build_claims
+            )
             if fallback_claims is not None:
                 execute_responses[response_tarinfo.name] = fallback_claims
+                for claim_id, claim_with_comment in fallback_claims.items():
+                    fallback_reason = '\n'.join(claim_with_comment.comment)
+                    print(f'Claim {claim_id} describes: {fallback_reason}')
+                    # if claim_with_comment.claim is not None:
+                    #     print(kprint.pretty_print(claim_with_comment.claim))
 
 
 def parse_fallback_logs_from_response(response_dict: dict) -> Iterable[LogFallback]:
@@ -174,8 +189,8 @@ def extract_basic_fallback_info(kdef: KDefinition, fallback_log_entry: LogFallba
         fallback_rule = get_rule_by_id(kdef, fallback_log_entry.fallback_rule_id)
         fallback_rule_source = fallback_rule.att.atts[KAtt.SOURCE]
         fallback_rule_location = fallback_rule.att.atts[KAtt.LOCATION]
-        fallback_rule_label = fallback_rule.att.atts['label']
-        fallback_rule_msg = f'Booster Abort due to rule {fallback_rule_label} at {fallback_rule_source}:{_location_tuple_to_str(fallback_rule_location)}'
+        fallback_rule_label = fallback_rule.att.atts['label'] if 'label' in fallback_rule.att.atts else 'NOLABEL'
+        fallback_rule_msg = f'Booster Abort due to rule {fallback_rule_label} at {fallback_rule_source}:{_location_tuple_to_str(fallback_rule_location)} with reason: {fallback_log_entry.reason}'
     yield fallback_rule_msg
 
     if fallback_log_entry.recovery_rule_ids:
