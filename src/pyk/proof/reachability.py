@@ -368,6 +368,7 @@ class APRBMCProof(APRProof):
         node_refutations: dict[int, str] | None = None,
         circularity: bool = False,
         admitted: bool = False,
+        generate_subproof_name: Callable[[APRProof, int], str] | None = None,
     ):
         super().__init__(
             id,
@@ -382,6 +383,7 @@ class APRBMCProof(APRProof):
             node_refutations=node_refutations,
             circularity=circularity,
             admitted=admitted,
+            generate_subproof_name=generate_subproof_name,
         )
         self.bmc_depth = bmc_depth
         self._bounded = set(bounded) if bounded is not None else set()
