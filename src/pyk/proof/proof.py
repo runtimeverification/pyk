@@ -33,8 +33,18 @@ class Proof(ABC):
 
     id: str
     proof_dir: Path | None
-    _subproofs: dict[str, Proof]
+    _subproofs: dict[str, Proof | None]
     admitted: bool
+
+    def get_subproof(self, proof_id: str) -> Proof:
+        if proof_id not in self._subproofs:
+            raise ValueError(f'subproof: {proof_id} not found in subproofs of {self.id}')
+        proof = self._subproofs[proof_id]
+        if proof is None:
+            proof = self.fetch_subproof_data(proof_id)
+
+        assert isinstance(proof, Proof)
+        return proof
 
     @property
     def proof_subdir(self) -> Path | None:
@@ -57,7 +67,7 @@ class Proof(ABC):
             raise ValueError(f'Cannot read subproofs {subproof_ids} of proof {self.id} with no proof_dir')
         if len(list(subproof_ids)) > 0:
             for proof_id in subproof_ids:
-                self.fetch_subproof_data(proof_id, force_reread=True)
+                self._subproofs[proof_id] = None
         if proof_dir is not None:
             ensure_dir_path(proof_dir)
         if self.proof_dir is not None:
@@ -68,7 +78,7 @@ class Proof(ABC):
 
     @property
     def subproof_ids(self) -> list[str]:
-        return [sp.id for sp in self._subproofs.values()]
+        return list(self._subproofs.keys())
 
     def write_proof(self, subproofs: bool = False) -> None:
         if not self.proof_dir:
@@ -136,29 +146,35 @@ class Proof(ABC):
     ) -> Proof:
         """Get a subproof, re-reading from disk if it's not up-to-date"""
 
-        if self.proof_dir is not None and (force_reread or not self._subproofs[proof_id].up_to_date):
+        if self.proof_dir is not None and (force_reread or not self.get_subproof(proof_id).up_to_date):
             updated_subproof = Proof.read_proof(proof_id, self.proof_dir)
             self._subproofs[proof_id] = updated_subproof
             return updated_subproof
         else:
-            return self._subproofs[proof_id]
+            return self.get_subproof(proof_id)
 
     def fetch_subproof_data(
         self, proof_id: str, force_reread: bool = False, uptodate_check_method: str = 'timestamp'
     ) -> Proof:
         """Get a subproof, re-reading from disk if it's not up-to-date"""
 
-        if self.proof_dir is not None and (force_reread or not self._subproofs[proof_id].up_to_date):
+        if self.proof_dir is not None and (force_reread or not self.get_subproof(proof_id).up_to_date):
             updated_subproof = Proof.read_proof_data(self.proof_dir, proof_id)
             self._subproofs[proof_id] = updated_subproof
             return updated_subproof
         else:
-            return self._subproofs[proof_id]
+            return self.get_subproof(proof_id)
 
     @property
     def subproofs(self) -> Iterable[Proof]:
         """Return the subproofs, re-reading from disk the ones that changed"""
-        return self._subproofs.values()
+        for subproof_id in self._subproofs.keys():
+            self.fetch_subproof_data(subproof_id)
+        subproofs_all_loaded: list[Proof] = []
+        for subproof in self._subproofs.values():
+            assert subproof is not None
+            subproofs_all_loaded.append(subproof)
+        return subproofs_all_loaded
 
     @property
     def subproofs_status(self) -> ProofStatus:
