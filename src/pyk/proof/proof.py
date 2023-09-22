@@ -146,24 +146,32 @@ class Proof(ABC):
     ) -> Proof:
         """Get a subproof, re-reading from disk if it's not up-to-date"""
 
-        if self.proof_dir is not None and (force_reread or not self.get_subproof(proof_id).up_to_date):
+        assert self.proof_dir is not None
+
+        subproof = self._subproofs[proof_id]
+
+        if force_reread or subproof is None or subproof.up_to_date:
             updated_subproof = Proof.read_proof(proof_id, self.proof_dir)
             self._subproofs[proof_id] = updated_subproof
             return updated_subproof
         else:
-            return self.get_subproof(proof_id)
+            return subproof
 
     def fetch_subproof_data(
         self, proof_id: str, force_reread: bool = False, uptodate_check_method: str = 'timestamp'
     ) -> Proof:
         """Get a subproof, re-reading from disk if it's not up-to-date"""
 
-        if self.proof_dir is not None and (force_reread or not self.get_subproof(proof_id).up_to_date):
+        assert self.proof_dir is not None
+
+        subproof = self._subproofs[proof_id]
+
+        if force_reread or subproof is None or subproof.up_to_date:
             updated_subproof = Proof.read_proof_data(self.proof_dir, proof_id)
             self._subproofs[proof_id] = updated_subproof
             return updated_subproof
         else:
-            return self.get_subproof(proof_id)
+            return subproof
 
     @property
     def subproofs(self) -> Iterable[Proof]:
