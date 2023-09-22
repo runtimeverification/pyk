@@ -164,7 +164,7 @@ class Proof(ABC):
 
         assert self.proof_dir is not None
 
-        subproof = self._subproofs[proof_id]
+        subproof = self._subproofs[proof_id] if proof_id in self._subproofs else None
 
         if force_reread or subproof is None or subproof.up_to_date:
             updated_subproof = Proof.read_proof_data(self.proof_dir, proof_id)
