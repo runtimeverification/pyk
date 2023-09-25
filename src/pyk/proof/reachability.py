@@ -47,6 +47,7 @@ class APRProof(Proof, KCFGExploration):
     target: int
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
+    failure_info: APRFailureInfo | None
 
     def __init__(
         self,
@@ -65,6 +66,7 @@ class APRProof(Proof, KCFGExploration):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
 
+        self.failure_info = None
         self.init = kcfg._resolve(init)
         self.target = kcfg._resolve(target)
         self.logs = logs
@@ -115,6 +117,7 @@ class APRProof(Proof, KCFGExploration):
             and not self.is_explorable(node_id)
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
+            and not self.kcfg.is_vacuous(node_id)
         )
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
@@ -246,6 +249,7 @@ class APRProof(Proof, KCFGExploration):
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
+                    len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
@@ -514,6 +518,7 @@ class APRBMCProof(APRProof):
                     len(self.kcfg.nodes),
                     len(self.pending),
                     len(self.failing),
+                    len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
                     len(self._terminal),
                     len(self.node_refutations),
@@ -531,6 +536,7 @@ class APRProver(Prover):
     main_module_name: str
     dependencies_module_name: str
     circularities_module_name: str
+    counterexample_info: bool
 
     _checked_terminals: set[int]
 
@@ -538,10 +544,12 @@ class APRProver(Prover):
         self,
         proof: APRProof,
         kcfg_explore: KCFGExplore,
+        counterexample_info: bool = False,
     ) -> None:
         super().__init__(kcfg_explore)
         self.proof = proof
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
+        self.counterexample_info = counterexample_info
 
         subproofs: list[Proof] = (
             [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
@@ -659,6 +667,9 @@ class APRProver(Prover):
                 if self.proof.kcfg.is_leaf(node.id) and not self.proof.is_target(node.id):
                     self._check_subsume(node)
 
+        if self.proof.failed:
+            self.save_failure_info()
+
         self.proof.write_proof_data()
 
     def refute_node(self, node: KCFG.Node) -> RefutationProof | None:
@@ -727,8 +738,11 @@ class APRProver(Prover):
         self.proof.add_subproof(refutation)
         return refutation
 
+    def save_failure_info(self) -> None:
+        self.proof.failure_info = self.failure_info()
+
     def failure_info(self) -> APRFailureInfo:
-        return APRFailureInfo.from_proof(self.proof, self.kcfg_explore)
+        return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
 
 
 @dataclass(frozen=True)
@@ -739,6 +753,7 @@ class APRSummary(ProofSummary):
     nodes: int
     pending: int
     failing: int
+    vacuous: int
     stuck: int
     terminal: int
     refuted: int
@@ -753,6 +768,7 @@ class APRSummary(ProofSummary):
             f'    nodes: {self.nodes}',
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
+            f'    vacuous: {self.vacuous}',
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
@@ -864,10 +880,12 @@ class APRBMCProver(APRProver):
         self,
         proof: APRBMCProof,
         kcfg_explore: KCFGExplore,
+        counterexample_info: bool = False,
     ) -> None:
         super().__init__(
             proof,
             kcfg_explore=kcfg_explore,
+            counterexample_info=counterexample_info,
         )
         self._checked_nodes = []
 
@@ -913,6 +931,7 @@ class APRBMCSummary(ProofSummary):
     nodes: int
     pending: int
     failing: int
+    vacuous: int
     stuck: int
     terminal: int
     refuted: int
@@ -927,6 +946,7 @@ class APRBMCSummary(ProofSummary):
             f'    nodes: {self.nodes}',
             f'    pending: {self.pending}',
             f'    failing: {self.failing}',
+            f'    vacuous: {self.vacuous}',
             f'    stuck: {self.stuck}',
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
