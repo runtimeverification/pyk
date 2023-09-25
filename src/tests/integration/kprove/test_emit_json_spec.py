@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.cterm import CTerm
 from pyk.kast.kast import EMPTY_ATT
 from pyk.kast.manip import remove_generated_cells
 from pyk.kast.outer import KDefinition, KRequire
@@ -43,7 +42,7 @@ class TestEmitJsonSpec(KProveTest):
 
         # Then
         assert len(result) == 1
-        assert CTerm.is_top(result[0])
+        assert result[0].is_top
 
     def test_prove(self, kprove: KProve, spec_module: KFlatModule) -> None:
         # Given
@@ -65,4 +64,4 @@ class TestEmitJsonSpec(KProveTest):
 
         # Then
         assert len(result) == 1
-        assert CTerm.is_top(result[0])
+        assert result[0].is_top

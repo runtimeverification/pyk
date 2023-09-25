@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KRewrite, KVariable
 from pyk.kast.manip import push_down_rewrites
 from pyk.kast.outer import KClaim
@@ -47,4 +46,4 @@ class TestPrintProveRewrite(KProveTest):
         # Then
         assert actual == expected
         assert len(result) == 1
-        assert CTerm.is_top(result[0])
+        assert result[0].is_top

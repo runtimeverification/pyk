@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyk.cterm import CTerm
 from pyk.kast import KAtt
 from pyk.kast.inner import KToken
 from pyk.kast.outer import KClaim, KRule
@@ -37,5 +36,5 @@ class TestSimpleProof(KProveTest):
         # Then
         assert len(result1) == 1
         assert len(result2) == 1
-        assert not CTerm.is_top(result1[0])
-        assert CTerm.is_top(result2[0])
+        assert not result1[0].is_top
+        assert result2[0].is_top
