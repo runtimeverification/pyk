@@ -14,7 +14,7 @@ from pyk.prelude.kbool import BOOL, TRUE
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
-from pyk.testing import KompiledTest
+from pyk.testing import KPrintTest
 from pyk.utils import single
 
 from ..utils import K_FILES
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     from pyk.kast import KInner
     from pyk.kast.outer import KDefinition
+    from pyk.ktool.kprint import KPrint
 
 
 BIDIRECTIONAL_TEST_DATA: Final = (
@@ -650,7 +651,7 @@ SORT_TERM_DATA: Final = (
 )
 
 
-class TestKonvertSimpleProofs(KompiledTest):
+class TestKonvertSimpleProofs(KPrintTest):
     KOMPILE_MAIN_FILE = K_FILES / 'simple-proofs.k'
 
     @pytest.fixture(scope='class')
@@ -670,15 +671,21 @@ class TestKonvertSimpleProofs(KompiledTest):
         sort: KSort,
         kore_text: str,
         kast: KInner,
+        kprint: KPrint,
     ) -> None:
         # Given
         kore = KoreParser(kore_text).pattern()
 
+        print(sort)
+
         # When
         actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
 
+        frontend_kore = kprint.kast_to_kore(kast=kast, sort=sort, force_kast=True)
+
         # Then
         assert actual_kore == kore
+        assert actual_kore == frontend_kore
 
     @pytest.mark.parametrize(
         'test_id,_sort,kore_text,kast',
