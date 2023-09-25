@@ -6,7 +6,6 @@ from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KRewrite, KVariable
 from pyk.kast.manip import push_down_rewrites
 from pyk.kast.outer import KClaim
-from pyk.prelude.ml import mlOr
 from pyk.testing import KProveTest
 
 from ..utils import K_FILES
@@ -47,4 +46,5 @@ class TestPrintProveRewrite(KProveTest):
 
         # Then
         assert actual == expected
-        assert CTerm._is_top(mlOr([res.kast for res in result]))
+        assert len(result) == 1
+        assert CTerm.is_top(result[0])

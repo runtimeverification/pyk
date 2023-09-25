@@ -102,10 +102,6 @@ class CTerm:
     def is_top(self) -> bool:
         return CTerm._is_top(self.kast)
 
-    @cached_property
-    def is_bottom(self) -> bool:
-        return CTerm._is_bottom(self.kast)
-
     @staticmethod
     def _is_top(kast: KInner) -> bool:
         flat = flatten_label('#And', kast)
