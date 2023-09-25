@@ -1242,6 +1242,41 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         assert anti_unifier.kast == expected_anti_unifier.kast
 
+    def test_delegate_to_subproof(
+        self,
+        kcfg_explore: KCFGExplore,
+        proof_dir: Path,
+        kprove: KProve,
+    ) -> None:
+        claim = single(
+            kprove.get_claims(
+                K_FILES / 'imp-simple-spec.k',
+                spec_module_name='IMP-SIMPLE-SPEC',
+                claim_labels=['IMP-SIMPLE-SPEC.failing-if'],
+            )
+        )
+
+        proof = APRProof.from_claim(
+            kprove.definition,
+            claim,
+            logs={},
+            proof_dir=proof_dir,
+            generate_subproof_name=(lambda proof, node_id: str(node_id)),
+        )
+
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
+        )
+
+        assert len(list(proof.subproofs)) == 0
+        assert len(proof.pending) == 1
+
+        prover.advance_proof(max_branches=1)
+
+        assert len(list(proof.subproofs)) == 2
+        assert len(proof.pending) == 0
+
     def test_anti_unify_keep_values(
         self,
         kcfg_explore: KCFGExplore,
