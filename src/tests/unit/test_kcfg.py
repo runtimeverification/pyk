@@ -435,9 +435,9 @@ def test_write_cfg_data(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(kcfg, '_write_node_data', write_node_data)
     monkeypatch.setattr(kcfg, '_delete_node_data', delete_node_data)
 
-    kcfg.add_node(node(1))
-    kcfg.add_node(node(2))
-    kcfg.add_node(node(3))
+    kcfg._add_node(node(1))
+    kcfg._add_node(node(2))
+    kcfg._add_node(node(3))
 
     assert written_nodes == set()
     assert deleted_nodes == set()
@@ -449,11 +449,11 @@ def test_write_cfg_data(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
 
     written_nodes.clear()
 
-    kcfg.add_node(node(4))
+    kcfg._add_node(node(4))
     kcfg.remove_node(1)
     kcfg.remove_node(2)
     kcfg.replace_node(3, node(3).cterm)
-    kcfg.add_node(node(2))
+    kcfg._add_node(node(2))
 
     assert written_nodes == set()
     assert deleted_nodes == set()

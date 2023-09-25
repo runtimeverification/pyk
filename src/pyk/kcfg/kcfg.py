@@ -351,7 +351,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             max_id = max(max_id, node_id)
             cterm = CTerm.from_dict(node_dict['cterm'])
             node = KCFG.Node(node_id, cterm)
-            cfg.add_node(node)
+            cfg._add_node(node)
 
         cfg._node_id = dct.get('next', max_id + 1)
 
@@ -449,7 +449,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def contains_node(self, node: Node) -> bool:
         return bool(self.get_node(node.id))
 
-    def add_node(self, node: Node) -> None:
+    def _add_node(self, node: Node) -> None:
         if node.id in self._nodes:
             raise ValueError(f'Node with id already exists: {node.id}')
         self._nodes[node.id] = node
@@ -459,8 +459,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         term = cterm.kast
         term = remove_source_attributes(term)
         cterm = CTerm.from_kast(term)
-        while self._node_id in self._nodes:
-            self._node_id += 1
         node = KCFG.Node(self._node_id, cterm)
         self._node_id += 1
         self._nodes[node.id] = node
@@ -984,7 +982,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             node_dict = json.loads(node_json.read_text())
             cterm = CTerm.from_dict(node_dict['cterm'])
             node = KCFG.Node(node_id, cterm)
-            cfg.add_node(node)
+            cfg._add_node(node)
 
         cfg._node_id = dct.get('next', max_id + 1)
 
