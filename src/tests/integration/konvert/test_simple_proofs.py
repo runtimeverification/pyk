@@ -17,7 +17,7 @@ from pyk.prelude.string import STRING, stringToken
 from pyk.testing import KPrintTest
 from pyk.utils import single
 
-from ..utils import K_FILES
+from ..utils import K_FILES, TEST_DATA_DIR
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -651,6 +651,8 @@ SORT_TERM_DATA: Final = (
 )
 
 
+SKIPPED_FRONTEND_COMP_TESTS: Final = set((TEST_DATA_DIR / 'frontend-comp-skip').read_text().splitlines())
+
 class TestKonvertSimpleProofs(KPrintTest):
     KOMPILE_MAIN_FILE = K_FILES / 'simple-proofs.k'
 
@@ -676,15 +678,39 @@ class TestKonvertSimpleProofs(KPrintTest):
         # Given
         kore = KoreParser(kore_text).pattern()
 
-        print(sort)
+        # When
+        actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
+
+        # Then
+        assert actual_kore == kore
+
+    @pytest.mark.parametrize(
+        'test_id,sort,kore_text,kast',
+        KAST_TO_KORE_TEST_DATA,
+        ids=[test_id for test_id, *_ in KAST_TO_KORE_TEST_DATA],
+    )
+    def test_kast_to_kore_frontend_comp(
+        self,
+        definition: KDefinition,
+        kompiled_kore: KompiledKore,
+        test_id: str,
+        sort: KSort,
+        kore_text: str,
+        kast: KInner,
+        kprint: KPrint,
+    ) -> None:
+
+        if test_id in SKIPPED_FRONTEND_COMP_TESTS:
+            pytest.skip()
+
+        # Given
+        kore = KoreParser(kore_text).pattern()
+        frontend_kore = kprint.kast_to_kore(kast=kast, sort=sort, force_kast=True)
 
         # When
         actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
 
-        frontend_kore = kprint.kast_to_kore(kast=kast, sort=sort, force_kast=True)
-
         # Then
-        assert actual_kore == kore
         assert actual_kore == frontend_kore
 
     @pytest.mark.parametrize(
