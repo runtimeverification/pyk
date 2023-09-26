@@ -17,7 +17,7 @@ from pyk.prelude.string import STRING, stringToken
 from pyk.testing import KPrintTest
 from pyk.utils import single
 
-from ..utils import K_FILES
+from ..utils import K_FILES, TEST_DATA_DIR
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     from pyk.kast import KInner
     from pyk.kast.outer import KDefinition
+    from pyk.ktool.kprint import KPrint
 
 
 BIDIRECTIONAL_TEST_DATA: Final = (
@@ -650,6 +651,9 @@ SORT_TERM_DATA: Final = (
 )
 
 
+SKIPPED_FRONTEND_COMP_TESTS: Final = set((TEST_DATA_DIR / 'frontend-comp-skip').read_text().splitlines())
+
+
 class TestKonvertSimpleProofs(KPrintTest):
     KOMPILE_MAIN_FILE = K_FILES / 'simple-proofs.k'
 
@@ -680,7 +684,6 @@ class TestKonvertSimpleProofs(KPrintTest):
         # Then
         assert actual_kore == kore
 
-
     @pytest.mark.parametrize(
         'test_id,sort,kore_text,kast',
         KAST_TO_KORE_TEST_DATA,
@@ -696,12 +699,10 @@ class TestKonvertSimpleProofs(KPrintTest):
         kast: KInner,
         kprint: KPrint,
     ) -> None:
-
         if test_id in SKIPPED_FRONTEND_COMP_TESTS:
             pytest.skip()
 
         # Given
-        kore = KoreParser(kore_text).pattern()
         frontend_kore = kprint.kast_to_kore(kast=kast, sort=sort, force_kast=True)
 
         # When
