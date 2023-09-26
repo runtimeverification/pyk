@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import graphlib
 import json
 import logging
 from dataclasses import dataclass
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
     from typing import Any, Final, TypeVar
 
     from ..cterm import CTerm
-    from ..kast.outer import KDefinition
+    from ..kast.outer import KDefinition, KFlatModuleList
     from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
@@ -216,6 +217,71 @@ class APRProof(Proof, KCFGExploration):
             ensures=ml_pred_to_bool(mlAnd(to.constraints)),
         )
         return kc
+
+    @staticmethod
+    def from_spec_modules(
+        defn: KDefinition,
+        spec_modules: KFlatModuleList,
+        spec_label: str,
+        logs: dict[int, tuple[LogEntry, ...]],
+        proof_dir: Path | None = None,
+        **kwargs: Any,
+    ) -> APRProof:
+        claims_by_label = {claim.label: claim for module in spec_modules.modules for claim in module.claims}
+        if spec_label not in claims_by_label:
+            if f'{spec_modules.main_module}.{spec_label}' in claims_by_label:
+                spec_label = f'{spec_modules.main_module}.{spec_label}'
+            else:
+                raise ValueError(
+                    f'Could not find specification label: {spec_label} or {spec_modules.main_module}.{spec_label}'
+                )
+
+        claims_graph: dict[str, list[str]] = {}
+        unfound_dependencies = []
+        for module in spec_modules.modules:
+            for claim in module.claims:
+                claims_graph[claim.label] = []
+                for dependency in claim.dependencies:
+                    if dependency in claims_by_label:
+                        claims_graph[claim.label].append(dependency)
+                    elif f'{module.name}.{dependency}' in claims_by_label:
+                        claims_graph[claim.label].append(f'{module.name}.{dependency}')
+                    else:
+                        unfound_dependencies.append((claim.label, module.name, dependency))
+        if unfound_dependencies:
+            unfound_dependency_list = [
+                f'Could not find dependency for claim {label}: {dependency} or {module_name}.{dependency}'
+                for label, module_name, dependency in unfound_dependencies
+            ]
+            unfound_dependency_message = '\n - ' + '\n - '.join(unfound_dependency_list)
+            raise ValueError(f'Could not find dependencies:{unfound_dependency_message}')
+
+        claims_subgraph: dict[str, list[str]] = {}
+        remaining_claims = [spec_label]
+        while len(remaining_claims) > 0:
+            claim_label = remaining_claims.pop()
+            claims_subgraph[claim_label] = claims_graph[claim_label]
+            remaining_claims.extend(claims_graph[claim_label])
+
+        topological_sorter = graphlib.TopologicalSorter(claims_subgraph)
+        topological_sorter.prepare()
+        apr_proofs_by_label: dict[str, APRProof] = {}
+        while topological_sorter.is_active():
+            for claim_label in topological_sorter.get_ready():
+                _LOGGER.info(f'Building APRProof for claim: {claim_label}')
+                claim = claims_by_label[claim_label]
+                apr_proof = APRProof.from_claim(
+                    defn,
+                    claim,
+                    logs=logs,
+                    proof_dir=proof_dir,
+                    subproof_ids=claims_graph[claim_label],
+                )
+                apr_proofs_by_label[claim_label] = apr_proof
+                apr_proof.write_proof_data()
+                topological_sorter.done(claim_label)
+
+        return apr_proofs_by_label[spec_label]
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
         path = self.shortest_path_to(final_node_id)
