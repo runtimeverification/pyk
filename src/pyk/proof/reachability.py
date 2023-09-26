@@ -193,7 +193,16 @@ class APRProof(Proof, KCFGExploration):
 
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
         return APRProof(
-            claim.label, kcfg, [], init=init_node, target=target_node, logs=logs, proof_dir=proof_dir, **kwargs
+            claim.label,
+            kcfg,
+            [],
+            init=init_node,
+            target=target_node,
+            logs=logs,
+            proof_dir=proof_dir,
+            circularity=claim.is_circularity,
+            admitted=claim.is_trusted,
+            **kwargs,
         )
 
     def as_claim(self, kprint: KPrint) -> KClaim:
@@ -316,7 +325,7 @@ class APRProof(Proof, KCFGExploration):
         dct['logs'] = logs
 
         proof_json.write_text(json.dumps(dct))
-
+        _LOGGER.info(f'Wrote proof data for {self.id}: {proof_json}')
         self.kcfg.write_cfg_data()
 
 
@@ -418,7 +427,7 @@ class APRBMCProof(APRProof):
         dct['bmc_depth'] = self.bmc_depth
 
         proof_json.write_text(json.dumps(dct))
-
+        _LOGGER.info(f'Wrote proof data for {self.id}: {proof_json}')
         self.kcfg.write_cfg_data()
 
     @property
@@ -497,7 +506,16 @@ class APRBMCProof(APRProof):
         kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
 
         return APRBMCProof(
-            claim.label, kcfg, [], bmc_depth=bmc_depth, init=init_node, target=target_node, logs={}, proof_dir=proof_dir
+            claim.label,
+            kcfg,
+            [],
+            bmc_depth=bmc_depth,
+            init=init_node,
+            target=target_node,
+            logs={},
+            proof_dir=proof_dir,
+            circularity=claim.is_circularity,
+            admitted=claim.is_trusted,
         )
 
     def add_bounded(self, nid: NodeIdLike) -> None:
