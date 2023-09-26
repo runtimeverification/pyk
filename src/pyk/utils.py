@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tarfile
 import time
+from collections import Counter
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
@@ -250,6 +251,10 @@ def unique(iterable: Iterable[H]) -> Iterator[H]:
         else:
             elems.add(elem)
             yield elem
+
+
+def unique_by_frequency(iterable: Iterable[H]) -> Iterator[H]:
+    return unique(sorted(iterable, key=lambda p: Counter(iterable).get(p, 0), reverse=True))
 
 
 def single(iterable: Iterable[T]) -> T:
