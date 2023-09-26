@@ -887,7 +887,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         expected_leaf_number: int,
         tmp_path_factory: TempPathFactory,
     ) -> None:
-        with tmp_path_factory.mktemp('apr_tmp_proofs') as proof_dir:
+        with tmp_path_factory.mktemp(f'apr_tmp_proofs-{test_id}') as proof_dir:
             spec_modules = kprove.get_claim_modules(Path(spec_file), spec_module_name=spec_module)
             proof = APRProof.from_spec_modules(
                 kprove.definition, spec_modules, f'{spec_module}.{claim_id}', logs={}, proof_dir=proof_dir
