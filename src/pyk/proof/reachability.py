@@ -224,7 +224,7 @@ class APRProof(Proof, KCFGExploration):
         spec_modules: KFlatModuleList,
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
-        spec_labels: list[str] | None = None,
+        spec_labels: Iterable[str] | None = None,
         **kwargs: Any,
     ) -> list[APRProof]:
         claims_by_label = {claim.label: claim for module in spec_modules.modules for claim in module.claims}
