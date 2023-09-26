@@ -8,7 +8,7 @@ from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from ..utils import ensure_dir_path, hash_file, hash_str
+from ..utils import ensure_dir_path, hash_file, hash_str, unique_by_frequency
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -159,6 +159,11 @@ class Proof(ABC):
     def subproofs(self) -> Iterable[Proof]:
         """Return the subproofs, re-reading from disk the ones that changed"""
         return self._subproofs.values()
+
+    @property
+    def proof_list(self) -> list[Proof]:
+        _proof_list = [proof for subproof in self.subproofs for proof in subproof.proof_list] + [self]
+        return list(unique_by_frequency(_proof_list))
 
     @property
     def subproofs_status(self) -> ProofStatus:
