@@ -222,12 +222,14 @@ class APRProof(Proof, KCFGExploration):
     def from_spec_modules(
         defn: KDefinition,
         spec_modules: KFlatModuleList,
-        spec_labels: list[str],
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
+        spec_labels: list[str] | None = None,
         **kwargs: Any,
     ) -> list[APRProof]:
         claims_by_label = {claim.label: claim for module in spec_modules.modules for claim in module.claims}
+        if spec_labels is None:
+            spec_labels = list(claims_by_label.keys())
         _spec_labels = []
         for spec_label in spec_labels:
             if spec_label in claims_by_label:

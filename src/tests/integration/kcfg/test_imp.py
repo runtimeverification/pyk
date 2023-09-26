@@ -891,7 +891,11 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             spec_modules = kprove.get_claim_modules(Path(spec_file), spec_module_name=spec_module)
             proof = single(
                 APRProof.from_spec_modules(
-                    kprove.definition, spec_modules, [f'{spec_module}.{claim_id}'], logs={}, proof_dir=proof_dir
+                    kprove.definition,
+                    spec_modules,
+                    spec_labels=[f'{spec_module}.{claim_id}'],
+                    logs={},
+                    proof_dir=proof_dir,
                 )
             )
             if admit_deps:
