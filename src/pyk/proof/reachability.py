@@ -222,19 +222,23 @@ class APRProof(Proof, KCFGExploration):
     def from_spec_modules(
         defn: KDefinition,
         spec_modules: KFlatModuleList,
-        spec_label: str,
+        spec_labels: list[str],
         logs: dict[int, tuple[LogEntry, ...]],
         proof_dir: Path | None = None,
         **kwargs: Any,
-    ) -> APRProof:
+    ) -> list[APRProof]:
         claims_by_label = {claim.label: claim for module in spec_modules.modules for claim in module.claims}
-        if spec_label not in claims_by_label:
-            if f'{spec_modules.main_module}.{spec_label}' in claims_by_label:
-                spec_label = f'{spec_modules.main_module}.{spec_label}'
+        _spec_labels = []
+        for spec_label in spec_labels:
+            if spec_label in claims_by_label:
+                _spec_labels.append(spec_label)
+            elif f'{spec_modules.main_module}.{spec_label}' in claims_by_label:
+                _spec_labels.append(f'{spec_modules.main_module}.{spec_label}')
             else:
                 raise ValueError(
                     f'Could not find specification label: {spec_label} or {spec_modules.main_module}.{spec_label}'
                 )
+        spec_labels = _spec_labels
 
         claims_graph: dict[str, list[str]] = {}
         unfound_dependencies = []
@@ -257,7 +261,7 @@ class APRProof(Proof, KCFGExploration):
             raise ValueError(f'Could not find dependencies:{unfound_dependency_message}')
 
         claims_subgraph: dict[str, list[str]] = {}
-        remaining_claims = [spec_label]
+        remaining_claims = spec_labels
         while len(remaining_claims) > 0:
             claim_label = remaining_claims.pop()
             claims_subgraph[claim_label] = claims_graph[claim_label]
@@ -281,7 +285,7 @@ class APRProof(Proof, KCFGExploration):
                 apr_proof.write_proof_data()
                 topological_sorter.done(claim_label)
 
-        return apr_proofs_by_label[spec_label]
+        return [apr_proofs_by_label[spec_label] for spec_label in spec_labels]
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
         path = self.shortest_path_to(final_node_id)
