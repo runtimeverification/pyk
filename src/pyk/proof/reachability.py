@@ -274,16 +274,19 @@ class APRProof(Proof, KCFGExploration):
         apr_proofs: list[APRProof] = []
         while topological_sorter.is_active():
             for claim_label in topological_sorter.get_ready():
-                _LOGGER.info(f'Building APRProof for claim: {claim_label}')
-                claim = claims_by_label[claim_label]
-                apr_proof = APRProof.from_claim(
-                    defn,
-                    claim,
-                    logs=logs,
-                    proof_dir=proof_dir,
-                    subproof_ids=claims_graph[claim_label],
-                )
-                apr_proof.write_proof_data()
+                if proof_dir is not None and Proof.proof_data_exists(claim_label, proof_dir):
+                    apr_proof = APRProof.read_proof_data(proof_dir, claim_label)
+                else:
+                    _LOGGER.info(f'Building APRProof for claim: {claim_label}')
+                    claim = claims_by_label[claim_label]
+                    apr_proof = APRProof.from_claim(
+                        defn,
+                        claim,
+                        logs=logs,
+                        proof_dir=proof_dir,
+                        subproof_ids=claims_graph[claim_label],
+                    )
+                    apr_proof.write_proof_data()
                 apr_proofs.append(apr_proof)
                 topological_sorter.done(claim_label)
 
