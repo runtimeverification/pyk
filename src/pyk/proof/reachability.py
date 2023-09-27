@@ -271,7 +271,7 @@ class APRProof(Proof, KCFGExploration):
 
         topological_sorter = graphlib.TopologicalSorter(claims_subgraph)
         topological_sorter.prepare()
-        apr_proofs_by_label: dict[str, APRProof] = {}
+        apr_proofs: list[APRProof] = []
         while topological_sorter.is_active():
             for claim_label in topological_sorter.get_ready():
                 _LOGGER.info(f'Building APRProof for claim: {claim_label}')
@@ -283,11 +283,11 @@ class APRProof(Proof, KCFGExploration):
                     proof_dir=proof_dir,
                     subproof_ids=claims_graph[claim_label],
                 )
-                apr_proofs_by_label[claim_label] = apr_proof
                 apr_proof.write_proof_data()
+                apr_proofs.append(apr_proof)
                 topological_sorter.done(claim_label)
 
-        return [apr_proofs_by_label[spec_label] for spec_label in spec_labels]
+        return apr_proofs
 
     def path_constraints(self, final_node_id: NodeIdLike) -> KInner:
         path = self.shortest_path_to(final_node_id)
