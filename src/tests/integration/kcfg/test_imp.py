@@ -889,15 +889,15 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     ) -> None:
         with tmp_path_factory.mktemp(f'apr_tmp_proofs-{test_id}') as proof_dir:
             spec_modules = kprove.get_claim_modules(Path(spec_file), spec_module_name=spec_module)
-            proof = single(
-                APRProof.from_spec_modules(
-                    kprove.definition,
-                    spec_modules,
-                    spec_labels=[f'{spec_module}.{claim_id}'],
-                    logs={},
-                    proof_dir=proof_dir,
-                )
+            spec_label = f'{spec_module}.{claim_id}'
+            proofs = APRProof.from_spec_modules(
+                kprove.definition,
+                spec_modules,
+                spec_labels=[spec_label],
+                logs={},
+                proof_dir=proof_dir,
             )
+            proof = single([p for p in proofs if p.id == spec_label])
             if admit_deps:
                 for subproof in proof.subproofs:
                     subproof.admit()
