@@ -14,12 +14,13 @@ from typing import TYPE_CHECKING, Optional, final
 from ..cli.utils import dir_path, file_path
 from ..coverage import get_rule_by_id
 from ..cterm import CTerm
-from ..kast.outer import KAtt
+from ..kast.outer import KAtt, KFlatModule
 from ..kcfg.kcfg import build_claim
 from ..kore.rpc import LogFallback
 from ..ktool.kprint import KPrint
 
 if TYPE_CHECKING:
+    from argparse import Namespace
     from typing import Final, Iterable
 
     from ..kast.outer import KClaim, KDefinition
@@ -28,15 +29,29 @@ _LOGGER: Final = logging.getLogger(__name__)
 _LOG_FORMAT: Final = '%(levelname)s %(name)s - %(message)s'
 
 
-def main() -> None:
-    sys.setrecursionlimit(10**7)
+def describe_session(args: Namespace) -> None:
+    """Give a human-readable explanation of runtime parameters"""
+    session_info = []
+    if args.definition_dir:
+        session_info.append(f'I will use the kompiled definition from {args.definition_dir}')
+    if args.input_file:
+        session_info.append(f'I will look for RPC execute responses in {args.input_file}')
+    if args.build_claims:
+        session_info.append('I will build K claims from found RPC execute responses')
+        if args.output_dir:
+            session_info.append(f'I will store K claims in {args.output_dir}')
+    else:
+        session_info.append('I will not build any K claims (give --build-claims option to do so)')
 
-    args = _argument_parser().parse_args()
+    for s in session_info:
+        _LOGGER.info(s)
 
+
+def configure_logging(args: Namespace) -> None:
     level = logging.INFO if args.verbose else logging.WARNING
     pyk_kast_logger = logging.getLogger('pyk.kast')
     pyk_kprint_logger = logging.getLogger('pyk.ktool.kprint')
-    if args.pyk_verbose:
+    if args.verbose > 1:
         pyk_kast_logger.level = logging.INFO
         pyk_kast_logger.level = logging.INFO
         pyk_kprint_logger.level = logging.INFO
@@ -47,16 +62,27 @@ def main() -> None:
 
     logging.basicConfig(level=level, format=_LOG_FORMAT)
 
+
+def main() -> None:
+    sys.setrecursionlimit(10**7)
+
+    args = _argument_parser().parse_args()
+
+    configure_logging(args)
+    describe_session(args)
+
+    kprint = KPrint(args.definition_dir)
+
     if args.input_file.suffix in ['.tar', '.gz']:
-        process_bug_report(args.input_file, args.definition_dir)
+        process_bug_report(
+            kprint=kprint,
+            bug_report=args.input_file,
+            build_claims=args.build_claims,
+            output_dir=args.output_dir,
+        )
     else:
         assert args.input_file.suffix == '.json'
-        try:
-            assert args.definition_dir
-        except AssertionError:
-            _LOGGER.error('Please provide path to kompiled definition with --definition-dir')
-            exit(1)
-        process_single_response(definition_dir=args.definition_dir, response_file=args.input_file)
+        process_single_response(kprint=kprint, response_file=args.input_file)
 
 
 @final
@@ -67,14 +93,12 @@ class KClaimWithComment:
 
 
 def process_single_response(
-    definition_dir: Path, response_file: Path, build_claims: bool = False
+    kprint: KPrint, response_file: Path, build_claims: bool = False
 ) -> Optional[dict[str, KClaimWithComment]]:
     """
     Process a single JSON response of the `kore-rpc-booster`'s exectute endpoint.
     Generate 'KClaim's and human-readable description of `kore-rpc-booster`'s abort and recovery.
     """
-    kprint = KPrint(definition_dir)
-
     _LOGGER.info(f'Processing {response_file}')
     response_dict = json.loads(response_file.read_text())
     if not ('result' in response_dict and 'logs' in response_dict['result']):
@@ -84,25 +108,27 @@ def process_single_response(
     _LOGGER.info(f'Found {len(fallback_logs_in_reponse)} fallback logs')
 
     fallback_claims = {}
-    claim_counter = 1  # better use Depth, need to add it to response
+    claim_counter = 1  # TODO: better use Depth, need to add it to RPC response
     for fallback_log in fallback_logs_in_reponse:
         fallback_info = extract_basic_fallback_info(kprint.definition, fallback_log)
         claim_id = f'{response_file.stem}-{claim_counter}'
         if build_claims:
-            fallback_claims[f'{claim_id}'] = KClaimWithComment(
-                claim=build_fallback_claim(kprint, fallback_log, claim_id), comment=fallback_info
-            )
-            _LOGGER.info(f'Generated claim {claim_id}')
+            claim = build_fallback_claim(kprint, fallback_log, claim_id)
+            if claim is not None:
+                _LOGGER.info(f'Generated claim {claim_id}')
+            fallback_claims[f'{claim_id}'] = KClaimWithComment(claim=claim, comment=fallback_info)
         else:
             fallback_claims[f'{claim_id}'] = KClaimWithComment(claim=None, comment=fallback_info)
         claim_counter += 1
-
-    _LOGGER.info(f'Generated {len(fallback_claims)} claims with comments')
     return fallback_claims
 
 
 def process_bug_report(
-    bug_report: Path, definition_dir: Optional[Path] = None, build_claims: bool = False, keep_going: bool = True
+    bug_report: Path,
+    kprint: KPrint,
+    build_claims: bool = False,
+    output_dir: Optional[Path] = None,
+    keep_going: bool = True,
 ) -> None:
     """
     Process a 'bug_report.tar'.
@@ -111,7 +137,6 @@ def process_bug_report(
 
     Use definition.kore suppleid with the bug_report.tar, unless an explicit override definition_dir is provided.
     """
-    assert definition_dir, 'Plese supply definiton_dir, as we cannot for now produce it from bug_report.tar.gz'
 
     def extract_rpc_id(filename: str) -> str:
         pattern = re.compile(r'(\d*)[\_](?:response|request)\.json')
@@ -160,15 +185,40 @@ def process_bug_report(
                 _LOGGER.error(f'Error extracting {response_tarinfo.name} from {bug_report.name}, skipping.')
                 continue
             fallback_claims = process_single_response(
-                definition_dir=definition_dir, response_file=response_file, build_claims=build_claims
+                kprint=kprint, response_file=response_file, build_claims=build_claims
             )
             if fallback_claims is not None:
+                fallback_claim_module_name = f'{bug_report.name}-{response_tarinfo.name}'
+                if output_dir is None:
+                    _LOGGER.warning(f'No --output-dir given, writing claims to {tmpdirname}')
+                    fallback_claim_module_path = tmpdirname / Path(f'{fallback_claim_module_name}.k')
+                else:
+                    fallback_claim_module_path = output_dir / Path(f'{fallback_claim_module_name}.k')
                 execute_responses[response_tarinfo.name] = fallback_claims
+                fallback_claim_module_sentenses = []
+                fallback_claim_module_toplevel_description = []
                 for claim_id, claim_with_comment in fallback_claims.items():
-                    fallback_reason = '\n'.join(claim_with_comment.comment)
-                    print(f'Claim {claim_id} describes: {fallback_reason}')
-                    # if claim_with_comment.claim is not None:
-                    #     print(kprint.pretty_print(claim_with_comment.claim))
+                    fallback_reason = ' '.join(claim_with_comment.comment)
+                    if claim_with_comment.claim is not None:
+                        fallback_claim_module_sentenses.append(claim_with_comment.claim)
+                        fallback_claim_module_toplevel_description.append(
+                            f'// Claim {claim_id} describes: {fallback_reason}'
+                        )
+                fallback_claim_module_name = str(fallback_claim_module_path).replace('/', '_').replace('.', '_').upper()
+                fallback_claims_module = KFlatModule(
+                    name=fallback_claim_module_name, sentences=tuple(fallback_claim_module_sentenses)
+                )
+                if build_claims:
+                    _LOGGER.info(f'Writing claims to file {str(fallback_claim_module_path)}')
+                    fallback_claim_module_path.parent.mkdir(exist_ok=True, parents=True)
+                    fallback_claim_module_path.write_text(
+                        '\n'.join(
+                            [
+                                *fallback_claim_module_toplevel_description,
+                                kprint.pretty_print(fallback_claims_module),
+                            ]
+                        )
+                    )
 
 
 def parse_fallback_logs_from_response(response_dict: dict) -> Iterable[LogFallback]:
@@ -207,12 +257,19 @@ def extract_basic_fallback_info(kdef: KDefinition, fallback_log_entry: LogFallba
         yield recovery_rule_msg
 
 
-def build_fallback_claim(kprint: KPrint, fallback_log_entry: LogFallback, claim_id: str | None = None) -> KClaim:
+def build_fallback_claim(kprint: KPrint, fallback_log_entry: LogFallback, claim_id: str | None = None) -> KClaim | None:
+    """
+    Given a LogFallback RPC log entry, build the K Claim that reproduces it
+    """
     if claim_id is None:
         claim_id = 'booster-fallback'
-    assert fallback_log_entry.original_term
+    if fallback_log_entry.original_term is None:
+        _LOGGER.error(f'Cannot build K Claim {claim_id} Fallback entry does not the contain "origianl-term" field')
+        return None
     lhs = CTerm.from_kast(kprint.kore_to_kast(fallback_log_entry.original_term))
-    assert fallback_log_entry.rewritten_term
+    if fallback_log_entry.rewritten_term is None:
+        _LOGGER.error(f'Cannot build K Claim {claim_id} Fallback entry does not the contain "rewritten-term" field')
+        return None
     rhs = CTerm.from_kast(kprint.kore_to_kast(fallback_log_entry.rewritten_term))
     claim, _ = build_claim(claim_id=claim_id, init_cterm=lhs, final_cterm=rhs)
     return claim
@@ -224,18 +281,19 @@ def _location_tuple_to_str(location: tuple[int, int, int, int]) -> str:
 
 
 def _argument_parser() -> ArgumentParser:
-    parser = ArgumentParser(description='Symbolic execution logs analysis tool')
+    parser = ArgumentParser(description='Analyze kore-rpc-booster fallback logs and convert them to K claims.')
     parser.add_argument(
         '--definition-dir',
         type=dir_path,
-        help='Path to Haskell-kompiled definition to use.',
+        required=True,
+        help='path to kompiled definition to use',
     )
-    parser.add_argument('--verbose', action='store_true')
-    parser.add_argument('--pyk-verbose', action='store_true')
+    parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument('--build-claims', action='store_true', help='build claims from fallback logs')
-    parser.add_argument('--no-build-claims', action='store_false', help='do not build claims from fallback logs')
-    # parser.add_argument('input_file', type=file_path, help='path to bug_report.tar to analyze')
-    parser.add_argument('input_file', type=file_path, help='path to bug_report.tar or response.json to analyze')
+    parser.add_argument('--output-dir', type=dir_path, help='path to output directory')
+    parser.add_argument(
+        'input_file', type=file_path, help='path to a bug report archive or a single response JSON file to analyze'
+    )
 
     return parser
 
