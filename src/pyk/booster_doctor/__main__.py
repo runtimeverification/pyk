@@ -9,7 +9,7 @@ import tempfile
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Optional, final
+from typing import TYPE_CHECKING, final
 
 from ..cli.utils import dir_path, file_path
 from ..coverage import get_rule_by_id
@@ -21,7 +21,8 @@ from ..ktool.kprint import KPrint
 
 if TYPE_CHECKING:
     from argparse import Namespace
-    from typing import Final, Iterable
+    from collections.abc import Iterable
+    from typing import Final
 
     from ..kast.outer import KClaim, KDefinition
 
@@ -94,7 +95,7 @@ class KClaimWithComment:
 
 def process_single_response(
     kprint: KPrint, response_file: Path, build_claims: bool = False
-) -> Optional[dict[str, KClaimWithComment]]:
+) -> dict[str, KClaimWithComment] | None:
     """
     Process a single JSON response of the `kore-rpc-booster`'s exectute endpoint.
     Generate 'KClaim's and human-readable description of `kore-rpc-booster`'s abort and recovery.
@@ -127,7 +128,7 @@ def process_bug_report(
     bug_report: Path,
     kprint: KPrint,
     build_claims: bool = False,
-    output_dir: Optional[Path] = None,
+    output_dir: Path | None = None,
     keep_going: bool = True,
 ) -> None:
     """
