@@ -427,12 +427,12 @@ class RewriteFailure(RewriteResult):
 class LogOrigin(str, Enum):
     KORE_RPC = 'kore-rpc'
     BOOSTER = 'booster'
+    PROXY = 'proxy'
     LLVM = 'llvm'
 
 
 class LogEntry(ABC):  # noqa: B024
     origin: LogOrigin
-    result: RewriteResult
 
     @classmethod
     def from_dict(cls: type[LE], dct: Mapping[str, Any]) -> LE:
@@ -440,8 +440,10 @@ class LogEntry(ABC):  # noqa: B024
             return globals()['LogRewrite'].from_dict(dct)
         elif dct['tag'] == 'simplification':
             return globals()['LogSimplification'].from_dict(dct)
+        elif dct['tag'] == 'fallback':
+            return globals()['LogFallback'].from_dict(dct)
         else:
-            raise ValueError(f"Expected {dct['tag']} as 'rewrite'/'simplification'")
+            raise ValueError(f"Expected {dct['tag']} as 'rewrite'/'simplification'/'fallback'")
 
     @abstractmethod
     def to_dict(self) -> dict[str, Any]:
@@ -485,6 +487,33 @@ class LogSimplification(LogEntry):
     def to_dict(self) -> dict[str, Any]:
         original_term = {'original-term': KoreClient._state(self.original_term)} if self.original_term else {}
         return {'tag': 'simplification', 'origin': self.origin.value, 'result': self.result.to_dict()} | original_term
+
+
+@final
+@dataclass(frozen=True)
+class LogFallback(LogEntry):
+    origin: LogOrigin
+    original_term: Pattern | None
+    rewritten_term: Pattern | None
+    reason: str
+    fallback_rule_id: str
+    recovery_rule_ids: list[str] | None
+    recovery_depth: int
+
+    @classmethod
+    def from_dict(cls: type[LogFallback], dct: Mapping[str, Any]) -> LogFallback:
+        return LogFallback(
+            origin=LogOrigin(dct['origin']),
+            original_term=kore_term(dct['original-term'], Pattern) if 'original-term' in dct else None,  # type: ignore
+            rewritten_term=kore_term(dct['rewritten-term'], Pattern) if 'rewritten-term' in dct else None,  # type: ignore
+            reason=dct['reason'],
+            fallback_rule_id=dct['fallback-rule-id'],
+            recovery_rule_ids=dct['recovery-rule-ids'] if 'recovery-rule-ids' in dct else None,  # type: ignore
+            recovery_depth=dct['recovery-depth'],
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {'tag': 'fallback', 'origin': self.origin.value}
 
 
 class ExecuteResult(ABC):  # noqa: B024
