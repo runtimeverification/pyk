@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from abc import ABC
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, final
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
@@ -353,6 +355,71 @@ class KCFGExplore:
         kcfg.create_cover(node.id, new_node.id)
         return True
 
+    def extend_cterm(
+        self,
+        _cterm: CTerm,
+        *,
+        execute_depth: int | None = None,
+        cut_point_rules: Iterable[str] = (),
+        terminal_rules: Iterable[str] = (),
+        module_name: str | None = None,
+    ) -> ExtendResult:
+        abstract_cterm = self.kcfg_semantics.abstract_node(_cterm)
+        if _cterm != abstract_cterm:
+            return Abstract(abstract_cterm)
+
+        _branches = self.kcfg_semantics.extract_branches(_cterm)
+        branches = []
+        for constraint in _branches:
+            kast = mlAnd(list(_cterm.constraints) + [constraint])
+            kast, _ = self.kast_simplify(kast)
+            if not CTerm._is_bottom(kast):
+                branches.append(constraint)
+        if len(branches) > 1:
+            return Branch(branches, heuristic=True)
+
+        _is_vacuous, depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+            _cterm,
+            depth=execute_depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
+        )
+
+        # Basic block
+        if depth > 0:
+            return Step(cterm, depth, next_node_logs)
+
+        # Stuck or vacuous
+        if not next_cterms:
+            if _is_vacuous:
+                return Vacuous()
+            return Stuck()
+
+        # Cut rule
+        if len(next_cterms) == 1:
+            return Step(next_cterms[0], 1, next_node_logs, cut=True)
+
+        # Branch
+        assert len(next_cterms) > 1
+        branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
+        branch_and = mlAnd(branches)
+        branch_patterns = [
+            mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsTrue(notBool(KVariable('B')))]),
+            mlAnd([mlEqualsTrue(notBool(KVariable('B'))), mlEqualsTrue(KVariable('B'))]),
+            mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsFalse(KVariable('B'))]),
+            mlAnd([mlEqualsFalse(KVariable('B')), mlEqualsTrue(KVariable('B'))]),
+            mlAnd([mlNot(KVariable('B')), KVariable('B')]),
+            mlAnd([KVariable('B'), mlNot(KVariable('B'))]),
+        ]
+
+        # Split on branch patterns
+        if any(branch_pattern.match(branch_and) for branch_pattern in branch_patterns):
+            return Branch(branches)
+
+        # NDBranch on successor nodes
+        return NDBranch(next_cterms, next_node_logs)
+
     def extend(
         self,
         kcfg_exploration: KCFGExploration,
@@ -374,82 +441,45 @@ class KCFGExplore:
         if kcfg_exploration.is_terminal(node.id):
             raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
 
-        if self._check_abstract(node, kcfg):
-            return
-
-        _branches = self.kcfg_semantics.extract_branches(node.cterm)
-        branches = []
-        for constraint in _branches:
-            kast = mlAnd(list(node.cterm.constraints) + [constraint])
-            kast, _ = self.kast_simplify(kast)
-            if not CTerm._is_bottom(kast):
-                branches.append(constraint)
-        if len(branches) > 1:
-            kcfg.split_on_constraints(node.id, branches)
-            _LOGGER.info(
-                f'Found {len(branches)} branches using heuristic for {self.id}: {node.id} -> {[self.kprint.pretty_print(bc) for bc in branches]}'
-            )
-            return
-
-        _LOGGER.info(f'Extending KCFG from node {self.id}: {shorten_hashes(node.id)}')
-        _is_vacuous, depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+        extend_result = self.extend_cterm(
             node.cterm,
-            depth=execute_depth,
+            execute_depth=execute_depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
             module_name=module_name,
         )
 
-        # Basic block
-        if depth > 0:
-            next_node = kcfg.create_node(cterm)
-            logs[next_node.id] = next_node_logs
-            kcfg.create_edge(node.id, next_node.id, depth)
-            _LOGGER.info(
-                f'Found basic block at depth {depth} for {self.id}: {shorten_hashes((node.id, next_node.id))}.'
-            )
-
-        # Stuck
-        elif len(next_cterms) == 0:
-            if _is_vacuous:
+        match extend_result:
+            case Vacuous():
                 kcfg.add_vacuous(node.id)
                 _LOGGER.warning(f'Found vacuous node {self.id}: {shorten_hashes(node.id)}')
-            else:
+
+            case Stuck():
                 kcfg.add_stuck(node.id)
                 _LOGGER.info(f'Found stuck node {self.id}: {shorten_hashes(node.id)}')
 
-        # Cut Rule
-        elif len(next_cterms) == 1:
-            next_node = kcfg.create_node(next_cterms[0])
-            logs[next_node.id] = next_node_logs
-            kcfg.create_edge(node.id, next_node.id, 1)
-            _LOGGER.info(
-                f'Inserted cut-rule basic block at depth 1 for {self.id}: {shorten_hashes((node.id, next_node.id))}'
-            )
+            case Abstract(cterm):
+                new_node = kcfg.create_node(cterm)
+                kcfg.create_cover(node.id, new_node.id)
 
-        # Branch
-        elif len(next_cterms) > 1:
-            branches = [mlAnd(c for c in s.constraints if c not in cterm.constraints) for s in next_cterms]
-            branch_and = mlAnd(branches)
-            branch_patterns = [
-                mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsTrue(notBool(KVariable('B')))]),
-                mlAnd([mlEqualsTrue(notBool(KVariable('B'))), mlEqualsTrue(KVariable('B'))]),
-                mlAnd([mlEqualsTrue(KVariable('B')), mlEqualsFalse(KVariable('B'))]),
-                mlAnd([mlEqualsFalse(KVariable('B')), mlEqualsTrue(KVariable('B'))]),
-                mlAnd([mlNot(KVariable('B')), KVariable('B')]),
-                mlAnd([KVariable('B'), mlNot(KVariable('B'))]),
-            ]
-
-            # Split on branch patterns
-            if any(branch_pattern.match(branch_and) for branch_pattern in branch_patterns):
-                kcfg.split_on_constraints(node.id, branches)
+            case Step(cterm, depth, next_node_logs, cut):
+                next_node = kcfg.create_node(cterm)
+                logs[next_node.id] = next_node_logs
+                kcfg.create_edge(node.id, next_node.id, depth)
+                cut_str = 'cut-rule ' if cut else ''
                 _LOGGER.info(
-                    f'Found {len(branches)} branches for node {self.id}: {shorten_hashes(node.id)}: {[self.kprint.pretty_print(bc) for bc in branches]}'
+                    f'Found {cut_str}basic block at depth {depth} for {self.id}: {shorten_hashes((node.id, next_node.id))}.'
                 )
 
-            # NDBranch on successor nodes
-            else:
-                next_ids = [kcfg.create_node(ct).id for ct in next_cterms]
+            case Branch(constraints, heuristic):
+                kcfg.split_on_constraints(node.id, constraints)
+                heur_str = 'using heuristic ' if heuristic else ''
+                _LOGGER.info(
+                    f'Found {len(constraints)} branches {heur_str}for {self.id}: {node.id} -> {[self.kprint.pretty_print(bc) for bc in constraints]}'
+                )
+
+            case NDBranch(cterms, next_node_logs):
+                next_ids = [kcfg.create_node(cterm).id for cterm in cterms]
                 for i in next_ids:
                     logs[i] = next_node_logs
                 kcfg.create_ndbranch(node.id, next_ids)
@@ -457,8 +487,8 @@ class KCFGExplore:
                     f'Found {len(next_ids)} non-deterministic branches for node {self.id}: {shorten_hashes(node.id)}'
                 )
 
-        else:
-            raise ValueError('Unhandled case.')
+            case _:
+                raise AssertionError()
 
     def add_dependencies_module(
         self, old_module_name: str, new_module_name: str, dependencies: Iterable[KClaim], priority: int = 1
@@ -475,3 +505,56 @@ class KCFGExplore:
         m = Module(name=new_module_name, sentences=sentences)
         _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
         self._kore_client.add_module(m)
+
+
+class ExtendResult(ABC):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class Vacuous(ExtendResult):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class Stuck(ExtendResult):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class Abstract(ExtendResult):
+    cterm: CTerm
+
+
+@final
+@dataclass(frozen=True)
+class Step(ExtendResult):
+    cterm: CTerm
+    depth: int
+    logs: tuple[LogEntry, ...]
+    cut: bool = field(default=False)
+
+
+@final
+@dataclass(frozen=True)
+class Branch(ExtendResult):
+    constraints: tuple[KInner, ...]
+    heuristic: bool
+
+    def __init__(self, constraints: Iterable[KInner], *, heuristic: bool = False):
+        object.__setattr__(self, 'constraints', tuple(constraints))
+        object.__setattr__(self, 'heuristic', heuristic)
+
+
+@final
+@dataclass(frozen=True)
+class NDBranch(ExtendResult):
+    cterms: tuple[CTerm, ...]
+    logs: tuple[LogEntry, ...] = field(default=())
+
+    def __init__(self, cterms: Iterable[CTerm], logs: Iterable[LogEntry,]):
+        object.__setattr__(self, 'cterms', tuple(cterms))
+        object.__setattr__(self, 'logs', tuple(logs))
