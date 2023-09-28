@@ -35,6 +35,22 @@ INFO pyk.booster_doctor.__main__ - Writing claims to file testing_br_booster_fal
 
 The K claims will be written into a separate K file for every response, i.e. if a response has 7 fallback logs, it's corresponding K file in `<output_dir>` will contain 7 claims.
 
+The resulting output will look as follows (for one of the request):
+
+```
+// Claim 003_response-1 describes: Booster Abort due to rule EVM.jumpi.true at /nix/store/chwf5lcr17yb01ss68z54j06kvc8ppnc-python3.10-kevm-pyk-1.0.300/lib/python3.10/site-packages/kevm_pyk/kproj/evm-semantics/evm.md:1036:25-1036:84 with reason: Uncertain about a condition in rule
+module TESTING_BR_BOOSTER_FALLBACKS_TESTING_BR_TAR_GZ-TESTING_BR_RPC_42_003_RESPONSE_JSON_K
+
+
+    claim [003_response-1]: <foundry>
+           <kevm>
+             <k>
+               ( JUMPI 8907 bool2Word ( chop ( chop ( #asWord ( #range ( ...
+...
+
+endmodule
+```
+
 ## Using `booster-doctor` as a library
 
 The K claims for every response are bundled into `dict[str, KClaimWithComment]` data structure that contains the claims and the falllback reasons that `kore-rpc-booster` returned. These are returned from the `process_single_response` function and can be manipulated with `pyk` as needed (minimized, proven, etc.)
