@@ -266,6 +266,9 @@ def build_fallback_claim(kprint: KPrint, fallback_log_entry: LogFallback, claim_
     if fallback_log_entry.original_term is None:
         _LOGGER.error(f'Cannot build K Claim {claim_id} Fallback entry does not the contain "origianl-term" field')
         return None
+    if fallback_log_entry.rewritten_term is None:
+        _LOGGER.error(f'Cannot build K Claim {claim_id} Fallback entry does not the contain "rewritten-term" field')
+        return None
     lhs = CTerm.from_kast(kprint.kore_to_kast(fallback_log_entry.original_term))
     if fallback_log_entry.rewritten_term is None:
         _LOGGER.error(f'Cannot build K Claim {claim_id} Fallback entry does not the contain "rewritten-term" field')
