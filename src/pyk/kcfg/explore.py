@@ -346,15 +346,6 @@ class KCFGExplore:
             new_depth += section_depth
         return tuple(new_nodes)
 
-    def _check_abstract(self, node: KCFG.Node, kcfg: KCFG) -> bool:
-        new_cterm = self.kcfg_semantics.abstract_node(node.cterm)
-        if new_cterm == node.cterm:
-            return False
-
-        new_node = kcfg.create_node(new_cterm)
-        kcfg.create_cover(node.id, new_node.id)
-        return True
-
     def check_extendable(self, kcfg_exploration: KCFGExploration, node: KCFG.Node) -> None:
         kcfg: KCFG = kcfg_exploration.kcfg
         if not kcfg.is_leaf(node.id):
