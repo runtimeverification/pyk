@@ -449,43 +449,42 @@ class KCFGExplore:
         node: KCFG.Node,
         logs: dict[int, tuple[LogEntry, ...]],
     ) -> None:
+        def log(message: str, *, warning: bool = False) -> None:
+            _LOGGER.log(logging.WARNING if warning else logging.INFO, f'Extend result for {self.id}: {message}')
+
         match extend_result:
             case Vacuous():
                 kcfg.add_vacuous(node.id)
-                _LOGGER.warning(f'Found vacuous node {self.id}: {shorten_hashes(node.id)}')
+                log(f'vacuous node: {node.id}', warning=True)
 
             case Stuck():
                 kcfg.add_stuck(node.id)
-                _LOGGER.info(f'Found stuck node {self.id}: {shorten_hashes(node.id)}')
+                log(f'stuck node: {node.id}')
 
             case Abstract(cterm):
                 new_node = kcfg.create_node(cterm)
                 kcfg.create_cover(node.id, new_node.id)
+                log(f'abstraction node: {node.id} -> {new_node.id}')
 
             case Step(cterm, depth, next_node_logs, cut):
                 next_node = kcfg.create_node(cterm)
                 logs[next_node.id] = next_node_logs
                 kcfg.create_edge(node.id, next_node.id, depth)
                 cut_str = 'cut-rule ' if cut else ''
-                _LOGGER.info(
-                    f'Found {cut_str}basic block at depth {depth} for {self.id}: {shorten_hashes((node.id, next_node.id))}.'
-                )
+                log(f'{cut_str}basic block at depth {depth}: {node.id} -> {next_node.id}')
 
             case Branch(constraints, heuristic):
                 kcfg.split_on_constraints(node.id, constraints)
-                heur_str = 'using heuristic ' if heuristic else ''
-                _LOGGER.info(
-                    f'Found {len(constraints)} branches {heur_str}for {self.id}: {node.id} -> {[self.kprint.pretty_print(bc) for bc in constraints]}'
-                )
+                heur_str = ' using heuristics' if heuristic else ''
+                constraint_strs = [self.kprint.pretty_print(bc) for bc in constraints]
+                log(f'{len(constraints)} branches{heur_str}: {node.id} -> {constraint_strs}')
 
             case NDBranch(cterms, next_node_logs):
                 next_ids = [kcfg.create_node(cterm).id for cterm in cterms]
                 for i in next_ids:
                     logs[i] = next_node_logs
                 kcfg.create_ndbranch(node.id, next_ids)
-                _LOGGER.info(
-                    f'Found {len(next_ids)} non-deterministic branches for node {self.id}: {shorten_hashes(node.id)}'
-                )
+                log(f'{len(next_ids)} non-deterministic branches: {node.id} -> {next_ids}')
 
             case _:
                 raise AssertionError()
