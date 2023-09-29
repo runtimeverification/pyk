@@ -420,35 +420,13 @@ class KCFGExplore:
         # NDBranch on successor nodes
         return NDBranch(next_cterms, next_node_logs)
 
-    def extend(
+    def extend_kcfg(
         self,
-        kcfg_exploration: KCFGExploration,
+        extend_result: ExtendResult,
+        kcfg: KCFG,
         node: KCFG.Node,
         logs: dict[int, tuple[LogEntry, ...]],
-        execute_depth: int | None = None,
-        cut_point_rules: Iterable[str] = (),
-        terminal_rules: Iterable[str] = (),
-        module_name: str | None = None,
     ) -> None:
-        kcfg: KCFG = kcfg_exploration.kcfg
-
-        if not kcfg.is_leaf(node.id):
-            raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
-        if kcfg.is_stuck(node.id):
-            raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
-        if kcfg.is_vacuous(node.id):
-            raise ValueError(f'Cannot extend vacuous node {self.id}: {node.id}')
-        if kcfg_exploration.is_terminal(node.id):
-            raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
-
-        extend_result = self.extend_cterm(
-            node.cterm,
-            execute_depth=execute_depth,
-            cut_point_rules=cut_point_rules,
-            terminal_rules=terminal_rules,
-            module_name=module_name,
-        )
-
         match extend_result:
             case Vacuous():
                 kcfg.add_vacuous(node.id)
@@ -489,6 +467,36 @@ class KCFGExplore:
 
             case _:
                 raise AssertionError()
+
+    def extend(
+        self,
+        kcfg_exploration: KCFGExploration,
+        node: KCFG.Node,
+        logs: dict[int, tuple[LogEntry, ...]],
+        execute_depth: int | None = None,
+        cut_point_rules: Iterable[str] = (),
+        terminal_rules: Iterable[str] = (),
+        module_name: str | None = None,
+    ) -> None:
+        kcfg: KCFG = kcfg_exploration.kcfg
+
+        if not kcfg.is_leaf(node.id):
+            raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
+        if kcfg.is_stuck(node.id):
+            raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
+        if kcfg.is_vacuous(node.id):
+            raise ValueError(f'Cannot extend vacuous node {self.id}: {node.id}')
+        if kcfg_exploration.is_terminal(node.id):
+            raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
+
+        extend_result = self.extend_cterm(
+            node.cterm,
+            execute_depth=execute_depth,
+            cut_point_rules=cut_point_rules,
+            terminal_rules=terminal_rules,
+            module_name=module_name,
+        )
+        self.extend_kcfg(extend_result, kcfg, node, logs)
 
     def add_dependencies_module(
         self, old_module_name: str, new_module_name: str, dependencies: Iterable[KClaim], priority: int = 1
