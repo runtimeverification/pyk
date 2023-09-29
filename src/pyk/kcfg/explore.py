@@ -355,6 +355,17 @@ class KCFGExplore:
         kcfg.create_cover(node.id, new_node.id)
         return True
 
+    def check_extendable(self, kcfg_exploration: KCFGExploration, node: KCFG.Node) -> None:
+        kcfg: KCFG = kcfg_exploration.kcfg
+        if not kcfg.is_leaf(node.id):
+            raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
+        if kcfg.is_stuck(node.id):
+            raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
+        if kcfg.is_vacuous(node.id):
+            raise ValueError(f'Cannot extend vacuous node {self.id}: {node.id}')
+        if kcfg_exploration.is_terminal(node.id):
+            raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
+
     def extend_cterm(
         self,
         _cterm: CTerm,
@@ -478,17 +489,7 @@ class KCFGExplore:
         terminal_rules: Iterable[str] = (),
         module_name: str | None = None,
     ) -> None:
-        kcfg: KCFG = kcfg_exploration.kcfg
-
-        if not kcfg.is_leaf(node.id):
-            raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
-        if kcfg.is_stuck(node.id):
-            raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
-        if kcfg.is_vacuous(node.id):
-            raise ValueError(f'Cannot extend vacuous node {self.id}: {node.id}')
-        if kcfg_exploration.is_terminal(node.id):
-            raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
-
+        self.check_extendable(kcfg_exploration, node)
         extend_result = self.extend_cterm(
             node.cterm,
             execute_depth=execute_depth,
@@ -496,7 +497,7 @@ class KCFGExplore:
             terminal_rules=terminal_rules,
             module_name=module_name,
         )
-        self.extend_kcfg(extend_result, kcfg, node, logs)
+        self.extend_kcfg(extend_result, kcfg_exploration.kcfg, node, logs)
 
     def add_dependencies_module(
         self, old_module_name: str, new_module_name: str, dependencies: Iterable[KClaim], priority: int = 1
