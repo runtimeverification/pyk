@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from ..kast import KInner
     from ..kast.outer import KClaim
     from ..kcfg.exploration import KCFGExploration
-    from ..kore.rpc import KoreClient, LogEntry
+    from ..kore.rpc import KoreClient, LogEntry, KoreClientError
     from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
@@ -80,17 +80,20 @@ class KCFGExplore:
     ) -> tuple[bool, int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        er = self._kore_client.execute(
-            kore,
-            max_depth=depth,
-            cut_point_rules=cut_point_rules,
-            terminal_rules=terminal_rules,
-            module_name=module_name,
-            log_successful_rewrites=self._trace_rewrites if self._trace_rewrites else None,
-            log_failed_rewrites=self._trace_rewrites if self._trace_rewrites else None,
-            log_successful_simplifications=self._trace_rewrites if self._trace_rewrites else None,
-            log_failed_simplifications=self._trace_rewrites if self._trace_rewrites else None,
-        )
+        try:
+            er = self._kore_client.execute(
+                kore,
+                max_depth=depth,
+                cut_point_rules=cut_point_rules,
+                terminal_rules=terminal_rules,
+                module_name=module_name,
+                log_successful_rewrites=self._trace_rewrites if self._trace_rewrites else None,
+                log_failed_rewrites=self._trace_rewrites if self._trace_rewrites else None,
+                log_successful_simplifications=self._trace_rewrites if self._trace_rewrites else None,
+                log_failed_simplifications=self._trace_rewrites if self._trace_rewrites else None,
+            )
+        except KoreClientError as err:
+            raise AssertionError(f'Error executing term: {cterm}') from err
         _is_vacuous = er.reason is StopReason.VACUOUS
         depth = er.depth
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
