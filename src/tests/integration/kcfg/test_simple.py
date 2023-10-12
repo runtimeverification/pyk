@@ -78,7 +78,7 @@ class TestSimpleProof(KCFGExploreTest):
         expected_k, expected_state, *_ = expected_post
 
         # When
-        actual_depth, actual_post_term, actual_next_terms, _logs = kcfg_explore.cterm_execute(
+        _, actual_depth, actual_post_term, actual_next_terms, _logs = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, *pre), depth=depth
         )
         actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
@@ -115,8 +115,8 @@ class TestSimpleProof(KCFGExploreTest):
 
         # When
         actual_post, _logs = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, *pre))
-        actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post, 'K_CELL'))
-        actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post, 'STATE_CELL'))
+        actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post.kast, 'K_CELL'))
+        actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post.kast, 'STATE_CELL'))
 
         # Then
         assert actual_k == expected_k

@@ -7,22 +7,21 @@ import pytest
 
 from pyk.kast.inner import KApply, KLabel, KRewrite, KSequence, KSort, KToken, KVariable, Subst
 from pyk.kast.manip import (
-    anti_unify_with_constraints,
     bool_to_ml_pred,
     collapse_dots,
+    is_term_like,
     minimize_term,
     ml_pred_to_bool,
     push_down_rewrites,
     remove_generated_cells,
     rename_generated_vars,
     simplify_bool,
-    split_config_and_constraints,
     split_config_from,
 )
 from pyk.prelude.k import DOTS, GENERATED_TOP_CELL
-from pyk.prelude.kbool import BOOL, FALSE, TRUE, andBool, notBool, orBool
+from pyk.prelude.kbool import BOOL, FALSE, TRUE, andBool, notBool
 from pyk.prelude.kint import INT, intToken
-from pyk.prelude.ml import mlAnd, mlEqualsTrue, mlTop
+from pyk.prelude.ml import mlEqualsTrue, mlTop
 
 from ..utils import a, b, c, f, k, x
 
@@ -80,11 +79,30 @@ ML_TO_BOOL_TEST_DATA: Final = (
         KApply(KLabel('#Equals', [BOOL, GENERATED_TOP_CELL]), [TRUE, f(a)]),
         f(a),
     ),
+    (
+        'equals-true-comm',
+        False,
+        KApply(KLabel('#Equals', [BOOL, GENERATED_TOP_CELL]), [f(a), TRUE]),
+        f(a),
+    ),
+    (
+        'equals-false',
+        False,
+        KApply(KLabel('#Equals', [BOOL, GENERATED_TOP_CELL]), [FALSE, f(a)]),
+        notBool(f(a)),
+    ),
+    (
+        'equals-false-comm',
+        False,
+        KApply(KLabel('#Equals', [BOOL, GENERATED_TOP_CELL]), [f(a), FALSE]),
+        notBool(f(a)),
+    ),
     ('top-sort-bool', False, KApply(KLabel('#Top', [BOOL])), TRUE),
     ('top-no-sort', False, KApply('#Top'), TRUE),
     ('top-no-sort', False, mlTop(), TRUE),
     ('equals-variabl', False, KApply(KLabel('#Equals'), [x, f(a)]), KApply('_==K_', [x, f(a)])),
     ('equals-true-no-sort', False, KApply(KLabel('#Equals'), [TRUE, f(a)]), f(a)),
+    ('equals-true-comm-no-sort', False, KApply(KLabel('#Equals'), [f(a), TRUE]), f(a)),
     (
         'equals-token',
         False,
@@ -130,6 +148,36 @@ ML_TO_BOOL_TEST_DATA: Final = (
             [KVariable('X'), KApply('_==Int_', [KVariable('X'), KVariable('Y')])],
         ),
         KVariable('Exists_9a5d09ae'),
+    ),
+    (
+        'kapply-equal-kappy',
+        False,
+        KApply(
+            KLabel('#Equals', [KSort('Int'), KSort('GeneratedTopCell')]),
+            (
+                KApply(
+                    KLabel('#lookup(_,_)_EVM-TYPES_Int_Map_Int', []),
+                    (KVariable('?STORAGE', KSort('Map')), KToken('32', KSort('Int'))),
+                ),
+                KApply(
+                    KLabel('#lookup(_,_)_EVM-TYPES_Int_Map_Int', []),
+                    (KVariable('?STORAGE', KSort('Map')), KToken('32', KSort('Int'))),
+                ),
+            ),
+        ),
+        KApply(
+            KLabel('_==K_', []),
+            (
+                KApply(
+                    KLabel('#lookup(_,_)_EVM-TYPES_Int_Map_Int', []),
+                    (KVariable('?STORAGE', KSort('Map')), KToken('32', KSort('Int'))),
+                ),
+                KApply(
+                    KLabel('#lookup(_,_)_EVM-TYPES_Int_Map_Int', []),
+                    (KVariable('?STORAGE', KSort('Map')), KToken('32', KSort('Int'))),
+                ),
+            ),
+        ),
     ),
 )
 
@@ -343,92 +391,23 @@ def test_split_config_from(term: KInner, expected_config: KInner, expected_subst
     assert actual_subst == expected_subst
 
 
-def test_anti_unify_with_constraints() -> None:
-    cterm1 = mlAnd(
-        [
-            KApply(
-                '<generatedTop>',
-                [
-                    KApply('<k>', KToken('1', 'Int')),
-                    KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
-                ],
-            ),
-            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
-        ]
-    )
-    cterm2 = mlAnd(
-        [
-            KApply(
-                '<generatedTop>',
-                [
-                    KApply('<k>', KToken('2', 'Int')),
-                    KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
-                ],
-            ),
-            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
-        ]
-    )
-
-    anti_unifier = anti_unify_with_constraints(cterm1, cterm2, abstracted_disjunct=True)
-
-    config, constraints = split_config_and_constraints(anti_unifier)
-
-    assert type(config) is KApply
-    assert type(config.args[0]) is KApply
-    assert type(config.args[0].args[0]) is KVariable
-    var_name = config.args[0].args[0].name
-
-    expected = mlAnd(
-        [
-            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
-            mlEqualsTrue(
-                orBool(
-                    [
-                        KApply('_==K_', [KVariable(var_name), KToken('1', 'Int')]),
-                        KApply('_==K_', [KVariable(var_name), KToken('2', 'Int')]),
-                    ]
-                )
-            ),
-        ]
-    )
-
-    assert expected == constraints
+IS_TERM_LIKE_TEST_DATA = [
+    ('var_with_at', KVariable('@S1'), False),
+    ('var_without_at', KVariable('S1'), True),
+    *[
+        (f'label_{label_name}', KApply(KLabel(label_name), [KVariable('S1'), KVariable('S2')]), False)
+        for label_name in ['#Equals', '#And', '#Or', '#Implies']
+    ],
+    ('label_lookup', KApply(KLabel('<kevm>')), True),
+    ('nested-1', KApply(KLabel('<output>'), [KApply(KLabel('#And'), [KVariable('S1'), KVariable('S2')])]), False),
+    ('nested-2', KApply(KLabel('<pc>'), [KApply(KLabel('#lookup'), [KVariable('S1'), KVariable('@S2')])]), False),
+]
 
 
-def test_anti_unify_with_constraints_subst_true() -> None:
-    cterm1 = mlAnd(
-        [
-            KApply(
-                '<generatedTop>',
-                [
-                    KApply('<k>', KToken('1', 'Int')),
-                    KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
-                ],
-            ),
-            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
-        ]
-    )
-    cterm2 = mlAnd(
-        [
-            KApply(
-                '<generatedTop>',
-                [
-                    KApply('<k>', KToken('1', 'Int')),
-                    KApply('<generatedCounter>', KVariable('GENERATEDCOUNTER_CELL')),
-                ],
-            ),
-            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
-        ]
-    )
-
-    anti_unifier = anti_unify_with_constraints(cterm1, cterm2, abstracted_disjunct=True)
-
-    config, constraints = split_config_and_constraints(anti_unifier)
-
-    expected = mlAnd(
-        [
-            mlEqualsTrue(KApply('_==K_', [KToken('1', 'Int'), KToken('1', 'Int')])),
-        ]
-    )
-
-    assert expected == constraints
+@pytest.mark.parametrize(
+    'test_id,kast,expected',
+    IS_TERM_LIKE_TEST_DATA,
+    ids=[test_id for test_id, *_ in IS_TERM_LIKE_TEST_DATA],
+)
+def test_is_term_like(test_id: str, kast: KInner, expected: bool) -> None:
+    assert is_term_like(kast) == expected

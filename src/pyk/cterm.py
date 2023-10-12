@@ -5,9 +5,10 @@ from functools import cached_property
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from .kast.inner import KApply, KInner, KRewrite, KVariable, Subst
+from .kast.inner import KApply, KInner, KRewrite, KToken, KVariable, Subst, bottom_up
 from .kast.kast import KAtt
 from .kast.manip import (
+    abstract_term_safely,
     apply_existential_substitutions,
     count_vars,
     flatten_label,
@@ -22,12 +23,15 @@ from .kast.manip import (
 )
 from .kast.outer import KClaim, KRule
 from .prelude.k import GENERATED_TOP_CELL
-from .prelude.ml import is_top, mlAnd, mlImplies, mlTop
-from .utils import unique
+from .prelude.kbool import andBool, orBool
+from .prelude.ml import is_bottom, is_top, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlTop
+from .utils import single, unique
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from typing import Any
+
+    from .kast.outer import KDefinition
 
 
 @dataclass(frozen=True, order=True)
@@ -36,16 +40,28 @@ class CTerm:
     constraints: tuple[KInner, ...]
 
     def __init__(self, config: KInner, constraints: Iterable[KInner] = ()) -> None:
-        self._check_config(config)
-        constraints = self._normalize_constraints(constraints)
+        if CTerm._is_top(config):
+            config = mlTop()
+            constraints = ()
+        elif CTerm._is_bottom(config):
+            config = mlBottom()
+            constraints = ()
+        else:
+            self._check_config(config)
+            constraints = self._normalize_constraints(constraints)
         object.__setattr__(self, 'config', config)
         object.__setattr__(self, 'constraints', constraints)
 
     @staticmethod
     def from_kast(kast: KInner) -> CTerm:
-        config, constraint = split_config_and_constraints(kast)
-        constraints = flatten_label('#And', constraint)
-        return CTerm(config, constraints)
+        if CTerm._is_top(kast):
+            return CTerm.top()
+        elif CTerm._is_bottom(kast):
+            return CTerm.bottom()
+        else:
+            config, constraint = split_config_and_constraints(kast)
+            constraints = flatten_label('#And', constraint)
+            return CTerm(config, constraints)
 
     @staticmethod
     def from_dict(dct: dict[str, Any]) -> CTerm:
@@ -54,9 +70,17 @@ class CTerm:
         return CTerm(config, constraints)
 
     @staticmethod
+    def top() -> CTerm:
+        return CTerm(mlTop(), ())
+
+    @staticmethod
+    def bottom() -> CTerm:
+        return CTerm(mlBottom(), ())
+
+    @staticmethod
     def _check_config(config: KInner) -> None:
         if not isinstance(config, KApply) or not config.is_cell:
-            raise ValueError('Expected cell label, found: {config.label.name}')
+            raise ValueError(f'Expected cell label, found: {config}')
 
     @staticmethod
     def _normalize_constraints(constraints: Iterable[KInner]) -> tuple[KInner, ...]:
@@ -73,6 +97,24 @@ class CTerm:
         if is_top(term):
             return True
         return False
+
+    @staticmethod
+    def _is_top(kast: KInner) -> bool:
+        flat = flatten_label('#And', kast)
+        if len(flat) == 1:
+            return is_top(single(flat))
+        return all(CTerm._is_top(term) for term in flat)
+
+    @staticmethod
+    def _is_bottom(kast: KInner) -> bool:
+        flat = flatten_label('#And', kast)
+        if len(flat) == 1:
+            return is_bottom(single(flat))
+        return any(CTerm._is_bottom(term) for term in flat)
+
+    @property
+    def is_bottom(self) -> bool:
+        return CTerm._is_bottom(self.config) or any(CTerm._is_bottom(cterm) for cterm in self.constraints)
 
     @staticmethod
     def _constraint_sort_key(term: KInner) -> tuple[int, str]:
@@ -103,6 +145,9 @@ class CTerm:
 
     def cell(self, cell: str) -> KInner:
         return self.cells[cell]
+
+    def try_cell(self, cell: str) -> KInner | None:
+        return self.cells.get(cell)
 
     def match(self, cterm: CTerm) -> Subst | None:
         csubst = self.match_with_constraint(cterm)
@@ -137,6 +182,63 @@ class CTerm:
 
     def add_constraint(self, new_constraint: KInner) -> CTerm:
         return CTerm(self.config, [new_constraint] + list(self.constraints))
+
+    def anti_unify(
+        self, other: CTerm, keep_values: bool = False, kdef: KDefinition | None = None
+    ) -> tuple[CTerm, CSubst, CSubst]:
+        new_config, self_subst, other_subst = anti_unify(self.config, other.config, kdef=kdef)
+        common_constraints = [constraint for constraint in self.constraints if constraint in other.constraints]
+        self_unique_constraints = [
+            ml_pred_to_bool(constraint) for constraint in self.constraints if constraint not in other.constraints
+        ]
+        other_unique_constraints = [
+            ml_pred_to_bool(constraint) for constraint in other.constraints if constraint not in self.constraints
+        ]
+
+        new_cterm = CTerm(config=new_config, constraints=())
+        if keep_values:
+            disjunct_lhs = andBool([self_subst.pred] + self_unique_constraints)
+            disjunct_rhs = andBool([other_subst.pred] + other_unique_constraints)
+            if KToken('true', 'Bool') not in [disjunct_lhs, disjunct_rhs]:
+                new_cterm = new_cterm.add_constraint(mlEqualsTrue(orBool([disjunct_lhs, disjunct_rhs])))
+
+        new_constraints = []
+        fvs = free_vars(new_cterm.kast)
+        len_fvs = 0
+        while len_fvs < len(fvs):
+            len_fvs = len(fvs)
+            for constraint in common_constraints:
+                if constraint not in new_constraints:
+                    constraint_fvs = free_vars(constraint)
+                    if any(fv in fvs for fv in constraint_fvs):
+                        new_constraints.append(constraint)
+                        fvs.extend(constraint_fvs)
+
+        for constraint in new_constraints:
+            new_cterm = new_cterm.add_constraint(constraint)
+        self_csubst = new_cterm.match_with_constraint(self)
+        other_csubst = new_cterm.match_with_constraint(other)
+        if self_csubst is None or other_csubst is None:
+            raise ValueError(
+                f'Anti-unification failed to produce a more general state: {(new_cterm, (self, self_csubst), (other, other_csubst))}'
+            )
+        return (new_cterm, self_csubst, other_csubst)
+
+
+def anti_unify(state1: KInner, state2: KInner, kdef: KDefinition | None = None) -> tuple[KInner, Subst, Subst]:
+    def _rewrites_to_abstractions(_kast: KInner) -> KInner:
+        if type(_kast) is KRewrite:
+            sort = kdef.sort(_kast) if kdef else None
+            return abstract_term_safely(_kast, sort=sort)
+        return _kast
+
+    minimized_rewrite = push_down_rewrites(KRewrite(state1, state2))
+    abstracted_state = bottom_up(_rewrites_to_abstractions, minimized_rewrite)
+    subst1 = abstracted_state.match(state1)
+    subst2 = abstracted_state.match(state2)
+    if subst1 is None or subst2 is None:
+        raise ValueError('Anti-unification failed to produce a more general state!')
+    return (abstracted_state, subst1, subst2)
 
 
 @dataclass(frozen=True, order=True)

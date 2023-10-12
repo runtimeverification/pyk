@@ -27,9 +27,10 @@ def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
 def apr_proof(i: int, proof_dir: Path) -> APRProof:
     return APRProof(
         id=f'apr_proof_{i}',
+        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
+        terminal=[],
         init=node(1).id,
         target=node(1).id,
-        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
         logs={},
         proof_dir=proof_dir,
     )
@@ -42,6 +43,7 @@ def aprbmc_proof(i: int, proof_dir: Path) -> APRBMCProof:
         target=node(1).id,
         bmc_depth=i,
         kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
+        terminal=[],
         logs={},
         proof_dir=proof_dir,
     )
@@ -58,6 +60,7 @@ class TestProof:
         sample_proof = APRProof(
             id='apr_proof_1',
             kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            terminal=[],
             init=node(1).id,
             target=node(1).id,
             logs={},
@@ -80,6 +83,7 @@ class TestProof:
             id='aprbmc_proof_1',
             bmc_depth=1,
             kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
+            terminal=[],
             init=node(1).id,
             target=node(1).id,
             logs={},
@@ -122,24 +126,21 @@ class TestProof:
 
 
 def test_read_write_proof_data(proof_dir: Path) -> None:
-    proof = APRProof(
-        id='apr_proof_1',
-        kcfg=KCFG(),
-        init=0,
-        target=0,
-        logs={},
-        proof_dir=proof_dir,
-    )
-
     kcfg = KCFG(proof_dir / 'apr_proof_1' / 'kcfg')
     node1 = kcfg.create_node(term(1))
     node2 = kcfg.create_node(term(2))
     kcfg.create_node(term(3))
     kcfg.create_node(term(4))
 
-    proof.kcfg = kcfg
-    proof.init = node1.id
-    proof.target = node2.id
+    proof = APRProof(
+        id='apr_proof_1',
+        kcfg=kcfg,
+        terminal=[],
+        init=node1.id,
+        target=node2.id,
+        logs={},
+        proof_dir=proof_dir,
+    )
 
     proof.write_proof_data()
 
@@ -270,17 +271,31 @@ def test_aprbmc_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None
 
 
 def test_print_failure_info() -> None:
-    failing_nodes: dict[int, tuple[str, str]] = {}
-    failing_nodes[3] = (
-        'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\nSTATE_CELL: $n |-> 2 #Implies 1',
-        'true #Equals X <=Int 100',
-    )
-    failing_nodes[5] = (
-        'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\nSTATE_CELL: $n |-> 5 #Implies 6',
-        '#Top',
-    )
+    failing_nodes = [3, 5]
     pending_nodes = [6, 7, 8]
-    failure_info = APRFailureInfo(failing_nodes=failing_nodes, pending_nodes=pending_nodes)
+
+    path_conditions = {}
+    path_conditions[3] = 'true #Equals X <=Int 100'
+    path_conditions[5] = '#Top'
+
+    failure_reasons = {}
+    failure_reasons[
+        3
+    ] = 'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\nSTATE_CELL: $n |-> 2 #Implies 1'
+    failure_reasons[
+        5
+    ] = 'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\nSTATE_CELL: $n |-> 5 #Implies 6'
+
+    models: dict[int, list[tuple[str, str]]] = {}
+    models[5] = [('X', '101')]
+
+    failure_info = APRFailureInfo(
+        failing_nodes=failing_nodes,
+        pending_nodes=pending_nodes,
+        failure_reasons=failure_reasons,
+        path_conditions=path_conditions,
+        models=models,
+    )
 
     actual_output = '\n'.join(failure_info.print())
     expected_output = r"""5 Failure nodes. (3 pending and 2 failing)
@@ -295,6 +310,7 @@ Failing nodes:
     STATE_CELL: $n |-> 2 #Implies 1
   Path condition:
     true #Equals X <=Int 100
+  Failed to generate a model.
 
   Node id: 5
   Failure reason:
@@ -302,6 +318,8 @@ Failing nodes:
     STATE_CELL: $n |-> 5 #Implies 6
   Path condition:
     #Top
+  Model:
+    X = 101
 
 Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN"""
 
@@ -321,6 +339,7 @@ def test_apr_proof_summary(proof_dir: Path) -> None:
                 nodes=1,
                 pending=0,
                 failing=0,
+                vacuous=0,
                 stuck=0,
                 terminal=0,
                 refuted=0,
@@ -343,6 +362,7 @@ def test_aprbmc_proof_summary(proof_dir: Path) -> None:
                 nodes=1,
                 pending=0,
                 failing=0,
+                vacuous=0,
                 stuck=0,
                 terminal=0,
                 refuted=0,
@@ -379,6 +399,7 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
         nodes=1,
         pending=0,
         failing=0,
+        vacuous=0,
         stuck=0,
         terminal=0,
         refuted=0,
@@ -394,6 +415,7 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
                 nodes=2,
                 pending=1,
                 failing=0,
+                vacuous=0,
                 stuck=0,
                 terminal=0,
                 refuted=0,

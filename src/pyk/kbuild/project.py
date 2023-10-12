@@ -1,24 +1,18 @@
 from __future__ import annotations
 
 import dataclasses
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from pathlib import Path
+from functools import cached_property
+from importlib import resources
+from pathlib import Path, PosixPath
 from typing import TYPE_CHECKING, final
 
 import tomli
 
 from ..cli.utils import relative_path
 from ..ktool.kompile import KompileBackend, LLVMKompileType
-from ..utils import (
-    FrozenDict,
-    abs_or_rel_to,
-    check_absolute_path,
-    check_dir_path,
-    check_file_path,
-    check_relative_path,
-    single,
-)
+from ..utils import FrozenDict, abs_or_rel_to, check_dir_path, check_file_path, check_relative_path, single
 from .config import PROJECT_FILE_NAME
 
 if TYPE_CHECKING:
@@ -26,16 +20,18 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-class Source(ABC):  # noqa: B024
+class Source(ABC):
     @staticmethod
-    def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> Source:
+    def from_dict(dct: Mapping[str, Any]) -> Source:
         if 'path' in dct:
-            return PathSource.from_dict(project_dir, dct)
+            return PathSource(Path(dct['path']))
+        if 'package' in dct:
+            return PackageSource(dct['package'])
+        raise ValueError(f'Cannot parse source: {dct}')
 
-        if 'git' in dct:
-            return GitSource(git=dct['git'], rev=dct['rev'])
-
-        raise ValueError(f'Invalid source: {dct}')
+    @abstractmethod
+    def resolve(self, project_path: Path) -> Path:
+        ...
 
 
 @final
@@ -43,31 +39,20 @@ class Source(ABC):  # noqa: B024
 class PathSource(Source):
     path: Path
 
-    def __init__(self, path: Path):
-        check_dir_path(path)
-        check_absolute_path(path)
-        check_file_path(path / PROJECT_FILE_NAME)
-        path = path.resolve()
-        object.__setattr__(self, 'path', path)
-
-    @staticmethod
-    def from_dict(project_dir: Path, dct: Mapping[str, Any]) -> PathSource:
-        path = abs_or_rel_to(Path(dct['path']), project_dir).resolve()
-        return PathSource(path=path)
+    def resolve(self, project_path: Path) -> Path:
+        return abs_or_rel_to(self.path, project_path)
 
 
 @final
 @dataclass(frozen=True)
-class GitSource(Source):
-    git: str
-    rev: str
+class PackageSource(Source):
+    package: str
 
-
-@final
-@dataclass(frozen=True)
-class Dependency:  # TODO Maybe eliminate and store in project as Dict
-    name: str
-    source: Source
+    def resolve(self, project_path: Path) -> Path:
+        traversable = resources.files(self.package)
+        if not isinstance(traversable, PosixPath):
+            raise ValueError(f'Package name {self.package!r} does not resolve to a directory')
+        return traversable.resolve(strict=True)
 
 
 @final
@@ -179,7 +164,7 @@ class Project:
     version: str
     source_dir: Path
     resources: FrozenDict[str, Path]
-    dependencies: tuple[Dependency, ...]
+    dependencies: tuple[Project, ...]
     targets: tuple[Target, ...]
 
     def __init__(
@@ -190,19 +175,18 @@ class Project:
         version: str,
         source_dir: str | Path,
         resources: Mapping[str, str | Path] | None = None,
-        dependencies: Iterable[Dependency] = (),
+        dependencies: Iterable[Project] = (),
         targets: Iterable[Target] = (),
     ):
         path = Path(path).resolve()
         check_dir_path(path)
 
-        source_dir = (path / relative_path(source_dir)).resolve()
+        source_dir = path / relative_path(source_dir)
         check_dir_path(source_dir)
 
         resources = resources or {}
         resources = {
-            resource_name: (path / relative_path(resource_dir)).resolve()
-            for resource_name, resource_dir in resources.items()
+            resource_name: path / relative_path(resource_dir) for resource_name, resource_dir in resources.items()
         }
 
         object.__setattr__(self, 'path', path)
@@ -217,30 +201,45 @@ class Project:
     def load(project_file: str | Path) -> Project:
         project_file = Path(project_file)
         check_file_path(project_file)
+        project_path = project_file.parent
+
+        def _load_dependency(name: str, dct: Any) -> Project:
+            source = Source.from_dict(dct)
+            dependency_path = source.resolve(project_path)
+            project = Project.load_from_dir(dependency_path)
+            if project.name != name:
+                raise ValueError(f'Invalid dependency, expected name {name}, got: {project.name}')
+            return project
 
         with open(project_file, 'rb') as f:
             dct = tomli.load(f)
 
-        project_dir = project_file.parent.resolve()
-
-        return Project(
-            path=project_dir,
+        project = Project(
+            path=project_path,
             name=dct['project']['name'],
             version=dct['project']['version'],
             source_dir=dct['project']['source'],
             resources=dct['project'].get('resources'),
             dependencies=tuple(
-                Dependency(name=name, source=Source.from_dict(project_dir, source))
-                for name, source in dct.get('dependencies', {}).items()
+                _load_dependency(name, source_dct) for name, source_dct in dct.get('dependencies', {}).items()
             ),
             targets=tuple(Target.from_dict(name, target) for name, target in dct.get('targets', {}).items()),
         )
+
+        return project
 
     @staticmethod
     def load_from_dir(project_dir: str | Path) -> Project:
         project_dir = Path(project_dir)
         check_dir_path(project_dir)
         return Project.load(project_dir / PROJECT_FILE_NAME)
+
+    @cached_property
+    def sub_projects(self) -> tuple[Project, ...]:
+        res: tuple[Project, ...] = (self,)
+        for project in self.dependencies:
+            res += project.sub_projects
+        return res
 
     @property
     def project_file(self) -> Path:
@@ -273,6 +272,16 @@ class Project:
             ]
             for resource_name, resource_files in self.resource_files.items()
         }
+
+    @property
+    def all_files(self) -> list[Path]:
+        res: list[Path] = []
+        for sub_project in self.sub_projects:
+            res.append(sub_project.project_file)
+            res.extend(sub_project.source_files)
+            for resource_name in sub_project.resources:
+                res.extend(sub_project.resource_files[resource_name])
+        return res
 
     def get_target(self, target_name: str) -> Target:
         # TODO Should be enforced as a validation rule

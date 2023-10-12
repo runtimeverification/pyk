@@ -5,7 +5,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING
 
 from ..utils import ensure_dir_path
-from .utils import dir_path, file_path
+from .utils import bug_report_arg, dir_path, file_path
 
 if TYPE_CHECKING:
     from typing import TypeVar
@@ -25,6 +25,16 @@ class KCLIArgs:
     def parallel_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
         args.add_argument('--workers', '-j', default=1, type=int, help='Number of processes to run in parallel.')
+        return args
+
+    @cached_property
+    def bug_report_args(self) -> ArgumentParser:
+        args = ArgumentParser(add_help=False)
+        args.add_argument(
+            '--bug-report',
+            type=bug_report_arg,
+            help='Generate bug report with given name',
+        )
         return args
 
     @cached_property
@@ -79,6 +89,24 @@ class KCLIArgs:
         args.add_argument('-O1', dest='o1', default=False, action='store_true', help='Optimization level 1.')
         args.add_argument('-O2', dest='o2', default=False, action='store_true', help='Optimization level 2.')
         args.add_argument('-O3', dest='o3', default=False, action='store_true', help='Optimization level 3.')
+        return args
+
+    @cached_property
+    def smt_args(self) -> ArgumentParser:
+        args = ArgumentParser(add_help=False)
+        args.add_argument('--smt-timeout', dest='smt_timeout', type=int, help='Timeout in ms to use for SMT queries.')
+        args.add_argument(
+            '--smt-retry-limit',
+            dest='smt_retry_limit',
+            type=int,
+            help='Number of times to retry SMT queries with scaling timeouts.',
+        )
+        args.add_argument(
+            '--smt-tactic',
+            dest='smt_tactic',
+            type=str,
+            help='Z3 tactic to use when checking satisfiability. Example: (check-sat-using smt)',
+        )
         return args
 
     @cached_property

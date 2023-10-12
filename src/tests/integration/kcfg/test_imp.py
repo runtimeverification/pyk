@@ -8,10 +8,10 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import minimize_term
+from pyk.kast.manip import get_cell, minimize_term
 from pyk.kcfg.semantics import KCFGSemantics
 from pyk.kcfg.show import KCFGShow
-from pyk.prelude.kbool import BOOL, notBool
+from pyk.prelude.kbool import BOOL, andBool, notBool, orBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRBMCProof, APRBMCProver, APRProof, APRProver, ProofStatus
@@ -343,7 +343,9 @@ GET_MODEL_TEST_DATA: Final = (
     ),
 )
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str], ProofStatus, int]] = (
+APR_PROVE_TEST_DATA: Iterable[
+    tuple[str, Path, str, str, int | None, int | None, Iterable[str], bool, ProofStatus, int]
+] = (
     (
         'imp-simple-addition-1',
         K_FILES / 'imp-simple-spec.k',
@@ -352,6 +354,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         1,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -363,6 +366,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         7,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -374,6 +378,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         1,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -385,6 +390,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         100,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -396,6 +402,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         2,
         1,
         ['IMP.while'],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -407,6 +414,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         4,
         100,
         ['IMP.while'],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -418,6 +426,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         10,
         1,
         [],
+        True,
         ProofStatus.FAILED,
         2,
     ),
@@ -429,6 +438,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -440,6 +450,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -451,6 +462,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -462,6 +474,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         2,
     ),
@@ -473,6 +486,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         2,
     ),
@@ -484,6 +498,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,  # We can reuse subproofs.
     ),
@@ -495,6 +510,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,  # We can reuse subproofs.
     ),
@@ -506,6 +522,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         ['IMP.while'],  # If we do not include `IMP.while` in this list, we get 4 branches instead of 2
+        True,
         ProofStatus.PASSED,
         2,
     ),
@@ -517,6 +534,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        True,
         ProofStatus.PASSED,
         1,
     ),
@@ -528,7 +546,32 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         None,
         None,
         [],
+        False,
         ProofStatus.FAILED,
+        1,
+    ),
+    (
+        'imp-dep-untrue-fail',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'dep-fail-1',
+        None,
+        None,
+        [],
+        False,
+        ProofStatus.PENDING,  # because we do NOT admit the dependency
+        1,
+    ),
+    (
+        'imp-dep-untrue-admitted',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'dep-fail-1',
+        None,
+        None,
+        [],
+        True,
+        ProofStatus.PASSED,  # because we DO admit the dependency, even though it is untrue
         1,
     ),
 )
@@ -737,7 +780,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         expected_k, expected_state = expected_post
 
         # When
-        actual_depth, actual_post_term, actual_next_terms, _logs = kcfg_explore.cterm_execute(
+        _, actual_depth, actual_post_term, actual_next_terms, _logs = kcfg_explore.cterm_execute(
             self.config(kcfg_explore.kprint, k, state), depth=depth
         )
         actual_k = kcfg_explore.kprint.pretty_print(actual_post_term.cell('K_CELL'))
@@ -824,7 +867,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert actual == expected
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,admit_deps,proof_status,expected_leaf_number',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -839,58 +882,28 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         max_iterations: int | None,
         max_depth: int | None,
         cut_rules: Iterable[str],
+        admit_deps: bool,
         proof_status: ProofStatus,
         expected_leaf_number: int,
         tmp_path_factory: TempPathFactory,
     ) -> None:
-        with tmp_path_factory.mktemp('apr_tmp_proofs') as proof_dir:
-            claim = single(
-                kprove.get_claims(
-                    Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
-                )
-            )
-
-            deps = claim.dependencies
-
-            def qualify(module: str, label: str) -> str:
-                if '.' in label:
-                    return label
-                return f'{module}.{label}'
-
-            subproof_ids = [qualify(spec_module, dep_id) for dep_id in deps]
-
-            # < Admit all the dependencies >
-            # We create files for all the subproofs, all tagged as `admitted`.
-            # Later, when creating the proof for the main claim, these get loaded
-            # and their status will be `PASSED`. This is similar to how Coq handles admitted lemmas.
-            # We do all this in order to decouple the tests of "main theorems" from tests of its dependencies.
-            deps_claims = kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=subproof_ids)
-
-            deps_proofs = [
-                APRProof.from_claim(kprove.definition, c, subproof_ids=[], logs={}, proof_dir=proof_dir)
-                for c in deps_claims
-            ]
-            for dp in deps_proofs:
-                dp.admit()
-                dp.write_proof_data()
-            # </Admit all the dependencies >
-
-            proof = APRProof.from_claim(
+        with tmp_path_factory.mktemp(f'apr_tmp_proofs-{test_id}') as proof_dir:
+            spec_modules = kprove.get_claim_modules(Path(spec_file), spec_module_name=spec_module)
+            spec_label = f'{spec_module}.{claim_id}'
+            proofs = APRProof.from_spec_modules(
                 kprove.definition,
-                claim,
-                subproof_ids=subproof_ids,
-                circularity=claim.is_circularity,
+                spec_modules,
+                spec_labels=[spec_label],
                 logs={},
                 proof_dir=proof_dir,
             )
-            _msg_suffix = ' (and is a circularity)' if claim.is_circularity else ''
-            _LOGGER.info(f"The claim '{spec_module}.{claim_id}' has {len(subproof_ids)} dependencies{_msg_suffix}")
+            proof = single([p for p in proofs if p.id == spec_label])
+            if admit_deps:
+                for subproof in proof.subproofs:
+                    subproof.admit()
+                    subproof.write_proof_data()
 
-            prover = APRProver(
-                proof,
-                kcfg_explore=kcfg_explore,
-            )
-
+            prover = APRProver(proof, kcfg_explore=kcfg_explore)
             prover.advance_proof(max_iterations=max_iterations, execute_depth=max_depth, cut_point_rules=cut_rules)
 
             kcfg_show = KCFGShow(
@@ -1033,7 +1046,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert expected_pending == actual_pending
         assert expected_failing == actual_failing
 
-        actual_path_conds = set({path_condition for _, (_, path_condition) in failure_info.failing_nodes.items()})
+        actual_path_conds = set({path_condition for _, path_condition in failure_info.path_conditions.items()})
         expected_path_conds = set({kprove.pretty_print(condition) for condition in path_conditions})
 
         assert actual_path_conds == expected_path_conds
@@ -1125,7 +1138,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         # Both branches will be checked and fail (fail_fast=False)
         assert len(proof.kcfg.leaves) == 3
         assert len(proof.pending) == 0
-        assert len(proof.terminal) == 2
+        assert len(proof._terminal) == 3
         assert len(proof.failing) == 2
 
         proof = APRProof.from_claim(
@@ -1145,5 +1158,151 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         # First branch will be reached first and terminate the proof, leaving the second long branch pending (fail_fast=True)
         assert len(proof.kcfg.leaves) == 3
         assert len(proof.pending) == 1
-        assert len(proof.terminal) == 1
+        assert len(proof._terminal) == 2
         assert len(proof.failing) == 1
+
+    def test_anti_unify_forget_values(
+        self,
+        kcfg_explore: KCFGExplore,
+        kprint: KPrint,
+    ) -> None:
+        cterm1 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='N |-> X:Int',
+            constraint=mlAnd(
+                [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('K', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
+                ]
+            ),
+        )
+        cterm2 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='N |-> Y:Int',
+            constraint=mlAnd(
+                [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('K', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
+                ]
+            ),
+        )
+
+        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=False, kdef=kprint.definition)
+
+        k_cell = get_cell(anti_unifier.kast, 'STATE_CELL')
+        assert type(k_cell) is KApply
+        assert k_cell.label.name == '_|->_'
+        assert type(k_cell.args[1]) is KVariable
+        abstracted_var: KVariable = k_cell.args[1]
+
+        expected_anti_unifier = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state=f'N |-> {abstracted_var.name}:Int',
+            constraint=mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
+        )
+
+        assert anti_unifier.kast == expected_anti_unifier.kast
+
+    def test_anti_unify_keep_values(
+        self,
+        kcfg_explore: KCFGExplore,
+        kprint: KPrint,
+    ) -> None:
+        cterm1 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='N |-> X:Int',
+            constraint=mlAnd(
+                [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('K', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('R', 'Int'), KToken('1', 'Int')])),
+                ]
+            ),
+        )
+        cterm2 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='N |-> Y:Int',
+            constraint=mlAnd(
+                [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('K', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<=Int_', [KVariable('R', 'Int'), KToken('1', 'Int')])),
+                ]
+            ),
+        )
+
+        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprint.definition)
+
+        k_cell = get_cell(anti_unifier.kast, 'STATE_CELL')
+        assert type(k_cell) is KApply
+        assert k_cell.label.name == '_|->_'
+        assert type(k_cell.args[1]) is KVariable
+        abstracted_var: KVariable = k_cell.args[1]
+
+        expected_anti_unifier = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state=f'N |-> {abstracted_var.name}:Int',
+            constraint=mlAnd(
+                [
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('X', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_>Int_', [KVariable('Y', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(
+                        orBool(
+                            [
+                                andBool(
+                                    [
+                                        KApply('_==K_', [KVariable(name=abstracted_var.name), KVariable('X', 'Int')]),
+                                        KApply('_>Int_', [KVariable('R', 'Int'), KToken('1', 'Int')]),
+                                    ]
+                                ),
+                                andBool(
+                                    [
+                                        KApply('_==K_', [KVariable(name=abstracted_var.name), KVariable('Y', 'Int')]),
+                                        KApply('_<=Int_', [KVariable('R', 'Int'), KToken('1', 'Int')]),
+                                    ]
+                                ),
+                            ]
+                        )
+                    ),
+                ]
+            ),
+        )
+
+        assert anti_unifier.kast == expected_anti_unifier.kast
+
+    def test_anti_unify_subst_true(
+        self,
+        kcfg_explore: KCFGExplore,
+        kprint: KPrint,
+    ) -> None:
+        cterm1 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='N |-> 0',
+            constraint=mlEqualsTrue(KApply('_==K_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
+        )
+        cterm2 = self.config(
+            kprint=kprint,
+            k='int $n ; { }',
+            state='N |-> 0',
+            constraint=mlEqualsTrue(KApply('_==K_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
+        )
+
+        anti_unifier, _, _ = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprint.definition)
+
+        assert anti_unifier.kast == cterm1.kast

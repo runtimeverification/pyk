@@ -17,6 +17,7 @@ from pyk.kore.rpc import (
     TransportType,
     UnknownResult,
     UnsatResult,
+    VacuousResult,
 )
 from pyk.kore.syntax import And, App, Bottom, Module, Top
 
@@ -78,7 +79,7 @@ def kore_client(mock: Mock, mock_class: Mock) -> Iterator[KoreClient]:  # noqa: 
     mock_class.assert_called_with(
         'localhost', 3000, timeout=None, bug_report=None, transport=TransportType.SINGLE_SOCKET
     )
-    assert client._client == mock
+    assert client._client._default_client == mock
     yield client
     client.close()
     mock.close.assert_called()
@@ -94,6 +95,16 @@ EXECUTE_TEST_DATA: Final = (
             'reason': 'stuck',
         },
         StuckResult(State(int_dv(2), int_top, int_top), 1, logs=()),
+    ),
+    (
+        App('IntAdd', (), (int_dv(1), int_dv(1))),
+        {'state': kore(App('IntAdd', [], [int_dv(1), int_dv(1)]))},
+        {
+            'state': {'term': kore(int_dv(2)), 'substitution': kore(int_top), 'predicate': kore(int_top)},
+            'depth': 1,
+            'reason': 'vacuous',
+        },
+        VacuousResult(State(int_dv(2), int_top, int_top), 1, logs=()),
     ),
 )
 

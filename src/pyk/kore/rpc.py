@@ -176,6 +176,68 @@ class HttpTransport(Transport):
         return f'{self._host}:{self._port}'
 
 
+class JsonRpcClientFacade(ContextManager['JsonRpcClientFacade']):
+    _JSON_RPC_VERSION: Final = '2.0'
+
+    _clients: dict[str, list[JsonRpcClient]]
+    _default_client: JsonRpcClient
+
+    def __init__(
+        self,
+        default_host: str,
+        default_port: int,
+        default_transport: TransportType,
+        dispatch: dict[str, list[tuple[str, int, TransportType]]],
+        *,
+        timeout: int | None = None,
+        bug_report: BugReport | None = None,
+    ):
+        client_cache = {}
+        self._clients = {}
+        self._default_client = JsonRpcClient(
+            default_host, default_port, timeout=timeout, bug_report=bug_report, transport=default_transport
+        )
+        client_cache[(default_host, default_port)] = self._default_client
+        for method, servers in dispatch.items():
+            for host, port, transport in servers:
+                if (host, port) in client_cache:
+                    self._update_clients(method, client_cache[(host, port)])
+                else:
+                    new_client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report, transport=transport)
+                    self._update_clients(method, new_client)
+                    client_cache[(host, port)] = new_client
+
+    def _update_clients(self, method: str, client: JsonRpcClient) -> None:
+        clients = self._clients.get(method, [])
+        self._clients[method] = clients
+        clients.append(client)
+
+    def __enter__(self) -> JsonRpcClientFacade:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self._default_client.__exit__(*args)
+        for clients in self._clients.values():
+            for client in clients:
+                client.__exit__(*args)
+
+    def close(self) -> None:
+        self._default_client.close()
+        for clients in self._clients.values():
+            for client in clients:
+                client.close()
+
+    def request(self, method: str, **params: Any) -> dict[str, Any]:
+        if method in self._clients:
+            for client in self._clients[method]:
+                response = client.request(method, **params)
+                if 'error' in response:
+                    return response
+            return response
+        else:
+            return self._default_client.request(method, **params)
+
+
 class JsonRpcClient(ContextManager['JsonRpcClient']):
     _JSON_RPC_VERSION: Final = '2.0'
 
@@ -281,6 +343,7 @@ class StopReason(str, Enum):
     BRANCHING = 'branching'
     CUT_POINT_RULE = 'cut-point-rule'
     TERMINAL_RULE = 'terminal-rule'
+    VACUOUS = 'vacuous'
 
 
 @final
@@ -431,6 +494,7 @@ class ExecuteResult(ABC):  # noqa: B024
         StopReason.BRANCHING: 'BranchingResult',
         StopReason.CUT_POINT_RULE: 'CutPointResult',
         StopReason.TERMINAL_RULE: 'TerminalResult',
+        StopReason.VACUOUS: 'VacuousResult',
     }
 
     reason: ClassVar[StopReason]
@@ -565,6 +629,28 @@ class TerminalResult(ExecuteResult):
 
 @final
 @dataclass(frozen=True)
+class VacuousResult(ExecuteResult):
+    reason = StopReason.VACUOUS
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+    logs: tuple[LogEntry, ...]
+
+    @classmethod
+    def from_dict(cls: type[VacuousResult], dct: Mapping[str, Any]) -> VacuousResult:
+        cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
+        return VacuousResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
+            logs=logs,
+        )
+
+
+@final
+@dataclass(frozen=True)
 class ImpliesResult:
     satisfiable: bool
     implication: Pattern
@@ -624,7 +710,7 @@ class SatResult(GetModelResult):
 class KoreClient(ContextManager['KoreClient']):
     _KORE_JSON_VERSION: Final = 1
 
-    _client: JsonRpcClient
+    _client: JsonRpcClientFacade
 
     def __init__(
         self,
@@ -634,8 +720,13 @@ class KoreClient(ContextManager['KoreClient']):
         timeout: int | None = None,
         bug_report: BugReport | None = None,
         transport: TransportType = TransportType.SINGLE_SOCKET,
+        dispatch: dict[str, list[tuple[str, int, TransportType]]] | None = None,
     ):
-        self._client = JsonRpcClient(host, port, timeout=timeout, bug_report=bug_report, transport=transport)
+        if dispatch is None:
+            dispatch = {}
+        self._client = JsonRpcClientFacade(
+            host, port, transport, timeout=timeout, bug_report=bug_report, dispatch=dispatch
+        )
 
     def __enter__(self) -> KoreClient:
         return self
@@ -759,6 +850,7 @@ class KoreServer(ContextManager['KoreServer']):
         smt_timeout: int | None = None,
         smt_retry_limit: int | None = None,
         smt_reset_interval: int | None = None,
+        smt_tactic: str | None = None,
         command: str | Iterable[str] | None = None,
         bug_report: BugReport | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
@@ -790,6 +882,8 @@ class KoreServer(ContextManager['KoreServer']):
             smt_server_args += ['--smt-retry-limit', str(smt_retry_limit)]
         if smt_reset_interval:
             smt_server_args += ['--smt-reset-interval', str(smt_reset_interval)]
+        if smt_tactic:
+            smt_server_args += ['--smt-tactic', smt_tactic]
 
         haskell_log_args = (
             [
@@ -889,6 +983,7 @@ class BoosterServer(KoreServer):
         smt_timeout: int | None = None,
         smt_retry_limit: int | None = None,
         smt_reset_interval: int | None = None,
+        smt_tactic: str | None = None,
         command: str | Iterable[str] | None,
         bug_report: BugReport | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
@@ -936,6 +1031,7 @@ class BoosterServer(KoreServer):
             smt_timeout=smt_timeout,
             smt_retry_limit=smt_retry_limit,
             smt_reset_interval=smt_reset_interval,
+            smt_tactic=smt_tactic,
             command=args,
             bug_report=bug_report,
             haskell_log_format=haskell_log_format,
@@ -954,6 +1050,7 @@ def kore_server(
     bug_report: BugReport | None = None,
     smt_timeout: int | None = None,
     smt_retry_limit: int | None = None,
+    smt_tactic: str | None = None,
     haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
     haskell_log_entries: Iterable[str] = (),
     log_axioms_file: Path | None = None,
@@ -968,6 +1065,7 @@ def kore_server(
             bug_report=bug_report,
             smt_timeout=smt_timeout,
             smt_retry_limit=smt_retry_limit,
+            smt_tactic=smt_tactic,
             haskell_log_format=haskell_log_format,
             haskell_log_entries=haskell_log_entries,
             log_axioms_file=log_axioms_file,
@@ -981,6 +1079,7 @@ def kore_server(
         bug_report=bug_report,
         smt_timeout=smt_timeout,
         smt_retry_limit=smt_retry_limit,
+        smt_tactic=smt_tactic,
         haskell_log_format=haskell_log_format,
         haskell_log_entries=haskell_log_entries,
         log_axioms_file=log_axioms_file,

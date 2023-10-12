@@ -14,10 +14,10 @@ from pyk.prelude.kbool import BOOL, TRUE
 from pyk.prelude.kint import INT, intToken
 from pyk.prelude.ml import mlBottom, mlImplies, mlTop
 from pyk.prelude.string import STRING, stringToken
-from pyk.testing import KompiledTest
+from pyk.testing import KPrintTest
 from pyk.utils import single
 
-from ..utils import K_FILES
+from ..utils import K_FILES, TEST_DATA_DIR
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
     from pyk.kast import KInner
     from pyk.kast.outer import KDefinition
+    from pyk.ktool.kprint import KPrint
 
 
 BIDIRECTIONAL_TEST_DATA: Final = (
@@ -231,6 +232,39 @@ BIDIRECTIONAL_TEST_DATA: Final = (
 )
 
 KAST_TO_KORE_TEST_DATA: Final = BIDIRECTIONAL_TEST_DATA + (
+    (
+        'kitem-function-k-arg',
+        KSort('Bool'),
+        """
+        Lbl'UndsEqlsEqls'K'Unds'{}(
+          VarX:SortK{},
+          VarY:SortK{},
+        )
+        """,
+        KApply('_==K_', [KVariable('X', 'K'), KVariable('Y', 'K')]),
+    ),
+    (
+        'kitem-function-k-arg-2',
+        KSort('Bool'),
+        """
+        Lbl'UndsEqlsEqls'K'Unds'{}(
+          VarX:SortK{},
+          VarY:SortK{},
+        )
+        """,
+        KApply('_==K_', [KVariable('X'), KVariable('Y')]),
+    ),
+    (
+        'kitem-function',
+        KSort('Foo'),
+        """
+        Lblabcd{}(kseq{}(
+            VarX:SortKItem{},
+            dotk{}()
+        ))
+        """,
+        KApply('abcd', [KVariable('X', 'KItem')]),
+    ),
     (
         'equals-k-encoding',
         KSort('KItem'),
@@ -547,8 +581,80 @@ KRULE_TO_KORE_EXPLICIT_DATA: Final = (
     ),
 )
 
+SORT_TERM_DATA: Final = (
+    (
+        'variable-int',
+        KVariable('X', 'Int'),
+        KSort('Int'),
+    ),
+    (
+        'variable-bool',
+        KVariable('X', 'Bool'),
+        KSort('Bool'),
+    ),
+    (
+        'variable-k',
+        KVariable('X', 'K'),
+        KSort('K'),
+    ),
+    (
+        'variable-kitem',
+        KVariable('X', 'KItem'),
+        KSort('KItem'),
+    ),
+    (
+        'int-token',
+        intToken(1),
+        KSort('Int'),
+    ),
+    (
+        'bool-token',
+        KToken('true', 'Bool'),
+        KSort('Bool'),
+    ),
+    (
+        'ksequence',
+        KSequence((intToken(0), intToken(1), intToken(2))),
+        KSort('K'),
+    ),
+    (
+        'krewrite-same-sort',
+        KRewrite(lhs=intToken(0), rhs=intToken(1)),
+        KSort('Int'),
+    ),
+    (
+        'krewrite-direct-supersort-lhs',
+        KRewrite(lhs=intToken(0), rhs=KVariable('X', 'KItem')),
+        KSort('KItem'),
+    ),
+    (
+        'krewrite-direct-supersort-rhs',
+        KRewrite(rhs=intToken(0), lhs=KVariable('X', 'KItem')),
+        KSort('KItem'),
+    ),
+    (
+        'sort-parametric-int',
+        KApply(
+            KLabel('#if_#then_#else_#fi_K-EQUAL-SYNTAX_Sort_Bool_Sort_Sort', [KSort('Int')]),
+            [KToken('true', 'Bool'), intToken(1), intToken(2)],
+        ),
+        KSort('Int'),
+    ),
+    (
+        'sort-parametric-bool',
+        KApply(
+            KLabel('#if_#then_#else_#fi_K-EQUAL-SYNTAX_Sort_Bool_Sort_Sort', [KSort('Bool')]),
+            [KToken('true', 'Bool'), KToken('true', 'Bool'), KToken('false', 'Bool')],
+        ),
+        KSort('Bool'),
+    ),
+)
 
-class TestKonvertSimpleProofs(KompiledTest):
+
+SKIPPED_FRONTEND_COMP_TESTS: Final = set((TEST_DATA_DIR / 'frontend-comp-skip').read_text().splitlines())
+
+
+class TestKonvertSimpleProofs(KPrintTest):
     KOMPILE_MAIN_FILE = K_FILES / 'simple-proofs.k'
 
     @pytest.fixture(scope='class')
@@ -577,6 +683,33 @@ class TestKonvertSimpleProofs(KompiledTest):
 
         # Then
         assert actual_kore == kore
+
+    @pytest.mark.parametrize(
+        'test_id,sort,kore_text,kast',
+        KAST_TO_KORE_TEST_DATA,
+        ids=[test_id for test_id, *_ in KAST_TO_KORE_TEST_DATA],
+    )
+    def test_kast_to_kore_frontend_comp(
+        self,
+        definition: KDefinition,
+        kompiled_kore: KompiledKore,
+        test_id: str,
+        sort: KSort,
+        kore_text: str,
+        kast: KInner,
+        kprint: KPrint,
+    ) -> None:
+        if test_id in SKIPPED_FRONTEND_COMP_TESTS:
+            pytest.skip()
+
+        # Given
+        frontend_kore = kprint.kast_to_kore(kast=kast, sort=sort, force_kast=True)
+
+        # When
+        actual_kore = kast_to_kore(definition, kompiled_kore, kast, sort=sort)
+
+        # Then
+        assert actual_kore == frontend_kore
 
     @pytest.mark.parametrize(
         'test_id,_sort,kore_text,kast',
@@ -639,3 +772,21 @@ class TestKonvertSimpleProofs(KompiledTest):
 
         # Then
         assert actual_kore_text == kore_text
+
+    @pytest.mark.parametrize(
+        'test_id,kast,expected_sort',
+        SORT_TERM_DATA,
+        ids=[test_id for test_id, *_ in SORT_TERM_DATA],
+    )
+    def test_sort_term(
+        self,
+        definition: KDefinition,
+        test_id: str,
+        kast: KInner,
+        expected_sort: KSort,
+    ) -> None:
+        # When
+        actual_sort = definition.sort(kast)
+
+        # Then
+        assert actual_sort == expected_sort
