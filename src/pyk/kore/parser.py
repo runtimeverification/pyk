@@ -413,24 +413,9 @@ class KoreParser:
         self._match(TokenType.LBRACE)
         self._match(TokenType.RBRACE)
         self._match(TokenType.LPAREN)
-        token_type = self._la.type
-        if token_type == TokenType.ML_OR or token_type == TokenType.ML_AND:
-            if token_type == TokenType.ML_OR:
-                symbol = Or.symbol()
-            else:
-                symbol = And.symbol()
-            self._match(token_type)
-            self._match(TokenType.LBRACE)
-            sorts: tuple[Sort, ...] = (self.sort(),)
-            self._match(TokenType.RBRACE)
-            patterns = tuple(self._pattern_list())
-        else:
-            app = self.app()
-            symbol = app.symbol
-            sorts = app.sorts
-            patterns = app.patterns
+        app = self.app()
         self._match(TokenType.RPAREN)
-        return cls(symbol, sorts, patterns)  # type: ignore
+        return cls(app)  # type: ignore
 
     def left_assoc(self) -> LeftAssoc:
         return self._assoc(TokenType.ML_LEFT_ASSOC, LeftAssoc)
