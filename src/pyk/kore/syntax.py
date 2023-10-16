@@ -685,6 +685,108 @@ class BinaryConn(MLConn):
 
 @final
 @dataclass(frozen=True)
+class Implies(BinaryConn):
+    sort: Sort
+    left: Pattern
+    right: Pattern
+
+    def let(
+        self,
+        *,
+        sort: Sort | None = None,
+        left: Pattern | None = None,
+        right: Pattern | None = None,
+    ) -> Implies:
+        sort = sort if sort is not None else self.sort
+        left = left if left is not None else self.left
+        right = right if right is not None else self.right
+        return Implies(sort=sort, left=left, right=right)
+
+    def let_sort(self: Implies, sort: Sort) -> Implies:
+        return self.let(sort=sort)
+
+    def let_patterns(self, patterns: Iterable[Pattern]) -> Implies:
+        left, right = patterns
+        return self.let(left=left, right=right)
+
+    @classmethod
+    def _tag(cls) -> str:
+        return 'Implies'
+
+    @classmethod
+    def symbol(cls) -> str:
+        return '\\implies'
+
+    @classmethod
+    def of(cls: type[Implies], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> Implies:
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        left, right = patterns
+        return Implies(sort=sort, left=left, right=right)
+
+    @classmethod
+    def from_dict(cls: type[Implies], dct: Mapping[str, Any]) -> Implies:
+        cls._check_tag(dct)
+        return Implies(
+            sort=Sort.from_dict(dct['sort']),
+            left=Pattern.from_dict(dct['first']),
+            right=Pattern.from_dict(dct['second']),
+        )
+
+
+@final
+@dataclass(frozen=True)
+class Iff(BinaryConn):
+    sort: Sort
+    left: Pattern
+    right: Pattern
+
+    def let(
+        self,
+        *,
+        sort: Sort | None = None,
+        left: Pattern | None = None,
+        right: Pattern | None = None,
+    ) -> Iff:
+        sort = sort if sort is not None else self.sort
+        left = left if left is not None else self.left
+        right = right if right is not None else self.right
+        return Iff(sort=sort, left=left, right=right)
+
+    def let_sort(self: Iff, sort: Sort) -> Iff:
+        return self.let(sort=sort)
+
+    def let_patterns(self, patterns: Iterable[Pattern]) -> Iff:
+        left, right = patterns
+        return self.let(left=left, right=right)
+
+    @classmethod
+    def _tag(cls) -> str:
+        return 'Iff'
+
+    @classmethod
+    def symbol(cls) -> str:
+        return '\\iff'
+
+    @classmethod
+    def of(cls: type[Iff], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> Iff:
+        cls._check_symbol(symbol)
+        (sort,) = sorts
+        left, right = patterns
+        return Iff(sort=sort, left=left, right=right)
+
+    @classmethod
+    def from_dict(cls: type[Iff], dct: Mapping[str, Any]) -> Iff:
+        cls._check_tag(dct)
+        return Iff(
+            sort=Sort.from_dict(dct['sort']),
+            left=Pattern.from_dict(dct['first']),
+            right=Pattern.from_dict(dct['second']),
+        )
+
+
+@final
+@dataclass(frozen=True)
 class And(BinaryConn):
     sort: Sort
     left: Pattern
@@ -793,108 +895,6 @@ class Or(BinaryConn):
             return reduce(lambda left, right: Or(sort=sort, left=left, right=right), patterns)  # type: ignore
 
         return Or(
-            sort=Sort.from_dict(dct['sort']),
-            left=Pattern.from_dict(dct['first']),
-            right=Pattern.from_dict(dct['second']),
-        )
-
-
-@final
-@dataclass(frozen=True)
-class Implies(BinaryConn):
-    sort: Sort
-    left: Pattern
-    right: Pattern
-
-    def let(
-        self,
-        *,
-        sort: Sort | None = None,
-        left: Pattern | None = None,
-        right: Pattern | None = None,
-    ) -> Implies:
-        sort = sort if sort is not None else self.sort
-        left = left if left is not None else self.left
-        right = right if right is not None else self.right
-        return Implies(sort=sort, left=left, right=right)
-
-    def let_sort(self: Implies, sort: Sort) -> Implies:
-        return self.let(sort=sort)
-
-    def let_patterns(self, patterns: Iterable[Pattern]) -> Implies:
-        left, right = patterns
-        return self.let(left=left, right=right)
-
-    @classmethod
-    def _tag(cls) -> str:
-        return 'Implies'
-
-    @classmethod
-    def symbol(cls) -> str:
-        return '\\implies'
-
-    @classmethod
-    def of(cls: type[Implies], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> Implies:
-        cls._check_symbol(symbol)
-        (sort,) = sorts
-        left, right = patterns
-        return Implies(sort=sort, left=left, right=right)
-
-    @classmethod
-    def from_dict(cls: type[Implies], dct: Mapping[str, Any]) -> Implies:
-        cls._check_tag(dct)
-        return Implies(
-            sort=Sort.from_dict(dct['sort']),
-            left=Pattern.from_dict(dct['first']),
-            right=Pattern.from_dict(dct['second']),
-        )
-
-
-@final
-@dataclass(frozen=True)
-class Iff(BinaryConn):
-    sort: Sort
-    left: Pattern
-    right: Pattern
-
-    def let(
-        self,
-        *,
-        sort: Sort | None = None,
-        left: Pattern | None = None,
-        right: Pattern | None = None,
-    ) -> Iff:
-        sort = sort if sort is not None else self.sort
-        left = left if left is not None else self.left
-        right = right if right is not None else self.right
-        return Iff(sort=sort, left=left, right=right)
-
-    def let_sort(self: Iff, sort: Sort) -> Iff:
-        return self.let(sort=sort)
-
-    def let_patterns(self, patterns: Iterable[Pattern]) -> Iff:
-        left, right = patterns
-        return self.let(left=left, right=right)
-
-    @classmethod
-    def _tag(cls) -> str:
-        return 'Iff'
-
-    @classmethod
-    def symbol(cls) -> str:
-        return '\\iff'
-
-    @classmethod
-    def of(cls: type[Iff], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> Iff:
-        cls._check_symbol(symbol)
-        (sort,) = sorts
-        left, right = patterns
-        return Iff(sort=sort, left=left, right=right)
-
-    @classmethod
-    def from_dict(cls: type[Iff], dct: Mapping[str, Any]) -> Iff:
-        cls._check_tag(dct)
-        return Iff(
             sort=Sort.from_dict(dct['sort']),
             left=Pattern.from_dict(dct['first']),
             right=Pattern.from_dict(dct['second']),
