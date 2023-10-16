@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import reduce
 from typing import TYPE_CHECKING
 
 from ..dequote import dequote_string
@@ -55,6 +54,7 @@ if TYPE_CHECKING:
         MLFixpoint,
         MLPattern,
         MLQuant,
+        MultiaryConn,
         NullaryConn,
         Pattern,
         RoundPred,
@@ -67,7 +67,7 @@ if TYPE_CHECKING:
     NC = TypeVar('NC', bound=NullaryConn)
     UC = TypeVar('UC', bound=Union[UnaryConn, Next])
     BC = TypeVar('BC', bound=Union[BinaryConn, Rewrites])
-    MC = TypeVar('MC', bound=Union[And, Or])
+    MC = TypeVar('MC', bound=MultiaryConn)
     QF = TypeVar('QF', bound=MLQuant)
     FP = TypeVar('FP', bound=MLFixpoint)
     RP = TypeVar('RP', bound=RoundPred)
@@ -300,18 +300,8 @@ class KoreParser:
         self._match(TokenType.LBRACE)
         sort = self.sort()
         self._match(TokenType.RBRACE)
-        self._match(TokenType.LPAREN)
-        ops: list[Pattern] = []
-        ops.append(self.pattern())
-        self._match(TokenType.COMMA)
-        while True:
-            ops.append(self.pattern())
-            if self._la.type is not TokenType.COMMA:
-                break
-            self._consume()
-        self._match(TokenType.RPAREN)
-
-        return reduce(lambda left, right: cls(sort, left, right), ops)  # type: ignore
+        ops = self._delimited_list_of(self.pattern, TokenType.LPAREN, TokenType.RPAREN)
+        return cls(sort, ops)  # type: ignore
 
     def andd(self) -> And:
         return self._multiary(TokenType.ML_AND, And)

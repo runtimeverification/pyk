@@ -5,7 +5,7 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass
-from functools import cached_property, reduce
+from functools import cached_property
 from io import StringIO
 from typing import TYPE_CHECKING, final
 
@@ -785,31 +785,50 @@ class Iff(BinaryConn):
         )
 
 
+class MultiaryConn(MLConn):
+    ops: tuple[Pattern, ...]
+
+    def __iter__(self) -> Iterator[Pattern]:
+        return iter(self.ops)
+
+    @property
+    def patterns(self) -> tuple[Pattern, ...]:
+        return self.ops
+
+    @property
+    def dict(self) -> dict[str, Any]:
+        return {
+            'tag': self._tag(),
+            'sort': self.sort.dict,
+            'patterns': [op.dict for op in self.ops],
+        }
+
+
 @final
 @dataclass(frozen=True)
-class And(BinaryConn):
+class And(MultiaryConn):
     sort: Sort
-    left: Pattern
-    right: Pattern
+    ops: tuple[Pattern, ...]
+
+    def __init__(self, sort: Sort, ops: Iterable[Pattern] = ()):
+        object.__setattr__(self, 'sort', sort)
+        object.__setattr__(self, 'ops', tuple(ops))
 
     def let(
         self,
         *,
         sort: Sort | None = None,
-        left: Pattern | None = None,
-        right: Pattern | None = None,
+        ops: Iterable[Pattern] | None = None,
     ) -> And:
         sort = sort if sort is not None else self.sort
-        left = left if left is not None else self.left
-        right = right if right is not None else self.right
-        return And(sort=sort, left=left, right=right)
+        ops = ops if ops is not None else self.ops
+        return And(sort=sort, ops=ops)
 
-    def let_sort(self: And, sort: Sort) -> And:
+    def let_sort(self, sort: Sort) -> And:
         return self.let(sort=sort)
 
     def let_patterns(self, patterns: Iterable[Pattern]) -> And:
-        left, right = patterns
-        return self.let(left=left, right=right)
+        return self.let(ops=patterns)
 
     @classmethod
     def _tag(cls) -> str:
@@ -823,51 +842,41 @@ class And(BinaryConn):
     def of(cls: type[And], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> And:
         cls._check_symbol(symbol)
         (sort,) = sorts
-        left, right = patterns
-        return And(sort=sort, left=left, right=right)
+        return And(sort=sort, ops=patterns)
 
     @classmethod
     def from_dict(cls: type[And], dct: Mapping[str, Any]) -> And:
         cls._check_tag(dct)
-        if 'patterns' in dct:
-            patterns = [Pattern.from_dict(pattern) for pattern in dct['patterns']]
-            if len(patterns) < 2:
-                raise ValueError(f'Expected at least 2 patterns, found: {len(patterns)}')
-            sort = Sort.from_dict(dct['sort'])
-            return reduce(lambda left, right: And(sort=sort, left=left, right=right), patterns)  # type: ignore
-
-        return And(
-            sort=Sort.from_dict(dct['sort']),
-            left=Pattern.from_dict(dct['first']),
-            right=Pattern.from_dict(dct['second']),
-        )
+        sort = Sort.from_dict(dct['sort'])
+        ops = [Pattern.from_dict(op) for op in dct['patterns']]
+        return And(sort=sort, ops=ops)
 
 
 @final
 @dataclass(frozen=True)
-class Or(BinaryConn):
+class Or(MultiaryConn):
     sort: Sort
-    left: Pattern
-    right: Pattern
+    ops: tuple[Pattern, ...]
+
+    def __init__(self, sort: Sort, ops: Iterable[Pattern] = ()):
+        object.__setattr__(self, 'sort', sort)
+        object.__setattr__(self, 'ops', tuple(ops))
 
     def let(
         self,
         *,
         sort: Sort | None = None,
-        left: Pattern | None = None,
-        right: Pattern | None = None,
+        ops: Iterable[Pattern] | None = None,
     ) -> Or:
         sort = sort if sort is not None else self.sort
-        left = left if left is not None else self.left
-        right = right if right is not None else self.right
-        return Or(sort=sort, left=left, right=right)
+        ops = ops if ops is not None else self.ops
+        return Or(sort=sort, ops=ops)
 
-    def let_sort(self: Or, sort: Sort) -> Or:
+    def let_sort(self, sort: Sort) -> Or:
         return self.let(sort=sort)
 
     def let_patterns(self, patterns: Iterable[Pattern]) -> Or:
-        left, right = patterns
-        return self.let(left=left, right=right)
+        return self.let(ops=patterns)
 
     @classmethod
     def _tag(cls) -> str:
@@ -881,24 +890,14 @@ class Or(BinaryConn):
     def of(cls: type[Or], symbol: str, sorts: Iterable[Sort] = (), patterns: Iterable[Pattern] = ()) -> Or:
         cls._check_symbol(symbol)
         (sort,) = sorts
-        left, right = patterns
-        return Or(sort=sort, left=left, right=right)
+        return Or(sort=sort, ops=patterns)
 
     @classmethod
     def from_dict(cls: type[Or], dct: Mapping[str, Any]) -> Or:
         cls._check_tag(dct)
-        if 'patterns' in dct:
-            patterns = [Pattern.from_dict(pattern) for pattern in dct['patterns']]
-            if len(patterns) < 2:
-                raise ValueError(f'Expected at least 2 patterns, found: {len(patterns)}')
-            sort = Sort.from_dict(dct['sort'])
-            return reduce(lambda left, right: Or(sort=sort, left=left, right=right), patterns)  # type: ignore
-
-        return Or(
-            sort=Sort.from_dict(dct['sort']),
-            left=Pattern.from_dict(dct['first']),
-            right=Pattern.from_dict(dct['second']),
-        )
+        sort = Sort.from_dict(dct['sort'])
+        ops = [Pattern.from_dict(op) for op in dct['patterns']]
+        return Or(sort=sort, ops=ops)
 
 
 class MLQuant(MLPattern, WithSort):
