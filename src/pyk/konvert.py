@@ -259,17 +259,17 @@ def _kore_to_kast(kore: Pattern) -> KInner:
 
         elif len(kore.sorts) == 0:
             if kore.symbol == 'dotk' and len(kore.args) == 0:
-                return KSequence([])
+                return KSequence(())
 
             elif kore.symbol == 'kseq' and len(kore.args) == 2:
                 p0 = _kore_to_kast(kore.args[0])
                 p1 = _kore_to_kast(kore.args[1])
-                return KSequence([p0, p1])
+                return KSequence((p0, p1))
 
             else:
                 _label_name = unmunge(kore.symbol[3:])
                 klabel = KLabel(_label_name, [KSort(k.name[4:]) for k in kore.sorts])
-                args = [_kore_to_kast(_a) for _a in kore.args]
+                args = tuple(_kore_to_kast(_a) for _a in kore.args)
                 return KApply(klabel, args)
 
         # hardcoded polymorphic operators
@@ -280,7 +280,7 @@ def _kore_to_kast(kore: Pattern) -> KInner:
         ):
             _label_name = unmunge(kore.symbol[3:])
             klabel = KLabel(_label_name, [KSort(kore.sorts[0].name[4:])])
-            args = [_kore_to_kast(_a) for _a in kore.args]
+            args = tuple(_kore_to_kast(_a) for _a in kore.args)
             return KApply(klabel, args)
 
     elif type(kore) is Top:
@@ -293,7 +293,7 @@ def _kore_to_kast(kore: Pattern) -> KInner:
         psort = KSort(kore.sort.name[4:])
         larg = _kore_to_kast(kore.left)
         rarg = _kore_to_kast(kore.right)
-        return mlAnd([larg, rarg], sort=psort)
+        return mlAnd((larg, rarg), sort=psort)
 
     elif type(kore) is Implies:
         psort = KSort(kore.sort.name[4:])
