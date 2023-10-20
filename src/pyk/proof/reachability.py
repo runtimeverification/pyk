@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from ..cterm import CTerm
     from ..kast.outer import KDefinition, KFlatModuleList
     from ..kcfg import KCFGExplore
+    from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
 
@@ -753,6 +754,44 @@ class APRProver(Prover):
             )
         )
 
+    def sync_extension(
+        self,
+        extend_result: ExtendResult,
+        node: KCFG.Node,
+        fail_fast: bool,
+        max_iterations: int | None,
+    ) -> None:
+        if fail_fast and self.proof.failed:
+            _LOGGER.warning(
+                f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
+            )
+            self.done = True
+            return
+
+        if max_iterations is not None and max_iterations <= self.iterations:
+            _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
+            self.done = True
+            return
+        self.iterations += 1
+
+        self.kcfg_explore.extend_kcfg(
+            extend_result=extend_result,
+            kcfg=self.proof.kcfg,
+            node=node,
+            logs=self.proof.logs,
+        )
+
+        self._check_all_terminals()
+
+        for node in self.proof.terminal:
+            if (
+                not node.id in self._checked_for_subsumption
+                and self.proof.kcfg.is_leaf(node.id)
+                and not self.proof.is_target(node.id)
+            ):
+                self._checked_for_subsumption.add(node.id)
+                self._check_subsume(node)
+
     def sync_extensions(
         self,
         fail_fast: bool = False,
@@ -766,36 +805,12 @@ class APRProver(Prover):
             except Empty:
                 break
 
-            if fail_fast and self.proof.failed:
-                _LOGGER.warning(
-                    f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
-                )
-                self.done = True
-                break
-
-            if max_iterations is not None and max_iterations <= self.iterations:
-                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
-                self.done = True
-                break
-            self.iterations += 1
-
-            self.kcfg_explore.extend_kcfg(
+            self.sync_extension(
                 extend_result=extend_result,
-                kcfg=self.proof.kcfg,
                 node=curr_node,
-                logs=self.proof.logs,
+                fail_fast=fail_fast,
+                max_iterations=max_iterations,
             )
-
-            self._check_all_terminals()
-
-            for node in self.proof.terminal:
-                if (
-                    not node.id in self._checked_for_subsumption
-                    and self.proof.kcfg.is_leaf(node.id)
-                    and not self.proof.is_target(node.id)
-                ):
-                    self._checked_for_subsumption.add(node.id)
-                    self._check_subsume(node)
 
         if self.proof.failed:
             self.save_failure_info()
@@ -810,7 +825,7 @@ class APRProver(Prover):
         terminal_rules: Iterable[str] = (),
         fail_fast: bool = False,
     ) -> None:
-        while not self.done:
+        while not self.done and self.proof.pending:
             node = self.proof.pending[0]
 
             self.get_node_extension(
@@ -1111,6 +1126,40 @@ class APRBMCProver(APRProver):
             execute_depth=execute_depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
+        )
+
+    def sync_extension(
+        self,
+        extend_result: ExtendResult,
+        node: KCFG.Node,
+        fail_fast: bool,
+        max_iterations: int | None,
+    ) -> None:
+        if node.id not in self._checked_nodes:
+            _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {node.id}')
+            self._checked_nodes.append(node.id)
+            _prior_loops = [
+                succ.source.id
+                for succ in self.proof.shortest_path_to(node.id)
+                if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
+            ]
+            prior_loops: list[NodeIdLike] = []
+            for _pl in _prior_loops:
+                if not (
+                    self.proof.kcfg.zero_depth_between(_pl, node.id)
+                    or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+                ):
+                    prior_loops.append(_pl)
+            _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
+            if len(prior_loops) > self.proof.bmc_depth:
+                self.proof.add_bounded(node.id)
+                return
+
+        super().sync_extension(
+            extend_result=extend_result,
+            node=node,
+            fail_fast=fail_fast,
+            max_iterations=max_iterations,
         )
 
 
