@@ -650,7 +650,6 @@ class APRProver(Prover):
         self.proof = proof
         self.extensions = Queue()
         self.iterations = 0
-        self.done = False
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
         self.counterexample_info = counterexample_info
 
@@ -741,6 +740,11 @@ class APRProver(Prover):
     ) -> None:
         module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
         self.kcfg_explore.check_extendable(self.proof, node)
+
+        if self.proof.target not in self.proof._terminal:
+            if self._check_subsume(node):
+                return
+
         self.extensions.put(
             (
                 self.kcfg_explore.extend_cterm(
@@ -760,18 +764,21 @@ class APRProver(Prover):
         node: KCFG.Node,
         fail_fast: bool,
         max_iterations: int | None,
-    ) -> None:
+    ) -> bool:
+
+        print(f'sync_extension: node {node.id}')
+
         if fail_fast and self.proof.failed:
             _LOGGER.warning(
                 f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
             )
-            self.done = True
-            return
+            print(f'fail_fast node={node.id}')
+            return True
 
         if max_iterations is not None and max_iterations <= self.iterations:
             _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
-            self.done = True
-            return
+            print(f'max_iterations node={node.id}')
+            return True
         self.iterations += 1
 
         self.kcfg_explore.extend_kcfg(
@@ -784,6 +791,7 @@ class APRProver(Prover):
         self._check_all_terminals()
 
         for node in self.proof.terminal:
+            print(f'node {node.id} is terminal')
             if (
                 not node.id in self._checked_for_subsumption
                 and self.proof.kcfg.is_leaf(node.id)
@@ -791,13 +799,16 @@ class APRProver(Prover):
             ):
                 self._checked_for_subsumption.add(node.id)
                 self._check_subsume(node)
+        return False
 
     def sync_extensions(
         self,
         fail_fast: bool = False,
         max_iterations: int | None = None,
-    ) -> None:
+    ) -> bool:
         self._check_all_terminals()
+
+        done = False
 
         while True:
             try:
@@ -805,7 +816,7 @@ class APRProver(Prover):
             except Empty:
                 break
 
-            self.sync_extension(
+            done = self.sync_extension(
                 extend_result=extend_result,
                 node=curr_node,
                 fail_fast=fail_fast,
@@ -817,6 +828,8 @@ class APRProver(Prover):
 
         self.proof.write_proof_data()
 
+        return done
+
     def advance_proof(
         self,
         max_iterations: int | None = None,
@@ -825,8 +838,15 @@ class APRProver(Prover):
         terminal_rules: Iterable[str] = (),
         fail_fast: bool = False,
     ) -> None:
-        while not self.done and self.proof.pending:
+
+        print(f'pending={self.proof.pending}')
+
+        done = False
+
+        while self.proof.pending and not done:
+
             node = self.proof.pending[0]
+            print(f'node={node.id}')
 
             self.get_node_extension(
                 node=node,
@@ -835,7 +855,8 @@ class APRProver(Prover):
                 terminal_rules=terminal_rules,
             )
 
-            self.sync_extensions(fail_fast=fail_fast, max_iterations=max_iterations)
+            done = self.sync_extensions(fail_fast=fail_fast, max_iterations=max_iterations)
+
 
     #          iterations = 0
     #
