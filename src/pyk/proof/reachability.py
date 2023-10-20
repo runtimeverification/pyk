@@ -765,7 +765,6 @@ class APRProver(Prover):
         fail_fast: bool,
         max_iterations: int | None,
     ) -> bool:
-
         print(f'sync_extension: node {node.id}')
 
         if fail_fast and self.proof.failed:
@@ -838,13 +837,11 @@ class APRProver(Prover):
         terminal_rules: Iterable[str] = (),
         fail_fast: bool = False,
     ) -> None:
-
         print(f'pending={self.proof.pending}')
 
         done = False
 
         while self.proof.pending and not done:
-
             node = self.proof.pending[0]
             print(f'node={node.id}')
 
@@ -856,7 +853,6 @@ class APRProver(Prover):
             )
 
             done = self.sync_extensions(fail_fast=fail_fast, max_iterations=max_iterations)
-
 
     #          iterations = 0
     #
@@ -1155,7 +1151,7 @@ class APRBMCProver(APRProver):
         node: KCFG.Node,
         fail_fast: bool,
         max_iterations: int | None,
-    ) -> None:
+    ) -> bool:
         if node.id not in self._checked_nodes:
             _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {node.id}')
             self._checked_nodes.append(node.id)
@@ -1174,9 +1170,9 @@ class APRBMCProver(APRProver):
             _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
             if len(prior_loops) > self.proof.bmc_depth:
                 self.proof.add_bounded(node.id)
-                return
+                return False
 
-        super().sync_extension(
+        return super().sync_extension(
             extend_result=extend_result,
             node=node,
             fail_fast=fail_fast,
