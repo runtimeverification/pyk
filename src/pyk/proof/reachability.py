@@ -4,6 +4,7 @@ import graphlib
 import json
 import logging
 from dataclasses import dataclass
+from queue import Empty, Queue
 from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from ..cterm import CTerm
     from ..kast.outer import KDefinition, KFlatModuleList
     from ..kcfg import KCFGExplore
+    from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
 
@@ -631,6 +633,10 @@ class APRProver(Prover):
     circularities_module_name: str
     counterexample_info: bool
 
+    extensions: Queue
+    iterations: int
+    done: bool
+
     _checked_for_terminal: set[int]
     _checked_for_subsumption: set[int]
 
@@ -642,6 +648,8 @@ class APRProver(Prover):
     ) -> None:
         super().__init__(kcfg_explore)
         self.proof = proof
+        self.extensions = Queue()
+        self.iterations = 0
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
         self.counterexample_info = counterexample_info
 
@@ -723,6 +731,104 @@ class APRProver(Prover):
             module_name=module_name,
         )
 
+    def get_node_extension(
+        self,
+        node: KCFG.Node,
+        execute_depth: int | None = None,
+        cut_point_rules: Iterable[str] = (),
+        terminal_rules: Iterable[str] = (),
+    ) -> None:
+        module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
+        self.kcfg_explore.check_extendable(self.proof, node)
+
+        if self.proof.target not in self.proof._terminal:
+            if self._check_subsume(node):
+                return
+
+        self.extensions.put(
+            (
+                self.kcfg_explore.extend_cterm(
+                    node.cterm,
+                    execute_depth=execute_depth,
+                    cut_point_rules=cut_point_rules,
+                    terminal_rules=terminal_rules,
+                    module_name=module_name,
+                ),
+                node,
+            )
+        )
+
+    def sync_extension(
+        self,
+        extend_result: ExtendResult,
+        node: KCFG.Node,
+        fail_fast: bool,
+        max_iterations: int | None,
+    ) -> bool:
+        print(f'sync_extension: node {node.id}')
+
+        if fail_fast and self.proof.failed:
+            _LOGGER.warning(
+                f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
+            )
+            print(f'fail_fast node={node.id}')
+            return True
+
+        if max_iterations is not None and max_iterations <= self.iterations:
+            _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
+            print(f'max_iterations node={node.id}')
+            return True
+        self.iterations += 1
+
+        self.kcfg_explore.extend_kcfg(
+            extend_result=extend_result,
+            kcfg=self.proof.kcfg,
+            node=node,
+            logs=self.proof.logs,
+        )
+
+        self._check_all_terminals()
+
+        for node in self.proof.terminal:
+            print(f'node {node.id} is terminal')
+            if (
+                not node.id in self._checked_for_subsumption
+                and self.proof.kcfg.is_leaf(node.id)
+                and not self.proof.is_target(node.id)
+            ):
+                self._checked_for_subsumption.add(node.id)
+                self._check_subsume(node)
+        return False
+
+    def sync_extensions(
+        self,
+        fail_fast: bool = False,
+        max_iterations: int | None = None,
+    ) -> bool:
+        self._check_all_terminals()
+
+        done = False
+
+        while True:
+            try:
+                extend_result, curr_node = self.extensions.get_nowait()
+            except Empty:
+                break
+
+            done = self.sync_extension(
+                extend_result=extend_result,
+                node=curr_node,
+                fail_fast=fail_fast,
+                max_iterations=max_iterations,
+            )
+
+        if self.proof.failed:
+            self.save_failure_info()
+
+        self.proof.write_proof_data()
+
+        return done
+
     def advance_proof(
         self,
         max_iterations: int | None = None,
@@ -731,46 +837,63 @@ class APRProver(Prover):
         terminal_rules: Iterable[str] = (),
         fail_fast: bool = False,
     ) -> None:
-        iterations = 0
+        print(f'pending={self.proof.pending}')
 
-        self._check_all_terminals()
+        done = False
 
-        while self.proof.pending:
-            self.proof.write_proof_data()
-            if fail_fast and self.proof.failed:
-                _LOGGER.warning(
-                    f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
-                )
-                break
+        while self.proof.pending and not done:
+            node = self.proof.pending[0]
+            print(f'node={node.id}')
 
-            if max_iterations is not None and max_iterations <= iterations:
-                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
-                break
-            iterations += 1
-            curr_node = self.proof.pending[0]
-
-            self.advance_pending_node(
-                node=curr_node,
+            self.get_node_extension(
+                node=node,
                 execute_depth=execute_depth,
                 cut_point_rules=cut_point_rules,
                 terminal_rules=terminal_rules,
             )
 
-            self._check_all_terminals()
+            done = self.sync_extensions(fail_fast=fail_fast, max_iterations=max_iterations)
 
-            for node in self.proof.terminal:
-                if (
-                    not node.id in self._checked_for_subsumption
-                    and self.proof.kcfg.is_leaf(node.id)
-                    and not self.proof.is_target(node.id)
-                ):
-                    self._checked_for_subsumption.add(node.id)
-                    self._check_subsume(node)
-
-        if self.proof.failed:
-            self.save_failure_info()
-
-        self.proof.write_proof_data()
+    #          iterations = 0
+    #
+    #          self._check_all_terminals()
+    #
+    #          while self.proof.pending:
+    #              self.proof.write_proof_data()
+    #              if fail_fast and self.proof.failed:
+    #                  _LOGGER.warning(
+    #                      f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
+    #                  )
+    #                  break
+    #
+    #              if max_iterations is not None and max_iterations <= iterations:
+    #                  _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
+    #                  break
+    #              iterations += 1
+    #              curr_node = self.proof.pending[0]
+    #
+    #              self.advance_pending_node(
+    #                  node=curr_node,
+    #                  execute_depth=execute_depth,
+    #                  cut_point_rules=cut_point_rules,
+    #                  terminal_rules=terminal_rules,
+    #              )
+    #
+    #              self._check_all_terminals()
+    #
+    #              for node in self.proof.terminal:
+    #                  if (
+    #                      not node.id in self._checked_for_subsumption
+    #                      and self.proof.kcfg.is_leaf(node.id)
+    #                      and not self.proof.is_target(node.id)
+    #                  ):
+    #                      self._checked_for_subsumption.add(node.id)
+    #                      self._check_subsume(node)
+    #
+    #          if self.proof.failed:
+    #              self.save_failure_info()
+    #
+    #          self.proof.write_proof_data()
 
     def refute_node(self, node: KCFG.Node) -> RefutationProof | None:
         _LOGGER.info(f'Attempting to refute node {node.id}')
@@ -1020,6 +1143,40 @@ class APRBMCProver(APRProver):
             execute_depth=execute_depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
+        )
+
+    def sync_extension(
+        self,
+        extend_result: ExtendResult,
+        node: KCFG.Node,
+        fail_fast: bool,
+        max_iterations: int | None,
+    ) -> bool:
+        if node.id not in self._checked_nodes:
+            _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {node.id}')
+            self._checked_nodes.append(node.id)
+            _prior_loops = [
+                succ.source.id
+                for succ in self.proof.shortest_path_to(node.id)
+                if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
+            ]
+            prior_loops: list[NodeIdLike] = []
+            for _pl in _prior_loops:
+                if not (
+                    self.proof.kcfg.zero_depth_between(_pl, node.id)
+                    or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+                ):
+                    prior_loops.append(_pl)
+            _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
+            if len(prior_loops) > self.proof.bmc_depth:
+                self.proof.add_bounded(node.id)
+                return False
+
+        return super().sync_extension(
+            extend_result=extend_result,
+            node=node,
+            fail_fast=fail_fast,
+            max_iterations=max_iterations,
         )
 
 
