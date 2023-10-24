@@ -28,7 +28,7 @@ from .kast.manip import (
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
-from .kore.rpc import KoreClient, State, StopReason
+from .kore.rpc import State, StopReason
 from .kore.syntax import Pattern, kore_term
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
@@ -175,34 +175,6 @@ def exec_rpc_print(args: Namespace) -> None:
         print('\n'.join(output_buffer))
 
 
-def exec_rpc_kast(args: Namespace) -> None:
-    """Convert between Kore RPC requests and responces"""
-    kompiled_dir: Path = args.definition_dir
-    printer = KPrint(kompiled_dir)
-    reference_request = json.loads(args.request.read())
-    execute_result = ExecuteResult.from_dict(json.loads(args.response.read())['result'])
-    # term = execute_result.state.term
-    # predicate = execute_result.state.predicate
-    cterm = CTerm.from_kast(printer.kore_to_kast(execute_result.state.kore))
-    payload = {
-        'max-depth': reference_request['params']['max-depth'],
-        'cut-point-rules': reference_request['params']['cut-point-rules'],
-        'terminal-rules': reference_request['params']['terminal-rules'],
-        'state': {
-            'format': 'KORE',
-            'version': KoreClient._KORE_JSON_VERSION,
-            'term': printer.kast_to_kore(cterm.kast, GENERATED_TOP_CELL).dict,
-        },
-    }
-    request = {
-        'jsonrpc': '2.0',
-        'id': 42,
-        'method': 'execute',
-        'params': payload,
-    }
-    args.output_file.write(json.dumps(request))
-
-
 def exec_prove(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     kprover = KProve(kompiled_dir, args.main_file)
@@ -285,19 +257,6 @@ def create_argument_parser() -> ArgumentParser:
         help='An input file containing the JSON RPC request or response with KoreJSON payload.',
     )
     rpc_print_args.add_argument('--output-file', type=FileType('w'), default='-')
-
-    rpc_kast_args = pyk_args_command.add_parser(
-        'rpc-kast',
-        help='Convert a state from RPC execute responce to RPC execute request',
-        parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
-    )
-    rpc_kast_args.add_argument(
-        'request', type=FileType('r'), help='Kore RPC execution request to use as reference (in Kore JSON).'
-    )
-    rpc_kast_args.add_argument(
-        'response', type=FileType('r'), help='Kore RPC execution responce to convert (in Kore JSON).'
-    )
-    rpc_kast_args.add_argument('--output-file', type=FileType('w'), default='-')
 
     prove_args = pyk_args_command.add_parser(
         'prove',
