@@ -44,7 +44,6 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class PrintInput(Enum):
-    PRETTY = 'pretty'
     KORE_JSON = 'kore-json'
     KAST_JSON = 'kast-json'
 
