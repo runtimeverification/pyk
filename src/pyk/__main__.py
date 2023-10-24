@@ -149,7 +149,11 @@ def exec_rpc_print(args: Namespace) -> None:
             output_buffer.append(f'id: {input_dict["id"]}')
             output_buffer.append(f'method: {input_dict["method"]}')
             try:
-                output_buffer += pretty_print_request(input_dict['params'])
+                if 'state' in input_dict['params']:
+                    output_buffer += pretty_print_request(input_dict['params'])
+                else:  # this is an "add-module" request, skip trying to print state
+                    for key in input_dict['params'].keys():
+                        output_buffer.append(f'{key}: {input_dict["params"][key]}')
             except KeyError as e:
                 _LOGGER.critical(f'Could not find key {str(e)} in input JSON file')
                 exit(1)
@@ -160,11 +164,17 @@ def exec_rpc_print(args: Namespace) -> None:
             output_buffer.append('JSON RPC Response')
             output_buffer.append(f'id: {input_dict["id"]}')
             if list(input_dict['result'].keys()) == ['state']:  # this is a "simplify" response
+                output_buffer.append('method: simplify')
                 state = CTerm.from_kast(printer.kore_to_kast(kore_term(input_dict['result']['state'])))  # type: ignore
-                output_buffer.append('State: ')
+                output_buffer.append('State:')
                 output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
+            elif list(input_dict['result'].keys()) == ['module']:  # this is an "add-module" response
+                output_buffer.append('method: add-module')
+                output_buffer.append('Module:')
+                output_buffer.append(input_dict['result']['module'])
             else:
                 try:  # assume it is an "execute" response
+                    output_buffer.append('method: execute')
                     execute_result = ExecuteResult.from_dict(input_dict['result'])
                     output_buffer += pretty_print_execute_response(execute_result)
                 except KeyError as e:
