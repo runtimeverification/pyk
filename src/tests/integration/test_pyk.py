@@ -98,10 +98,16 @@ class TestMinimizeTerm(KompiledTest):
 
 
 class TestRpcPrint(KompiledTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'd.k'
+    KOMPILE_MAIN_FILE = K_FILES / 'imp.k'
     KOMPILE_BACKEND = 'haskell'
 
-    TEST_DATA = ['imp-execute-response']
+    TEST_DATA = [
+        'imp-execute-depth-bound-response',
+        'imp-execute-terminal-rule-response',
+        'imp-execute-cut-point-rule-response',
+        'imp-execute-branching-response',
+        'imp-execute-stuck-response',
+    ]
     TEST_DATA_FAILING = ['imp-execute-request']
 
     @pytest.mark.parametrize('filename_stem', TEST_DATA, ids=TEST_DATA)
