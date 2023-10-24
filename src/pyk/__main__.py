@@ -28,7 +28,7 @@ from .kast.manip import (
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
-from .kore.rpc import State, StopReason
+from .kore.rpc import StopReason
 from .kore.syntax import Pattern, kore_term
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
@@ -118,7 +118,7 @@ def exec_rpc_print(args: Namespace) -> None:
         non_state_keys = set(request_params.keys()).difference(['state'])
         for key in non_state_keys:
             output_buffer.append(f'{key}: {request_params[key]}')
-        state = CTerm.from_kast(printer.kore_to_kast(State.from_dict(request_params['state']).kore))
+        state = CTerm.from_kast(printer.kore_to_kast(kore_term(request_params['state'])))  # type: ignore
         output_buffer.append('State: ')
         output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
         return output_buffer
@@ -143,36 +143,41 @@ def exec_rpc_print(args: Namespace) -> None:
                 output_buffer.append(printer.pretty_print(s.kast, sort_collections=True))
         return output_buffer
 
-    if 'method' in input_dict:
-        output_buffer.append('JSON RPC request')
-        output_buffer.append(f'id: {input_dict["id"]}')
-        output_buffer.append(f'method: {input_dict["method"]}')
-        try:
-            output_buffer += pretty_print_request(input_dict['params'])
-        except Exception as e:
-            _LOGGER.critical(str(e))
-            exit(1)
-    else:
-        if not 'result' in input_dict:
-            _LOGGER.critical('The input is neither a request not a resonse')
-            exit(1)
-        output_buffer.append('JSON RPC Response')
-        output_buffer.append(f'id: {input_dict["id"]}')
-        if list(input_dict['result'].keys()) == ['state']:  # this is a "simplify" response
-            state = CTerm.from_kast(printer.kore_to_kast(kore_term(input_dict['result']['state'])))  # type: ignore
-            output_buffer.append('State: ')
-            output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
-        else:
-            try:  # assume it is an "execute" response
-                execute_result = ExecuteResult.from_dict(input_dict['result'])
-                output_buffer += pretty_print_execute_response(execute_result)
+    try:
+        if 'method' in input_dict:
+            output_buffer.append('JSON RPC request')
+            output_buffer.append(f'id: {input_dict["id"]}')
+            output_buffer.append(f'method: {input_dict["method"]}')
+            try:
+                output_buffer += pretty_print_request(input_dict['params'])
             except KeyError as e:
                 _LOGGER.critical(f'Could not find key {str(e)} in input JSON file')
                 exit(1)
-    if args.output_file is not None:
-        args.output_file.write('\n'.join(output_buffer))
-    else:
-        print('\n'.join(output_buffer))
+        else:
+            if not 'result' in input_dict:
+                _LOGGER.critical('The input is neither a request not a resonse')
+                exit(1)
+            output_buffer.append('JSON RPC Response')
+            output_buffer.append(f'id: {input_dict["id"]}')
+            if list(input_dict['result'].keys()) == ['state']:  # this is a "simplify" response
+                state = CTerm.from_kast(printer.kore_to_kast(kore_term(input_dict['result']['state'])))  # type: ignore
+                output_buffer.append('State: ')
+                output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
+            else:
+                try:  # assume it is an "execute" response
+                    execute_result = ExecuteResult.from_dict(input_dict['result'])
+                    output_buffer += pretty_print_execute_response(execute_result)
+                except KeyError as e:
+                    _LOGGER.critical(f'Could not find key {str(e)} in input JSON file')
+                    exit(1)
+        if args.output_file is not None:
+            args.output_file.write('\n'.join(output_buffer))
+        else:
+            print('\n'.join(output_buffer))
+    except ValueError as e:
+        # shorten and print the error message in case kore_to_kast throws ValueError
+        _LOGGER.critical(str(e)[:200])
+        exit(1)
 
 
 def exec_prove(args: Namespace) -> None:
