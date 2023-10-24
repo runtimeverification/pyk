@@ -115,7 +115,9 @@ def exec_rpc_print(args: Namespace) -> None:
         output_buffer.append(f'Stop reason: {execute_result.reason}')
         if execute_result.reason == StopReason.TERMINAL_RULE or execute_result.reason == StopReason.CUT_POINT_RULE:
             output_buffer.append(f'Stop rule: {execute_result.rule}')
-        output_buffer.append(f'Number of next states: {execute_result.next_states}')
+        output_buffer.append(
+            f'Number of next states: {len(execute_result.next_states) if execute_result.next_states is not None else 0}'
+        )
         state = CTerm.from_kast(printer.kore_to_kast(execute_result.state.kore))
         output_buffer.append('State: ')
         output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
@@ -145,7 +147,8 @@ def exec_rpc_print(args: Namespace) -> None:
             execute_result = ExecuteResult.from_dict(input_dict['result'])
             output_buffer += pretty_print_execute_response(execute_result)
         except KeyError as e:
-            _LOGGER.info(f'Could not find key {str(e)} in input JSON file')
+            _LOGGER.critical(f'Could not find key {str(e)} in input JSON file')
+            exit(1)
     if args.output_file is not None:
         args.output_file.write('\n'.join(output_buffer))
     else:
