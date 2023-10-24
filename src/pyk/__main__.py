@@ -277,7 +277,7 @@ def create_argument_parser() -> ArgumentParser:
     rpc_print_args = pyk_args_command.add_parser(
         'rpc-print',
         help='Pretty-print an RPC request/response',
-        parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
+        parents=[k_cli_args.logging_args, definition_args],
     )
     rpc_print_args.add_argument(
         'input_file',
