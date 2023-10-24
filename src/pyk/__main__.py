@@ -28,7 +28,7 @@ from .kast.manip import (
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
-from .kore.rpc import KoreClient, StopReason
+from .kore.rpc import KoreClient, State, StopReason
 from .kore.syntax import Pattern
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
@@ -108,6 +108,21 @@ def exec_print(args: Namespace) -> None:
 
 
 def exec_rpc_print(args: Namespace) -> None:
+    kompiled_dir: Path = args.definition_dir
+    printer = KPrint(kompiled_dir)
+    input_dict = json.loads(args.input_file.read())
+    output_buffer = []
+
+    def pretty_print_request(request_params: dict[str, Any]) -> list[str]:
+        output_buffer = []
+        non_state_keys = set(request_params.keys()).difference(['state'])
+        for key in non_state_keys:
+            output_buffer.append(f'{key}: {request_params[key]}')
+        state = CTerm.from_kast(printer.kore_to_kast(State.from_dict(request_params['state']).kore))
+        output_buffer.append('State: ')
+        output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
+        return output_buffer
+
     def pretty_print_execute_response(execute_result: ExecuteResult) -> list[str]:
         output_buffer = []
         output_buffer.append('Method: execute')
@@ -128,15 +143,15 @@ def exec_rpc_print(args: Namespace) -> None:
                 output_buffer.append(printer.pretty_print(s.kast, sort_collections=True))
         return output_buffer
 
-    kompiled_dir: Path = args.definition_dir
-    printer = KPrint(kompiled_dir)
-    input_dict = json.loads(args.input_file.read())
-    output_buffer = []
     if 'method' in input_dict:
         output_buffer.append('JSON RPC request')
-        output_buffer.append(f'"method": {input_dict["method"]}')
-        _LOGGER.critical('Not implemented')
-        exit(1)
+        output_buffer.append(f'id: {input_dict["id"]}')
+        output_buffer.append(f'method: {input_dict["method"]}')
+        try:
+            output_buffer += pretty_print_request(input_dict['params'])
+        except Exception as e:
+            _LOGGER.critical(str(e))
+            exit(1)
     else:
         if not 'result' in input_dict:
             _LOGGER.critical('The input is neither a request not a resonse')
