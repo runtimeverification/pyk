@@ -10,20 +10,22 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
+from pyk.kore.rpc import ExecuteResult
+
 from .cli.args import KCLIArgs
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
-from .cterm import split_config_and_constraints
-from .kast.inner import KInner
-from .kast.manip import flatten_label, minimize_rule, minimize_term, propagate_up_constraints, remove_source_map
+from .cterm import CTerm
+from .kast.manip import minimize_rule, remove_source_map
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
+from .kore.rpc import KoreClient
 from .kore.syntax import Pattern
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
-from .prelude.ml import is_top, mlAnd, mlOr
+from .prelude.ml import mlOr
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -34,6 +36,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class PrintInput(Enum):
+    PRETTY = 'pretty'
     KORE_JSON = 'kore-json'
     KAST_JSON = 'kast-json'
 
@@ -61,39 +64,73 @@ def exec_print(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     printer = KPrint(kompiled_dir)
     if args.input == PrintInput.KORE_JSON:
-        _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
-        kore = Pattern.from_json(args.term.read())
-        term = printer.kore_to_kast(kore)
-    else:
-        _LOGGER.info(f'Reading Kast JSON from file: {args.term.name}')
-        term = KInner.from_json(args.term.read())
-    if is_top(term):
-        args.output_file.write(printer.pretty_print(term))
+        # _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
+        # kore = Pattern.from_json(args.term.read())
+        # term = printer.kore_to_kast(kore)
+        execute_result = ExecuteResult.from_dict(json.loads(args.term.read())['result'])
+        cterm = CTerm.from_kast(printer.kore_to_kast(execute_result.state.kore))
+        args.output_file.write(printer.pretty_print(cterm.kast, sort_collections=True))
         _LOGGER.info(f'Wrote file: {args.output_file.name}')
-    else:
-        if args.minimize:
-            if args.omit_labels != '' and args.keep_cells != '':
-                raise ValueError('You cannot use both --omit-labels and --keep-cells.')
+    # elif args.input == PrintInput.PRETTY:
+    #     _LOGGER.info(f'Reading pretty-printed term from file: {args.term.name}')
+    # else:
+    #     _LOGGER.info(f'Reading Kast JSON from file: {args.term.name}')
+    #     term = KInner.from_json(args.term.read())
+    # if is_top(term):
+    #     args.output_file.write(printer.pretty_print(term))
+    #     _LOGGER.info(f'Wrote file: {args.output_file.name}')
+    # else:
+    #     if args.minimize:
+    #         if args.omit_labels != '' and args.keep_cells != '':
+    #             raise ValueError('You cannot use both --omit-labels and --keep-cells.')
 
-            abstract_labels = args.omit_labels.split(',') if args.omit_labels != '' else []
-            keep_cells = args.keep_cells.split(',') if args.keep_cells != '' else []
-            minimized_disjuncts = []
+    #         abstract_labels = args.omit_labels.split(',') if args.omit_labels != '' else []
+    #         keep_cells = args.keep_cells.split(',') if args.keep_cells != '' else []
+    #         minimized_disjuncts = []
 
-            for disjunct in flatten_label('#Or', term):
-                try:
-                    minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
-                    config, constraint = split_config_and_constraints(minimized)
-                except ValueError as err:
-                    raise ValueError('The minimized term does not contain a config cell.') from err
+    #         for disjunct in flatten_label('#Or', term):
+    #             try:
+    #                 minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
+    #                 config, constraint = split_config_and_constraints(minimized)
+    #             except ValueError as err:
+    #                 raise ValueError('The minimized term does not contain a config cell.') from err
 
-                if not is_top(constraint):
-                    minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
-                else:
-                    minimized_disjuncts.append(config)
-            term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
+    #             if not is_top(constraint):
+    #                 minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
+    #             else:
+    #                 minimized_disjuncts.append(config)
+    #         term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
 
-        args.output_file.write(printer.pretty_print(term))
-        _LOGGER.info(f'Wrote file: {args.output_file.name}')
+    #     args.output_file.write(printer.pretty_print(term, sort_collections=True))
+    #     _LOGGER.info(f'Wrote file: {args.output_file.name}')
+
+
+def exec_rpc_kast(args: Namespace) -> None:
+    """Convert between Kore RPC requests and responces"""
+    kompiled_dir: Path = args.definition_dir
+    printer = KPrint(kompiled_dir)
+    reference_request = json.loads(args.request.read())
+    execute_result = ExecuteResult.from_dict(json.loads(args.response.read())['result'])
+    # term = execute_result.state.term
+    # predicate = execute_result.state.predicate
+    cterm = CTerm.from_kast(printer.kore_to_kast(execute_result.state.kore))
+    payload = {
+        'max-depth': reference_request['params']['max-depth'],
+        'cut-point-rules': reference_request['params']['cut-point-rules'],
+        'terminal-rules': reference_request['params']['terminal-rules'],
+        'state': {
+            'format': 'KORE',
+            'version': KoreClient._KORE_JSON_VERSION,
+            'term': printer.kast_to_kore(cterm.kast, GENERATED_TOP_CELL).dict,
+        },
+    }
+    request = {
+        'jsonrpc': '2.0',
+        'id': 42,
+        'method': 'execute',
+        'params': payload,
+    }
+    args.output_file.write(json.dumps(request))
 
 
 def exec_prove(args: Namespace) -> None:
@@ -166,6 +203,19 @@ def create_argument_parser() -> ArgumentParser:
         '--keep-cells', default='', nargs='?', help='List of cells with primitive values to keep in output.'
     )
     print_args.add_argument('--output-file', type=FileType('w'), default='-')
+
+    rpc_kast_args = pyk_args_command.add_parser(
+        'rpc-kast',
+        help='Convert a state from RPC execute responce to RPC execute request',
+        parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
+    )
+    rpc_kast_args.add_argument(
+        'request', type=FileType('r'), help='Kore RPC execution request to use as reference (in Kore JSON).'
+    )
+    rpc_kast_args.add_argument(
+        'response', type=FileType('r'), help='Kore RPC execution responce to convert (in Kore JSON).'
+    )
+    rpc_kast_args.add_argument('--output-file', type=FileType('w'), default='-')
 
     prove_args = pyk_args_command.add_parser(
         'prove',
