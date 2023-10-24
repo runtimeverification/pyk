@@ -77,7 +77,7 @@ def rpc_client(mock: Mock) -> MockClient:
 def kore_client(mock: Mock, mock_class: Mock) -> Iterator[KoreClient]:  # noqa: N803
     client = KoreClient('localhost', 3000)
     mock_class.assert_called_with(
-        'localhost', 3000, timeout=None, bug_report=None, transport=TransportType.SINGLE_SOCKET
+        'localhost', 3000, timeout=None, bug_report=None, bug_report_id=None, transport=TransportType.SINGLE_SOCKET
     )
     assert client._client._default_client == mock
     yield client
@@ -163,8 +163,8 @@ def test_implies(
 
 SIMPLIFY_TEST_DATA: Final = (
     (
-        And(INT, int_top, int_top),
-        {'state': kore(And(INT, int_top, int_top))},
+        And(INT, (int_top, int_top)),
+        {'state': kore(And(INT, (int_top, int_top)))},
         {'state': kore(int_top)},
         int_top,
     ),
@@ -260,10 +260,12 @@ def test_add_module(
     params: dict[str, Any],
 ) -> None:
     # Given
-    rpc_client.assume_response([])
+    expected = module.name
+    rpc_client.assume_response({'module': module.name})
 
     # When
-    kore_client.add_module(module)
+    actual = kore_client.add_module(module)
 
     # Then
     rpc_client.assert_request('add-module', **params)
+    assert actual == expected

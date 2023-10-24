@@ -110,8 +110,10 @@ def krule_to_kore(kast_defn: KDefinition, kompiled_kore: KompiledKore, krule: KR
     else:
         kore_lhs0 = And(
             top_level_kore_sort,
-            kast_to_kore(kast_defn, kompiled_kore, krule_lhs.kast, sort=top_level_k_sort),
-            Top(top_level_kore_sort),
+            (
+                kast_to_kore(kast_defn, kompiled_kore, krule_lhs.kast, sort=top_level_k_sort),
+                Top(top_level_kore_sort),
+            ),
         )
 
     kore_rhs0: Pattern = kast_to_kore(kast_defn, kompiled_kore, krule_rhs.kast, sort=top_level_k_sort)
@@ -259,22 +261,18 @@ def _kore_to_kast(kore: Pattern) -> KInner:
 
         elif len(kore.sorts) == 0:
             if kore.symbol == 'dotk' and len(kore.args) == 0:
-                return KSequence([])
+                return KSequence(())
 
             elif kore.symbol == 'kseq' and len(kore.args) == 2:
                 p0 = _kore_to_kast(kore.args[0])
                 p1 = _kore_to_kast(kore.args[1])
-                if p0 is not None and p1 is not None:
-                    return KSequence([p0, p1])
+                return KSequence((p0, p1))
 
             else:
                 _label_name = unmunge(kore.symbol[3:])
                 klabel = KLabel(_label_name, [KSort(k.name[4:]) for k in kore.sorts])
-                args = [_kore_to_kast(_a) for _a in kore.args]
-                # TODO: Written like this to appease the type-checker.
-                new_args = [a for a in args if a is not None]
-                if len(new_args) == len(args):
-                    return KApply(klabel, new_args)
+                args = tuple(_kore_to_kast(_a) for _a in kore.args)
+                return KApply(klabel, args)
 
         # hardcoded polymorphic operators
         elif (
@@ -284,11 +282,8 @@ def _kore_to_kast(kore: Pattern) -> KInner:
         ):
             _label_name = unmunge(kore.symbol[3:])
             klabel = KLabel(_label_name, [KSort(kore.sorts[0].name[4:])])
-            # TODO: Written like this to appease the type-checker.
-            args = [_kore_to_kast(_a) for _a in kore.args]
-            new_args = [a for a in args if a is not None]
-            if len(new_args) == len(args):
-                return KApply(klabel, new_args)
+            args = tuple(_kore_to_kast(_a) for _a in kore.args)
+            return KApply(klabel, args)
 
     elif type(kore) is Top:
         return mlTop(sort=KSort(kore.sort.name[4:]))
@@ -298,46 +293,39 @@ def _kore_to_kast(kore: Pattern) -> KInner:
 
     elif type(kore) is And:
         psort = KSort(kore.sort.name[4:])
-        larg = _kore_to_kast(kore.left)
-        rarg = _kore_to_kast(kore.right)
-        if larg is not None and rarg is not None:
-            return mlAnd([larg, rarg], sort=psort)
+        args = tuple(_kore_to_kast(op) for op in kore.ops)
+        return mlAnd(args, sort=psort)
 
     elif type(kore) is Implies:
         psort = KSort(kore.sort.name[4:])
         larg = _kore_to_kast(kore.left)
         rarg = _kore_to_kast(kore.right)
-        if larg is not None and rarg is not None:
-            return mlImplies(larg, rarg, sort=psort)
+        return mlImplies(larg, rarg, sort=psort)
 
     elif type(kore) is Not:
         psort = KSort(kore.sort.name[4:])
         arg = _kore_to_kast(kore.pattern)
-        if arg is not None:
-            return mlNot(arg, sort=psort)
+        return mlNot(arg, sort=psort)
 
     elif type(kore) is Exists:
         psort = KSort(kore.sort.name[4:])
         var = _kore_to_kast(kore.var)
+        assert type(var) is KVariable
         body = _kore_to_kast(kore.pattern)
-        if var is not None and body is not None:
-            assert type(var) is KVariable
-            return mlExists(var, body, sort=psort)
+        return mlExists(var, body, sort=psort)
 
     elif type(kore) is Equals:
         osort = KSort(kore.op_sort.name[4:])
         psort = KSort(kore.sort.name[4:])
         larg = _kore_to_kast(kore.left)
         rarg = _kore_to_kast(kore.right)
-        if larg is not None and rarg is not None:
-            return mlEquals(larg, rarg, arg_sort=osort, sort=psort)
+        return mlEquals(larg, rarg, arg_sort=osort, sort=psort)
 
     elif type(kore) is Ceil:
         osort = KSort(kore.op_sort.name[4:])
         psort = KSort(kore.sort.name[4:])
         arg = _kore_to_kast(kore.pattern)
-        if arg is not None:
-            return mlCeil(arg, arg_sort=osort, sort=psort)
+        return mlCeil(arg, arg_sort=osort, sort=psort)
 
     elif isinstance(kore, Assoc):
         return _kore_to_kast(kore.pattern)
