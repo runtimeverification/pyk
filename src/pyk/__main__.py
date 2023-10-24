@@ -10,13 +10,21 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
+from pyk.kast.inner import KInner
 from pyk.kore.rpc import ExecuteResult
 
 from .cli.args import KCLIArgs
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import CTerm
-from .kast.manip import minimize_rule, remove_source_map
+from .kast.manip import (
+    flatten_label,
+    minimize_rule,
+    minimize_term,
+    propagate_up_constraints,
+    remove_source_map,
+    split_config_and_constraints,
+)
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
@@ -25,7 +33,7 @@ from .kore.syntax import Pattern
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
-from .prelude.ml import mlOr
+from .prelude.ml import is_top, mlAnd, mlOr
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -64,6 +72,45 @@ def exec_print(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     printer = KPrint(kompiled_dir)
     if args.input == PrintInput.KORE_JSON:
+        _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
+        kore = Pattern.from_json(args.term.read())
+        term = printer.kore_to_kast(kore)
+    else:
+        _LOGGER.info(f'Reading Kast JSON from file: {args.term.name}')
+        term = KInner.from_json(args.term.read())
+    if is_top(term):
+        args.output_file.write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {args.output_file.name}')
+    else:
+        if args.minimize:
+            if args.omit_labels != '' and args.keep_cells != '':
+                raise ValueError('You cannot use both --omit-labels and --keep-cells.')
+
+            abstract_labels = args.omit_labels.split(',') if args.omit_labels != '' else []
+            keep_cells = args.keep_cells.split(',') if args.keep_cells != '' else []
+            minimized_disjuncts = []
+
+            for disjunct in flatten_label('#Or', term):
+                try:
+                    minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
+                    config, constraint = split_config_and_constraints(minimized)
+                except ValueError as err:
+                    raise ValueError('The minimized term does not contain a config cell.') from err
+
+                if not is_top(constraint):
+                    minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
+                else:
+                    minimized_disjuncts.append(config)
+            term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
+
+        args.output_file.write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {args.output_file.name}')
+
+
+def exec_rpc_print(args: Namespace) -> None:
+    kompiled_dir: Path = args.definition_dir
+    printer = KPrint(kompiled_dir)
+    if args.input == PrintInput.KORE_JSON:
         # _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
         # kore = Pattern.from_json(args.term.read())
         # term = printer.kore_to_kast(kore)
@@ -71,38 +118,6 @@ def exec_print(args: Namespace) -> None:
         cterm = CTerm.from_kast(printer.kore_to_kast(execute_result.state.kore))
         args.output_file.write(printer.pretty_print(cterm.kast, sort_collections=True))
         _LOGGER.info(f'Wrote file: {args.output_file.name}')
-    # elif args.input == PrintInput.PRETTY:
-    #     _LOGGER.info(f'Reading pretty-printed term from file: {args.term.name}')
-    # else:
-    #     _LOGGER.info(f'Reading Kast JSON from file: {args.term.name}')
-    #     term = KInner.from_json(args.term.read())
-    # if is_top(term):
-    #     args.output_file.write(printer.pretty_print(term))
-    #     _LOGGER.info(f'Wrote file: {args.output_file.name}')
-    # else:
-    #     if args.minimize:
-    #         if args.omit_labels != '' and args.keep_cells != '':
-    #             raise ValueError('You cannot use both --omit-labels and --keep-cells.')
-
-    #         abstract_labels = args.omit_labels.split(',') if args.omit_labels != '' else []
-    #         keep_cells = args.keep_cells.split(',') if args.keep_cells != '' else []
-    #         minimized_disjuncts = []
-
-    #         for disjunct in flatten_label('#Or', term):
-    #             try:
-    #                 minimized = minimize_term(disjunct, abstract_labels=abstract_labels, keep_cells=keep_cells)
-    #                 config, constraint = split_config_and_constraints(minimized)
-    #             except ValueError as err:
-    #                 raise ValueError('The minimized term does not contain a config cell.') from err
-
-    #             if not is_top(constraint):
-    #                 minimized_disjuncts.append(mlAnd([config, constraint], sort=GENERATED_TOP_CELL))
-    #             else:
-    #                 minimized_disjuncts.append(config)
-    #         term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
-
-    #     args.output_file.write(printer.pretty_print(term, sort_collections=True))
-    #     _LOGGER.info(f'Wrote file: {args.output_file.name}')
 
 
 def exec_rpc_kast(args: Namespace) -> None:
