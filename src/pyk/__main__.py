@@ -3,32 +3,29 @@ from __future__ import annotations
 import json
 import logging
 import sys
-import json
 from argparse import ArgumentParser, FileType
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from graphviz import Digraph
+
 from pyk.kore.rpc import ExecuteResult
 
-from .kore.rpc import KoreClient
-from .kore import syntax
-from .cterm import CTerm
 from .cli.args import KCLIArgs
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
-from .cterm import split_config_and_constraints
-from .kast.inner import KInner
-from .kast.manip import flatten_label, minimize_rule, minimize_term, propagate_up_constraints, remove_source_map
+from .cterm import CTerm
+from .kast.manip import minimize_rule, remove_source_map
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
+from .kore.rpc import KoreClient
 from .kore.syntax import Pattern
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
-from .prelude.ml import is_top, mlAnd, mlOr
+from .prelude.ml import mlOr
 
 if TYPE_CHECKING:
     from argparse import Namespace
