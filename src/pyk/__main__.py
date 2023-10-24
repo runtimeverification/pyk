@@ -28,7 +28,7 @@ from .kast.manip import (
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
-from .kore.rpc import KoreClient
+from .kore.rpc import KoreClient, StopReason
 from .kore.syntax import Pattern
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
@@ -108,16 +108,48 @@ def exec_print(args: Namespace) -> None:
 
 
 def exec_rpc_print(args: Namespace) -> None:
+    def pretty_print_execute_response(execute_result: ExecuteResult) -> list[str]:
+        output_buffer = []
+        output_buffer.append('Method: execute')
+        output_buffer.append(f'Depth: {execute_result.depth}')
+        output_buffer.append(f'Stop reason: {execute_result.reason}')
+        if execute_result.reason == StopReason.TERMINAL_RULE or execute_result.reason == StopReason.CUT_POINT_RULE:
+            output_buffer.append(f'Stop rule: {execute_result.rule}')
+        output_buffer.append(f'Number of next states: {execute_result.next_states}')
+        state = CTerm.from_kast(printer.kore_to_kast(execute_result.state.kore))
+        output_buffer.append('State: ')
+        output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
+        if execute_result.next_states is not None:
+            next_states = [CTerm.from_kast(printer.kore_to_kast(s.kore)) for s in execute_result.next_states]
+            for i, s in enumerate(next_states):
+                output_buffer.append(f'Next state #{i}:')
+                output_buffer.append(printer.pretty_print(s.kast, sort_collections=True))
+        return output_buffer
+
     kompiled_dir: Path = args.definition_dir
     printer = KPrint(kompiled_dir)
-    if args.input == PrintInput.KORE_JSON:
-        # _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
-        # kore = Pattern.from_json(args.term.read())
-        # term = printer.kore_to_kast(kore)
-        execute_result = ExecuteResult.from_dict(json.loads(args.term.read())['result'])
-        cterm = CTerm.from_kast(printer.kore_to_kast(execute_result.state.kore))
-        args.output_file.write(printer.pretty_print(cterm.kast, sort_collections=True))
-        _LOGGER.info(f'Wrote file: {args.output_file.name}')
+    input_dict = json.loads(args.input_file.read())
+    output_buffer = []
+    if 'method' in input_dict:
+        output_buffer.append('JSON RPC request')
+        output_buffer.append(f'"method": {input_dict["method"]}')
+        _LOGGER.critical('Not implemented')
+        exit(1)
+    else:
+        if not 'result' in input_dict:
+            _LOGGER.critical('The input is neither a request not a resonse')
+            exit(1)
+        output_buffer.append('JSON RPC Response')
+        output_buffer.append(f'id: {input_dict["id"]}')
+        try:
+            execute_result = ExecuteResult.from_dict(input_dict['result'])
+            output_buffer += pretty_print_execute_response(execute_result)
+        except KeyError as e:
+            _LOGGER.info(f'Could not find key {str(e)} in input JSON file')
+    if args.output_file is not None:
+        args.output_file.write('\n'.join(output_buffer))
+    else:
+        print('\n'.join(output_buffer))
 
 
 def exec_rpc_kast(args: Namespace) -> None:
@@ -218,6 +250,18 @@ def create_argument_parser() -> ArgumentParser:
         '--keep-cells', default='', nargs='?', help='List of cells with primitive values to keep in output.'
     )
     print_args.add_argument('--output-file', type=FileType('w'), default='-')
+
+    rpc_print_args = pyk_args_command.add_parser(
+        'rpc-print',
+        help='Pretty-print an RPC request/response',
+        parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
+    )
+    rpc_print_args.add_argument(
+        'input_file',
+        type=FileType('r'),
+        help='An input file containing the JSON RPC request or response with KoreJSON payload.',
+    )
+    rpc_print_args.add_argument('--output-file', type=FileType('w'), default='-')
 
     rpc_kast_args = pyk_args_command.add_parser(
         'rpc-kast',
