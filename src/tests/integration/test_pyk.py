@@ -108,8 +108,10 @@ class TestRpcPrint(KompiledTest):
         'imp-execute-cut-point-rule-response',
         'imp-execute-branching-response',
         'imp-execute-stuck-response',
+        'imp-simplify-request',
+        'imp-simplify-response',
     ]
-    TEST_DATA_FAILING = ['imp-simplify-request', 'imp-simplify-response']
+    TEST_DATA_FAILING = ['non-exisiting-file']
 
     @pytest.mark.parametrize('filename_stem', TEST_DATA, ids=TEST_DATA)
     def test_rpc_print(self, assume_argv: AssumeArgv, tmp_path: Path, definition_dir: Path, filename_stem: str) -> None:

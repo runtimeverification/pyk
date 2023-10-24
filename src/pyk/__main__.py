@@ -29,7 +29,7 @@ from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
 from .kore.rpc import KoreClient, State, StopReason
-from .kore.syntax import Pattern
+from .kore.syntax import Pattern, kore_term
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
@@ -158,12 +158,17 @@ def exec_rpc_print(args: Namespace) -> None:
             exit(1)
         output_buffer.append('JSON RPC Response')
         output_buffer.append(f'id: {input_dict["id"]}')
-        try:
-            execute_result = ExecuteResult.from_dict(input_dict['result'])
-            output_buffer += pretty_print_execute_response(execute_result)
-        except KeyError as e:
-            _LOGGER.critical(f'Could not find key {str(e)} in input JSON file')
-            exit(1)
+        if list(input_dict['result'].keys()) == ['state']:  # this is a "simplify" response
+            state = CTerm.from_kast(printer.kore_to_kast(kore_term(input_dict['result']['state'])))  # type: ignore
+            output_buffer.append('State: ')
+            output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
+        else:
+            try:  # assume it is an "execute" response
+                execute_result = ExecuteResult.from_dict(input_dict['result'])
+                output_buffer += pretty_print_execute_response(execute_result)
+            except KeyError as e:
+                _LOGGER.critical(f'Could not find key {str(e)} in input JSON file')
+                exit(1)
     if args.output_file is not None:
         args.output_file.write('\n'.join(output_buffer))
     else:
