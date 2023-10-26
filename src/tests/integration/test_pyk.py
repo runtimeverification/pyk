@@ -117,15 +117,17 @@ class TestRpcPrint(KompiledTest):
     def test_rpc_print(self, assume_argv: AssumeArgv, tmp_path: Path, definition_dir: Path, filename_stem: str) -> None:
         # Given
         input_file = TEST_DATA_DIR / 'pyk-rpc-print' / f'{filename_stem}.json'
-        output_file = tmp_path / f'{filename_stem}.pretty'
-        assume_argv(['pyk', 'rpc-print', str(definition_dir), str(input_file), '--output-file', str(output_file)])
+        expected_file = TEST_DATA_DIR / 'pyk-rpc-print' / f'{filename_stem}.pretty.golden'
+        actual_file = tmp_path / f'{filename_stem}.pretty'
+        assume_argv(['pyk', 'rpc-print', str(definition_dir), str(input_file), '--output-file', str(actual_file)])
 
         # When
         main()
 
         # Then
-        assert output_file.is_file()
-        assert output_file.stat().st_size > 0
+        expected_lines = {line.strip() for line in expected_file.read_text().splitlines()}
+        actual_lines = {line.strip() for line in actual_file.read_text().splitlines()}
+        assert actual_lines == expected_lines
 
     @pytest.mark.parametrize('filename_stem', TEST_DATA_FAILING, ids=TEST_DATA_FAILING)
     def test_rpc_print_fail(
@@ -133,8 +135,8 @@ class TestRpcPrint(KompiledTest):
     ) -> None:
         # Given
         input_file = TEST_DATA_DIR / 'pyk-rpc-print' / f'{filename_stem}.json'
-        output_file = tmp_path / f'{filename_stem}.pretty'
-        assume_argv(['pyk', 'rpc-print', str(definition_dir), str(input_file), '--output-file', str(output_file)])
+        actual_file = tmp_path / f'{filename_stem}.pretty'
+        assume_argv(['pyk', 'rpc-print', str(definition_dir), str(input_file), '--output-file', str(actual_file)])
 
         # When
         with pytest.raises(SystemExit):

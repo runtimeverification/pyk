@@ -118,7 +118,7 @@ def exec_rpc_print(args: Namespace) -> None:
         for key in non_state_keys:
             output_buffer.append(f'{key}: {request_params[key]}')
         state = CTerm.from_kast(printer.kore_to_kast(kore_term(request_params['state'])))  # type: ignore
-        output_buffer.append('State: ')
+        output_buffer.append('State:')
         output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
         return output_buffer
 
@@ -133,7 +133,7 @@ def exec_rpc_print(args: Namespace) -> None:
             f'Number of next states: {len(execute_result.next_states) if execute_result.next_states is not None else 0}'
         )
         state = CTerm.from_kast(printer.kore_to_kast(execute_result.state.kore))
-        output_buffer.append('State: ')
+        output_buffer.append('State:')
         output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
         if execute_result.next_states is not None:
             next_states = [CTerm.from_kast(printer.kore_to_kast(s.kore)) for s in execute_result.next_states]
