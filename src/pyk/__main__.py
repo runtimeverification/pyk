@@ -126,7 +126,7 @@ def exec_rpc_print(args: Namespace) -> None:
         output_buffer = []
         output_buffer.append('Method: execute')
         output_buffer.append(f'Depth: {execute_result.depth}')
-        output_buffer.append(f'Stop reason: {execute_result.reason}')
+        output_buffer.append(f'Stop reason: {execute_result.reason.value}')
         if execute_result.reason == StopReason.TERMINAL_RULE or execute_result.reason == StopReason.CUT_POINT_RULE:
             output_buffer.append(f'Stop rule: {execute_result.rule}')
         output_buffer.append(
