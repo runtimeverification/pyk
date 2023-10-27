@@ -3,9 +3,37 @@ id: 1
 method: execute
 Method: execute
 Depth: 42
-Stop reason: stuck
-Number of next states: 0
+Stop reason: branching
+Number of next states: 2
 State:
+<generatedTop>
+  <T>
+    <k>
+      .K
+    </k>
+    <state>
+      k |-> 10001 sum |-> 50005000
+    </state>
+  </T>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>
+Next state #0:
+<generatedTop>
+  <T>
+    <k>
+      .K
+    </k>
+    <state>
+      k |-> 10001 sum |-> 50005000
+    </state>
+  </T>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>
+Next state #1:
 <generatedTop>
   <T>
     <k>
