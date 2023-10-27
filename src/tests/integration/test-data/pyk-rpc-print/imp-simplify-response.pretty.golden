@@ -1,6 +1,6 @@
 JSON RPC Response
 id: 1
-method: simplify
+Method: simplify
 State:
 <generatedTop>
   <T>

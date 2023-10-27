@@ -1,6 +1,5 @@
 JSON RPC Response
 id: 1
-method: execute
 Method: execute
 Depth: 1
 Stop reason: depth-bound

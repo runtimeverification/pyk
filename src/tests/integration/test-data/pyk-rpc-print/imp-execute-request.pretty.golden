@@ -1,10 +1,10 @@
 JSON RPC request
 id: 1
-method: execute
-max-depth: 4
-module: IMP
+Method: execute
 terminal-rules: ['IMP.stop']
 cut-point-rules: ['IMP.while']
+max-depth: 4
+module: IMP
 State:
 <generatedTop>
   <T>

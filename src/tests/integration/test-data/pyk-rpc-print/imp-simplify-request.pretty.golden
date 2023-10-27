@@ -1,6 +1,6 @@
 JSON RPC request
 id: 1
-method: simplify
+Method: simplify
 module: IMP
 State:
 <generatedTop>

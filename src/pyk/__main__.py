@@ -124,7 +124,6 @@ def exec_rpc_print(args: Namespace) -> None:
 
     def pretty_print_execute_response(execute_result: ExecuteResult) -> list[str]:
         output_buffer = []
-        output_buffer.append('Method: execute')
         output_buffer.append(f'Depth: {execute_result.depth}')
         output_buffer.append(f'Stop reason: {execute_result.reason.value}')
         if execute_result.reason == StopReason.TERMINAL_RULE or execute_result.reason == StopReason.CUT_POINT_RULE:
@@ -146,7 +145,7 @@ def exec_rpc_print(args: Namespace) -> None:
         if 'method' in input_dict:
             output_buffer.append('JSON RPC request')
             output_buffer.append(f'id: {input_dict["id"]}')
-            output_buffer.append(f'method: {input_dict["method"]}')
+            output_buffer.append(f'Method: {input_dict["method"]}')
             try:
                 if 'state' in input_dict['params']:
                     output_buffer += pretty_print_request(input_dict['params'])
@@ -163,17 +162,17 @@ def exec_rpc_print(args: Namespace) -> None:
             output_buffer.append('JSON RPC Response')
             output_buffer.append(f'id: {input_dict["id"]}')
             if list(input_dict['result'].keys()) == ['state']:  # this is a "simplify" response
-                output_buffer.append('method: simplify')
+                output_buffer.append('Method: simplify')
                 state = CTerm.from_kast(printer.kore_to_kast(kore_term(input_dict['result']['state'])))  # type: ignore
                 output_buffer.append('State:')
                 output_buffer.append(printer.pretty_print(state.kast, sort_collections=True))
             elif list(input_dict['result'].keys()) == ['module']:  # this is an "add-module" response
-                output_buffer.append('method: add-module')
+                output_buffer.append('Method: add-module')
                 output_buffer.append('Module:')
                 output_buffer.append(input_dict['result']['module'])
             else:
                 try:  # assume it is an "execute" response
-                    output_buffer.append('method: execute')
+                    output_buffer.append('Method: execute')
                     execute_result = ExecuteResult.from_dict(input_dict['result'])
                     output_buffer += pretty_print_execute_response(execute_result)
                 except KeyError as e:

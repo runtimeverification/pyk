@@ -1,6 +1,5 @@
 JSON RPC Response
 id: 1
-method: execute
 Method: execute
 Depth: 290017
 Stop reason: cut-point-rule
