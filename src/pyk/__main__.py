@@ -28,7 +28,7 @@ from .kast.manip import (
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
-from .kore.rpc import KoreClient, StopReason
+from .kore.rpc import StopReason
 from .kore.syntax import Pattern, kore_term
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
@@ -193,7 +193,6 @@ def exec_rpc_kast(args: Namespace) -> None:
     Convert an 'execute' JSON RPC response to a new 'execute' or 'simplify' request,
     copying parameters from a reference request.
     """
-    kompiled_dir: Path = args.definition_dir
     reference_request = json.loads(args.reference_request_file.read())
     input_dict = json.loads(args.response_file.read())
     execute_result = ExecuteResult.from_dict(input_dict['result'])
@@ -292,7 +291,7 @@ def create_argument_parser() -> ArgumentParser:
     rpc_kast_args = pyk_args_command.add_parser(
         'rpc-kast',
         help='Convert an "execute" JSON RPC response to a new "execute" or "simplify" request, copying parameters from a reference request.',
-        parents=[k_cli_args.logging_args, definition_args],
+        parents=[k_cli_args.logging_args],
     )
     rpc_kast_args.add_argument(
         'reference_request_file',

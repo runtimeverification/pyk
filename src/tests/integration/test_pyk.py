@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 import sys
 from typing import TYPE_CHECKING
-import json
 
 import pytest
 
@@ -144,10 +144,7 @@ class TestRpcPrint(KompiledTest):
             main()
 
 
-class TestRpcKast(KompiledTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'imp.k'
-    KOMPILE_BACKEND = 'haskell'
-
+class TestRpcKast:
     TEST_DATA = [
         ('imp-execute-request', 'imp-execute-depth-bound-response', 'imp-execute-request-from-execute-response'),
         ('imp-simplify-request', 'imp-execute-depth-bound-response', 'imp-simplify-request-from-execute-response'),
@@ -162,7 +159,6 @@ class TestRpcKast(KompiledTest):
         self,
         assume_argv: AssumeArgv,
         tmp_path: Path,
-        definition_dir: Path,
         reference_filename_stem: str,
         input_filename_stem: str,
         output_filename_stem: str,
@@ -176,7 +172,6 @@ class TestRpcKast(KompiledTest):
             [
                 'pyk',
                 'rpc-kast',
-                str(definition_dir),
                 str(reference_file),
                 str(input_file),
                 '--output-file',
