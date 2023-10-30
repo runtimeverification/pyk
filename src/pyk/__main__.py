@@ -201,7 +201,12 @@ def exec_rpc_kast(args: Namespace) -> None:
     for key in non_state_keys:
         request_params[key] = reference_request['params'][key]
     request_params['state'] = {'format': 'KORE', 'version': 1, 'term': execute_result.state.kore.dict}
-    request = {'jsonrpc': '2.0', 'id': 42, 'method': reference_request['method'], 'params': request_params}
+    request = {
+        'jsonrpc': reference_request['jsonrpc'],
+        'id': reference_request['id'],
+        'method': reference_request['method'],
+        'params': request_params,
+    }
     args.output_file.write(json.dumps(request))
 
 
