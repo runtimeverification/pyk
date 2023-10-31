@@ -6,18 +6,22 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from itertools import chain
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from ..utils import ensure_dir_path, hash_file, hash_str
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from pathlib import Path
-    from typing import Any, Final, TypeVar
+    from typing import Any, Final
 
     from pyk.kcfg.explore import KCFGExplore
 
-    T = TypeVar('T', bound='Proof')
+Q = TypeVar('Q', bound='Any')
+P = TypeVar('P', bound='Any')
+S = TypeVar('S', bound='Any')
+U = TypeVar('U', bound='Any')
+#      T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -281,8 +285,21 @@ class CompositeSummary(ProofSummary):
         return [line for lines in (summary.lines for summary in self.summaries) for line in lines]
 
 
-class Prover:
+class Prover(ABC, Generic[P, S, U]):
     kcfg_explore: KCFGExplore
 
     def __init__(self, kcfg_explore: KCFGExplore):
         self.kcfg_explore = kcfg_explore
+
+    @abstractmethod
+    def steps(self, proof: P) -> Iterable[S]:
+        ...
+
+    @abstractmethod
+    def advance(self, proof: P, step: S) -> U:
+        ...
+
+    # Should return P to be more flexible, but let's assume this for implicity
+    @abstractmethod
+    def commit(self, proof: P, update: U) -> None:
+        ...
