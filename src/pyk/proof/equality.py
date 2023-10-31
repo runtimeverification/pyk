@@ -326,7 +326,7 @@ class RefutationSummary(ProofSummary):
         ]
 
 
-class ImpliesProver(Prover):
+class ImpliesProver(Prover[ImpliesProof, None, None]):
     proof: ImpliesProof
 
     def __init__(
@@ -374,6 +374,16 @@ class ImpliesProver(Prover):
 
         _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
         self.proof.write_proof_data()
+
+    def steps(self, proof: ImpliesProof) -> Iterable[None]:
+        return [None]
+
+    def advance(self, proof: ImpliesProof, step: None) -> None:
+        return None
+
+    # Should return P to be more flexible, but let's assume this for implicity
+    def commit(self, proof: ImpliesProof, update: None) -> None:
+        return
 
 
 class EqualityProver(ImpliesProver):
