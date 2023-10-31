@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import time
 import sys
+import time
 from concurrent.futures import ProcessPoolExecutor, wait
 from typing import TYPE_CHECKING, Any, Mapping
 
@@ -90,14 +90,18 @@ def prove_parallel(
     provers: dict[Proof, Prover],
 ) -> Iterable[Proof]:
     pending: dict[Future[int], Proof] = {}
+    explored: set[int] = set()
 
     def submit(proof: Proof, pool: Executor) -> None:
         prover = provers[proof]
         for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
+            if step in explored:
+                continue
+            explored.add(step)
             future = pool.submit(prover.advance, proof, step)  # <-- schedule steps for execution
             pending[future] = proof
 
-    with ProcessPoolExecutor(max_workers=3) as pool:
+    with ProcessPoolExecutor(max_workers=2) as pool:
         for proof in proofs:
             submit(proof, pool)
 
