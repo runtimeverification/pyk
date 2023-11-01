@@ -7,7 +7,7 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KLabel, KRewrite, KSort, KToken, KVariable
 from pyk.kcfg import KCFG, KCFGShow
-from pyk.kcfg.explore import no_cell_rewrite_to_dots
+from pyk.kcfg.explore import _no_cell_rewrite_to_dots
 from pyk.kcfg.show import NodePrinter
 from pyk.prelude.ml import mlEquals, mlTop
 from pyk.prelude.utils import token
@@ -732,7 +732,7 @@ def test_pretty_print() -> None:
     assert actual_full_printer == expected_full_printer
 
 
-def test_no_cell_rewrite_to_dots() -> None:
+def test__no_cell_rewrite_to_dots() -> None:
     term = KRewrite(
         lhs=KApply(
             label=KLabel(name='_AccountCellMap_', params=()),
@@ -807,5 +807,5 @@ def test_no_cell_rewrite_to_dots() -> None:
         rhs=KVariable(name='ACCOUNTS_FINAL', sort=KSort(name='AccountCellMap')),
     )
 
-    result = no_cell_rewrite_to_dots(term)
+    result = _no_cell_rewrite_to_dots(term)
     assert result == expected
