@@ -14,15 +14,16 @@ if TYPE_CHECKING:
 
 
 class TreeExploreProof(Proof):
-    nodes_values: dict[int, int]
-    nodes_explored: dict[int, bool]
-    edges: dict[int, list[int]]
+    init: int
+    target: int
+    edges: dict[int, set[int]]
+    reached: set[int]
 
     def __init__(self) -> None:
-        self.nodes_explored = {}
+        self.init = 0
+        self.reached = set()
+        self.target = 9
         self.edges = {}
-        for i in range(10):
-            self.nodes_explored[i] = False
 
         #         0
         #        / \
@@ -33,20 +34,20 @@ class TreeExploreProof(Proof):
         #       5   6   7
         #              / \
         #             8   9
-        self.edges[0] = [1, 2]
-        self.edges[1] = []
-        self.edges[2] = [3, 4]
-        self.edges[3] = [5, 6]
-        self.edges[4] = [7]
-        self.edges[5] = []
-        self.edges[6] = []
-        self.edges[7] = [8, 9]
-        self.edges[8] = []
-        self.edges[9] = []
+        self.edges[0] = {1, 2}
+        self.edges[1] = set()
+        self.edges[2] = {3, 4}
+        self.edges[3] = {5, 6}
+        self.edges[4] = {7}
+        self.edges[5] = set()
+        self.edges[6] = set()
+        self.edges[7] = {8, 9}
+        self.edges[8] = set()
+        self.edges[9] = set()
 
     @property
     def status(self) -> ProofStatus:
-        if all(self.nodes_explored.values()):
+        if self.target in self.reached:
             return ProofStatus.PASSED
         else:
             return ProofStatus.PENDING
@@ -57,7 +58,7 @@ class TreeExploreProver(Prover[TreeExploreProof, int, int]):
         return
 
     def initial_steps(self, proof: TreeExploreProof) -> Iterable[int]:
-        return [0]
+        return [proof.init]
 
     def advance(self, proof: TreeExploreProof, step: int) -> int:
         print(f'Advancing node {step}\n', file=sys.stderr)
@@ -66,7 +67,7 @@ class TreeExploreProver(Prover[TreeExploreProof, int, int]):
         return step
 
     def commit(self, proof: TreeExploreProof, update: int) -> Iterable[int]:
-        proof.nodes_explored[update] = True
+        proof.reached.add(update)
 
         def parents(node_id: int) -> Iterable[int]:
             return [source for source, targets in proof.edges.items() if node_id in targets]

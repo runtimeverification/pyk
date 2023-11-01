@@ -14,7 +14,6 @@ U = TypeVar('U', bound='Any')
 
 
 class Prover(ABC, Generic[P, S, U]):
-
     # Return first available step(s) of proof
     @abstractmethod
     def initial_steps(self, proof: P) -> Iterable[S]:
