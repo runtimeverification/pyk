@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, final
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
 from ..kast.manip import (
-    abstract_term_safely,
     bottom_up,
     extract_lhs,
     extract_rhs,
@@ -17,13 +16,15 @@ from ..kast.manip import (
     minimize_term,
     ml_pred_to_bool,
     push_down_rewrites,
+    sort_ac_collections,
+    split_config_from,
 )
 from ..kast.outer import KRule
 from ..konvert import krule_to_kore
 from ..kore.rpc import SatResult, StopReason, UnknownResult, UnsatResult
 from ..kore.syntax import Import, Module
 from ..prelude import k
-from ..prelude.k import GENERATED_TOP_CELL
+from ..prelude.k import DOTS, GENERATED_TOP_CELL
 from ..prelude.kbool import notBool
 from ..prelude.ml import is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
@@ -184,18 +185,23 @@ class KCFGExplore:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         return CSubst(subst=Subst(_subst), constraints=ml_preds)
 
+    def no_cell_rewrite_to_dots(self, term: KInner) -> KInner:
+        def _no_cell_rewrite_to_dots(_term: KInner) -> KInner:
+            if type(_term) is KApply and _term.is_cell:
+                lhs = extract_lhs(_term)
+                rhs = extract_rhs(_term)
+                if lhs == rhs:
+                    return KApply(_term.label, [DOTS])
+            return _term
+
+        config, _subst = split_config_from(term)
+        subst = Subst(
+            {cell_name: _no_cell_rewrite_to_dots(cell_contents) for cell_name, cell_contents in _subst.items()}
+        )
+
+        return subst(config)
+
     def implication_failure_reason(self, antecedent: CTerm, consequent: CTerm) -> tuple[bool, str]:
-        def no_cell_rewrite_to_dots(term: KInner) -> KInner:
-            def _no_cell_rewrite_to_dots(_term: KInner) -> KInner:
-                if type(_term) is KApply and _term.is_cell:
-                    lhs = extract_lhs(_term)
-                    rhs = extract_rhs(_term)
-                    if lhs == rhs:
-                        return KApply(_term.label, [abstract_term_safely(lhs, base_name=_term.label.name)])
-                return _term
-
-            return bottom_up(_no_cell_rewrite_to_dots, term)
-
         def _is_cell_subst(csubst: KInner) -> bool:
             if type(csubst) is KApply and csubst.label.name == '_==K_':
                 csubst_arg = csubst.args[0]
@@ -227,8 +233,8 @@ class KCFGExplore:
             failing_cells = []
             curr_cell_match = Subst({})
             for cell in antecedent.cells:
-                antecedent_cell = antecedent.cell(cell)
-                consequent_cell = consequent.cell(cell)
+                antecedent_cell = sort_ac_collections(antecedent.cell(cell))
+                consequent_cell = sort_ac_collections(consequent.cell(cell))
                 cell_match = consequent_cell.match(antecedent_cell)
                 if cell_match is not None:
                     _curr_cell_match = curr_cell_match.union(cell_match)
@@ -236,7 +242,7 @@ class KCFGExplore:
                         curr_cell_match = _curr_cell_match
                         continue
                 failing_cell = push_down_rewrites(KRewrite(antecedent_cell, consequent_cell))
-                failing_cell = no_cell_rewrite_to_dots(failing_cell)
+                failing_cell = self.no_cell_rewrite_to_dots(failing_cell)
                 failing_cell = replace_rewrites_with_implies(failing_cell)
                 failing_cells.append((cell, failing_cell))
             failing_cells_str = '\n'.join(
