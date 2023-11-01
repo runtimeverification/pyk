@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KVariable
+from pyk.kast.inner import KApply, KLabel, KRewrite, KSort, KToken, KVariable
 from pyk.kcfg import KCFG, KCFGShow
+from pyk.kcfg.explore import _no_cell_rewrite_to_dots
 from pyk.kcfg.show import NodePrinter
 from pyk.prelude.ml import mlEquals, mlTop
 from pyk.prelude.utils import token
@@ -729,3 +730,82 @@ def test_pretty_print() -> None:
     # Then
     assert actual == expected
     assert actual_full_printer == expected_full_printer
+
+
+def test__no_cell_rewrite_to_dots() -> None:
+    term = KRewrite(
+        lhs=KApply(
+            label=KLabel(name='_AccountCellMap_', params=()),
+            args=(
+                KApply(
+                    label=KLabel(name='<account>', params=()),
+                    args=(
+                        KApply(
+                            label=KLabel(name='<acctID>', params=()),
+                            args=(
+                                KToken(
+                                    token='645326474426547203313410069153905908525362434349',
+                                    sort=KSort(name='Int'),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                KApply(
+                    label=KLabel(name='<account>', params=()),
+                    args=(
+                        KApply(
+                            label=KLabel(name='<acctID>', params=()),
+                            args=(
+                                KToken(
+                                    token='728815563385977040452943777879061427756277306518',
+                                    sort=KSort(name='Int'),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        rhs=KVariable(name='ACCOUNTS_FINAL', sort=KSort(name='AccountCellMap')),
+    )
+
+    expected = KRewrite(
+        lhs=KApply(
+            label=KLabel(name='_AccountCellMap_', params=()),
+            args=(
+                KApply(
+                    label=KLabel(name='<account>', params=()),
+                    args=(
+                        KApply(
+                            label=KLabel(name='<acctID>', params=()),
+                            args=(
+                                KToken(
+                                    token='728815563385977040452943777879061427756277306518',
+                                    sort=KSort(name='Int'),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                KApply(
+                    label=KLabel(name='<account>', params=()),
+                    args=(
+                        KApply(
+                            label=KLabel(name='<acctID>', params=()),
+                            args=(
+                                KToken(
+                                    token='728815563385977040452943777879061427756277306518',
+                                    sort=KSort(name='Int'),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        rhs=KVariable(name='ACCOUNTS_FINAL', sort=KSort(name='AccountCellMap')),
+    )
+
+    result = _no_cell_rewrite_to_dots(term)
+    assert result == expected
