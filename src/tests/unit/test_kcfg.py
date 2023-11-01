@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KVariable
+from pyk.kast.inner import KApply, KLabel, KRewrite, KSort, KToken, KVariable
 from pyk.kcfg import KCFG, KCFGShow
+from pyk.kcfg.explore import no_cell_rewrite_to_dots
 from pyk.kcfg.show import NodePrinter
 from pyk.prelude.ml import mlEquals, mlTop
 from pyk.prelude.utils import token
@@ -729,3 +730,288 @@ def test_pretty_print() -> None:
     # Then
     assert actual == expected
     assert actual_full_printer == expected_full_printer
+
+
+def test_no_cell_rewrite_to_dots() -> None:
+    term = KApply(
+        label=KLabel(name='_AccountCellMap_', params=()),
+        args=(
+            KApply(
+                label=KLabel(name='<account>', params=()),
+                args=(
+                    KApply(
+                        label=KLabel(name='<acctID>', params=()),
+                        args=(
+                            KRewrite(
+                                lhs=KToken(
+                                    token='491460923342184218035706888008750043977755113263',
+                                    sort=KSort(name='Int'),
+                                ),
+                                rhs=KToken(
+                                    token='728815563385977040452943777879061427756277306518',
+                                    sort=KSort(name='Int'),
+                                ),
+                            ),
+                        ),
+                    ),
+                    KApply(
+                        label=KLabel(name='<balance>', params=()),
+                        args=(
+                            KRewrite(
+                                lhs=KToken(token='0', sort=KSort(name='Int')),
+                                rhs=KVariable(name='ACCT_BALANCE_FINAL', sort=KSort(name='Int')),
+                            ),
+                        ),
+                    ),
+                    KApply(
+                        label=KLabel(name='<code>', params=()),
+                        args=(
+                            KRewrite(
+                                lhs=KToken(
+                                    token='b"0000"',
+                                    sort=KSort(name='Bytes'),
+                                ),
+                                rhs=KToken(
+                                    token='b"1111"',
+                                    sort=KSort(name='Bytes'),
+                                ),
+                            ),
+                        ),
+                    ),
+                    KApply(
+                        label=KLabel(name='<storage>', params=()),
+                        args=(
+                            KRewrite(
+                                lhs=KApply(
+                                    label=KLabel(name='_|->_', params=()),
+                                    args=(
+                                        KToken(token='0', sort=KSort(name='Int')),
+                                        KToken(token='2', sort=KSort(name='Int')),
+                                    ),
+                                ),
+                                rhs=KVariable(name='ACCT_STORAGE_FINAL', sort=KSort(name='Map')),
+                            ),
+                        ),
+                    ),
+                    KApply(
+                        label=KLabel(name='<origStorage>', params=()),
+                        args=(
+                            KRewrite(
+                                lhs=KApply(label=KLabel(name='.Map', params=()), args=()),
+                                rhs=KVariable(name='ACCT_ORIGSTORAGE_FINAL', sort=KSort(name='Map')),
+                            ),
+                        ),
+                    ),
+                    KApply(
+                        label=KLabel(name='<nonce>', params=()),
+                        args=(
+                            KRewrite(
+                                lhs=KToken(token='1', sort=KSort(name='Int')),
+                                rhs=KVariable(name='ACCT_NONCE_FINAL', sort=KSort(name='Int')),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            KRewrite(
+                lhs=KApply(
+                    label=KLabel(name='_AccountCellMap_', params=()),
+                    args=(
+                        KApply(
+                            label=KLabel(name='<account>', params=()),
+                            args=(
+                                KApply(
+                                    label=KLabel(name='<acctID>', params=()),
+                                    args=(
+                                        KToken(
+                                            token='645326474426547203313410069153905908525362434349',
+                                            sort=KSort(name='Int'),
+                                        ),
+                                    ),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<balance>', params=()),
+                                    args=(KToken(token='0', sort=KSort(name='Int')),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<code>', params=()),
+                                    args=(KToken(token='b"\\x00"', sort=KSort(name='Bytes')),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<storage>', params=()),
+                                    args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<origStorage>', params=()),
+                                    args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<nonce>', params=()),
+                                    args=(KToken(token='0', sort=KSort(name='Int')),),
+                                ),
+                            ),
+                        ),
+                        KApply(
+                            label=KLabel(name='<account>', params=()),
+                            args=(
+                                KApply(
+                                    label=KLabel(name='<acctID>', params=()),
+                                    args=(
+                                        KToken(
+                                            token='728815563385977040452943777879061427756277306518',
+                                            sort=KSort(name='Int'),
+                                        ),
+                                    ),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<balance>', params=()),
+                                    args=(KToken(token='0', sort=KSort(name='Int')),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<code>', params=()),
+                                    args=(
+                                        KToken(
+                                            token='b"1111"',
+                                            sort=KSort(name='Bytes'),
+                                        ),
+                                    ),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<storage>', params=()),
+                                    args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<origStorage>', params=()),
+                                    args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<nonce>', params=()),
+                                    args=(KToken(token='2', sort=KSort(name='Int')),),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                rhs=KVariable(name='ACCOUNTS_FINAL', sort=KSort(name='AccountCellMap')),
+            ),
+        ),
+    )
+
+    expected = KApply(
+        label=KLabel(name='_AccountCellMap_', params=()),
+        args=(
+            KApply(
+                label=KLabel(name='<account>', params=()),
+                args=(
+                    KApply(
+                        label=KLabel(name='<acctID>', params=()),
+                        args=(
+                            KToken(
+                                token='728815563385977040452943777879061427756277306518',
+                                sort=KSort(name='Int'),
+                            ),
+                        ),
+                    ),
+                    KApply(
+                        label=KLabel(name='<balance>', params=()),
+                        args=(KToken(token='0', sort=KSort(name='Int')),),
+                    ),
+                    KApply(
+                        label=KLabel(name='<code>', params=()),
+                        args=(KToken(token='b"1111"', sort=KSort(name='Bytes')),),
+                    ),
+                    KApply(
+                        label=KLabel(name='<storage>', params=()),
+                        args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                    ),
+                    KApply(
+                        label=KLabel(name='<origStorage>', params=()),
+                        args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                    ),
+                    KApply(
+                        label=KLabel(name='<nonce>', params=()),
+                        args=(KToken(token='2', sort=KSort(name='Int')),),
+                    ),
+                ),
+            ),
+            KRewrite(
+                lhs=KApply(
+                    label=KLabel(name='_AccountCellMap_', params=()),
+                    args=(
+                        KApply(
+                            label=KLabel(name='<account>', params=()),
+                            args=(
+                                KApply(
+                                    label=KLabel(name='<acctID>', params=()),
+                                    args=(
+                                        KToken(
+                                            token='728815563385977040452943777879061427756277306518',
+                                            sort=KSort(name='Int'),
+                                        ),
+                                    ),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<balance>', params=()),
+                                    args=(KToken(token='0', sort=KSort(name='Int')),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<code>', params=()),
+                                    args=(KToken(token='b"1111"', sort=KSort(name='Bytes')),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<storage>', params=()),
+                                    args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<origStorage>', params=()),
+                                    args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<nonce>', params=()),
+                                    args=(KToken(token='2', sort=KSort(name='Int')),),
+                                ),
+                            ),
+                        ),
+                        KApply(
+                            label=KLabel(name='<account>', params=()),
+                            args=(
+                                KApply(
+                                    label=KLabel(name='<acctID>', params=()),
+                                    args=(
+                                        KToken(
+                                            token='728815563385977040452943777879061427756277306518',
+                                            sort=KSort(name='Int'),
+                                        ),
+                                    ),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<balance>', params=()),
+                                    args=(KToken(token='0', sort=KSort(name='Int')),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<code>', params=()),
+                                    args=(KToken(token='b"1111"', sort=KSort(name='Bytes')),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<storage>', params=()),
+                                    args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<origStorage>', params=()),
+                                    args=(KApply(label=KLabel(name='.Map', params=()), args=()),),
+                                ),
+                                KApply(
+                                    label=KLabel(name='<nonce>', params=()),
+                                    args=(KToken(token='2', sort=KSort(name='Int')),),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                rhs=KVariable(name='ACCOUNTS_FINAL', sort=KSort(name='AccountCellMap')),
+            ),
+        ),
+    )
+
+    result = no_cell_rewrite_to_dots(term)
+    assert result == expected
