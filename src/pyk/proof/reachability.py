@@ -13,7 +13,6 @@ from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KClaim
 from ..kcfg import KCFG
 from ..kcfg.exploration import KCFGExploration
-from ..kcfg.explore import ExtendResult, Vacuous
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
@@ -624,7 +623,7 @@ class APRBMCProof(APRProof):
         )
 
 
-class APRProver(Prover[APRProof, int, ExtendResult]):
+class APRProver(Prover):
     proof: APRProof
 
     main_module_name: str
@@ -844,17 +843,6 @@ class APRProver(Prover[APRProof, int, ExtendResult]):
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
-
-    def steps(self, proof: APRProof) -> Iterable[int]:
-        return [0]
-        ...
-
-    def advance(self, proof: APRProof, step: int) -> ExtendResult:
-        return Vacuous()
-
-    # Should return P to be more flexible, but let's assume this for implicity
-    def commit(self, proof: APRProof, update: ExtendResult) -> None:
-        return
 
 
 @dataclass(frozen=True)

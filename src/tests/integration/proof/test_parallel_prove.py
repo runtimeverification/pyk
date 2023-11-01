@@ -3,14 +3,14 @@ from __future__ import annotations
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, wait
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING
 
-from pyk.proof.proof import Proof, ProofStatus, Prover
+from pyk.proof.parallel import Proof, Prover
+from pyk.proof.proof import ProofStatus
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from concurrent.futures import Executor, Future
-    from pathlib import Path
 
 
 class TreeExploreProof(Proof):
@@ -50,13 +50,6 @@ class TreeExploreProof(Proof):
             return ProofStatus.PASSED
         else:
             return ProofStatus.PENDING
-
-    @classmethod
-    def from_dict(cls: type[Proof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> TreeExploreProof:
-        return TreeExploreProof()
-
-    def write_proof_data(self) -> None:
-        return
 
 
 class TreeExploreProver(Prover[TreeExploreProof, int, int]):
