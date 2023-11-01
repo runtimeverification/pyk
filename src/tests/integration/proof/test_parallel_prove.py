@@ -56,15 +56,8 @@ class TreeExploreProver(Prover[TreeExploreProof, int, int]):
     def __init__(self) -> None:
         return
 
-    def steps(self, proof: TreeExploreProof) -> Iterable[int]:
-        def parents(node_id: int) -> Iterable[int]:
-            return [source for source, targets in proof.edges.items() if node_id in targets]
-
-        return [
-            node_id
-            for node_id, explored in proof.nodes_explored.items()
-            if not explored and all(proof.nodes_explored[parent] for parent in parents(node_id))
-        ]
+    def initial_steps(self, proof: TreeExploreProof) -> Iterable[int]:
+        return [0]
 
     def advance(self, proof: TreeExploreProof, step: int) -> int:
         print(f'Advancing node {step}\n', file=sys.stderr)
@@ -72,9 +65,13 @@ class TreeExploreProver(Prover[TreeExploreProof, int, int]):
         print(f'Done advancing node {step}\n', file=sys.stderr)
         return step
 
-    # Should return P to be more flexible, but let's assume this for implicity
-    def commit(self, proof: TreeExploreProof, update: int) -> None:
+    def commit(self, proof: TreeExploreProof, update: int) -> Iterable[int]:
         proof.nodes_explored[update] = True
+
+        def parents(node_id: int) -> Iterable[int]:
+            return [source for source, targets in proof.edges.items() if node_id in targets]
+
+        return proof.edges[update]
 
 
 def prove_parallel(
@@ -83,27 +80,26 @@ def prove_parallel(
     provers: dict[Proof, Prover],
 ) -> Iterable[Proof]:
     pending: dict[Future[int], Proof] = {}
-    explored: set[int] = set()
 
-    def submit(proof: Proof, pool: Executor) -> None:
+    def submit(proof: Proof, pool: Executor, step: int) -> None:
         prover = provers[proof]
-        for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
-            if step in explored:
-                continue
-            explored.add(step)
-            future = pool.submit(prover.advance, proof, step)  # <-- schedule steps for execution
-            pending[future] = proof
+        future = pool.submit(prover.advance, proof, step)  # <-- schedule steps for execution
+        pending[future] = proof
 
     with ProcessPoolExecutor(max_workers=2) as pool:
         for proof in proofs:
-            submit(proof, pool)
+            prover = provers[proof]
+            for step in prover.initial_steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
+                submit(proof, pool, step)
 
         while pending:
             future = list(wait(pending).done)[0]
             proof = pending[future]
             prover = provers[proof]
             update = future.result()
-            prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+            next_steps = prover.commit(
+                proof, update
+            )  # <-- update the proof (can be in-memory, access disk with locking, ...)
 
             match proof.status:
                 # terminate on first failure, yield partial results, etc.
@@ -114,7 +110,8 @@ def prove_parallel(
                 case ProofStatus.PASSED:
                     break
 
-            submit(proof, pool)
+            for step in next_steps:
+                submit(proof, pool, step)
             pending.pop(future)
     return proofs
 
