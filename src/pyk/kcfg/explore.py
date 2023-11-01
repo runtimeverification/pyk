@@ -185,23 +185,23 @@ class KCFGExplore:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         return CSubst(subst=Subst(_subst), constraints=ml_preds)
 
+    def no_cell_rewrite_to_dots(self, term: KInner) -> KInner:
+        def _no_cell_rewrite_to_dots(_term: KInner) -> KInner:
+            if type(_term) is KApply and _term.is_cell:
+                lhs = extract_lhs(_term)
+                rhs = extract_rhs(_term)
+                if lhs == rhs:
+                    return KApply(_term.label, [DOTS])
+            return _term
+
+        config, _subst = split_config_from(term)
+        subst = Subst(
+            {cell_name: _no_cell_rewrite_to_dots(cell_contents) for cell_name, cell_contents in _subst.items()}
+        )
+
+        return subst(config)
+
     def implication_failure_reason(self, antecedent: CTerm, consequent: CTerm) -> tuple[bool, str]:
-        def no_cell_rewrite_to_dots(term: KInner) -> KInner:
-            def _no_cell_rewrite_to_dots(_term: KInner) -> KInner:
-                if type(_term) is KApply and _term.is_cell:
-                    lhs = extract_lhs(_term)
-                    rhs = extract_rhs(_term)
-                    if lhs == rhs:
-                        return KApply(_term.label, [DOTS])
-                return _term
-
-            config, _subst = split_config_from(term)
-            subst = Subst(
-                {cell_name: _no_cell_rewrite_to_dots(cell_contents) for cell_name, cell_contents in _subst.items()}
-            )
-
-            return subst(config)
-
         def _is_cell_subst(csubst: KInner) -> bool:
             if type(csubst) is KApply and csubst.label.name == '_==K_':
                 csubst_arg = csubst.args[0]
@@ -242,7 +242,7 @@ class KCFGExplore:
                         curr_cell_match = _curr_cell_match
                         continue
                 failing_cell = push_down_rewrites(KRewrite(antecedent_cell, consequent_cell))
-                failing_cell = no_cell_rewrite_to_dots(failing_cell)
+                failing_cell = self.no_cell_rewrite_to_dots(failing_cell)
                 failing_cell = replace_rewrites_with_implies(failing_cell)
                 failing_cells.append((cell, failing_cell))
             failing_cells_str = '\n'.join(
