@@ -16,7 +16,7 @@ U = TypeVar('U', bound='Any')
 class Prover(ABC, Generic[P, S, U]):
     # Return first available step(s) of proof
     @abstractmethod
-    def initial_steps(self, proof: P) -> Iterable[S]:
+    def steps(self, proof: P) -> Iterable[S]:
         ...
 
     # Applies step to proof
@@ -26,7 +26,7 @@ class Prover(ABC, Generic[P, S, U]):
 
     # Returns steps that were made available by this commit
     @abstractmethod
-    def commit(self, proof: P, update: U) -> Iterable[S]:
+    def commit(self, proof: P, update: U) -> None:
         ...
 
 
