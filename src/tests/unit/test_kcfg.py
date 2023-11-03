@@ -732,7 +732,68 @@ def test_pretty_print() -> None:
     assert actual_full_printer == expected_full_printer
 
 
-def test__no_cell_rewrite_to_dots() -> None:
+def test_no_cell_rewrite_to_dots_token() -> None:
+    term = KRewrite(
+        lhs=KToken(
+            token='645326474426547203313410069153905908525362434349',
+            sort=KSort(name='Int'),
+        ),
+        rhs=KVariable(name='ACCOUNTS_FINAL', sort=KSort(name='AccountCellMap')),
+    )
+
+    expected = KRewrite(
+        lhs=KToken(
+            token='645326474426547203313410069153905908525362434349',
+            sort=KSort(name='Int'),
+        ),
+        rhs=KVariable(name='ACCOUNTS_FINAL', sort=KSort(name='AccountCellMap')),
+    )
+    result = _no_cell_rewrite_to_dots(term)
+    assert result == expected
+
+
+def test_no_cell_rewrite_to_dots_single_account() -> None:
+    term = KApply(
+        label=KLabel(name='_AccountCellMap_', params=()),
+        args=(
+            KApply(
+                label=KLabel(name='<account>', params=()),
+                args=(
+                    KApply(
+                        label=KLabel(name='<acctID>', params=()),
+                        args=(
+                            KToken(
+                                token='645326474426547203313410069153905908525362434349',
+                                sort=KSort(name='Int'),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    expected = KApply(
+        label=KLabel(name='_AccountCellMap_', params=()),
+        args=(
+            KApply(
+                label=KLabel(name='<account>', params=()),
+                args=(
+                    KApply(
+                        label=KLabel(name='<acctID>', params=()),
+                        args=(
+                            KToken(token='645326474426547203313410069153905908525362434349', sort=KSort(name='Int')),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    result = _no_cell_rewrite_to_dots(term)
+    assert result == expected
+
+
+def test_no_cell_rewrite_to_dots() -> None:
     term = KRewrite(
         lhs=KApply(
             label=KLabel(name='_AccountCellMap_', params=()),
