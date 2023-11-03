@@ -69,7 +69,8 @@ class TreeExploreProver(Prover[TreeExploreProof, int, int]):
             if node_id not in proof.reached and all(parent in proof.reached for parent in parents(node_id))
         ]
 
-    def advance(self, proof: TreeExploreProof, step: int) -> int:
+    @classmethod
+    def advance(cls, step: int) -> int:
         print(f'Advancing node {step}\n', file=sys.stderr)
         time.sleep(5)
         print(f'Done advancing node {step}\n', file=sys.stderr)
@@ -93,7 +94,7 @@ def prove_parallel(
             if step in explored:
                 continue
             explored.add(step)
-            future = pool.submit(prover.advance, proof, step)  # <-- schedule steps for execution
+            future = pool.submit(prover.advance, step)  # <-- schedule steps for execution
             pending[future] = proof
 
     with ProcessPoolExecutor(max_workers=2) as pool:
