@@ -3,14 +3,27 @@ from __future__ import annotations
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, wait
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pyk.proof.parallel import Proof, Prover
+import pytest
+
+from pyk.proof.parallel import APRProof, APRProver, NewAPRProver, Proof, Prover
 from pyk.proof.proof import ProofStatus
+from pyk.testing import KCFGExploreTest, KProveTest
+from pyk.utils import single
+
+from ..utils import K_FILES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from concurrent.futures import Executor, Future
+
+    from pytest import TempPathFactory
+
+    from pyk.kcfg.explore import KCFGExplore
+    from pyk.ktool.kprove import KProve
+    from pyk.proof.parallel import APRProverResult, APRProverTask
 
 
 class TreeExploreProof(Proof):
@@ -81,14 +94,14 @@ class TreeExploreProver(Prover[TreeExploreProof, int, int]):
 
 
 def prove_parallel(
-    proofs: list[Proof],
+    proofs: list[APRProof],
     # We need a way to map proofs to provers, but for simplicity, I'll assume it as a given
-    provers: dict[Proof, Prover],
-) -> Iterable[Proof]:
-    pending: dict[Future[int], Proof] = {}
-    explored: set[int] = set()
+    provers: dict[APRProof, NewAPRProver],
+) -> Iterable[APRProof]:
+    pending: dict[Future[APRProverResult], APRProof] = {}
+    explored: set[APRProverTask] = set()
 
-    def submit(proof: Proof, pool: Executor) -> None:
+    def submit(proof: APRProof, pool: Executor) -> None:
         prover = provers[proof]
         for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
             if step in explored:
@@ -122,9 +135,26 @@ def prove_parallel(
     return proofs
 
 
-def test_parallel_prove() -> None:
-    proof = TreeExploreProof()
-    prover = TreeExploreProver()
-    results = prove_parallel([proof], {proof: prover})
-    assert len(list(results)) == 1
-    assert list(results)[0].status == ProofStatus.PASSED
+@pytest.fixture(scope='function')
+def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp('proofs')
+
+
+class TestAPRProofParallel(KCFGExploreTest, KProveTest):
+    KOMPILE_MAIN_FILE = K_FILES / 'imp.k'
+
+    def test_parallel_prove(self, kprove: KProve, kcfg_explore: KCFGExplore) -> None:
+        spec_file = K_FILES / 'imp-simple-spec.k'
+        spec_module = 'IMP-SPEC'
+        claim_id = 'concrete-addition'
+
+        claim = single(
+            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
+        )
+
+        proof = APRProof.from_claim(defn=kprove.definition, claim=claim, logs={})
+        prover = APRProver(proof=proof, kcfg_explore=kcfg_explore)
+        new_prover = NewAPRProver(prover=prover)
+        results = prove_parallel([proof], {proof: new_prover})
+        assert len(list(results)) == 1
+        assert list(results)[0].status == ProofStatus.PASSED
