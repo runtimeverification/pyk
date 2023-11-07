@@ -70,8 +70,7 @@ class TreeExploreProofStep(ProofStep[TreeExploreProofResult]):
         return self.node.__hash__()
 
     def exec(self) -> TreeExploreProofResult:
-        time.sleep(5)
-#          print(f'Done advancing node {self.node}\n', file=sys.stderr)
+        time.sleep(1)
         return TreeExploreProofResult(self.node)
 
 
