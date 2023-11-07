@@ -3,10 +3,13 @@ from __future__ import annotations
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, wait
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pyk.proof.parallel import Proof, ProofStep, Prover
+import pytest
+
+from pyk.proof.parallel import Proof, ProofResult, ProofStep, Prover
 from pyk.proof.proof import ProofStatus
 
 if TYPE_CHECKING:
@@ -54,27 +57,42 @@ class TreeExploreProof(Proof):
             return ProofStatus.PENDING
 
 
-@dataclass
-class TreeExploreProofStep(ProofStep):
+@dataclass(frozen=True)
+class TreeExploreProofResult(ProofResult):
+    node: int
+
+
+@dataclass(frozen=True)
+class TreeExploreProofStep(ProofStep[TreeExploreProofResult]):
     node: int
 
     def __hash__(self) -> int:
         return self.node.__hash__()
 
-    def exec(self) -> int:
-        print(f'Advancing node {self.node}\n', file=sys.stderr)
+    def exec(self) -> TreeExploreProofResult:
+#          print(f'Advancing node {self.node}\n', file=sys.stderr)
         time.sleep(5)
-        print(f'Done advancing node {self.node}\n', file=sys.stderr)
-        return self.node
+#          print(f'Done advancing node {self.node}\n', file=sys.stderr)
+        return TreeExploreProofResult(self.node)
 
 
-class TreeExploreProver(Prover[TreeExploreProof, TreeExploreProofStep, int]):
+class TreeExploreProver(Prover[TreeExploreProof, TreeExploreProofStep, TreeExploreProofResult]):
+    proofs: dict[TreeExploreProof, TreeExploreProver] = {}
+
     def __init__(self) -> None:
         return
 
     def steps(self, proof: TreeExploreProof) -> Iterable[TreeExploreProofStep]:
         def parents(node_id: int) -> Iterable[int]:
             return [source for source, targets in proof.edges.items() if node_id in targets]
+
+        if proof in TreeExploreProver.proofs:
+            assert TreeExploreProver.proofs[proof] == self
+        else:
+            TreeExploreProver.proofs[proof] = self
+
+        if proof.target in proof.reached:
+            return []
 
         nodes = set(range(10))
 
@@ -84,8 +102,12 @@ class TreeExploreProver(Prover[TreeExploreProof, TreeExploreProofStep, int]):
             if node_id not in proof.reached and all(parent in proof.reached for parent in parents(node_id))
         ]
 
-    def commit(self, proof: TreeExploreProof, update: int) -> None:
-        proof.reached.add(update)
+    def commit(self, proof: TreeExploreProof, update: TreeExploreProofResult) -> None:
+        if proof in TreeExploreProver.proofs:
+            assert TreeExploreProver.proofs[proof] == self
+        else:
+            TreeExploreProver.proofs[proof] = self
+        proof.reached.add(update.node)
 
 
 def prove_parallel(
@@ -93,7 +115,7 @@ def prove_parallel(
     # We need a way to map proofs to provers, but for simplicity, I'll assume it as a given
     provers: dict[TreeExploreProof, TreeExploreProver],
 ) -> Iterable[TreeExploreProof]:
-    pending: dict[Future[int], TreeExploreProof] = {}
+    pending: dict[Future[TreeExploreProofResult], TreeExploreProof] = {}
     explored: set[TreeExploreProofStep] = set()
 
     def submit(proof: TreeExploreProof, pool: Executor) -> None:
@@ -119,10 +141,12 @@ def prove_parallel(
             match proof.status:
                 # terminate on first failure, yield partial results, etc.
                 case ProofStatus.FAILED:
+                    assert len(list(prover.steps(proof))) == 0
                     break
                 case ProofStatus.PENDING:
-                    ...
+                    assert len(list(prover.steps(proof))) > 0
                 case ProofStatus.PASSED:
+                    assert len(list(prover.steps(proof))) == 0
                     break
 
             submit(proof, pool)
@@ -130,34 +154,58 @@ def prove_parallel(
     return proofs
 
 
+def test_multiple_provers_fails() -> None:
+    prover1 = TreeExploreProver()
+    prover2 = TreeExploreProver()
+    proof = TreeExploreProof()
+    step = list(prover1.steps(proof))[0]
+    with pytest.raises(AssertionError):
+        prover2.steps(proof)
+    with pytest.raises(AssertionError):
+        prover2.commit(proof, step.exec())
+
+
+def test_steps_read_only() -> None:
+    def assert_proof_equals(p1: TreeExploreProof, p2: TreeExploreProof) -> None:
+        assert p1.edges == p2.edges
+        assert p1.init == p2.init
+        assert p1.reached == p2.reached
+        assert p1.target == p2.target
+
+    prover = TreeExploreProver()
+    proof = TreeExploreProof()
+    while True:
+        initial_proof = deepcopy(proof)
+        steps = prover.steps(proof)
+        if len(list(steps)) == 0:
+            break
+        final_proof = deepcopy(proof)
+        assert_proof_equals(initial_proof, final_proof)
+        for step in steps:
+            prover.commit(proof, step.exec())
+
+
+def test_commit_after_finished() -> None:
+    prover = TreeExploreProver()
+    proof = TreeExploreProof()
+    results: list[TreeExploreProofResult] = []
+    while True:
+        steps = prover.steps(proof)
+        if len(list(steps)) == 0:
+            break
+        for step in steps:
+            result = step.exec()
+            results.append(result)
+            prover.commit(proof, result)
+            prover.commit(proof, result)
+    for result in results:
+        prover.commit(proof, result)
+
+
 def test_parallel_prove() -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof()
     results = prove_parallel([proof], {proof: prover})
     assert len(list(results)) == 1
+    assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.PASSED
-
-
-#  @pytest.fixture(scope='function')
-#  def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
-#      return tmp_path_factory.mktemp('proofs')
-#
-#
-#  class TestAPRProofParallel(KCFGExploreTest, KProveTest):
-#      KOMPILE_MAIN_FILE = K_FILES / 'imp.k'
-#
-#      def test_parallel_prove(self, kprove: KProve, kcfg_explore: KCFGExplore) -> None:
-#          spec_file = K_FILES / 'imp-simple-spec.k'
-#          spec_module = 'IMP-SPEC'
-#          claim_id = 'concrete-addition'
-#
-#          claim = single(
-#              kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
-#          )
-#
-#          proof = APRProof.from_claim(defn=kprove.definition, claim=claim, logs={})
-#          prover = APRProver(proof=proof, kcfg_explore=kcfg_explore)
-#          new_prover = NewAPRProver(prover=prover)
-#          results = prove_parallel([proof], {proof: new_prover})
-#          assert len(list(results)) == 1
-#          assert list(results)[0].status == ProofStatus.PASSED
