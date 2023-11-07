@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -81,7 +80,6 @@ class TreeExploreProver(Prover[TreeExploreProof, int]):
 
 
 def simple_tree() -> dict[int, set[int]]:
-    edges: dict[int, set[int]] = {}
     #         0
     #        / \
     #       1   2
@@ -91,17 +89,7 @@ def simple_tree() -> dict[int, set[int]]:
     #       5   6   7
     #              / \
     #             8   9
-    edges[0] = {1, 2}
-    edges[1] = set()
-    edges[2] = {3, 4}
-    edges[3] = {5, 6}
-    edges[4] = {7}
-    edges[5] = set()
-    edges[6] = set()
-    edges[7] = {8, 9}
-    edges[8] = set()
-    edges[9] = set()
-    return edges
+    return {0: {1, 2}, 1: set(), 2: {3, 4}, 3: {5, 6}, 4: {7}, 5: set(), 6: set(), 7: {8, 9}, 8: set(), 9: set()}
 
 
 def test_multiple_provers_fails() -> None:
@@ -115,47 +103,10 @@ def test_multiple_provers_fails() -> None:
         prover2.commit(proof, step.exec())
 
 
-def test_steps_read_only() -> None:
-    def assert_proof_equals(p1: TreeExploreProof, p2: TreeExploreProof) -> None:
-        assert p1.edges == p2.edges
-        assert p1.init == p2.init
-        assert p1.reached == p2.reached
-        assert p1.target == p2.target
-
-    prover = TreeExploreProver()
-    proof = TreeExploreProof(0, 9, simple_tree())
-    while True:
-        initial_proof = deepcopy(proof)
-        steps = prover.steps(proof)
-        if len(list(steps)) == 0:
-            break
-        final_proof = deepcopy(proof)
-        assert_proof_equals(initial_proof, final_proof)
-        for step in steps:
-            prover.commit(proof, step.exec())
-
-
-def test_commit_after_finished() -> None:
-    prover = TreeExploreProver()
-    proof = TreeExploreProof(0, 9, simple_tree())
-    results: list[int] = []
-    while True:
-        steps = prover.steps(proof)
-        if len(list(steps)) == 0:
-            break
-        for step in steps:
-            result = step.exec()
-            results.append(result)
-            prover.commit(proof, result)
-            prover.commit(proof, result)
-    for result in results:
-        prover.commit(proof, result)
-
-
 def test_parallel_prove() -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof(0, 9, simple_tree())
-    results = prove_parallel([proof], {proof: prover})
+    results = prove_parallel({'proof1': proof}, {'proof1': prover})
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.PASSED

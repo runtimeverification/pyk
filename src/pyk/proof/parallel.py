@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 P = TypeVar('P', bound='Proof')
-U = TypeVar('U', bound='Any')
+U = TypeVar('U')
 
 
 class Prover(ABC, Generic[P, U]):
@@ -83,30 +83,31 @@ class ProofStep(ABC, Hashable, Generic[U]):
 
 
 def prove_parallel(
-    proofs: list[Proof],
-    # We need a way to map proofs to provers, but for simplicity, I'll assume it as a given
-    provers: dict[Proof, Prover],
+    proofs: dict[str, Proof],
+    provers: dict[str, Prover],
 ) -> Iterable[Proof]:
-    pending: dict[Future[Any], Proof] = {}
+    pending: dict[Future[Any], str] = {}
     explored: set[ProofStep] = set()
 
-    def submit(proof: Proof, pool: Executor) -> None:
-        prover = provers[proof]
+    def submit(proof_id: str, pool: Executor) -> None:
+        proof = proofs[proof_id]
+        prover = provers[proof_id]
         for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
             if step in explored:
                 continue
             explored.add(step)
             future = pool.submit(step.exec)  # <-- schedule steps for execution
-            pending[future] = proof
+            pending[future] = proof_id
 
     with ProcessPoolExecutor(max_workers=2) as pool:
-        for proof in proofs:
-            submit(proof, pool)
+        for proof_id in proofs.keys():
+            submit(proof_id, pool)
 
         while pending:
-            future = list(wait(pending).done)[0]
-            proof = pending[future]
-            prover = provers[proof]
+            future = wait(pending).done.pop()
+            proof_id = pending[future]
+            proof = proofs[proof_id]
+            prover = provers[proof_id]
             update = future.result()
             prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
 
@@ -121,6 +122,6 @@ def prove_parallel(
                     assert len(list(prover.steps(proof))) == 0
                     break
 
-            submit(proof, pool)
+            submit(proof_id, pool)
             pending.pop(future)
-    return proofs
+    return proofs.values()
