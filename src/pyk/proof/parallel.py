@@ -81,4 +81,5 @@ class ProofResult(ABC):
     Must be frozen dataclass.
     Should be small.
     """
+
     ...

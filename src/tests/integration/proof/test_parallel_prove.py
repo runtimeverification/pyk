@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, wait
 from copy import deepcopy
