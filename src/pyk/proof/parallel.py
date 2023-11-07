@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 P = TypeVar('P', bound='Proof')
-S = TypeVar('S', bound='ProofStep')
 U = TypeVar('U', bound='Any')
 
 
