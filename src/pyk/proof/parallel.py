@@ -2,26 +2,35 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Hashable
-from typing import TYPE_CHECKING, Generic, TypeVar
+from concurrent.futures import ProcessPoolExecutor, wait
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+
+from pyk.proof.proof import ProofStatus
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from concurrent.futures import Executor, Future
 
-    from pyk.proof.proof import ProofStatus
 
 P = TypeVar('P', bound='Proof')
 S = TypeVar('S', bound='ProofStep')
-U = TypeVar('U', bound='ProofResult')
+U = TypeVar('U', bound='Any')
 
 
-class Prover(ABC, Generic[P, S, U]):
+class Prover(ABC, Generic[P, U]):
     """
     Should contain all data needed to make progress on a `P` (proof).
     May be specific to a single `P` (proof) or may be able to handle multiple.
+
+    Type parameter requirements:
+    `U` should be a description of how to make a small update to a `Proof` based on the results of a computation specified by a `ProofStep`.
+    `U` must be picklable.
+    `U` must be frozen dataclass.
+    `U` should be small.
     """
 
     @abstractmethod
-    def steps(self, proof: P) -> Iterable[S]:
+    def steps(self, proof: P) -> Iterable[ProofStep[U]]:
         """
         Return a list of `ProofStep[U]` which represents all the computation jobs as defined by `ProofStep`, which have not yet been computed and committed, and are available given the current state of `proof`. Note that this is a requirement which is not enforced by the type system.
         If `steps()` or `commit()` has been called on a proof `proof`, `steps()` may never again be called on `proof`.
@@ -74,12 +83,45 @@ class ProofStep(ABC, Hashable, Generic[U]):
         ...
 
 
-class ProofResult(ABC):
-    """
-    Should be a description of how to make a small update to a `Proof` based on the results of a computation specified by a `ProofStep`.
-    Must be picklable.
-    Must be frozen dataclass.
-    Should be small.
-    """
+def prove_parallel(
+    proofs: list[Proof],
+    # We need a way to map proofs to provers, but for simplicity, I'll assume it as a given
+    provers: dict[Proof, Prover],
+) -> Iterable[Proof]:
+    pending: dict[Future[Any], Proof] = {}
+    explored: set[ProofStep] = set()
 
-    ...
+    def submit(proof: Proof, pool: Executor) -> None:
+        prover = provers[proof]
+        for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
+            if step in explored:
+                continue
+            explored.add(step)
+            future = pool.submit(step.exec)  # <-- schedule steps for execution
+            pending[future] = proof
+
+    with ProcessPoolExecutor(max_workers=2) as pool:
+        for proof in proofs:
+            submit(proof, pool)
+
+        while pending:
+            future = list(wait(pending).done)[0]
+            proof = pending[future]
+            prover = provers[proof]
+            update = future.result()
+            prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+
+            match proof.status:
+                # terminate on first failure, yield partial results, etc.
+                case ProofStatus.FAILED:
+                    assert len(list(prover.steps(proof))) == 0
+                    break
+                case ProofStatus.PENDING:
+                    assert len(list(prover.steps(proof))) > 0
+                case ProofStatus.PASSED:
+                    assert len(list(prover.steps(proof))) == 0
+                    break
+
+            submit(proof, pool)
+            pending.pop(future)
+    return proofs
