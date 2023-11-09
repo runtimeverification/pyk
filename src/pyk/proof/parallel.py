@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Hashable
 from concurrent.futures import ProcessPoolExecutor, wait
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
 
 from pyk.proof.proof import ProofStatus
 
@@ -85,6 +85,7 @@ class ProofStep(ABC, Hashable, Generic[U]):
 def prove_parallel(
     proofs: dict[str, Proof],
     provers: dict[str, Prover],
+    init: Callable[..., None] = lambda *args: None,
 ) -> Iterable[Proof]:
     pending: dict[Future[Any], str] = {}
     explored: set[ProofStep] = set()
@@ -99,7 +100,7 @@ def prove_parallel(
             future = pool.submit(step.exec)  # <-- schedule steps for execution
             pending[future] = proof_id
 
-    with ProcessPoolExecutor(max_workers=2) as pool:
+    with ProcessPoolExecutor(max_workers=2, initializer=init) as pool:
         for proof_id in proofs.keys():
             submit(proof_id, pool)
 

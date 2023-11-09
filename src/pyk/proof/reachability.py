@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import pyk.proof.parallel as parallel
 from pyk.kore.rpc import LogEntry
 
 from ..kast.inner import KInner, KRewrite, KSort, Subst
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from ..cterm import CTerm
     from ..kast.outer import KDefinition, KFlatModuleList
     from ..kcfg import KCFGExplore
+    from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
 
@@ -35,7 +37,7 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class APRProof(Proof, KCFGExploration):
+class APRProof(Proof, KCFGExploration, parallel.Proof):
     """APRProof and APRProver implement all-path reachability logic,
     as introduced by A. Stefanescu and others in their paper 'All-Path Reachability Logic':
     https://doi.org/10.23638/LMCS-15(2:5)2019
@@ -1053,3 +1055,75 @@ class APRBMCSummary(ProofSummary):
             f'    bounded: {self.bounded}',
             f'Subproofs: {self.subproofs}',
         ]
+
+
+@dataclass(frozen=True)
+class APRProofResult:
+    extend_result: ExtendResult
+    node_id: int
+
+
+class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
+    prover: APRProver
+
+    def steps(self, proof: APRProof) -> Iterable[APRProofStep]:
+        """
+        Return a list of `ProofStep[U]` which represents all the computation jobs as defined by `ProofStep`, which have not yet been computed and committed, and are available given the current state of `proof`. Note that this is a requirement which is not enforced by the type system.
+        If `steps()` or `commit()` has been called on a proof `proof`, `steps()` may never again be called on `proof`.
+        Must not modify `self` or `proof`.
+        The output of this function must only change with calls to `self.commit()`.
+        """
+        steps: list[APRProofStep] = []
+        for pending_node in proof.pending:
+            module_name = (
+                self.prover.circularities_module_name
+                if self.prover.nonzero_depth(pending_node)
+                else self.prover.dependencies_module_name
+            )
+            steps.append(APRProofStep(cterm=pending_node.cterm, node_id=pending_node.id, module_name=module_name))
+        return steps
+
+    def commit(self, proof: APRProof, update: APRProofResult) -> None:
+        """
+        Should update `proof` according to `update`.
+        If `steps()` or `commit()` has been called on a proof `proof`, `commit()` may never again be called on `proof`.
+        Must only be called with an `update` that was returned by `step.execute()` where `step` was returned by `self.steps(proof)`.
+        Steps for a proof `proof` can have their results submitted any time after they are made available by `self.steps(proof)`, including in any order and multiple times, and the Prover must be able to handle this.
+        """
+        ...
+
+
+@dataclass(frozen=True)
+class APRProofExtendData:
+    kcfg_explore: KCFGExplore
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
+    execute_depth: int
+
+
+data: APRProofExtendData
+
+
+@dataclass(frozen=True, eq=True)
+class APRProofStep(parallel.ProofStep[APRProofResult]):
+    cterm: CTerm
+    node_id: int
+    module_name: str
+
+    def __hash__(self) -> int:
+        return hash((self.cterm, self.node_id))
+
+    def exec(self) -> APRProofResult:
+        """
+        Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
+        Allowed to be nondeterministic.
+        Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
+        """
+        result = data.kcfg_explore.extend_cterm(
+            self.cterm,
+            module_name=self.module_name,
+            execute_depth=data.execute_depth,
+            terminal_rules=data.terminal_rules,
+            cut_point_rules=data.cut_point_rules,
+        )
+        return APRProofResult(result, self.node_id)
