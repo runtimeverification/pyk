@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import sys
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-
-import pytest
 
 from pyk.proof.parallel import Proof, ProofStep, Prover, prove_parallel
 from pyk.proof.proof import ProofStatus
@@ -37,28 +36,20 @@ class TreeExploreProof(Proof):
 class TreeExploreProofStep(ProofStep[int]):
     node: int
 
-    def __hash__(self) -> int:
-        return self.node.__hash__()
-
     def exec(self) -> int:
-        time.sleep(1)
+        print(f'advancing node {self.node}', file=sys.stderr)
+        time.sleep(self.node % 5)
+        print(f'done node {self.node}', file=sys.stderr)
         return self.node
 
 
 class TreeExploreProver(Prover[TreeExploreProof, int]):
-    proofs: dict[TreeExploreProof, TreeExploreProver] = {}
-
     def __init__(self) -> None:
         return
 
     def steps(self, proof: TreeExploreProof) -> Iterable[TreeExploreProofStep]:
         def parents(node_id: int) -> Iterable[int]:
             return [source for source, targets in proof.edges.items() if node_id in targets]
-
-        if proof in TreeExploreProver.proofs:
-            assert TreeExploreProver.proofs[proof] == self
-        else:
-            TreeExploreProver.proofs[proof] = self
 
         if proof.target in proof.reached:
             return []
@@ -72,10 +63,6 @@ class TreeExploreProver(Prover[TreeExploreProof, int]):
         ]
 
     def commit(self, proof: TreeExploreProof, update: int) -> None:
-        if proof in TreeExploreProver.proofs:
-            assert TreeExploreProver.proofs[proof] == self
-        else:
-            TreeExploreProver.proofs[proof] = self
         proof.reached.add(update)
 
 
@@ -90,17 +77,6 @@ def simple_tree() -> dict[int, set[int]]:
     #              / \
     #             8   9
     return {0: {1, 2}, 1: set(), 2: {3, 4}, 3: {5, 6}, 4: {7}, 5: set(), 6: set(), 7: {8, 9}, 8: set(), 9: set()}
-
-
-def test_multiple_provers_fails() -> None:
-    prover1 = TreeExploreProver()
-    prover2 = TreeExploreProver()
-    proof = TreeExploreProof(0, 9, simple_tree())
-    step = list(prover1.steps(proof))[0]
-    with pytest.raises(AssertionError):
-        prover2.steps(proof)
-    with pytest.raises(AssertionError):
-        prover2.commit(proof, step.exec())
 
 
 def test_parallel_prove() -> None:

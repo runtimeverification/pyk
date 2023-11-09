@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Hashable
 from concurrent.futures import ProcessPoolExecutor, wait
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
@@ -64,9 +63,10 @@ class Proof(ABC):
         ...
 
 
-class ProofStep(ABC, Hashable, Generic[U]):
+class ProofStep(ABC, Generic[U]):
     """
     Should be a description of a computation needed to make progress on a `Proof`.
+    Must be hashable.
     Must be frozen dataclass.
     Must be pickable.
     Should be small.
@@ -104,7 +104,8 @@ def prove_parallel(
             submit(proof_id, pool)
 
         while pending:
-            future = wait(pending).done.pop()
+            done, _ = wait(pending, return_when='FIRST_COMPLETED')
+            future = done.pop()
             proof_id = pending[future]
             proof = proofs[proof_id]
             prover = provers[proof_id]
