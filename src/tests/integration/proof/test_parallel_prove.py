@@ -2,13 +2,9 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from pyk.proof.parallel import Proof, ProofStep, Prover, prove_parallel
 from pyk.proof.proof import ProofStatus
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 
 class TreeExploreProof(Proof):
@@ -44,8 +40,8 @@ class TreeExploreProver(Prover[TreeExploreProof, int]):
     def __init__(self) -> None:
         return
 
-    def steps(self, proof: TreeExploreProof) -> Iterable[TreeExploreProofStep]:
-        def parents(node_id: int) -> Iterable[int]:
+    def steps(self, proof: TreeExploreProof) -> list[TreeExploreProofStep]:
+        def parents(node_id: int) -> list[int]:
             return [source for source, targets in proof.edges.items() if node_id in targets]
 
         if proof.target in proof.reached:
@@ -63,22 +59,32 @@ class TreeExploreProver(Prover[TreeExploreProof, int]):
         proof.reached.add(update)
 
 
-def simple_tree() -> dict[int, set[int]]:
-    #         0
-    #        / \
-    #       1   2
-    #          / \
-    #         3   4
-    #        / \   \
-    #       5   6   7
-    #              / \
-    #             8   9
-    return {0: {1, 2}, 1: set(), 2: {3, 4}, 3: {5, 6}, 4: {7}, 5: set(), 6: set(), 7: {8, 9}, 8: set(), 9: set()}
+#         0
+#        / \
+#       1   2
+#          / \
+#         3   4
+#        / \   \
+#       5   6   7
+#              / \
+#             8   9
+SIMPLE_TREE: dict[int, set[int]] = {
+    0: {1, 2},
+    1: set(),
+    2: {3, 4},
+    3: {5, 6},
+    4: {7},
+    5: set(),
+    6: set(),
+    7: {8, 9},
+    8: set(),
+    9: set(),
+}
 
 
 def test_parallel_prove() -> None:
     prover = TreeExploreProver()
-    proof = TreeExploreProof(0, 9, simple_tree())
+    proof = TreeExploreProof(0, 9, SIMPLE_TREE)
     results = prove_parallel({'proof1': proof}, {'proof1': prover})
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0

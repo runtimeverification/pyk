@@ -100,7 +100,7 @@ def prove_parallel(
             pending[future] = proof_id
 
     with ProcessPoolExecutor(max_workers=2) as pool:
-        for proof_id in proofs.keys():
+        for proof_id in proofs:
             submit(proof_id, pool)
 
         while pending:
