@@ -37,9 +37,7 @@ class TreeExploreProofStep(ProofStep[int]):
     node: int
 
     def exec(self) -> int:
-        print(f'advancing node {self.node}', file=sys.stderr)
-        time.sleep(self.node % 5)
-        print(f'done node {self.node}', file=sys.stderr)
+        time.sleep(1)
         return self.node
 
 
