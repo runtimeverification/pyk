@@ -3,6 +3,7 @@ from __future__ import annotations
 import graphlib
 import json
 import logging
+from abc import ABC
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -25,7 +26,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    from ..cterm import CTerm
+    from ..cterm import CSubst, CTerm
     from ..kast.outer import KDefinition, KFlatModuleList
     from ..kcfg import KCFGExplore
     from ..kcfg.explore import ExtendResult
@@ -51,6 +52,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
     failure_info: APRFailureInfo | None
+    iterations: int
 
     def __init__(
         self,
@@ -76,6 +78,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         self.circularity = circularity
         self.node_refutations = {}
         self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
+        self.iterations = 0
 
         if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)
@@ -1058,13 +1061,28 @@ class APRBMCSummary(ProofSummary):
 
 
 @dataclass(frozen=True)
-class APRProofResult:
+class APRProofResult(ABC):
+    ...
+
+
+@dataclass(frozen=True)
+class APRProofExtendResult(APRProofResult):
     extend_result: ExtendResult
     node_id: int
 
 
+@dataclass(frozen=True)
+class APRProofSubsumeResult(APRProofResult):
+    node_id: int
+    subsume_node_id: int
+    csubst: CSubst
+
+
 class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
     prover: APRProver
+
+    def __init__(self, prover: APRProver) -> None:
+        self.prover = prover
 
     def steps(self, proof: APRProof) -> Iterable[APRProofStep]:
         """
@@ -1074,13 +1092,22 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         The output of this function must only change with calls to `self.commit()`.
         """
         steps: list[APRProofStep] = []
+        target_node = proof.kcfg.node(proof.target)
         for pending_node in proof.pending:
             module_name = (
                 self.prover.circularities_module_name
                 if self.prover.nonzero_depth(pending_node)
                 else self.prover.dependencies_module_name
             )
-            steps.append(APRProofStep(cterm=pending_node.cterm, node_id=pending_node.id, module_name=module_name))
+            steps.append(
+                APRProofStep(
+                    cterm=pending_node.cterm,
+                    node_id=pending_node.id,
+                    module_name=module_name,
+                    target_cterm=target_node.cterm,
+                    target_node_id=target_node.id,
+                )
+            )
         return steps
 
     def commit(self, proof: APRProof, update: APRProofResult) -> None:
@@ -1090,7 +1117,15 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         Must only be called with an `update` that was returned by `step.execute()` where `step` was returned by `self.steps(proof)`.
         Steps for a proof `proof` can have their results submitted any time after they are made available by `self.steps(proof)`, including in any order and multiple times, and the Prover must be able to handle this.
         """
-        ...
+
+        # Extend proof as per `update`
+        if type(update) is APRProofExtendResult:
+            node = proof.kcfg.node(update.node_id)
+            self.prover.kcfg_explore.extend_kcfg(
+                extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
+            )
+        elif type(update) is APRProofSubsumeResult:
+            proof.kcfg.create_cover(update.node_id, proof.target, csubst=update.csubst)
 
 
 @dataclass(frozen=True)
@@ -1109,6 +1144,8 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
     cterm: CTerm
     node_id: int
     module_name: str
+    target_cterm: CTerm
+    target_node_id: int
 
     def __hash__(self) -> int:
         return hash((self.cterm, self.node_id))
@@ -1119,6 +1156,11 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
         Allowed to be nondeterministic.
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
+
+        csubst = data.kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
+        if csubst is not None:
+            return APRProofSubsumeResult(node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst)
+
         result = data.kcfg_explore.extend_cterm(
             self.cterm,
             module_name=self.module_name,
@@ -1126,4 +1168,4 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
             terminal_rules=data.terminal_rules,
             cut_point_rules=data.cut_point_rules,
         )
-        return APRProofResult(result, self.node_id)
+        return APRProofExtendResult(result, self.node_id)

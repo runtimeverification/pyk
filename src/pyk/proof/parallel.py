@@ -51,6 +51,11 @@ class Prover(ABC, Generic[P, U]):
 class Proof(ABC):
     """Should represent a computer proof of a single claim"""
 
+    iterations: int
+
+    def __init__(self) -> None:
+        self.iterations = 0
+
     @property
     @abstractmethod
     def status(self) -> ProofStatus:
@@ -59,6 +64,8 @@ class Proof(ABC):
         ProofStatus.FAILED: the claim has not been proven, but the proof cannot advance further.
         ProofStatus.PENDING: the claim has not yet been proven, but the proof can advance further.
         Must not change, except with calls to `prover.commit(self, update)` for some `prover,update`.
+        If proof.status() is ProofStatus.PENDING, prover.steps(proof) must be nonempty.
+        Once proof.status() is ProofStatus.PASSED or ProofStatus.FAILED, it must remain so.
         """
         ...
 
@@ -86,6 +93,8 @@ def prove_parallel(
     proofs: dict[str, Proof],
     provers: dict[str, Prover],
     init: Callable[..., None] = lambda *args: None,
+    max_iterations: int | None = None,
+    fail_fast: bool = False,
 ) -> Iterable[Proof]:
     pending: dict[Future[Any], str] = {}
     explored: set[ProofStep] = set()
@@ -102,6 +111,7 @@ def prove_parallel(
 
     with ProcessPoolExecutor(max_workers=2, initializer=init) as pool:
         for proof_id in proofs.keys():
+            iterations[proof_id] = 0
             submit(proof_id, pool)
 
         while pending:
@@ -112,18 +122,23 @@ def prove_parallel(
             prover = provers[proof_id]
             update = future.result()
             prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+            proot.iterations += 1
 
             match proof.status:
                 # terminate on first failure, yield partial results, etc.
                 case ProofStatus.FAILED:
                     assert len(list(prover.steps(proof))) == 0
-                    break
+                    if fail_fast:
+                        break
                 case ProofStatus.PENDING:
                     assert len(list(prover.steps(proof))) > 0
                 case ProofStatus.PASSED:
                     assert len(list(prover.steps(proof))) == 0
                     break
 
+            if max_iterations and proof.iterations >= max_iterations:
+                continue
+            if fail_fast and 
             submit(proof_id, pool)
             pending.pop(future)
     return proofs.values()
