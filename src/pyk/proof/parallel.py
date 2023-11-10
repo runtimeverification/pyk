@@ -85,21 +85,22 @@ class ProofStep(ABC, Generic[U]):
 def prove_parallel(
     proofs: dict[str, Proof],
     provers: dict[str, Prover],
+    max_workers: int,
 ) -> Iterable[Proof]:
     pending: dict[Future[Any], str] = {}
-    explored: set[ProofStep] = set()
+    explored: set[tuple[str, ProofStep]] = set()
 
     def submit(proof_id: str, pool: Executor) -> None:
         proof = proofs[proof_id]
         prover = provers[proof_id]
         for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
-            if step in explored:
+            if (proof_id, step) in explored:
                 continue
-            explored.add(step)
+            explored.add((proof_id, step))
             future = pool.submit(step.exec)  # <-- schedule steps for execution
             pending[future] = proof_id
 
-    with ProcessPoolExecutor(max_workers=2) as pool:
+    with ProcessPoolExecutor(max_workers=max_workers) as pool:
         for proof_id in proofs:
             submit(proof_id, pool)
 
@@ -116,12 +117,10 @@ def prove_parallel(
                 # terminate on first failure, yield partial results, etc.
                 case ProofStatus.FAILED:
                     assert len(list(prover.steps(proof))) == 0
-                    break
                 case ProofStatus.PENDING:
                     assert len(list(prover.steps(proof))) > 0
                 case ProofStatus.PASSED:
                     assert len(list(prover.steps(proof))) == 0
-                    break
 
             submit(proof_id, pool)
             pending.pop(future)
