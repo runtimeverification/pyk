@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 from pyk.proof.proof import ProofStatus
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
     from concurrent.futures import Executor, Future
 
 
@@ -85,8 +85,8 @@ class ProofStep(ABC, Generic[U]):
 
 
 def prove_parallel(
-    proofs: dict[str, Proof],
-    provers: dict[str, Prover],
+    proofs: Mapping[str, Proof],
+    provers: Mapping[str, Prover],
     max_workers: int,
 ) -> Iterable[Proof]:
     pending: dict[Future[Any], str] = {}
