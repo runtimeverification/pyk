@@ -15,6 +15,7 @@ class TreeExploreProof(Proof):
     edges: dict[int, set[int]]
     reached: set[int]
     failure_nodes: set[int]
+    reached_target_before_failing: bool
 
     def __init__(self, init: int, target: int, edges: dict[int, set[int]], failure_nodes: set[int]) -> None:
         self.init = init
@@ -22,13 +23,14 @@ class TreeExploreProof(Proof):
         self.target = target
         self.edges = edges
         self.failure_nodes = failure_nodes
+        self.reached_target_before_failing = False
 
     @property
     def status(self) -> ProofStatus:
-        if len(self.reached.intersection(self.failure_nodes)) > 0:
-            return ProofStatus.FAILED
-        elif self.target in self.reached:
+        if self.reached_target_before_failing:
             return ProofStatus.PASSED
+        elif len(self.reached.intersection(self.failure_nodes)) > 0:
+            return ProofStatus.FAILED
         else:
             return ProofStatus.PENDING
 
@@ -62,6 +64,8 @@ class TreeExploreProver(Prover[TreeExploreProof, int]):
         ]
 
     def commit(self, proof: TreeExploreProof, update: int) -> None:
+        if proof.status is ProofStatus.PENDING and update == proof.target:
+            proof.reached_target_before_failing = True
         proof.reached.add(update)
 
 
