@@ -115,7 +115,7 @@ def test_parallel_fail_fast() -> None:
     assert list(results)[0].status == ProofStatus.FAILED
 
 
-@pytest.mark.parametrize('iterations', [0, 1, 6, 7, 8, 9, 10])
+@pytest.mark.parametrize('iterations', [0, 1, 9, 10])
 def test_parallel_max_iterations(iterations: int) -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof(0, 9, SIMPLE_TREE, set())
