@@ -59,6 +59,8 @@ class Proof(ABC):
         ProofStatus.FAILED: the claim has not been proven, but the proof cannot advance further.
         ProofStatus.PENDING: the claim has not yet been proven, but the proof can advance further.
         Must not change, except with calls to `prover.commit(self, update)` for some `prover,update`.
+        If proof.status() is ProofStatus.PENDING, prover.steps(proof) must be nonempty.
+        Once proof.status() is ProofStatus.PASSED or ProofStatus.FAILED, it must remain so.
         """
         ...
 
