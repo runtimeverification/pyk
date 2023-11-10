@@ -52,7 +52,6 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
     failure_info: APRFailureInfo | None
-    iterations: int
 
     def __init__(
         self,
@@ -78,7 +77,6 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         self.circularity = circularity
         self.node_refutations = {}
         self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
-        self.iterations = 0
 
         if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)

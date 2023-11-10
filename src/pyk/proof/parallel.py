@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
 from pyk.proof.proof import ProofStatus
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
     from concurrent.futures import Executor, Future
 
 
@@ -51,11 +51,6 @@ class Prover(ABC, Generic[P, U]):
 class Proof(ABC):
     """Should represent a computer proof of a single claim"""
 
-    iterations: int
-
-    def __init__(self) -> None:
-        self.iterations = 0
-
     @property
     @abstractmethod
     def status(self) -> ProofStatus:
@@ -65,6 +60,7 @@ class Proof(ABC):
         ProofStatus.PENDING: the claim has not yet been proven, but the proof can advance further.
         Must not change, except with calls to `prover.commit(self, update)` for some `prover,update`.
         If proof.status() is ProofStatus.PENDING, prover.steps(proof) must be nonempty.
+        If proof.status() is ProofStatus.PASSED, prover.steps(proof) must be empty.
         Once proof.status() is ProofStatus.PASSED or ProofStatus.FAILED, it must remain so.
         """
         ...
@@ -90,29 +86,31 @@ class ProofStep(ABC, Generic[U]):
 
 
 def prove_parallel(
-    proofs: dict[str, Proof],
-    provers: dict[str, Prover],
-    init: Callable[..., None] = lambda *args: None,
-    max_iterations: int | None = None,
+    proofs: Mapping[str, Proof],
+    provers: Mapping[str, Prover],
+    max_workers: int,
     fail_fast: bool = False,
+    max_iterations: int | None = None,
+    init: Callable[..., None] = lambda *args: None,
 ) -> Iterable[Proof]:
     pending: dict[Future[Any], str] = {}
-    explored: set[ProofStep] = set()
+    explored: set[tuple[str, ProofStep]] = set()
+    iterations: dict[str, int] = {}
 
     def submit(proof_id: str, pool: Executor) -> None:
         proof = proofs[proof_id]
         prover = provers[proof_id]
         for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
-            if step in explored:
+            if (proof_id, step) in explored:
                 continue
-            explored.add(step)
+            explored.add((proof_id, step))
             future = pool.submit(step.exec)  # <-- schedule steps for execution
             pending[future] = proof_id
 
-    with ProcessPoolExecutor(max_workers=2, initializer=init) as pool:
+    with ProcessPoolExecutor(max_workers=max_workers, initializer=init) as pool:
         for proof_id in proofs.keys():
-            iterations[proof_id] = 0
             submit(proof_id, pool)
+            iterations[proof_id] = 0
 
         while pending:
             done, _ = wait(pending, return_when='FIRST_COMPLETED')
@@ -121,24 +119,26 @@ def prove_parallel(
             proof = proofs[proof_id]
             prover = provers[proof_id]
             update = future.result()
+
+            if max_iterations is not None and iterations[proof_id] >= max_iterations:
+                pending.pop(future)
+                continue
+
             prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
-            proot.iterations += 1
+
+            iterations[proof_id] += 1
 
             match proof.status:
                 # terminate on first failure, yield partial results, etc.
                 case ProofStatus.FAILED:
-                    assert len(list(prover.steps(proof))) == 0
                     if fail_fast:
-                        break
+                        pending.pop(future)
+                        continue
                 case ProofStatus.PENDING:
                     assert len(list(prover.steps(proof))) > 0
                 case ProofStatus.PASSED:
                     assert len(list(prover.steps(proof))) == 0
-                    break
 
-            if max_iterations and proof.iterations >= max_iterations:
-                continue
-            if fail_fast and 
             submit(proof_id, pool)
             pending.pop(future)
     return proofs.values()
