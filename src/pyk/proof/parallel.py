@@ -110,6 +110,7 @@ def prove_parallel(
         while pending:
             done, _ = wait(pending, return_when='FIRST_COMPLETED')
             future = done.pop()
+
             proof_id = pending[future]
             proof = proofs[proof_id]
             prover = provers[proof_id]
@@ -122,9 +123,11 @@ def prove_parallel(
                 case ProofStatus.FAILED:
                     ...
                 case ProofStatus.PENDING:
-                    assert len(list(prover.steps(proof))) > 0
+                    if len(list(prover.steps(proof))) == 0:
+                        raise ValueError('Prover violated expectation. status is pending with no further steps.')
                 case ProofStatus.PASSED:
-                    assert len(list(prover.steps(proof))) == 0
+                    if len(list(prover.steps(proof))) > 0:
+                        raise ValueError('Prover violated expectation. status is passed with further steps.')
 
             submit(proof_id, pool)
             pending.pop(future)
