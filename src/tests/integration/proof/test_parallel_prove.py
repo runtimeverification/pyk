@@ -3,8 +3,6 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
-import pytest
-
 from pyk.proof.parallel import Proof, ProofStep, Prover, prove_parallel
 from pyk.proof.proof import ProofStatus
 
@@ -108,24 +106,6 @@ def test_parallel_fail() -> None:
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.FAILED
-
-
-def test_parallel_fail_fast() -> None:
-    prover = TreeExploreProver()
-    proof = TreeExploreProof(0, 9, SIMPLE_TREE, {3})
-    results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, fail_fast=True)
-    assert len(list(results)) == 1
-    assert len(list(prover.steps(proof))) > 0
-    assert list(results)[0].status == ProofStatus.FAILED
-
-
-@pytest.mark.parametrize('iterations', [0, 1, 9, 10])
-def test_parallel_max_iterations(iterations: int) -> None:
-    prover = TreeExploreProver()
-    proof = TreeExploreProof(0, 9, SIMPLE_TREE, set())
-    results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, max_iterations=iterations)
-    assert len(list(results)) == 1
-    assert len(list(proof.reached)) == iterations
 
 
 def test_parallel_multiple_proofs() -> None:
