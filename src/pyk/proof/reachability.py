@@ -1125,16 +1125,27 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         elif type(update) is APRProofSubsumeResult:
             proof.kcfg.create_cover(update.node_id, proof.target, csubst=update.csubst)
 
+        self.prover._check_all_terminals()
 
-@dataclass(frozen=True)
-class APRProofExtendData:
-    kcfg_explore: KCFGExplore
-    cut_point_rules: Iterable[str]
-    terminal_rules: Iterable[str]
-    execute_depth: int
+        if proof.failed:
+            self.prover.save_failure_info()
+
+        proof.write_proof_data()
 
 
-data: APRProofExtendData
+#  aprproof_data: APRProofExtendData
+
+#
+#  @dataclass(frozen=True)
+#  class APRProofExtendData(parallel.ProcessData):
+#      kcfg_explore: KCFGExplore
+#      cut_point_rules: Iterable[str]
+#      terminal_rules: Iterable[str]
+#      execute_depth: int
+#
+#      def initializer(self) -> None:
+#          global aprproof_data
+#          aprproof_data = self
 
 
 @dataclass(frozen=True, eq=True)
@@ -1148,13 +1159,12 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
     def __hash__(self) -> int:
         return hash((self.cterm, self.node_id))
 
-    def exec(self) -> APRProofResult:
+    def exec(self, data: parallel.APRProofExtendData2) -> APRProofResult:
         """
         Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
         Allowed to be nondeterministic.
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
-
         csubst = data.kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
         if csubst is not None:
             return APRProofSubsumeResult(node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst)
