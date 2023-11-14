@@ -7,7 +7,7 @@ import pytest
 
 from pyk.proof.parallel import prove_parallel
 from pyk.proof.proof import ProofStatus
-from pyk.proof.reachability import APRProof, APRProofExtendData, APRProver, ParallelAPRProver
+from pyk.proof.reachability import APRProof, ParallelAPRProver
 from pyk.testing import KCFGExploreTest, KPrintTest, KProveTest
 from pyk.utils import single
 
@@ -39,7 +39,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         self, kcfg_explore: KCFGExplore, proof_dir: Path, kprove: KProve, kprint: KPrint
     ) -> None:
         #          claim_id = 'addition-1'
-        claim_id = 'failing-if'
+        claim_id = 'fail-branch'
         spec_file = K_FILES / 'imp-simple-spec.k'
         spec_module = 'IMP-SIMPLE-SPEC'
 
@@ -48,27 +48,26 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         )
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
-        prover = APRProver(
-            proof,
-            kcfg_explore=kcfg_explore,
-        )
 
-        process_data = APRProofExtendData(
-            cut_point_rules=[],
-            terminal_rules=[],
-            execute_depth=1000,
-            definition_dir=kprove.definition_dir,
+        parallel_prover = ParallelAPRProver(
+            proof=proof,
             module_name=kprove.main_module,
+            definition_dir=kprove.definition_dir,
+            execute_depth=1000,
             kprint=kprint,
+            kcfg_semantics=self.semantics(kprove.definition),
+            id=claim_id,
+            trace_rewrites=False,
+            cut_point_rules=(),
+            terminal_rules=(),
+            bug_report=None,
+            bug_report_id=None,
         )
-
-        parallel_prover = ParallelAPRProver(prover=prover)
 
         results = prove_parallel(
             proofs={'proof1': proof},
             provers={'proof1': parallel_prover},
             max_workers=2,
-            process_data=process_data,
         )
 
         assert len(list(results)) == 1

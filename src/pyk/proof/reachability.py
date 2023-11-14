@@ -8,8 +8,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyk.proof.parallel as parallel
-from pyk.kore.rpc import KoreClient, LogEntry, kore_server
-from pyk.ktool.kprove import KoreExecLogFormat
+from pyk.kore.rpc import KoreClient, KoreExecLogFormat, LogEntry, kore_server
 
 from ..kast.inner import KInner, KRewrite, KSort, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
@@ -29,13 +28,13 @@ if TYPE_CHECKING:
 
     from pyk.kcfg.semantics import KCFGSemantics
     from pyk.kore.rpc import KoreServer
+    from pyk.utils import BugReport
 
     from ..cterm import CSubst, CTerm
     from ..kast.outer import KDefinition, KFlatModuleList
     from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
-    from ..utils import BugReport
 
     T = TypeVar('T', bound='Proof')
 
@@ -1080,42 +1079,36 @@ class APRProofSubsumeResult(APRProofResult):
     csubst: CSubst
 
 
-class APRProofExtendData(parallel.ProcessData):
+class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
+    prover: APRProver
+    server: KoreServer
+    kcfg_explore: KCFGExplore
+
+    execute_depth: int | None
     cut_point_rules: Iterable[str]
     terminal_rules: Iterable[str]
-    execute_depth: int
-    definition_dir: str | Path
-    module_name: str
+
     kprint: KPrint
-    llvm_definition_dir: Path | None
-    command: str | Iterable[str] | None
-    bug_report: BugReport | None
-    smt_timeout: int | None
-    smt_retry_limit: int | None
-    smt_tactic: str | None
-    haskell_log_format: KoreExecLogFormat
-    haskell_log_entries: Iterable[str]
-    log_axioms_file: Path | None
-    bug_report_id: str | None
     kcfg_semantics: KCFGSemantics | None
     id: str | None
     trace_rewrites: bool
-    server: KoreServer
-    client: KoreClient
 
-    kcfg_explore: KCFGExplore
-    #      cut_point_rules: Iterable[str]
-    #      terminal_rules: Iterable[str]
-    #      execute_depth: int
+    bug_report: BugReport | None
+    bug_report_id: str | None
 
     def __init__(
         self,
+        proof: APRProof,
+        module_name: str,
+        definition_dir: str | Path,
+        execute_depth: int | None,
+        kprint: KPrint,
+        kcfg_semantics: KCFGSemantics | None,
+        id: str | None,
+        trace_rewrites: bool,
         cut_point_rules: Iterable[str],
         terminal_rules: Iterable[str],
-        execute_depth: int,
-        definition_dir: str | Path,
-        module_name: str,
-        kprint: KPrint,
+        bug_report_id: str | None,
         llvm_definition_dir: Path | None = None,
         command: str | Iterable[str] | None = None,
         bug_report: BugReport | None = None,
@@ -1125,50 +1118,35 @@ class APRProofExtendData(parallel.ProcessData):
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
-        bug_report_id: str | None = None,
-        id: str | None = None,
-        trace_rewrites: bool = False,
-        kcfg_semantics: KCFGSemantics | None = None,
     ) -> None:
+        self.execute_depth = execute_depth
         self.cut_point_rules = cut_point_rules
         self.terminal_rules = terminal_rules
-        self.execute_depth = execute_depth
-        self.definition_dir = definition_dir
-        self.module_name = module_name
         self.kprint = kprint
-        self.llvm_definition_dir = llvm_definition_dir
-        self.command = command
-        self.bug_report = bug_report
-        self.smt_timeout = smt_timeout
-        self.smt_retry_limit = smt_retry_limit
-        self.smt_tactic = smt_tactic
-        self.haskell_log_format = haskell_log_format
-        self.haskell_log_entries = haskell_log_entries
-        self.log_axioms_file = log_axioms_file
-        self.bug_report_id = bug_report_id
+        self.kcfg_semantics = kcfg_semantics
         self.id = id
         self.trace_rewrites = trace_rewrites
-        self.kcfg_semantics = kcfg_semantics
-
-
-    def init(self) -> None:
+        self.bug_report = bug_report
+        self.bug_report_id = bug_report_id
         self.server = kore_server(
-            definition_dir=self.definition_dir,
-            llvm_definition_dir=self.llvm_definition_dir,
-            module_name=self.module_name,
-            command=self.command,
-            bug_report=self.bug_report,
-            smt_timeout=self.smt_timeout,
-            smt_retry_limit=self.smt_retry_limit,
-            smt_tactic=self.smt_tactic,
-            haskell_log_format=self.haskell_log_format,
-            haskell_log_entries=self.haskell_log_entries,
-            log_axioms_file=self.log_axioms_file,
+            definition_dir=definition_dir,
+            llvm_definition_dir=llvm_definition_dir,
+            module_name=module_name,
+            command=command,
+            bug_report=bug_report,
+            smt_timeout=smt_timeout,
+            smt_retry_limit=smt_retry_limit,
+            smt_tactic=smt_tactic,
+            haskell_log_format=haskell_log_format,
+            haskell_log_entries=haskell_log_entries,
+            log_axioms_file=log_axioms_file,
         )
         self.client = KoreClient(
-            'localhost', self.server.port, bug_report=self.bug_report, bug_report_id=self.bug_report_id
+            host='localhost',
+            port=self.server.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
         )
-
         self.kcfg_explore = KCFGExplore(
             kprint=self.kprint,
             kore_client=self.client,
@@ -1176,30 +1154,11 @@ class APRProofExtendData(parallel.ProcessData):
             id=self.id,
             trace_rewrites=self.trace_rewrites,
         )
+        self.prover = APRProver(proof=proof, kcfg_explore=self.kcfg_explore)
 
-        self.kcfg_explore.add_dependencies_module(
-            self.module_name,
-            self.module_name + '-DEPENDS-MODULE',
-            [],
-            priority=1,
-        )
-        self.kcfg_explore.add_dependencies_module(
-            self.module_name,
-            self.module_name + '-CIRCULARITIES-MODULE',
-            [],
-            priority=1,
-        )
-
-    def cleanup(self) -> None:
+    def shutdown(self) -> None:
         self.client.close()
         self.server.close()
-
-
-class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofExtendData]):
-    prover: APRProver
-
-    def __init__(self, prover: APRProver) -> None:
-        self.prover = prover
 
     def steps(self, proof: APRProof) -> Iterable[APRProofStep]:
         """
@@ -1223,6 +1182,16 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofExtend
                     module_name=module_name,
                     target_cterm=target_node.cterm,
                     target_node_id=target_node.id,
+                    port=self.server.port,
+                    execute_depth=self.execute_depth,
+                    terminal_rules=self.terminal_rules,
+                    cut_point_rules=self.cut_point_rules,
+                    kprint=self.kprint,
+                    kcfg_semantics=self.kcfg_semantics,
+                    id=self.id,
+                    trace_rewrites=self.trace_rewrites,
+                    bug_report=self.bug_report,
+                    bug_report_id=self.bug_report_id,
                 )
             )
         return steps
@@ -1238,7 +1207,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofExtend
         # Extend proof as per `update`
         if type(update) is APRProofExtendResult:
             node = proof.kcfg.node(update.node_id)
-            self.prover.kcfg_explore.extend_kcfg(
+            self.kcfg_explore.extend_kcfg(
                 extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
             )
         elif type(update) is APRProofSubsumeResult:
@@ -1253,31 +1222,58 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofExtend
 
 
 @dataclass(frozen=True, eq=True)
-class APRProofStep(parallel.ProofStep[APRProofResult, APRProofExtendData]):
+class APRProofStep(parallel.ProofStep[APRProofResult]):
     cterm: CTerm
     node_id: int
     module_name: str
     target_cterm: CTerm
     target_node_id: int
+    port: int
+    execute_depth: int | None
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
+
+    bug_report: BugReport | None
+    bug_report_id: str | None
+
+    kprint: KPrint
+    kcfg_semantics: KCFGSemantics | None
+    id: str | None
+    trace_rewrites: bool
 
     def __hash__(self) -> int:
         return hash((self.cterm, self.node_id))
 
-    def exec(self, data: APRProofExtendData) -> APRProofResult:
+    def exec(self) -> APRProofResult:
         """
         Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
         Allowed to be nondeterministic.
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
-        csubst = data.kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
-        if csubst is not None:
-            return APRProofSubsumeResult(node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst)
 
-        result = data.kcfg_explore.extend_cterm(
-            self.cterm,
-            module_name=self.module_name,
-            execute_depth=data.execute_depth,
-            terminal_rules=data.terminal_rules,
-            cut_point_rules=data.cut_point_rules,
-        )
-        return APRProofExtendResult(result, self.node_id)
+        with KoreClient(
+            host='localhost',
+            port=self.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
+        ) as client:
+            kcfg_explore = KCFGExplore(
+                kprint=self.kprint,
+                kore_client=client,
+                kcfg_semantics=self.kcfg_semantics,
+                id=self.id,
+                trace_rewrites=self.trace_rewrites,
+            )
+
+            csubst = kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
+            if csubst is not None:
+                return APRProofSubsumeResult(node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst)
+
+            result = kcfg_explore.extend_cterm(
+                self.cterm,
+                module_name=self.module_name,
+                execute_depth=self.execute_depth,
+                terminal_rules=self.terminal_rules,
+                cut_point_rules=self.cut_point_rules,
+            )
+            return APRProofExtendResult(result, self.node_id)

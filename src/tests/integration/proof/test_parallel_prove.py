@@ -4,7 +4,6 @@ import sys
 import time
 from dataclasses import dataclass
 
-import pyk.proof.parallel as parallel
 from pyk.proof.parallel import Proof, ProofStep, Prover, prove_parallel
 from pyk.proof.proof import ProofStatus
 
@@ -35,26 +34,18 @@ class TreeExploreProof(Proof):
             return ProofStatus.PENDING
 
 
-class TreeExploreProofData(parallel.ProcessData):
-    def init(self) -> None:
-        ...
-
-    def cleanup(self) -> None:
-        ...
-
-
 @dataclass(frozen=True)
-class TreeExploreProofStep(ProofStep[int, TreeExploreProofData]):
+class TreeExploreProofStep(ProofStep[int]):
     node: int
 
-    def exec(self, data: TreeExploreProofData) -> int:
+    def exec(self) -> int:
         print(f'exec {self.node}', file=sys.stderr)
         time.sleep(1)
         print(f'done {self.node}', file=sys.stderr)
         return self.node
 
 
-class TreeExploreProver(Prover[TreeExploreProof, int, TreeExploreProofData]):
+class TreeExploreProver(Prover[TreeExploreProof, int]):
     def __init__(self) -> None:
         return
 

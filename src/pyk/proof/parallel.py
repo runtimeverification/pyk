@@ -15,7 +15,7 @@ U = TypeVar('U')
 D = TypeVar('D', bound='ProcessData')
 
 
-class Prover(ABC, Generic[P, U, D]):
+class Prover(ABC, Generic[P, U]):
     """
     Should contain all data needed to make progress on a `P` (proof).
     May be specific to a single `P` (proof) or may be able to handle multiple.
@@ -28,7 +28,7 @@ class Prover(ABC, Generic[P, U, D]):
     """
 
     @abstractmethod
-    def steps(self, proof: P) -> Iterable[ProofStep[U, D]]:
+    def steps(self, proof: P) -> Iterable[ProofStep[U]]:
         """
         Return a list of `ProofStep[U]` which represents all the computation jobs as defined by `ProofStep`, which have not yet been computed and committed, and are available given the current state of `proof`. Note that this is a requirement which is not enforced by the type system.
         If `steps()` or `commit()` has been called on a proof `proof`, `steps()` may never again be called on `proof`.
@@ -76,7 +76,7 @@ class ProcessData(ABC):
         ...
 
 
-class ProofStep(ABC, Generic[U, D]):
+class ProofStep(ABC, Generic[U]):
     """
     Should be a description of a computation needed to make progress on a `Proof`.
     Must be hashable.
@@ -86,7 +86,7 @@ class ProofStep(ABC, Generic[U, D]):
     """
 
     @abstractmethod
-    def exec(self, data: D) -> U:
+    def exec(self) -> U:
         """
         Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
         Allowed to be nondeterministic.
@@ -101,7 +101,6 @@ def prove_parallel(
     max_workers: int,
     fail_fast: bool = False,
     max_iterations: int | None = None,
-    process_data: ProcessData | None = None,
 ) -> Iterable[Proof]:
     explored: set[tuple[str, ProofStep]] = set()
     iterations: dict[str, int] = {}
@@ -111,18 +110,14 @@ def prove_parallel(
 
     pending_jobs: int = 0
 
-    def run_process(data: ProcessData) -> None:
-        data.init()
-
+    def run_process() -> None:
         while True:
             dequeued = in_queue.get()
             if dequeued == 0:
                 break
             proof_id, proof_step = dequeued
-            update = proof_step.exec(data)
+            update = proof_step.exec()
             out_queue.put((proof_id, update))
-
-        data.cleanup()
 
     def submit(proof_id: str) -> None:
         proof = proofs[proof_id]
@@ -135,7 +130,7 @@ def prove_parallel(
             nonlocal pending_jobs
             pending_jobs += 1
 
-    processes = [Process(target=run_process, args=(process_data,)) for _ in range(max_workers)]
+    processes = [Process(target=run_process) for _ in range(max_workers)]
     for process in processes:
         process.start()
 
