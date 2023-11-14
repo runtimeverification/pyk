@@ -1,31 +1,21 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from multiprocessing import Process, Queue
 from typing import TYPE_CHECKING, Generic, TypeVar
 
-from pyk.kcfg.explore import KCFGExplore
-from pyk.kore.rpc import KoreClient, TransportType, kore_server
 from pyk.proof.proof import ProofStatus
-
-from ..ktool.kprove import KoreExecLogFormat
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from pathlib import Path
-
-    from pyk.kcfg.semantics import KCFGSemantics
-    from pyk.ktool.kprint import KPrint
-
-    from ..utils import BugReport
 
 
 P = TypeVar('P', bound='Proof')
 U = TypeVar('U')
+D = TypeVar('D', bound='ProcessData')
 
 
-class Prover(ABC, Generic[P, U]):
+class Prover(ABC, Generic[P, U, D]):
     """
     Should contain all data needed to make progress on a `P` (proof).
     May be specific to a single `P` (proof) or may be able to handle multiple.
@@ -38,7 +28,7 @@ class Prover(ABC, Generic[P, U]):
     """
 
     @abstractmethod
-    def steps(self, proof: P) -> Iterable[ProofStep[U]]:
+    def steps(self, proof: P) -> Iterable[ProofStep[U, D]]:
         """
         Return a list of `ProofStep[U]` which represents all the computation jobs as defined by `ProofStep`, which have not yet been computed and committed, and are available given the current state of `proof`. Note that this is a requirement which is not enforced by the type system.
         If `steps()` or `commit()` has been called on a proof `proof`, `steps()` may never again be called on `proof`.
@@ -77,51 +67,16 @@ class Proof(ABC):
 
 
 class ProcessData(ABC):
-    ...
+    @abstractmethod
+    def init(self) -> None:
+        ...
+
+    @abstractmethod
+    def cleanup(self) -> None:
+        ...
 
 
-@dataclass(frozen=True)
-class APRProofExtendData(ProcessData):
-    #      kcfg_explore: KCFGExplore
-    cut_point_rules: Iterable[str]
-    terminal_rules: Iterable[str]
-    execute_depth: int
-
-    definition_dir: str | Path
-    module_name: str
-
-    kprint: KPrint
-
-    llvm_definition_dir: Path | None = None
-    port: int | None = None
-    command: str | Iterable[str] | None = None
-    bug_report: BugReport | None = None
-    smt_timeout: int | None = None
-    smt_retry_limit: int | None = None
-    smt_tactic: str | None = None
-    haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE
-    haskell_log_entries: Iterable[str] = ()
-    log_axioms_file: Path | None = None
-
-    timeout: int | None = None
-    bug_report_id: str | None = None
-    transport: TransportType = TransportType.SINGLE_SOCKET
-    dispatch: dict[str, list[tuple[str, int, TransportType]]] | None = None
-
-    kcfg_semantics: KCFGSemantics | None = None
-    id: str | None = None
-    trace_rewrites: bool = False
-
-
-@dataclass(frozen=True)
-class APRProofExtendData2(ProcessData):
-    kcfg_explore: KCFGExplore
-    cut_point_rules: Iterable[str]
-    terminal_rules: Iterable[str]
-    execute_depth: int
-
-
-class ProofStep(ABC, Generic[U]):
+class ProofStep(ABC, Generic[U, D]):
     """
     Should be a description of a computation needed to make progress on a `Proof`.
     Must be hashable.
@@ -131,7 +86,7 @@ class ProofStep(ABC, Generic[U]):
     """
 
     @abstractmethod
-    def exec(self, data: APRProofExtendData2) -> U:
+    def exec(self, data: D) -> U:
         """
         Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
         Allowed to be nondeterministic.
@@ -156,58 +111,18 @@ def prove_parallel(
 
     pending_jobs: int = 0
 
-    def run_process(data: APRProofExtendData) -> None:
-        with kore_server(
-            definition_dir=data.definition_dir,
-            llvm_definition_dir=data.llvm_definition_dir,
-            module_name=data.module_name,
-            command=data.command,
-            bug_report=data.bug_report,
-            smt_timeout=data.smt_timeout,
-            smt_retry_limit=data.smt_retry_limit,
-            smt_tactic=data.smt_tactic,
-            haskell_log_format=data.haskell_log_format,
-            haskell_log_entries=data.haskell_log_entries,
-            log_axioms_file=data.log_axioms_file,
-        ) as server:
-            with KoreClient(
-                'localhost', server.port, bug_report=data.bug_report, bug_report_id=data.bug_report_id
-            ) as client:
-                kcfg_explore = KCFGExplore(
-                    kprint=data.kprint,
-                    kore_client=client,
-                    kcfg_semantics=data.kcfg_semantics,
-                    id=data.id,
-                    trace_rewrites=data.trace_rewrites,
-                )
+    def run_process(data: ProcessData) -> None:
+        data.init()
 
-                data2 = APRProofExtendData2(
-                    kcfg_explore=kcfg_explore,
-                    cut_point_rules=data.cut_point_rules,
-                    execute_depth=data.execute_depth,
-                    terminal_rules=data.terminal_rules,
-                )
+        while True:
+            dequeued = in_queue.get()
+            if dequeued == 0:
+                break
+            proof_id, proof_step = dequeued
+            update = proof_step.exec(data)
+            out_queue.put((proof_id, update))
 
-                kcfg_explore.add_dependencies_module(
-                    data.module_name,
-                    data.module_name + '-DEPENDS-MODULE',
-                    [],
-                    priority=1,
-                )
-                kcfg_explore.add_dependencies_module(
-                    data.module_name,
-                    data.module_name + '-CIRCULARITIES-MODULE',
-                    [],
-                    priority=1,
-                )
-
-                while True:
-                    dequeued = in_queue.get()
-                    if dequeued == 0:
-                        break
-                    proof_id, proof_step = dequeued
-                    update = proof_step.exec(data2)
-                    out_queue.put((proof_id, update))
+        data.cleanup()
 
     def submit(proof_id: str) -> None:
         proof = proofs[proof_id]

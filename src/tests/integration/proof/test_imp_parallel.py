@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.proof.parallel import APRProofExtendData, prove_parallel
+from pyk.proof.parallel import prove_parallel
 from pyk.proof.proof import ProofStatus
-from pyk.proof.reachability import APRProof, APRProver, ParallelAPRProver
+from pyk.proof.reachability import APRProof, APRProofExtendData, APRProver, ParallelAPRProver
 from pyk.testing import KCFGExploreTest, KPrintTest, KProveTest
 from pyk.utils import single
 
