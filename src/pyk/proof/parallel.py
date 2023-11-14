@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from concurrent.futures import ProcessPoolExecutor, wait
+from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from pyk.proof.proof import ProofStatus
@@ -114,7 +114,16 @@ def prove_parallel(
             proof_id = pending[future]
             proof = proofs[proof_id]
             prover = provers[proof_id]
-            update = future.result()
+            try:
+                update = future.result()
+            except CancelledError as err:
+                raise RuntimeError(f'Task was cancelled for proof {proof_id}') from err
+            except TimeoutError as err:
+                raise RuntimeError(
+                    f"Future for proof {proof_id} was not finished executing and timed out. This shouldn't happen since this future was already waited on."
+                ) from err
+            except Exception as err:
+                raise RuntimeError('Exception was raised in ProofStep.exec() for proof {proof_id}.') from err
 
             prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
 
