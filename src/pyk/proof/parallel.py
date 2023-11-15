@@ -135,7 +135,7 @@ def prove_parallel(
                     if not list(prover.steps(proof)):
                         raise ValueError('Prover violated expectation. status is pending with no further steps.')
                 case ProofStatus.PASSED:
-                    if len(list(prover.steps(proof))) > 0:
+                    if list(prover.steps(proof)):
                         raise ValueError('Prover violated expectation. status is passed with further steps.')
 
             submit(proof_id, pool)
