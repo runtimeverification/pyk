@@ -132,7 +132,7 @@ def prove_parallel(
                 case ProofStatus.FAILED:
                     ...
                 case ProofStatus.PENDING:
-                    if len(list(prover.steps(proof))) == 0:
+                    if not list(prover.steps(proof)):
                         raise ValueError('Prover violated expectation. status is pending with no further steps.')
                 case ProofStatus.PASSED:
                     if len(list(prover.steps(proof))) > 0:
