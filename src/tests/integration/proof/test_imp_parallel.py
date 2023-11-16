@@ -23,6 +23,11 @@ if TYPE_CHECKING:
     from pyk.ktool.kprint import KPrint
     from pyk.ktool.kprove import KProve
 
+PARALLEL_PROVE_TEST_DATA = (
+    ('imp-simple-addition-1', 'addition-1', ProofStatus.PASSED),
+    ('imp-simple-sum-10', 'sum-10', ProofStatus.PASSED),
+)
+
 
 @pytest.fixture(scope='function')
 def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
@@ -35,11 +40,22 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
     def semantics(self, definition: KDefinition) -> KCFGSemantics:
         return ImpSemantics(definition)
 
+    @pytest.mark.parametrize(
+        'test_id,claim_id,expected_status',
+        PARALLEL_PROVE_TEST_DATA,
+        ids=[test_id for test_id, *_ in PARALLEL_PROVE_TEST_DATA],
+    )
     def test_imp_parallel_prove(
-        self, kcfg_explore: KCFGExplore, proof_dir: Path, kprove: KProve, kprint: KPrint
+        self,
+        test_id: str,
+        claim_id: str,
+        expected_status: ProofStatus,
+        kcfg_explore: KCFGExplore,
+        proof_dir: Path,
+        kprove: KProve,
+        kprint: KPrint,
     ) -> None:
         #          claim_id = 'addition-1'
-        claim_id = 'fail-branch'
         spec_file = K_FILES / 'imp-simple-spec.k'
         spec_module = 'IMP-SIMPLE-SPEC'
 
@@ -71,4 +87,4 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         )
 
         assert len(list(results)) == 1
-        assert list(results)[0].status == ProofStatus.FAILED
+        assert list(results)[0].status == expected_status
