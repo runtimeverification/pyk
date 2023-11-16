@@ -24,8 +24,9 @@ if TYPE_CHECKING:
     from pyk.ktool.kprove import KProve
 
 PARALLEL_PROVE_TEST_DATA = (
-    ('imp-simple-addition-1', 'addition-1', ProofStatus.PASSED),
-    ('imp-simple-sum-10', 'sum-10', ProofStatus.PASSED),
+    ('addition-1', ProofStatus.PASSED),
+    ('sum-10', ProofStatus.PASSED),
+    ('failing-if', ProofStatus.FAILED),
 )
 
 
@@ -41,13 +42,12 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         return ImpSemantics(definition)
 
     @pytest.mark.parametrize(
-        'test_id,claim_id,expected_status',
+        'claim_id,expected_status',
         PARALLEL_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in PARALLEL_PROVE_TEST_DATA],
     )
     def test_imp_parallel_prove(
         self,
-        test_id: str,
         claim_id: str,
         expected_status: ProofStatus,
         kcfg_explore: KCFGExplore,

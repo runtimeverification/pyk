@@ -1207,13 +1207,15 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         # Extend proof as per `update`
         if type(update) is APRProofExtendResult:
             node = proof.kcfg.node(update.node_id)
-            self.kcfg_explore.extend_kcfg(
-                extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
-            )
+
+            if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
+                proof._terminal.add(node.id)
+            else:
+                self.kcfg_explore.extend_kcfg(
+                    extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
+                )
         elif type(update) is APRProofSubsumeResult:
             proof.kcfg.create_cover(update.node_id, proof.target, csubst=update.csubst)
-
-        self.prover._check_all_terminals()
 
         if proof.failed:
             self.prover.save_failure_info()
