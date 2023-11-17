@@ -1223,6 +1223,68 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         proof.write_proof_data()
 
 
+class ParallelAPRBMCProver(ParallelAPRProver):
+    def __init__(
+        self,
+        proof: APRBMCProof,
+        module_name: str,
+        definition_dir: str | Path,
+        execute_depth: int | None,
+        kprint: KPrint,
+        kcfg_semantics: KCFGSemantics | None,
+        id: str | None,
+        trace_rewrites: bool,
+        cut_point_rules: Iterable[str],
+        terminal_rules: Iterable[str],
+        bug_report_id: str | None,
+        llvm_definition_dir: Path | None = None,
+        command: str | Iterable[str] | None = None,
+        bug_report: BugReport | None = None,
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        smt_tactic: str | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ) -> None:
+        self.execute_depth = execute_depth
+        self.cut_point_rules = cut_point_rules
+        self.terminal_rules = terminal_rules
+        self.kprint = kprint
+        self.kcfg_semantics = kcfg_semantics
+        self.id = id
+        self.trace_rewrites = trace_rewrites
+        self.bug_report = bug_report
+        self.bug_report_id = bug_report_id
+        self.server = kore_server(
+            definition_dir=definition_dir,
+            llvm_definition_dir=llvm_definition_dir,
+            module_name=module_name,
+            command=command,
+            bug_report=bug_report,
+            smt_timeout=smt_timeout,
+            smt_retry_limit=smt_retry_limit,
+            smt_tactic=smt_tactic,
+            haskell_log_format=haskell_log_format,
+            haskell_log_entries=haskell_log_entries,
+            log_axioms_file=log_axioms_file,
+        )
+        self.client = KoreClient(
+            host='localhost',
+            port=self.server.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
+        )
+        self.kcfg_explore = KCFGExplore(
+            kprint=self.kprint,
+            kore_client=self.client,
+            kcfg_semantics=self.kcfg_semantics,
+            id=self.id,
+            trace_rewrites=self.trace_rewrites,
+        )
+        self.prover = APRBMCProver(proof=proof, kcfg_explore=self.kcfg_explore)
+
+
 @dataclass(frozen=True, eq=True)
 class APRProofStep(parallel.ProofStep[APRProofResult]):
     cterm: CTerm
