@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import time
 from dataclasses import dataclass
 
@@ -38,7 +39,9 @@ class TreeExploreProofStep(ProofStep[int]):
     node: int
 
     def exec(self) -> int:
+        print(f'exec {self.node}', file=sys.stderr)
         time.sleep(1)
+        print(f'done {self.node}', file=sys.stderr)
         return self.node
 
 
