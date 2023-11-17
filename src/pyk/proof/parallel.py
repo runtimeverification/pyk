@@ -99,11 +99,8 @@ def prove_parallel(
     proofs: Mapping[str, Proof],
     provers: Mapping[str, Prover],
     max_workers: int,
-    fail_fast: bool = False,
-    max_iterations: int | None = None,
 ) -> Iterable[Proof]:
     explored: set[tuple[str, ProofStep]] = set()
-    iterations: dict[str, int] = {}
 
     in_queue: Queue = Queue()
     out_queue: Queue = Queue()
@@ -136,7 +133,6 @@ def prove_parallel(
 
     for proof_id in proofs.keys():
         submit(proof_id)
-        iterations[proof_id] = 0
 
     while pending_jobs > 0:
         proof_id, update = out_queue.get()
@@ -145,18 +141,12 @@ def prove_parallel(
         proof = proofs[proof_id]
         prover = provers[proof_id]
 
-        if max_iterations is not None and iterations[proof_id] >= max_iterations:
-            continue
-
         prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
-
-        iterations[proof_id] += 1
 
         match proof.status:
             # terminate on first failure, yield partial results, etc.
             case ProofStatus.FAILED:
-                if fail_fast:
-                    continue
+                ...
             case ProofStatus.PENDING:
                 assert len(list(prover.steps(proof))) > 0
             case ProofStatus.PASSED:

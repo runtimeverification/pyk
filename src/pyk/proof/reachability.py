@@ -1156,7 +1156,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         )
         self.prover = APRProver(proof=proof, kcfg_explore=self.kcfg_explore)
 
-    def shutdown(self) -> None:
+    def __del__(self) -> None:
         self.client.close()
         self.server.close()
 
