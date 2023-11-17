@@ -102,44 +102,26 @@ def test_parallel_prove() -> None:
     assert list(results)[0].status == ProofStatus.PASSED
 
 
-#  def test_parallel_fail() -> None:
-#      prover = TreeExploreProver()
-#      proof = TreeExploreProof(0, 9, SIMPLE_TREE, {6})
-#      results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2)
-#      assert len(list(results)) == 1
-#      assert len(list(prover.steps(proof))) == 0
-#      assert list(results)[0].status == ProofStatus.FAILED
-#
-#
-#  def test_parallel_fail_fast() -> None:
-#      prover = TreeExploreProver()
-#      proof = TreeExploreProof(0, 9, SIMPLE_TREE, {3})
-#      results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, fail_fast=True)
-#      assert len(list(results)) == 1
-#      assert len(list(prover.steps(proof))) > 0
-#      assert list(results)[0].status == ProofStatus.FAILED
-#
-#
-#  @pytest.mark.parametrize('iterations', [0, 1, 9, 10])
-#  def test_parallel_max_iterations(iterations: int) -> None:
-#      prover = TreeExploreProver()
-#      proof = TreeExploreProof(0, 9, SIMPLE_TREE, set())
-#      results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, max_iterations=iterations)
-#      assert len(list(results)) == 1
-#      assert len(list(proof.reached)) == iterations
-#
-#
-#  def test_parallel_multiple_proofs() -> None:
-#      prover = TreeExploreProver()
-#      proofs = {f'proof{i}': TreeExploreProof(0, 9, SIMPLE_TREE, set()) for i in range(3)}
-#      provers_map = {f'proof{i}': prover for i in range(3)}
-#      results = prove_parallel(
-#          proofs,
-#          provers_map,
-#          max_workers=4,
-#      )
-#      assert len(list(results)) == 3
-#      for proof in proofs.values():
-#          assert len(list(prover.steps(proof))) == 0
-#      for result in results:
-#          assert result.status == ProofStatus.PASSED
+def test_parallel_fail() -> None:
+    prover = TreeExploreProver()
+    proof = TreeExploreProof(0, 9, SIMPLE_TREE, {6})
+    results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2)
+    assert len(list(results)) == 1
+    assert len(list(prover.steps(proof))) == 0
+    assert list(results)[0].status == ProofStatus.FAILED
+
+
+def test_parallel_multiple_proofs() -> None:
+    prover = TreeExploreProver()
+    proofs = {f'proof{i}': TreeExploreProof(0, 9, SIMPLE_TREE, set()) for i in range(3)}
+    provers_map = {f'proof{i}': prover for i in range(3)}
+    results = prove_parallel(
+        proofs,
+        provers_map,
+        max_workers=4,
+    )
+    assert len(list(results)) == 3
+    for proof in proofs.values():
+        assert len(list(prover.steps(proof))) == 0
+    for result in results:
+        assert result.status == ProofStatus.PASSED

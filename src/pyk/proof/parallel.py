@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from multiprocessing import Process, Queue
-from typing import TYPE_CHECKING, Generic, TypeVar
+from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from pyk.proof.proof import ProofStatus
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
+    from concurrent.futures import Executor, Future
 
 
 P = TypeVar('P', bound='Proof')
 U = TypeVar('U')
-D = TypeVar('D', bound='ProcessData')
 
 
 class Prover(ABC, Generic[P, U]):
@@ -66,16 +66,6 @@ class Proof(ABC):
         ...
 
 
-class ProcessData(ABC):
-    @abstractmethod
-    def init(self) -> None:
-        ...
-
-    @abstractmethod
-    def cleanup(self) -> None:
-        ...
-
-
 class ProofStep(ABC, Generic[U]):
     """
     Should be a description of a computation needed to make progress on a `Proof`.
@@ -100,64 +90,54 @@ def prove_parallel(
     provers: Mapping[str, Prover],
     max_workers: int,
 ) -> Iterable[Proof]:
+    pending: dict[Future[Any], str] = {}
     explored: set[tuple[str, ProofStep]] = set()
 
-    in_queue: Queue = Queue()
-    out_queue: Queue = Queue()
-
-    pending_jobs: int = 0
-
-    def run_process() -> None:
-        while True:
-            dequeued = in_queue.get()
-            if dequeued == 0:
-                break
-            proof_id, proof_step = dequeued
-            update = proof_step.exec()
-            out_queue.put((proof_id, update))
-
-    def submit(proof_id: str) -> None:
+    def submit(proof_id: str, pool: Executor) -> None:
         proof = proofs[proof_id]
         prover = provers[proof_id]
         for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
             if (proof_id, step) in explored:
                 continue
             explored.add((proof_id, step))
-            in_queue.put((proof_id, step))
-            nonlocal pending_jobs
-            pending_jobs += 1
+            future = pool.submit(step.exec)  # <-- schedule steps for execution
+            pending[future] = proof_id
 
-    processes = [Process(target=run_process) for _ in range(max_workers)]
-    for process in processes:
-        process.start()
+    with ProcessPoolExecutor(max_workers=max_workers) as pool:
+        for proof_id in proofs:
+            submit(proof_id, pool)
 
-    for proof_id in proofs.keys():
-        submit(proof_id)
+        while pending:
+            done, _ = wait(pending, return_when='FIRST_COMPLETED')
+            future = done.pop()
 
-    while pending_jobs > 0:
-        proof_id, update = out_queue.get()
-        pending_jobs -= 1
+            proof_id = pending[future]
+            proof = proofs[proof_id]
+            prover = provers[proof_id]
+            try:
+                update = future.result()
+            except CancelledError as err:
+                raise RuntimeError(f'Task was cancelled for proof {proof_id}') from err
+            except TimeoutError as err:
+                raise RuntimeError(
+                    f"Future for proof {proof_id} was not finished executing and timed out. This shouldn't happen since this future was already waited on."
+                ) from err
+            except Exception as err:
+                raise RuntimeError('Exception was raised in ProofStep.exec() for proof {proof_id}.') from err
 
-        proof = proofs[proof_id]
-        prover = provers[proof_id]
+            prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
 
-        prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+            match proof.status:
+                # terminate on first failure, yield partial results, etc.
+                case ProofStatus.FAILED:
+                    ...
+                case ProofStatus.PENDING:
+                    if not list(prover.steps(proof)):
+                        raise ValueError('Prover violated expectation. status is pending with no further steps.')
+                case ProofStatus.PASSED:
+                    if list(prover.steps(proof)):
+                        raise ValueError('Prover violated expectation. status is passed with further steps.')
 
-        match proof.status:
-            # terminate on first failure, yield partial results, etc.
-            case ProofStatus.FAILED:
-                ...
-            case ProofStatus.PENDING:
-                assert len(list(prover.steps(proof))) > 0
-            case ProofStatus.PASSED:
-                assert len(list(prover.steps(proof))) == 0
-
-        submit(proof_id)
-
-    for _ in range(max_workers):
-        in_queue.put(0)
-
-    for process in processes:
-        process.join()
-
+            submit(proof_id, pool)
+            pending.pop(future)
     return proofs.values()
