@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
 from typing import TYPE_CHECKING, Any, Generic, TypeVar
@@ -85,6 +86,13 @@ class ProofStep(ABC, Generic[U]):
         ...
 
 
+def run_job(step: ProofStep) -> Any:
+    init_process_time = time.time_ns()
+    result = step.exec()
+    process_time = time.time_ns() - init_process_time
+    return (result, process_time)
+
+
 def prove_parallel(
     proofs: Mapping[str, Proof],
     provers: Mapping[str, Prover],
@@ -93,14 +101,25 @@ def prove_parallel(
     pending: dict[Future[Any], str] = {}
     explored: set[tuple[str, ProofStep]] = set()
 
+    total_commit_time = 0
+    total_steps_time = 0
+    total_process_time = 0
+    total_time = 0
+
+    total_init_time = time.time_ns()
+
     def submit(proof_id: str, pool: Executor) -> None:
         proof = proofs[proof_id]
         prover = provers[proof_id]
-        for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
+        steps_init_time = time.time_ns()
+        steps = prover.steps(proof)
+        nonlocal total_steps_time
+        total_steps_time += time.time_ns() - steps_init_time
+        for step in steps:  # <-- get next steps (represented by e.g. pending nodes, ...)
             if (proof_id, step) in explored:
                 continue
             explored.add((proof_id, step))
-            future = pool.submit(step.exec)  # <-- schedule steps for execution
+            future = pool.submit(run_job, step)  # <-- schedule steps for execution
             pending[future] = proof_id
 
     with ProcessPoolExecutor(max_workers=max_workers) as pool:
@@ -115,7 +134,7 @@ def prove_parallel(
             proof = proofs[proof_id]
             prover = provers[proof_id]
             try:
-                update = future.result()
+                update, process_time = future.result()
             except CancelledError as err:
                 raise RuntimeError(f'Task was cancelled for proof {proof_id}') from err
             except TimeoutError as err:
@@ -125,19 +144,35 @@ def prove_parallel(
             except Exception as err:
                 raise RuntimeError('Exception was raised in ProofStep.exec() for proof {proof_id}.') from err
 
+            total_process_time += process_time
+
+            commit_init_time = time.time_ns()
             prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+            total_commit_time += time.time_ns() - commit_init_time
 
             match proof.status:
                 # terminate on first failure, yield partial results, etc.
                 case ProofStatus.FAILED:
                     ...
                 case ProofStatus.PENDING:
+                    steps_init_time = time.time_ns()
                     if not list(prover.steps(proof)):
                         raise ValueError('Prover violated expectation. status is pending with no further steps.')
+                    total_steps_time += time.time_ns() - steps_init_time
                 case ProofStatus.PASSED:
+                    steps_init_time = time.time_ns()
                     if list(prover.steps(proof)):
                         raise ValueError('Prover violated expectation. status is passed with further steps.')
+                    total_steps_time += time.time_ns() - steps_init_time
 
             submit(proof_id, pool)
             pending.pop(future)
+
+    total_time = time.time_ns() - total_init_time
+
+    print(f'total time: {total_time / 1000000000}')
+    print(f'steps time: {total_steps_time / 1000000000}')
+    print(f'commit time: {total_commit_time / 1000000000}')
+    print(f'process time: {total_process_time / 1000000000}')
+
     return proofs.values()
