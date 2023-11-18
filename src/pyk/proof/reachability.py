@@ -1076,7 +1076,7 @@ class APRProofExtendResult(APRProofResult):
 class APRProofSubsumeResult(APRProofResult):
     node_id: int
     subsume_node_id: int
-    csubst: CSubst
+    csubst: CSubst | None
 
 
 class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
@@ -1155,6 +1155,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
             trace_rewrites=self.trace_rewrites,
         )
         self.prover = APRProver(proof=proof, kcfg_explore=self.kcfg_explore)
+        self.prover._check_all_terminals()
 
     def __del__(self) -> None:
         self.client.close()
@@ -1175,6 +1176,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
                 if self.prover.nonzero_depth(pending_node)
                 else self.prover.dependencies_module_name
             )
+
             steps.append(
                 APRProofStep(
                     cterm=pending_node.cterm,
@@ -1192,6 +1194,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
                     trace_rewrites=self.trace_rewrites,
                     bug_report=self.bug_report,
                     bug_report_id=self.bug_report_id,
+                    is_terminal=(self.kcfg_explore.kcfg_semantics.is_terminal(pending_node.cterm)),
+                    target_is_terminal=(proof.target not in proof._terminal),
                 )
             )
         return steps
@@ -1204,18 +1208,28 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         Steps for a proof `proof` can have their results submitted any time after they are made available by `self.steps(proof)`, including in any order and multiple times, and the Prover must be able to handle this.
         """
 
+        self.prover._check_all_terminals()
+
         # Extend proof as per `update`
         if type(update) is APRProofExtendResult:
             node = proof.kcfg.node(update.node_id)
 
-            if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
-                proof._terminal.add(node.id)
-            else:
-                self.kcfg_explore.extend_kcfg(
-                    extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
-                )
+#              if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
+#                  proof._terminal.add(node.id)
+#              else:
+#                  self.kcfg_explore.extend_kcfg(
+#                      extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
+#                  )
+            self.kcfg_explore.extend_kcfg(
+                extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
+            )
         elif type(update) is APRProofSubsumeResult:
-            proof.kcfg.create_cover(update.node_id, proof.target, csubst=update.csubst)
+            if update.csubst is None:
+                proof._terminal.add(update.node_id)
+            else:
+                proof.kcfg.create_cover(update.node_id, proof.target, csubst=update.csubst)
+
+#          self.prover._check_all_terminals()
 
         if proof.failed:
             self.prover.save_failure_info()
@@ -1296,6 +1310,8 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
     execute_depth: int | None
     cut_point_rules: Iterable[str]
     terminal_rules: Iterable[str]
+    is_terminal: bool
+    target_is_terminal: bool
 
     bug_report: BugReport | None
     bug_report_id: str | None
@@ -1329,9 +1345,10 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
                 trace_rewrites=self.trace_rewrites,
             )
 
-            csubst = kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
-            if csubst is not None:
-                return APRProofSubsumeResult(node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst)
+            if self.is_terminal or self.target_is_terminal:
+                csubst = kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
+                if csubst is not None or self.is_terminal:
+                    return APRProofSubsumeResult(node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst)
 
             result = kcfg_explore.extend_cterm(
                 self.cterm,
