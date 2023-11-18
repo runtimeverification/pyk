@@ -1213,13 +1213,6 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         # Extend proof as per `update`
         if type(update) is APRProofExtendResult:
             node = proof.kcfg.node(update.node_id)
-
-#              if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
-#                  proof._terminal.add(node.id)
-#              else:
-#                  self.kcfg_explore.extend_kcfg(
-#                      extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
-#                  )
             self.kcfg_explore.extend_kcfg(
                 extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
             )
@@ -1228,8 +1221,6 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
                 proof._terminal.add(update.node_id)
             else:
                 proof.kcfg.create_cover(update.node_id, proof.target, csubst=update.csubst)
-
-#          self.prover._check_all_terminals()
 
         if proof.failed:
             self.prover.save_failure_info()
@@ -1348,7 +1339,9 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
             if self.is_terminal or self.target_is_terminal:
                 csubst = kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
                 if csubst is not None or self.is_terminal:
-                    return APRProofSubsumeResult(node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst)
+                    return APRProofSubsumeResult(
+                        node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst
+                    )
 
             result = kcfg_explore.extend_cterm(
                 self.cterm,
