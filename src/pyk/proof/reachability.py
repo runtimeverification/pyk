@@ -3,15 +3,18 @@ from __future__ import annotations
 import graphlib
 import json
 import logging
+import time
+from abc import ABC
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pyk.kore.rpc import LogEntry
+import pyk.proof.parallel as parallel
+from pyk.kore.rpc import KoreClient, KoreExecLogFormat, LogEntry, kore_server
 
 from ..kast.inner import KInner, KRewrite, KSort, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KClaim
-from ..kcfg import KCFG
+from ..kcfg import KCFG, KCFGExplore
 from ..kcfg.exploration import KCFGExploration
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
@@ -24,9 +27,13 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    from ..cterm import CTerm
+    from pyk.kcfg.semantics import KCFGSemantics
+    from pyk.kore.rpc import KoreServer
+    from pyk.utils import BugReport
+
+    from ..cterm import CSubst, CTerm
     from ..kast.outer import KDefinition, KFlatModuleList
-    from ..kcfg import KCFGExplore
+    from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
 
@@ -35,7 +42,7 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class APRProof(Proof, KCFGExploration):
+class APRProof(Proof, KCFGExploration, parallel.Proof):
     """APRProof and APRProver implement all-path reachability logic,
     as introduced by A. Stefanescu and others in their paper 'All-Path Reachability Logic':
     https://doi.org/10.23638/LMCS-15(2:5)2019
@@ -1053,3 +1060,324 @@ class APRBMCSummary(ProofSummary):
             f'    bounded: {self.bounded}',
             f'Subproofs: {self.subproofs}',
         ]
+
+
+@dataclass(frozen=True)
+class APRProofResult(ABC):
+    cterm_implies_time: int
+    extend_cterm_time: int
+
+
+@dataclass(frozen=True)
+class APRProofExtendResult(APRProofResult):
+    extend_result: ExtendResult
+    node_id: int
+
+
+@dataclass(frozen=True)
+class APRProofSubsumeResult(APRProofResult):
+    node_id: int
+    subsume_node_id: int
+    csubst: CSubst | None
+
+
+@dataclass(frozen=True)
+class APRProofProcessData(parallel.ProcessData):
+    kprint: KPrint
+    kcfg_semantics: KCFGSemantics | None
+
+
+class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProcessData]):
+    prover: APRProver
+    server: KoreServer
+    kcfg_explore: KCFGExplore
+
+    execute_depth: int | None
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
+
+    kprint: KPrint
+    kcfg_semantics: KCFGSemantics | None
+    id: str | None
+    trace_rewrites: bool
+
+    bug_report: BugReport | None
+    bug_report_id: str | None
+
+    total_cterm_implies_time: int
+    total_cterm_extend_time: int
+
+    def __init__(
+        self,
+        proof: APRProof,
+        module_name: str,
+        definition_dir: str | Path,
+        execute_depth: int | None,
+        kprint: KPrint,
+        kcfg_semantics: KCFGSemantics | None,
+        id: str | None,
+        trace_rewrites: bool,
+        cut_point_rules: Iterable[str],
+        terminal_rules: Iterable[str],
+        bug_report_id: str | None,
+        llvm_definition_dir: Path | None = None,
+        command: str | Iterable[str] | None = None,
+        bug_report: BugReport | None = None,
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        smt_tactic: str | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ) -> None:
+        self.execute_depth = execute_depth
+        self.cut_point_rules = cut_point_rules
+        self.terminal_rules = terminal_rules
+        self.kprint = kprint
+        self.kcfg_semantics = kcfg_semantics
+        self.id = id
+        self.trace_rewrites = trace_rewrites
+        self.bug_report = bug_report
+        self.bug_report_id = bug_report_id
+        self.total_cterm_extend_time = 0
+        self.total_cterm_implies_time = 0
+        self.server = kore_server(
+            definition_dir=definition_dir,
+            llvm_definition_dir=llvm_definition_dir,
+            module_name=module_name,
+            command=command,
+            bug_report=bug_report,
+            smt_timeout=smt_timeout,
+            smt_retry_limit=smt_retry_limit,
+            smt_tactic=smt_tactic,
+            haskell_log_format=haskell_log_format,
+            haskell_log_entries=haskell_log_entries,
+            log_axioms_file=log_axioms_file,
+        )
+        self.client = KoreClient(
+            host='localhost',
+            port=self.server.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
+        )
+        self.kcfg_explore = KCFGExplore(
+            kprint=self.kprint,
+            kore_client=self.client,
+            kcfg_semantics=self.kcfg_semantics,
+            id=self.id,
+            trace_rewrites=self.trace_rewrites,
+        )
+        self.prover = APRProver(proof=proof, kcfg_explore=self.kcfg_explore)
+        self.prover._check_all_terminals()
+
+    def __del__(self) -> None:
+        self.client.close()
+        self.server.close()
+
+    def steps(self, proof: APRProof) -> Iterable[APRProofStep]:
+        """
+        Return a list of `ProofStep[U]` which represents all the computation jobs as defined by `ProofStep`, which have not yet been computed and committed, and are available given the current state of `proof`. Note that this is a requirement which is not enforced by the type system.
+        If `steps()` or `commit()` has been called on a proof `proof`, `steps()` may never again be called on `proof`.
+        Must not modify `self` or `proof`.
+        The output of this function must only change with calls to `self.commit()`.
+        """
+        steps: list[APRProofStep] = []
+        target_node = proof.kcfg.node(proof.target)
+        for pending_node in proof.pending:
+            module_name = (
+                self.prover.circularities_module_name
+                if self.prover.nonzero_depth(pending_node)
+                else self.prover.dependencies_module_name
+            )
+
+            steps.append(
+                APRProofStep(
+                    cterm=pending_node.cterm,
+                    node_id=pending_node.id,
+                    module_name=module_name,
+                    target_cterm=target_node.cterm,
+                    target_node_id=target_node.id,
+                    port=self.server.port,
+                    execute_depth=self.execute_depth,
+                    terminal_rules=self.terminal_rules,
+                    cut_point_rules=self.cut_point_rules,
+                    #                      kprint=self.kprint,
+                    #                      kcfg_semantics=self.kcfg_semantics,
+                    id=self.id,
+                    trace_rewrites=self.trace_rewrites,
+                    bug_report=self.bug_report,
+                    bug_report_id=self.bug_report_id,
+                    is_terminal=(self.kcfg_explore.kcfg_semantics.is_terminal(pending_node.cterm)),
+                    target_is_terminal=(proof.target not in proof._terminal),
+                )
+            )
+        return steps
+
+    def commit(self, proof: APRProof, update: APRProofResult) -> None:
+        """
+        Should update `proof` according to `update`.
+        If `steps()` or `commit()` has been called on a proof `proof`, `commit()` may never again be called on `proof`.
+        Must only be called with an `update` that was returned by `step.execute()` where `step` was returned by `self.steps(proof)`.
+        Steps for a proof `proof` can have their results submitted any time after they are made available by `self.steps(proof)`, including in any order and multiple times, and the Prover must be able to handle this.
+        """
+
+        self.prover._check_all_terminals()
+
+        self.total_cterm_extend_time += update.extend_cterm_time
+        self.total_cterm_implies_time += update.cterm_implies_time
+
+        # Extend proof as per `update`
+        if type(update) is APRProofExtendResult:
+            node = proof.kcfg.node(update.node_id)
+            self.kcfg_explore.extend_kcfg(
+                extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
+            )
+        elif type(update) is APRProofSubsumeResult:
+            if update.csubst is None:
+                proof._terminal.add(update.node_id)
+            else:
+                proof.kcfg.create_cover(update.node_id, proof.target, csubst=update.csubst)
+
+        if proof.failed:
+            self.prover.save_failure_info()
+
+        proof.write_proof_data()
+
+
+class ParallelAPRBMCProver(ParallelAPRProver):
+    def __init__(
+        self,
+        proof: APRBMCProof,
+        module_name: str,
+        definition_dir: str | Path,
+        execute_depth: int | None,
+        kprint: KPrint,
+        kcfg_semantics: KCFGSemantics | None,
+        id: str | None,
+        trace_rewrites: bool,
+        cut_point_rules: Iterable[str],
+        terminal_rules: Iterable[str],
+        bug_report_id: str | None,
+        llvm_definition_dir: Path | None = None,
+        command: str | Iterable[str] | None = None,
+        bug_report: BugReport | None = None,
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        smt_tactic: str | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ) -> None:
+        self.execute_depth = execute_depth
+        self.cut_point_rules = cut_point_rules
+        self.terminal_rules = terminal_rules
+        self.kprint = kprint
+        self.kcfg_semantics = kcfg_semantics
+        self.id = id
+        self.trace_rewrites = trace_rewrites
+        self.bug_report = bug_report
+        self.bug_report_id = bug_report_id
+        self.server = kore_server(
+            definition_dir=definition_dir,
+            llvm_definition_dir=llvm_definition_dir,
+            module_name=module_name,
+            command=command,
+            bug_report=bug_report,
+            smt_timeout=smt_timeout,
+            smt_retry_limit=smt_retry_limit,
+            smt_tactic=smt_tactic,
+            haskell_log_format=haskell_log_format,
+            haskell_log_entries=haskell_log_entries,
+            log_axioms_file=log_axioms_file,
+        )
+        self.client = KoreClient(
+            host='localhost',
+            port=self.server.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
+        )
+        self.kcfg_explore = KCFGExplore(
+            kprint=self.kprint,
+            kore_client=self.client,
+            kcfg_semantics=self.kcfg_semantics,
+            id=self.id,
+            trace_rewrites=self.trace_rewrites,
+        )
+        self.prover = APRBMCProver(proof=proof, kcfg_explore=self.kcfg_explore)
+
+
+@dataclass(frozen=True, eq=True)
+class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
+    cterm: CTerm
+    node_id: int
+    module_name: str
+    target_cterm: CTerm
+    target_node_id: int
+    port: int
+    execute_depth: int | None
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
+    is_terminal: bool
+    target_is_terminal: bool
+
+    bug_report: BugReport | None
+    bug_report_id: str | None
+
+    id: str | None
+    trace_rewrites: bool
+
+    def __hash__(self) -> int:
+        return hash((self.cterm, self.node_id))
+
+    def exec(self, data: APRProofProcessData) -> APRProofResult:
+        """
+        Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
+        Allowed to be nondeterministic.
+        Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
+        """
+
+        with KoreClient(
+            host='localhost',
+            port=self.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
+        ) as client:
+            kcfg_explore = KCFGExplore(
+                kprint=data.kprint,
+                kore_client=client,
+                kcfg_semantics=data.kcfg_semantics,
+                id=self.id,
+                trace_rewrites=self.trace_rewrites,
+            )
+
+            cterm_implies_time = 0
+            extend_cterm_time = 0
+
+            if self.is_terminal or self.target_is_terminal:
+                init_cterm_implies_time = time.time_ns()
+                csubst = kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
+                cterm_implies_time = time.time_ns() - init_cterm_implies_time
+                if csubst is not None or self.is_terminal:
+                    return APRProofSubsumeResult(
+                        node_id=self.node_id,
+                        subsume_node_id=self.target_node_id,
+                        csubst=csubst,
+                        cterm_implies_time=cterm_implies_time,
+                        extend_cterm_time=extend_cterm_time,
+                    )
+
+            init_extend_cterm_time = time.time_ns()
+            result = kcfg_explore.extend_cterm(
+                self.cterm,
+                module_name=self.module_name,
+                execute_depth=self.execute_depth,
+                terminal_rules=self.terminal_rules,
+                cut_point_rules=self.cut_point_rules,
+            )
+            extend_cterm_time = init_extend_cterm_time - time.time_ns()
+            return APRProofExtendResult(
+                extend_result=result,
+                node_id=self.node_id,
+                cterm_implies_time=cterm_implies_time,
+                extend_cterm_time=extend_cterm_time,
+            )
