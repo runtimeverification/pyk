@@ -1374,7 +1374,7 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 terminal_rules=self.terminal_rules,
                 cut_point_rules=self.cut_point_rules,
             )
-            extend_cterm_time = init_extend_cterm_time - time.time_ns()
+            extend_cterm_time = time.time_ns() - init_extend_cterm_time
             return APRProofExtendResult(
                 extend_result=result,
                 node_id=self.node_id,
