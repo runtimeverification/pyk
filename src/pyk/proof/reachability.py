@@ -3,6 +3,7 @@ from __future__ import annotations
 import graphlib
 import json
 import logging
+import time
 from abc import ABC
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -1063,7 +1064,8 @@ class APRBMCSummary(ProofSummary):
 
 @dataclass(frozen=True)
 class APRProofResult(ABC):
-    ...
+    cterm_implies_time: int
+    extend_cterm_time: int
 
 
 @dataclass(frozen=True)
@@ -1095,6 +1097,9 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
 
     bug_report: BugReport | None
     bug_report_id: str | None
+
+    total_cterm_implies_time: int
+    total_cterm_extend_time: int
 
     def __init__(
         self,
@@ -1128,6 +1133,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         self.trace_rewrites = trace_rewrites
         self.bug_report = bug_report
         self.bug_report_id = bug_report_id
+        self.total_cterm_extend_time = 0
+        self.total_cterm_implies_time = 0
         self.server = kore_server(
             definition_dir=definition_dir,
             llvm_definition_dir=llvm_definition_dir,
@@ -1209,6 +1216,9 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
         """
 
         self.prover._check_all_terminals()
+
+        self.total_cterm_extend_time += update.extend_cterm_time
+        self.total_cterm_implies_time += update.cterm_implies_time
 
         # Extend proof as per `update`
         if type(update) is APRProofExtendResult:
@@ -1336,13 +1346,23 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
                 trace_rewrites=self.trace_rewrites,
             )
 
+            cterm_implies_time = 0
+            extend_cterm_time = 0
+
             if self.is_terminal or self.target_is_terminal:
+                init_cterm_implies_time = time.time_ns()
                 csubst = kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
+                cterm_implies_time = time.time_ns() - init_cterm_implies_time
                 if csubst is not None or self.is_terminal:
                     return APRProofSubsumeResult(
-                        node_id=self.node_id, subsume_node_id=self.target_node_id, csubst=csubst
+                        node_id=self.node_id,
+                        subsume_node_id=self.target_node_id,
+                        csubst=csubst,
+                        cterm_implies_time=cterm_implies_time,
+                        extend_cterm_time=extend_cterm_time,
                     )
 
+            init_extend_cterm_time = time.time_ns()
             result = kcfg_explore.extend_cterm(
                 self.cterm,
                 module_name=self.module_name,
@@ -1350,4 +1370,10 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
                 terminal_rules=self.terminal_rules,
                 cut_point_rules=self.cut_point_rules,
             )
-            return APRProofExtendResult(result, self.node_id)
+            extend_cterm_time = init_extend_cterm_time - time.time_ns()
+            return APRProofExtendResult(
+                extend_result=result,
+                node_id=self.node_id,
+                cterm_implies_time=cterm_implies_time,
+                extend_cterm_time=extend_cterm_time,
+            )
