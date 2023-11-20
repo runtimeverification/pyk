@@ -1081,7 +1081,13 @@ class APRProofSubsumeResult(APRProofResult):
     csubst: CSubst | None
 
 
-class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
+@dataclass(frozen=True)
+class APRProofProcessData(parallel.ProcessData):
+    kprint: KPrint
+    kcfg_semantics: KCFGSemantics | None
+
+
+class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProcessData]):
     prover: APRProver
     server: KoreServer
     kcfg_explore: KCFGExplore
@@ -1195,8 +1201,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult]):
                     execute_depth=self.execute_depth,
                     terminal_rules=self.terminal_rules,
                     cut_point_rules=self.cut_point_rules,
-                    kprint=self.kprint,
-                    kcfg_semantics=self.kcfg_semantics,
+                    #                      kprint=self.kprint,
+                    #                      kcfg_semantics=self.kcfg_semantics,
                     id=self.id,
                     trace_rewrites=self.trace_rewrites,
                     bug_report=self.bug_report,
@@ -1301,7 +1307,7 @@ class ParallelAPRBMCProver(ParallelAPRProver):
 
 
 @dataclass(frozen=True, eq=True)
-class APRProofStep(parallel.ProofStep[APRProofResult]):
+class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     cterm: CTerm
     node_id: int
     module_name: str
@@ -1317,15 +1323,13 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
     bug_report: BugReport | None
     bug_report_id: str | None
 
-    kprint: KPrint
-    kcfg_semantics: KCFGSemantics | None
     id: str | None
     trace_rewrites: bool
 
     def __hash__(self) -> int:
         return hash((self.cterm, self.node_id))
 
-    def exec(self) -> APRProofResult:
+    def exec(self, data: APRProofProcessData) -> APRProofResult:
         """
         Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
         Allowed to be nondeterministic.
@@ -1339,9 +1343,9 @@ class APRProofStep(parallel.ProofStep[APRProofResult]):
             bug_report_id=self.bug_report_id,
         ) as client:
             kcfg_explore = KCFGExplore(
-                kprint=self.kprint,
+                kprint=data.kprint,
                 kore_client=client,
-                kcfg_semantics=self.kcfg_semantics,
+                kcfg_semantics=data.kcfg_semantics,
                 id=self.id,
                 trace_rewrites=self.trace_rewrites,
             )

@@ -7,7 +7,7 @@ import pytest
 
 from pyk.proof.parallel import prove_parallel
 from pyk.proof.proof import ProofStatus
-from pyk.proof.reachability import APRProof, ParallelAPRProver
+from pyk.proof.reachability import APRProof, APRProofProcessData, ParallelAPRProver
 from pyk.testing import KCFGExploreTest, KPrintTest, KProveTest
 from pyk.utils import single
 
@@ -63,6 +63,8 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
+        process_data = APRProofProcessData(kcfg_semantics=self.semantics(kprove.definition), kprint=kprint)
+
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
 
         parallel_prover = ParallelAPRProver(
@@ -84,6 +86,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             proofs={'proof1': proof},
             provers={'proof1': parallel_prover},
             max_workers=2,
+            process_data=process_data,
         )
 
         assert len(list(results)) == 1
