@@ -56,6 +56,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
     failure_info: APRFailureInfo | None
+    checked_for_subsumption: set[int]
 
     def __init__(
         self,
@@ -65,6 +66,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         init: NodeIdLike,
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
+        checked_for_subsumption: set[int] | None = None,
         proof_dir: Path | None = None,
         node_refutations: dict[int, str] | None = None,
         subproof_ids: Iterable[str] = (),
@@ -74,6 +76,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
 
+        self.checked_for_subsumption = checked_for_subsumption if checked_for_subsumption is not None else set()
         self.failure_info = None
         self.init = kcfg._resolve(init)
         self.target = kcfg._resolve(target)
@@ -122,10 +125,10 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return (
             self.kcfg.is_leaf(node_id)
-            and not self.kcfg.is_vacuous(node_id)
-            and (self.is_terminal(node_id) or self.kcfg.is_stuck(node_id))
+            and ((node_id in self.checked_for_subsumption) or self.kcfg.is_stuck(node_id))
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
+            and not self.kcfg.is_vacuous(node_id)
         )
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
@@ -168,6 +171,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         admitted = dct.get('admitted', False)
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
+        checked_for_subsumption = dct['_checked_for_subsumption']
         if 'node_refutation' in dct:
             node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
         if 'logs' in dct:
@@ -187,6 +191,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            checked_for_subsumption=checked_for_subsumption,
         )
 
     @staticmethod
@@ -324,6 +329,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         dct['target'] = self.target
         dct['node_refutations'] = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
         dct['circularity'] = self.circularity
+        dct['checked_for_subsumption'] = list(self.checked_for_subsumption)
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
@@ -367,6 +373,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
+        checked_for_subsumption = proof_dict['checked_for_subsumption']
         node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in proof_dict['node_refutations']}
 
         return APRProof(
@@ -381,6 +388,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            checked_for_subsumption=checked_for_subsumption,
         )
 
     def write_proof_data(self) -> None:
@@ -403,6 +411,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
             self.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
         }
         dct['circularity'] = self.circularity
+        dct['checked_for_subsumption'] = list(self.checked_for_subsumption)
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
 
@@ -429,6 +438,7 @@ class APRBMCProof(APRProof):
         bounded: Iterable[int] | None = None,
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
+        checked_for_subsumption: set[int] | None = None,
         node_refutations: dict[int, str] | None = None,
         circularity: bool = False,
         admitted: bool = False,
@@ -445,6 +455,7 @@ class APRBMCProof(APRProof):
             node_refutations=node_refutations,
             circularity=circularity,
             admitted=admitted,
+            checked_for_subsumption=checked_for_subsumption,
         )
         self.bmc_depth = bmc_depth
         self._bounded = set(bounded) if bounded is not None else set()
@@ -466,6 +477,7 @@ class APRBMCProof(APRProof):
         node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in proof_dict['node_refutations']}
         bounded = proof_dict['bounded']
         bmc_depth = int(proof_dict['bmc_depth'])
+        checked_for_subsumption = {kcfg._resolve(node_id) for node_id in proof_dict['checked_for_subsumption']}
 
         return APRBMCProof(
             id=id,
@@ -481,6 +493,7 @@ class APRBMCProof(APRProof):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            checked_for_subsumption=checked_for_subsumption,
         )
 
     def write_proof_data(self) -> None:
@@ -507,6 +520,7 @@ class APRBMCProof(APRProof):
         dct['terminal'] = sorted(self._terminal)
         dct['bounded'] = sorted(self._bounded)
         dct['bmc_depth'] = self.bmc_depth
+        dct['checked_for_subsumption'] = list(self.checked_for_subsumption)
 
         proof_json.write_text(json.dumps(dct))
         _LOGGER.info(f'Wrote proof data for {self.id}: {proof_json}')
@@ -551,6 +565,7 @@ class APRBMCProof(APRProof):
             logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
+        checked_for_subsumption = {kcfg._resolve(node_id) for node_id in dct['checked_for_subsumption']}
 
         return APRBMCProof(
             id,
@@ -566,6 +581,7 @@ class APRBMCProof(APRProof):
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
             admitted=admitted,
+            checked_for_subsumption=checked_for_subsumption,
         )
 
     @property
@@ -701,6 +717,7 @@ class APRProver(Prover):
             f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
         )
         csubst = self.kcfg_explore.cterm_implies(node.cterm, self.proof.kcfg.node(self.proof.target).cterm)
+        self.proof.checked_for_subsumption.add(node.id)
         if csubst is not None:
             self.proof.kcfg.create_cover(node.id, self.proof.target, csubst=csubst)
             _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}')
@@ -1233,6 +1250,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                 extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
             )
         elif type(update) is APRProofSubsumeResult:
+            proof.checked_for_subsumption.add(update.node_id)
             if update.csubst is None:
                 proof._terminal.add(update.node_id)
             else:
