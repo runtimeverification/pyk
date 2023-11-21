@@ -63,17 +63,16 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
 
-        process_data = APRProofProcessData(kcfg_semantics=self.semantics(kprove.definition), kprint=kprint)
-
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
 
+        semantics = self.semantics(kprove.definition)
         parallel_prover = ParallelAPRProver(
             proof=proof,
             module_name=kprove.main_module,
             definition_dir=kprove.definition_dir,
             execute_depth=1000,
             kprint=kprint,
-            kcfg_semantics=self.semantics(kprove.definition),
+            kcfg_semantics=semantics,
             id=claim_id,
             trace_rewrites=False,
             cut_point_rules=(),
@@ -81,6 +80,8 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             bug_report=None,
             bug_report_id=None,
         )
+
+        process_data = APRProofProcessData(kprint=kprint, kcfg_semantics=semantics)
 
         results = prove_parallel(
             proofs={'proof1': proof},

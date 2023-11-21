@@ -122,10 +122,10 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return (
             self.kcfg.is_leaf(node_id)
-            and not self.is_explorable(node_id)
+            and not self.kcfg.is_vacuous(node_id)
+            and (self.is_terminal(node_id) or self.kcfg.is_stuck(node_id))
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
-            and not self.kcfg.is_vacuous(node_id)
         )
 
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
