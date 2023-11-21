@@ -1098,10 +1098,51 @@ class APRProofSubsumeResult(APRProofResult):
     csubst: CSubst | None
 
 
-@dataclass(frozen=True)
 class APRProofProcessData(parallel.ProcessData):
     kprint: KPrint
     kcfg_semantics: KCFGSemantics | None
+
+    definition_dir: str | Path
+    llvm_definition_dir: Path | None
+    module_name: str
+    command: str | Iterable[str] | None
+    smt_timeout: int | None
+    smt_retry_limit: int | None
+    smt_tactic: str | None
+    haskell_log_format: KoreExecLogFormat
+    haskell_log_entries: Iterable[str]
+    log_axioms_file: Path | None
+
+    kore_servers: dict[str, KoreServer]
+
+    def __init__(
+        self,
+        kprint: KPrint,
+        kcfg_semantics: KCFGSemantics,
+        definition_dir: str | Path,
+        module_name: str,
+        llvm_definition_dir: Path | None = None,
+        command: str | Iterable[str] | None = None,
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        smt_tactic: str | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ) -> None:
+        self.kprint = kprint
+        self.kcfg_semantics = kcfg_semantics
+        self.kore_servers = {}
+        self.definition_dir = definition_dir
+        self.llvm_definition_dir = llvm_definition_dir
+        self.module_name = module_name
+        self.command = command
+        self.smt_timeout = smt_timeout
+        self.smt_retry_limit = smt_retry_limit
+        self.smt_tactic = smt_tactic
+        self.haskell_log_format = haskell_log_format
+        self.haskell_log_entries = haskell_log_entries
+        self.log_axioms_file = log_axioms_file
 
 
 class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProcessData]):
@@ -1209,23 +1250,23 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
 
             steps.append(
                 APRProofStep(
+                    proof_id=proof.id,
                     cterm=pending_node.cterm,
                     node_id=pending_node.id,
                     module_name=module_name,
                     target_cterm=target_node.cterm,
                     target_node_id=target_node.id,
-                    port=self.server.port,
+                    #                      port=self.server.port,
                     execute_depth=self.execute_depth,
                     terminal_rules=self.terminal_rules,
                     cut_point_rules=self.cut_point_rules,
-                    #                      kprint=self.kprint,
-                    #                      kcfg_semantics=self.kcfg_semantics,
                     id=self.id,
                     trace_rewrites=self.trace_rewrites,
                     bug_report=self.bug_report,
                     bug_report_id=self.bug_report_id,
                     is_terminal=(self.kcfg_explore.kcfg_semantics.is_terminal(pending_node.cterm)),
                     target_is_terminal=(proof.target not in proof._terminal),
+                    main_module_name=self.prover.main_module_name,
                 )
             )
         return steps
@@ -1326,17 +1367,20 @@ class ParallelAPRBMCProver(ParallelAPRProver):
 
 @dataclass(frozen=True, eq=True)
 class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
+    proof_id: str
     cterm: CTerm
     node_id: int
     module_name: str
     target_cterm: CTerm
     target_node_id: int
-    port: int
+    #      port: int
     execute_depth: int | None
     cut_point_rules: Iterable[str]
     terminal_rules: Iterable[str]
     is_terminal: bool
     target_is_terminal: bool
+
+    main_module_name: str
 
     bug_report: BugReport | None
     bug_report_id: str | None
@@ -1354,9 +1398,28 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
 
+        init_kcfg_explore = False
+
+        if data.kore_servers.get(self.proof_id) is None:
+            init_kcfg_explore = True
+            data.kore_servers[self.proof_id] = kore_server(
+                definition_dir=data.definition_dir,
+                llvm_definition_dir=data.llvm_definition_dir,
+                module_name=data.module_name,
+                command=data.command,
+                bug_report=self.bug_report,
+                smt_timeout=data.smt_timeout,
+                smt_retry_limit=data.smt_retry_limit,
+                smt_tactic=data.smt_tactic,
+                haskell_log_format=data.haskell_log_format,
+                haskell_log_entries=data.haskell_log_entries,
+                log_axioms_file=data.log_axioms_file,
+            )
+        server = data.kore_servers[self.proof_id]
+
         with KoreClient(
             host='localhost',
-            port=self.port,
+            port=server.port,
             bug_report=self.bug_report,
             bug_report_id=self.bug_report_id,
         ) as client:
@@ -1367,6 +1430,26 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 id=self.id,
                 trace_rewrites=self.trace_rewrites,
             )
+
+            if init_kcfg_explore:
+                #                  dependencies_as_claims: list[KClaim] = [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
+
+                dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
+                kcfg_explore.add_dependencies_module(
+                    self.main_module_name,
+                    dependencies_module_name,
+                    #                      dependencies_as_claims,
+                    [],
+                    priority=1,
+                )
+                circularities_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'
+                kcfg_explore.add_dependencies_module(
+                    self.main_module_name,
+                    circularities_module_name,
+                    #                      dependencies_as_claims + ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []),
+                    [],
+                    priority=1,
+                )
 
             cterm_implies_time = 0
             extend_cterm_time = 0

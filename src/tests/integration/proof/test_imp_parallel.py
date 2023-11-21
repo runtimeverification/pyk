@@ -81,7 +81,12 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             bug_report_id=None,
         )
 
-        process_data = APRProofProcessData(kprint=kprint, kcfg_semantics=semantics)
+        process_data = APRProofProcessData(
+            kprint=kprint,
+            kcfg_semantics=semantics,
+            definition_dir=kprove.definition_dir,
+            module_name=kprove.main_module,
+        )
 
         results = prove_parallel(
             proofs={'proof1': proof},
