@@ -35,7 +35,8 @@ class TreeExploreProof(Proof):
 
 
 class TreeExploreProofProcessData(ProcessData):
-    ...
+    def cleanup(self) -> None:
+        pass
 
 
 @dataclass(frozen=True)

@@ -70,7 +70,9 @@ class Proof(ABC):
 
 
 class ProcessData(ABC):
-    ...
+    @abstractmethod
+    def cleanup(self) -> None:
+        ...
 
 
 class ProofStep(ABC, Generic[U, D]):
@@ -120,6 +122,7 @@ def prove_parallel(
             proof_id, proof_step = dequeued
             update = proof_step.exec(data)
             out_queue.put((proof_id, update))
+        data.cleanup()
 
     def submit(proof_id: str) -> None:
         proof = proofs[proof_id]

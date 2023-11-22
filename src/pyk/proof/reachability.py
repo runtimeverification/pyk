@@ -1144,6 +1144,10 @@ class APRProofProcessData(parallel.ProcessData):
         self.haskell_log_entries = haskell_log_entries
         self.log_axioms_file = log_axioms_file
 
+    def cleanup(self) -> None:
+        for server in self.kore_servers.values():
+            server.close()
+
 
 class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProcessData]):
     prover: APRProver
