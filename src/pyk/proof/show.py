@@ -40,6 +40,8 @@ class APRProofNodePrinter(NodePrinter):
             attrs.append('terminal')
             if 'stuck' in attrs:
                 attrs.remove('stuck')
+        if node.id in self.proof.checked_for_subsumption:
+            attrs.append('checked')
         return attrs
 
 
