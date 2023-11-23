@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from functools import cached_property
 from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, final
 
-from ..cli.utils import check_dir_path, check_file_path
+from ..utils import check_dir_path, check_file_path
 from .parser import KoreParser
 from .syntax import DV, ML_SYMBOL_DECLS, App, MLPattern, MLQuant, SortApp, SortVar, WithSort
 
@@ -22,37 +21,30 @@ _LOGGER: Final = logging.getLogger(__name__)
 @final
 @dataclass(frozen=True)
 class KompiledKore:
-    path: Path
-    timestamp: int
+    sort_table: KoreSortTable
+    symbol_table: KoreSymbolTable
 
-    def __init__(self, definition_dir: str | Path):
+    @staticmethod
+    def load(definition_dir: str | Path) -> KompiledKore:
         definition_dir = Path(definition_dir)
         check_dir_path(definition_dir)
+        kore_file = definition_dir / 'definition.kore'
+        check_file_path(kore_file)
 
-        path = (definition_dir / 'definition.kore').resolve()
-        check_file_path(path)
+        _LOGGER.info(f'Reading kore definition: {kore_file}')
+        kore_text = kore_file.read_text()
 
-        timestamp_file = definition_dir / 'timestamp'
-        check_file_path(timestamp_file)
-        timestamp = timestamp_file.stat().st_mtime_ns
+        _LOGGER.info(f'Parsing kore definition: {kore_file}')
+        definition = KoreParser(kore_text).definition()
 
-        object.__setattr__(self, 'path', path)
-        object.__setattr__(self, 'timestamp', timestamp)
+        return KompiledKore.for_definition(definition)
 
-    @cached_property
-    def definition(self) -> Definition:
-        _LOGGER.info(f'Loading kore definition: {self.path}')
-        kore_text = self.path.read_text()
-        _LOGGER.info(f'Parsing kore definition: {self.path}')
-        return KoreParser(kore_text).definition()
-
-    @cached_property
-    def sort_table(self) -> KoreSortTable:
-        return KoreSortTable.for_definition(self.definition)
-
-    @cached_property
-    def symbol_table(self) -> KoreSymbolTable:
-        return KoreSymbolTable.for_definition(self.definition)
+    @staticmethod
+    def for_definition(definition: Definition) -> KompiledKore:
+        return KompiledKore(
+            sort_table=KoreSortTable.for_definition(definition),
+            symbol_table=KoreSymbolTable.for_definition(definition),
+        )
 
     def add_injections(self, pattern: Pattern, sort: Sort | None = None) -> Pattern:
         if sort is None:
