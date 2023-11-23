@@ -2307,15 +2307,17 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
 class KoreSymbolTable:
     _definition: Definition
+    _symbol_table: dict[str, SymbolDecl]
 
     def __init__(self, definition: Definition):
         self._definition = definition
+        self._symbol_table = self.__symbol_table()
 
     @staticmethod
     def for_definition(definition: Definition) -> KoreSymbolTable:
         return KoreSymbolTable(definition)
 
-    def _symbol_table(self) -> dict[str, SymbolDecl]:
+    def __symbol_table(self) -> dict[str, SymbolDecl]:
         return {
             symbol_decl.symbol.name: symbol_decl for module in self._definition for symbol_decl in module.symbol_decls
         }
@@ -2323,7 +2325,7 @@ class KoreSymbolTable:
     @cached_property
     def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
         ml_symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in ML_SYMBOL_DECLS}
-        return FrozenDict({**ml_symbol_table, **self._symbol_table()})
+        return FrozenDict({**ml_symbol_table, **self._symbol_table})
 
 
 def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
