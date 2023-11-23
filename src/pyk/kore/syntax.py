@@ -1960,6 +1960,27 @@ class SymbolDecl(Sentence):
         output.write(']')
 
 
+def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
+    S = SortVar('S')  # noqa: N806
+    T = SortVar('T')  # noqa: N806
+    return (
+        SymbolDecl(Symbol(r'\top', (S,)), (), S),
+        SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
+        SymbolDecl(Symbol(r'\not', (S,)), (S,), S),
+        SymbolDecl(Symbol(r'\and', (S,)), (S, S), S),
+        SymbolDecl(Symbol(r'\or', (S,)), (S, S), S),
+        SymbolDecl(Symbol(r'\implies', (S,)), (S, S), S),
+        SymbolDecl(Symbol(r'\iff', (S,)), (S, S), S),
+        SymbolDecl(Symbol(r'\ceil', (S, T)), (S,), T),
+        SymbolDecl(Symbol(r'\floor', (S, T)), (S,), T),
+        SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
+        SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
+    )
+
+
+ML_SYMBOL_DECLS: Final = _ml_symbol_decls()
+
+
 @final
 @dataclass(frozen=True)
 class AliasDecl(Sentence):
@@ -2244,27 +2265,6 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
         for module in self.modules:
             output.write('\n\n')
             module.write(output)
-
-
-def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
-    S = SortVar('S')  # noqa: N806
-    T = SortVar('T')  # noqa: N806
-    return (
-        SymbolDecl(Symbol(r'\top', (S,)), (), S),
-        SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
-        SymbolDecl(Symbol(r'\not', (S,)), (S,), S),
-        SymbolDecl(Symbol(r'\and', (S,)), (S, S), S),
-        SymbolDecl(Symbol(r'\or', (S,)), (S, S), S),
-        SymbolDecl(Symbol(r'\implies', (S,)), (S, S), S),
-        SymbolDecl(Symbol(r'\iff', (S,)), (S, S), S),
-        SymbolDecl(Symbol(r'\ceil', (S, T)), (S,), T),
-        SymbolDecl(Symbol(r'\floor', (S, T)), (S,), T),
-        SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
-        SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
-    )
-
-
-ML_SYMBOL_DECLS: Final = _ml_symbol_decls()
 
 
 def kore_term(dct: Mapping[str, Any], cls: type[T] = Kore) -> T:  # type: ignore
