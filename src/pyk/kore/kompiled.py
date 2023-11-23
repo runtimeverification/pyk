@@ -56,27 +56,9 @@ class KompiledKore:
     def symbol_table(self) -> KoreSymbolTable:
         return KoreSymbolTable.for_definition(self.definition)
 
-    def meet_sorts(self, sort1: Sort, sort2: Sort) -> Sort:
-        if self.sort_table.is_subsort(sort1, sort2):
-            return sort1
-
-        if self.sort_table.is_subsort(sort2, sort1):
-            return sort2
-
-        subsorts1 = set(self.sort_table._subsort_table.get(sort1, set())).union({sort1})
-        subsorts2 = set(self.sort_table._subsort_table.get(sort2, set())).union({sort2})
-        common_subsorts = subsorts1.intersection(subsorts2)
-        if not common_subsorts:
-            raise ValueError(f'Sorts have no common subsort: {sort1}, {sort2}')
-        nr_subsorts = {sort: len(self.sort_table._subsort_table.get(sort, {})) for sort in common_subsorts}
-        max_subsort_nr = max(n for _, n in nr_subsorts.items())
-        max_subsorts = {sort for sort, n in nr_subsorts.items() if n == max_subsort_nr}
-        (subsort,) = max_subsorts
-        return subsort
-
     def meet_all_sorts(self, sorts: Iterable[Sort]) -> Sort:
         unit: Sort = SortApp('SortK')
-        return reduce(self.meet_sorts, sorts, unit)
+        return reduce(self.sort_table.meet_sorts, sorts, unit)
 
     def add_injections(self, pattern: Pattern, sort: Sort | None = None) -> Pattern:
         if sort is None:
@@ -143,6 +125,24 @@ class KoreSortTable:
             return False
 
         return sort1 in self._subsort_table.get(sort2, frozenset())
+
+    def meet_sorts(self, sort1: Sort, sort2: Sort) -> Sort:
+        if self.is_subsort(sort1, sort2):
+            return sort1
+
+        if self.is_subsort(sort2, sort1):
+            return sort2
+
+        subsorts1 = set(self._subsort_table.get(sort1, set())).union({sort1})
+        subsorts2 = set(self._subsort_table.get(sort2, set())).union({sort2})
+        common_subsorts = subsorts1.intersection(subsorts2)
+        if not common_subsorts:
+            raise ValueError(f'Sorts have no common subsort: {sort1}, {sort2}')
+        nr_subsorts = {sort: len(self._subsort_table.get(sort, {})) for sort in common_subsorts}
+        max_subsort_nr = max(n for _, n in nr_subsorts.items())
+        max_subsorts = {sort for sort, n in nr_subsorts.items() if n == max_subsort_nr}
+        (subsort,) = max_subsorts
+        return subsort
 
 
 class KoreSymbolTable:
