@@ -7,10 +7,11 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
 from io import StringIO
+from itertools import chain
 from typing import TYPE_CHECKING, final
 
 from ..dequote import enquoted
-from ..utils import FrozenDict, check_type
+from ..utils import check_type
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
@@ -2287,16 +2288,16 @@ class KoreSymbolTable:
         self._symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in symbol_decls}
 
     @staticmethod
-    def for_definition(definition: Definition) -> KoreSymbolTable:
-        return KoreSymbolTable(symbol_decl for module in definition for symbol_decl in module.symbol_decls)
-
-    @cached_property
-    def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
-        ml_symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in ML_SYMBOL_DECLS}
-        return FrozenDict({**ml_symbol_table, **self._symbol_table})
+    def for_definition(definition: Definition, *, with_ml_symbols: bool = True) -> KoreSymbolTable:
+        return KoreSymbolTable(
+            chain(
+                (symbol_decl for module in definition for symbol_decl in module.symbol_decls),
+                ML_SYMBOL_DECLS if with_ml_symbols else (),
+            )
+        )
 
     def resolve(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> tuple[Sort, tuple[Sort, ...]]:
-        symbol_decl = self.weak_symbol_table.get(symbol_id)
+        symbol_decl = self._symbol_table.get(symbol_id)
         if not symbol_decl:
             raise ValueError(f'Undeclared symbol: {symbol_id}')
 
