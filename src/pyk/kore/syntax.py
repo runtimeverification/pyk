@@ -2249,13 +2249,8 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
     def _kore_symbol_table(self) -> KoreSymbolTable:
         return KoreSymbolTable.for_definition(self)
 
-    @cached_property
-    def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
-        ml_symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in ML_SYMBOL_DECLS}
-        return FrozenDict({**ml_symbol_table, **self._kore_symbol_table.symbol_table})
-
     def resolve(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> tuple[Sort, tuple[Sort, ...]]:
-        symbol_decl = self.weak_symbol_table.get(symbol_id)
+        symbol_decl = self._kore_symbol_table.weak_symbol_table.get(symbol_id)
         if not symbol_decl:
             raise ValueError(f'Undeclared symbol: {symbol_id}')
 
@@ -2325,6 +2320,11 @@ class KoreSymbolTable:
         return FrozenDict(
             (symbol_decl.symbol.name, symbol_decl) for module in self._definition for symbol_decl in module.symbol_decls
         )
+
+    @cached_property
+    def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
+        ml_symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in ML_SYMBOL_DECLS}
+        return FrozenDict({**ml_symbol_table, **self.symbol_table})
 
 
 def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
