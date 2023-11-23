@@ -2246,6 +2246,10 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
             module.write(output)
 
     @cached_property
+    def _kore_symbol_table(self) -> KoreSymbolTable:
+        return KoreSymbolTable.for_definition(self)
+
+    @cached_property
     def symbol_table(self) -> FrozenDict[str, SymbolDecl]:
         return FrozenDict(
             (symbol_decl.symbol.name, symbol_decl) for module in self for symbol_decl in module.symbol_decls
@@ -2310,6 +2314,17 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
         assert len(sorts) == len(pattern.patterns)
         return sorts
+
+
+class KoreSymbolTable:
+    _definition: Definition
+
+    def __init__(self, definition: Definition):
+        self._definition = definition
+
+    @staticmethod
+    def for_definition(definition: Definition) -> KoreSymbolTable:
+        return KoreSymbolTable(definition)
 
 
 def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
