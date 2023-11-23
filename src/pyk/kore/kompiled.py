@@ -56,23 +56,11 @@ class KompiledKore:
     def symbol_table(self) -> KoreSymbolTable:
         return KoreSymbolTable.for_definition(self.definition)
 
-    def is_subsort(self, sort1: Sort, sort2: Sort) -> bool:
-        if sort1 == sort2:
-            return True
-
-        if sort2 == SortApp('SortK'):
-            return True
-
-        if sort1 == SortApp('SortK'):
-            return False
-
-        return sort1 in self.sort_table._subsort_table.get(sort2, frozenset())
-
     def meet_sorts(self, sort1: Sort, sort2: Sort) -> Sort:
-        if self.is_subsort(sort1, sort2):
+        if self.sort_table.is_subsort(sort1, sort2):
             return sort1
 
-        if self.is_subsort(sort2, sort1):
+        if self.sort_table.is_subsort(sort2, sort1):
             return sort2
 
         subsorts1 = set(self.sort_table._subsort_table.get(sort1, set())).union({sort1})
@@ -104,7 +92,7 @@ class KompiledKore:
         if actual_sort == sort:
             return pattern
 
-        if self.is_subsort(actual_sort, sort):
+        if self.sort_table.is_subsort(actual_sort, sort):
             return App('inj', (actual_sort, sort), (pattern,))
 
         raise ValueError(f'Sort {actual_sort.name} is not a subsort of {sort.name}: {pattern}')
@@ -143,6 +131,18 @@ class KoreSortTable:
                     subsort_table[sort_j].add(sort_i)
 
         return FrozenDict((supersort, frozenset(subsorts)) for supersort, subsorts in subsort_table.items())
+
+    def is_subsort(self, sort1: Sort, sort2: Sort) -> bool:
+        if sort1 == sort2:
+            return True
+
+        if sort2 == SortApp('SortK'):
+            return True
+
+        if sort1 == SortApp('SortK'):
+            return False
+
+        return sort1 in self._subsort_table.get(sort2, frozenset())
 
 
 class KoreSymbolTable:
