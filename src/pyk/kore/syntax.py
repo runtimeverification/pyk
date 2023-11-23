@@ -2253,22 +2253,7 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
     @cached_property
     def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
-        S = SortVar('S')  # noqa: N806
-        T = SortVar('T')  # noqa: N806
-        ml_symbol_decls = (
-            SymbolDecl(Symbol(r'\top', (S,)), (), S),
-            SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
-            SymbolDecl(Symbol(r'\not', (S,)), (S,), S),
-            SymbolDecl(Symbol(r'\and', (S,)), (S, S), S),
-            SymbolDecl(Symbol(r'\or', (S,)), (S, S), S),
-            SymbolDecl(Symbol(r'\implies', (S,)), (S, S), S),
-            SymbolDecl(Symbol(r'\iff', (S,)), (S, S), S),
-            SymbolDecl(Symbol(r'\ceil', (S, T)), (S,), T),
-            SymbolDecl(Symbol(r'\floor', (S, T)), (S,), T),
-            SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
-            SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
-        )
-        ml_symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in ml_symbol_decls}
+        ml_symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in _ml_symbol_decls()}
         return FrozenDict({**ml_symbol_table, **self.symbol_table})
 
     def resolve(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> tuple[Sort, tuple[Sort, ...]]:
@@ -2325,6 +2310,24 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
         assert len(sorts) == len(pattern.patterns)
         return sorts
+
+
+def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
+    S = SortVar('S')  # noqa: N806
+    T = SortVar('T')  # noqa: N806
+    return (
+        SymbolDecl(Symbol(r'\top', (S,)), (), S),
+        SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
+        SymbolDecl(Symbol(r'\not', (S,)), (S,), S),
+        SymbolDecl(Symbol(r'\and', (S,)), (S, S), S),
+        SymbolDecl(Symbol(r'\or', (S,)), (S, S), S),
+        SymbolDecl(Symbol(r'\implies', (S,)), (S, S), S),
+        SymbolDecl(Symbol(r'\iff', (S,)), (S, S), S),
+        SymbolDecl(Symbol(r'\ceil', (S, T)), (S,), T),
+        SymbolDecl(Symbol(r'\floor', (S, T)), (S,), T),
+        SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
+        SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
+    )
 
 
 def kore_term(dct: Mapping[str, Any], cls: type[T] = Kore) -> T:  # type: ignore
