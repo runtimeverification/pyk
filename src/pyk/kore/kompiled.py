@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import cached_property, reduce
+from functools import cached_property
 from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, final
@@ -55,10 +55,6 @@ class KompiledKore:
     @cached_property
     def symbol_table(self) -> KoreSymbolTable:
         return KoreSymbolTable.for_definition(self.definition)
-
-    def meet_all_sorts(self, sorts: Iterable[Sort]) -> Sort:
-        unit: Sort = SortApp('SortK')
-        return reduce(self.sort_table.meet_sorts, sorts, unit)
 
     def add_injections(self, pattern: Pattern, sort: Sort | None = None) -> Pattern:
         if sort is None:
