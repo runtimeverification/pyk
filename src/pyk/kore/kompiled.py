@@ -77,12 +77,12 @@ class KompiledKore:
 class KoreSortTable:
     _subsort_table: dict[Sort, set[Sort]]
 
-    def __init__(self, definition: Definition):
-        self._subsort_table = self._create_subsort_table(self._subsorts_for_definition(definition))
+    def __init__(self, subsorts: Iterable[tuple[Sort, Sort]]):
+        self._subsort_table = self._create_subsort_table(subsorts)
 
     @staticmethod
     def for_definition(definition: Definition) -> KoreSortTable:
-        return KoreSortTable(definition)
+        return KoreSortTable(KoreSortTable._subsorts_for_definition(definition))
 
     @staticmethod
     def _create_subsort_table(subsorts: Iterable[tuple[Sort, Sort]]) -> dict[Sort, set[Sort]]:
