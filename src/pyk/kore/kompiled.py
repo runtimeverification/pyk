@@ -75,11 +75,9 @@ class KompiledKore:
 
 
 class KoreSortTable:
-    _definition: Definition
     _subsort_table: dict[Sort, set[Sort]]
 
     def __init__(self, definition: Definition):
-        self._definition = definition
         self._subsort_table = self.__subsort_table(self._subsorts_for_definition(definition))
 
     @staticmethod
