@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final, final
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..utils import FrozenDict
 from .parser import KoreParser
 from .syntax import DV, ML_SYMBOL_DECLS, App, MLPattern, MLQuant, SortApp, SortVar, WithSort
 
@@ -87,7 +86,7 @@ class KoreSortTable:
         return KoreSortTable(definition)
 
     @cached_property
-    def _subsort_table(self) -> FrozenDict[Sort, frozenset[Sort]]:
+    def _subsort_table(self) -> dict[Sort, set[Sort]]:
         axioms = (axiom for module in self._definition for axiom in module.axioms)
         attrs = (attr for axiom in axioms for attr in axiom.attrs)
         subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
@@ -108,7 +107,7 @@ class KoreSortTable:
                 for sort_i in subsort_table[sort_k]:
                     subsort_table[sort_j].add(sort_i)
 
-        return FrozenDict((supersort, frozenset(subsorts)) for supersort, subsorts in subsort_table.items())
+        return subsort_table
 
     def is_subsort(self, sort1: Sort, sort2: Sort) -> bool:
         if sort1 == sort2:
