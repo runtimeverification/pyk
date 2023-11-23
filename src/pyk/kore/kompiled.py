@@ -56,30 +56,6 @@ class KompiledKore:
     def symbol_table(self) -> KoreSymbolTable:
         return KoreSymbolTable.for_definition(self.definition)
 
-    @cached_property
-    def _subsort_table(self) -> FrozenDict[Sort, frozenset[Sort]]:
-        axioms = (axiom for module in self.definition for axiom in module.axioms)
-        attrs = (attr for axiom in axioms for attr in axiom.attrs)
-        subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
-        subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
-
-        direct_subsorts: dict[Sort, set[Sort]] = defaultdict(set)
-        for subsort, supersort in subsort_attr_sorts:
-            direct_subsorts[supersort].add(subsort)
-
-        supersorts = direct_subsorts.keys()
-
-        subsort_table = dict(direct_subsorts)
-        for sort_k in supersorts:
-            for sort_j in supersorts:
-                if sort_k not in subsort_table[sort_j]:
-                    continue
-
-                for sort_i in subsort_table[sort_k]:
-                    subsort_table[sort_j].add(sort_i)
-
-        return FrozenDict((supersort, frozenset(subsorts)) for supersort, subsorts in subsort_table.items())
-
     def is_subsort(self, sort1: Sort, sort2: Sort) -> bool:
         if sort1 == sort2:
             return True
@@ -90,7 +66,7 @@ class KompiledKore:
         if sort1 == SortApp('SortK'):
             return False
 
-        return sort1 in self._subsort_table.get(sort2, frozenset())
+        return sort1 in self.sort_table._subsort_table.get(sort2, frozenset())
 
     def meet_sorts(self, sort1: Sort, sort2: Sort) -> Sort:
         if self.is_subsort(sort1, sort2):
@@ -99,12 +75,12 @@ class KompiledKore:
         if self.is_subsort(sort2, sort1):
             return sort2
 
-        subsorts1 = set(self._subsort_table.get(sort1, set())).union({sort1})
-        subsorts2 = set(self._subsort_table.get(sort2, set())).union({sort2})
+        subsorts1 = set(self.sort_table._subsort_table.get(sort1, set())).union({sort1})
+        subsorts2 = set(self.sort_table._subsort_table.get(sort2, set())).union({sort2})
         common_subsorts = subsorts1.intersection(subsorts2)
         if not common_subsorts:
             raise ValueError(f'Sorts have no common subsort: {sort1}, {sort2}')
-        nr_subsorts = {sort: len(self._subsort_table.get(sort, {})) for sort in common_subsorts}
+        nr_subsorts = {sort: len(self.sort_table._subsort_table.get(sort, {})) for sort in common_subsorts}
         max_subsort_nr = max(n for _, n in nr_subsorts.items())
         max_subsorts = {sort for sort, n in nr_subsorts.items() if n == max_subsort_nr}
         (subsort,) = max_subsorts
@@ -143,6 +119,30 @@ class KoreSortTable:
     @staticmethod
     def for_definition(definition: Definition) -> KoreSortTable:
         return KoreSortTable(definition)
+
+    @cached_property
+    def _subsort_table(self) -> FrozenDict[Sort, frozenset[Sort]]:
+        axioms = (axiom for module in self._definition for axiom in module.axioms)
+        attrs = (attr for axiom in axioms for attr in axiom.attrs)
+        subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
+        subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
+
+        direct_subsorts: dict[Sort, set[Sort]] = defaultdict(set)
+        for subsort, supersort in subsort_attr_sorts:
+            direct_subsorts[supersort].add(subsort)
+
+        supersorts = direct_subsorts.keys()
+
+        subsort_table = dict(direct_subsorts)
+        for sort_k in supersorts:
+            for sort_j in supersorts:
+                if sort_k not in subsort_table[sort_j]:
+                    continue
+
+                for sort_i in subsort_table[sort_k]:
+                    subsort_table[sort_j].add(sort_i)
+
+        return FrozenDict((supersort, frozenset(subsorts)) for supersort, subsorts in subsort_table.items())
 
 
 class KoreSymbolTable:

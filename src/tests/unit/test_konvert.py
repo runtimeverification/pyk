@@ -95,7 +95,7 @@ def test_subsort_table(kore_factory: KoreFactory) -> None:
     }
 
     # When
-    actual = kompiled_kore._subsort_table
+    actual = kompiled_kore.sort_table._subsort_table
 
     # Then
     assert actual == expected
