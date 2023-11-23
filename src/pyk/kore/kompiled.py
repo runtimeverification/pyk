@@ -124,7 +124,7 @@ class KoreSortTable:
 
         return sort1 in self._subsort_table.get(sort2, frozenset())
 
-    def meet_sorts(self, sort1: Sort, sort2: Sort) -> Sort:
+    def meet(self, sort1: Sort, sort2: Sort) -> Sort:
         if self.is_subsort(sort1, sort2):
             return sort1
 
