@@ -2253,7 +2253,8 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
     @cached_property
     def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
-        S, T = (SortVar(name) for name in ('S', 'T'))  # noqa: N806
+        S = SortVar('S')  # noqa: N806
+        T = SortVar('T')  # noqa: N806
         ml_symbol_table = {
             r'\top': SymbolDecl(Symbol(r'\top', (S,)), (), S),
             r'\bottom': SymbolDecl(Symbol(r'\bottom', (S,)), (), S),
