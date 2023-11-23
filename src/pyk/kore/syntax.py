@@ -2253,7 +2253,7 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
 
     @cached_property
     def weak_symbol_table(self) -> FrozenDict[str, SymbolDecl]:
-        ml_symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in _ml_symbol_decls()}
+        ml_symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in ML_SYMBOL_DECLS}
         return FrozenDict({**ml_symbol_table, **self.symbol_table})
 
     def resolve(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> tuple[Sort, tuple[Sort, ...]]:
@@ -2328,6 +2328,9 @@ def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
         SymbolDecl(Symbol(r'\equals', (S, T)), (S, S), T),
         SymbolDecl(Symbol(r'\in', (S, T)), (S, S), T),
     )
+
+
+ML_SYMBOL_DECLS: Final = _ml_symbol_decls()
 
 
 def kore_term(dct: Mapping[str, Any], cls: type[T] = Kore) -> T:  # type: ignore
