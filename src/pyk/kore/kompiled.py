@@ -122,7 +122,7 @@ class KoreSortTable:
         if sort1 == SortApp('SortK'):
             return False
 
-        return sort1 in self._subsort_table.get(sort2, frozenset())
+        return sort1 in self._subsort_table.get(sort2, ())
 
     def meet(self, sort1: Sort, sort2: Sort) -> Sort:
         if self.is_subsort(sort1, sort2):
