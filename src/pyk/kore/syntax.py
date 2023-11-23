@@ -2254,24 +2254,7 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
         return self._kore_symbol_table.infer_sort(pattern)
 
     def pattern_sorts(self, pattern: Pattern) -> tuple[Sort, ...]:
-        sorts: tuple[Sort, ...]
-        if isinstance(pattern, DV):
-            sorts = ()
-
-        elif isinstance(pattern, MLQuant):
-            sorts = (pattern.sort,)
-
-        elif isinstance(pattern, MLPattern):
-            _, sorts = self._kore_symbol_table.resolve(pattern.symbol(), pattern.sorts)
-
-        elif isinstance(pattern, App):
-            _, sorts = self._kore_symbol_table.resolve(pattern.symbol, pattern.sorts)
-
-        else:
-            sorts = ()
-
-        assert len(sorts) == len(pattern.patterns)
-        return sorts
+        return self._kore_symbol_table.pattern_sorts(pattern)
 
 
 class KoreSymbolTable:
@@ -2323,6 +2306,26 @@ class KoreSymbolTable:
             return sort
 
         raise ValueError(f'Cannot infer sort: {pattern}')
+
+    def pattern_sorts(self, pattern: Pattern) -> tuple[Sort, ...]:
+        sorts: tuple[Sort, ...]
+        if isinstance(pattern, DV):
+            sorts = ()
+
+        elif isinstance(pattern, MLQuant):
+            sorts = (pattern.sort,)
+
+        elif isinstance(pattern, MLPattern):
+            _, sorts = self.resolve(pattern.symbol(), pattern.sorts)
+
+        elif isinstance(pattern, App):
+            _, sorts = self.resolve(pattern.symbol, pattern.sorts)
+
+        else:
+            sorts = ()
+
+        assert len(sorts) == len(pattern.patterns)
+        return sorts
 
 
 def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
