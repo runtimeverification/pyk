@@ -88,13 +88,8 @@ class KoreSortTable:
         return KoreSortTable(definition)
 
     def __subsort_table(self) -> dict[Sort, set[Sort]]:
-        axioms = (axiom for module in self._definition for axiom in module.axioms)
-        attrs = (attr for axiom in axioms for attr in axiom.attrs)
-        subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
-        subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
-
         direct_subsorts: dict[Sort, set[Sort]] = defaultdict(set)
-        for subsort, supersort in subsort_attr_sorts:
+        for subsort, supersort in self._subsorts_for_definition(self._definition):
             direct_subsorts[supersort].add(subsort)
 
         supersorts = direct_subsorts.keys()
@@ -109,6 +104,14 @@ class KoreSortTable:
                     subsort_table[sort_j].add(sort_i)
 
         return subsort_table
+
+    @staticmethod
+    def _subsorts_for_definition(definition: Definition) -> list[tuple[Sort, Sort]]:
+        axioms = (axiom for module in definition for axiom in module.axioms)
+        attrs = (attr for axiom in axioms for attr in axiom.attrs)
+        subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
+        subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
+        return [(subsort, supersort) for subsort, supersort in subsort_attr_sorts]
 
     def is_subsort(self, sort1: Sort, sort2: Sort) -> bool:
         if sort1 == sort2:
