@@ -77,16 +77,17 @@ class KompiledKore:
 
 class KoreSortTable:
     _definition: Definition
+    _subsort_table: dict[Sort, set[Sort]]
 
     def __init__(self, definition: Definition):
         self._definition = definition
+        self._subsort_table = self.__subsort_table()
 
     @staticmethod
     def for_definition(definition: Definition) -> KoreSortTable:
         return KoreSortTable(definition)
 
-    @cached_property
-    def _subsort_table(self) -> dict[Sort, set[Sort]]:
+    def __subsort_table(self) -> dict[Sort, set[Sort]]:
         axioms = (axiom for module in self._definition for axiom in module.axioms)
         attrs = (attr for axiom in axioms for attr in axiom.attrs)
         subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
