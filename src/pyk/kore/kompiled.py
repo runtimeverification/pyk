@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Final, final
 from ..cli.utils import check_dir_path, check_file_path
 from ..utils import FrozenDict
 from .parser import KoreParser
-from .syntax import App, SortApp
+from .syntax import App, KoreSymbolTable, SortApp
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -46,6 +46,10 @@ class KompiledKore:
         kore_text = self.path.read_text()
         _LOGGER.info(f'Parsing kore definition: {self.path}')
         return KoreParser(kore_text).definition()
+
+    @cached_property
+    def symbol_table(self) -> KoreSymbolTable:
+        return KoreSymbolTable.for_definition(self.definition)
 
     @cached_property
     def _subsort_table(self) -> FrozenDict[Sort, frozenset[Sort]]:
@@ -109,12 +113,12 @@ class KompiledKore:
         if sort is None:
             sort = SortApp('SortK')
         patterns = pattern.patterns
-        sorts = self.definition.pattern_sorts(pattern)
+        sorts = self.symbol_table.pattern_sorts(pattern)
         pattern = pattern.let_patterns(self.add_injections(p, s) for p, s in zip(patterns, sorts, strict=True))
         return self._inject(pattern, sort)
 
     def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
-        actual_sort = self.definition.infer_sort(pattern)
+        actual_sort = self.symbol_table.infer_sort(pattern)
 
         if actual_sort == sort:
             return pattern
