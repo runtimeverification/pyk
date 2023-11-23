@@ -2246,16 +2246,6 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
             output.write('\n\n')
             module.write(output)
 
-    @cached_property
-    def _kore_symbol_table(self) -> KoreSymbolTable:
-        return KoreSymbolTable.for_definition(self)
-
-    def infer_sort(self, pattern: Pattern) -> Sort:
-        return self._kore_symbol_table.infer_sort(pattern)
-
-    def pattern_sorts(self, pattern: Pattern) -> tuple[Sort, ...]:
-        return self._kore_symbol_table.pattern_sorts(pattern)
-
 
 class KoreSymbolTable:
     _symbol_table: dict[str, SymbolDecl]
