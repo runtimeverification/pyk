@@ -49,6 +49,10 @@ class KompiledKore:
         return KoreParser(kore_text).definition()
 
     @cached_property
+    def sort_table(self) -> KoreSortTable:
+        return KoreSortTable.for_definition(self.definition)
+
+    @cached_property
     def symbol_table(self) -> KoreSymbolTable:
         return KoreSymbolTable.for_definition(self.definition)
 
@@ -128,6 +132,17 @@ class KompiledKore:
             return App('inj', (actual_sort, sort), (pattern,))
 
         raise ValueError(f'Sort {actual_sort.name} is not a subsort of {sort.name}: {pattern}')
+
+
+class KoreSortTable:
+    _definition: Definition
+
+    def __init__(self, definition: Definition):
+        self._definition = definition
+
+    @staticmethod
+    def for_definition(definition: Definition) -> KoreSortTable:
+        return KoreSortTable(definition)
 
 
 class KoreSymbolTable:
