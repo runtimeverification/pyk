@@ -81,17 +81,9 @@ class KoreSortTable:
         self._subsort_table = self._create_subsort_table(subsorts)
 
     @staticmethod
-    def for_definition(definition: Definition) -> KoreSortTable:
-        axioms = (axiom for module in definition for axiom in module.axioms)
-        attrs = (attr for axiom in axioms for attr in axiom.attrs)
-        subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
-        subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
-        subsorts = ((subsort, supersort) for subsort, supersort in subsort_attr_sorts)
-        return KoreSortTable(subsorts)
-
-    @staticmethod
     def _create_subsort_table(subsorts: Iterable[tuple[Sort, Sort]]) -> dict[Sort, set[Sort]]:
         res: dict[Sort, set[Sort]] = {}
+
         for subsort, supersort in subsorts:
             if supersort not in res:
                 res[supersort] = set()
@@ -107,6 +99,15 @@ class KoreSortTable:
                     res[sort_j].add(sort_i)
 
         return res
+
+    @staticmethod
+    def for_definition(definition: Definition) -> KoreSortTable:
+        axioms = (axiom for module in definition for axiom in module.axioms)
+        attrs = (attr for axiom in axioms for attr in axiom.attrs)
+        subsort_attrs = (attr for attr in attrs if attr.symbol == 'subsort')
+        subsort_attr_sorts = (attr.sorts for attr in subsort_attrs)
+        subsorts = ((subsort, supersort) for subsort, supersort in subsort_attr_sorts)
+        return KoreSortTable(subsorts)
 
     def is_subsort(self, sort1: Sort, sort2: Sort) -> bool:
         if sort1 == sort2:
