@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from dataclasses import dataclass
 from functools import cached_property
 from itertools import chain
@@ -88,8 +87,10 @@ class KoreSortTable:
         return KoreSortTable(definition)
 
     def __subsort_table(self) -> dict[Sort, set[Sort]]:
-        res: dict[Sort, set[Sort]] = defaultdict(set)
+        res: dict[Sort, set[Sort]] = {}
         for subsort, supersort in self._subsorts_for_definition(self._definition):
+            if supersort not in res:
+                res[supersort] = set()
             res[supersort].add(subsort)
 
         supersorts = res.keys()
