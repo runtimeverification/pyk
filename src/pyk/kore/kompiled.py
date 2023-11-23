@@ -88,22 +88,20 @@ class KoreSortTable:
         return KoreSortTable(definition)
 
     def __subsort_table(self) -> dict[Sort, set[Sort]]:
-        direct_subsorts: dict[Sort, set[Sort]] = defaultdict(set)
+        res: dict[Sort, set[Sort]] = defaultdict(set)
         for subsort, supersort in self._subsorts_for_definition(self._definition):
-            direct_subsorts[supersort].add(subsort)
+            res[supersort].add(subsort)
 
-        supersorts = direct_subsorts.keys()
-
-        subsort_table = dict(direct_subsorts)
+        supersorts = res.keys()
         for sort_k in supersorts:
             for sort_j in supersorts:
-                if sort_k not in subsort_table[sort_j]:
+                if sort_k not in res[sort_j]:
                     continue
 
-                for sort_i in subsort_table[sort_k]:
-                    subsort_table[sort_j].add(sort_i)
+                for sort_i in res[sort_k]:
+                    res[sort_j].add(sort_i)
 
-        return subsort_table
+        return res
 
     @staticmethod
     def _subsorts_for_definition(definition: Definition) -> list[tuple[Sort, Sort]]:
