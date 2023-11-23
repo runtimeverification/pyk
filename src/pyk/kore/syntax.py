@@ -7,7 +7,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cached_property
 from io import StringIO
-from itertools import chain
 from typing import TYPE_CHECKING, final
 
 from ..dequote import enquoted
@@ -2245,77 +2244,6 @@ class Definition(Kore, WithAttrs, Iterable[Module]):
         for module in self.modules:
             output.write('\n\n')
             module.write(output)
-
-
-class KoreSymbolTable:
-    _symbol_table: dict[str, SymbolDecl]
-
-    def __init__(self, symbol_decls: Iterable[SymbolDecl] = ()):
-        self._symbol_table = {symbol_decl.symbol.name: symbol_decl for symbol_decl in symbol_decls}
-
-    @staticmethod
-    def for_definition(definition: Definition, *, with_ml_symbols: bool = True) -> KoreSymbolTable:
-        return KoreSymbolTable(
-            chain(
-                (symbol_decl for module in definition for symbol_decl in module.symbol_decls),
-                ML_SYMBOL_DECLS if with_ml_symbols else (),
-            )
-        )
-
-    def resolve(self, symbol_id: str, sorts: Iterable[Sort] = ()) -> tuple[Sort, tuple[Sort, ...]]:
-        symbol_decl = self._symbol_table.get(symbol_id)
-        if not symbol_decl:
-            raise ValueError(f'Undeclared symbol: {symbol_id}')
-
-        symbol = symbol_decl.symbol
-        sorts = tuple(sorts)
-
-        nr_sort_vars = len(symbol.vars)
-        nr_sorts = len(sorts)
-        if nr_sort_vars != nr_sorts:
-            raise ValueError(f'Expected {nr_sort_vars} sort parameters, got {nr_sorts} for: {symbol_id}')
-
-        sort_table: dict[Sort, Sort] = dict(zip(symbol.vars, sorts, strict=True))
-
-        def resolve_sort(sort: Sort) -> Sort:
-            if type(sort) is SortVar:
-                return sort_table.get(sort, sort)
-            return sort
-
-        sort = resolve_sort(symbol_decl.sort)
-        param_sorts = tuple(resolve_sort(sort) for sort in symbol_decl.param_sorts)
-
-        return sort, param_sorts
-
-    def infer_sort(self, pattern: Pattern) -> Sort:
-        if isinstance(pattern, WithSort):
-            return pattern.sort
-
-        if type(pattern) is App:
-            sort, _ = self.resolve(pattern.symbol, pattern.sorts)
-            return sort
-
-        raise ValueError(f'Cannot infer sort: {pattern}')
-
-    def pattern_sorts(self, pattern: Pattern) -> tuple[Sort, ...]:
-        sorts: tuple[Sort, ...]
-        if isinstance(pattern, DV):
-            sorts = ()
-
-        elif isinstance(pattern, MLQuant):
-            sorts = (pattern.sort,)
-
-        elif isinstance(pattern, MLPattern):
-            _, sorts = self.resolve(pattern.symbol(), pattern.sorts)
-
-        elif isinstance(pattern, App):
-            _, sorts = self.resolve(pattern.symbol, pattern.sorts)
-
-        else:
-            sorts = ()
-
-        assert len(sorts) == len(pattern.patterns)
-        return sorts
 
 
 def _ml_symbol_decls() -> tuple[SymbolDecl, ...]:
