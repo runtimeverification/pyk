@@ -78,14 +78,14 @@ class KoreSortTable:
     _subsort_table: dict[Sort, set[Sort]]
 
     def __init__(self, definition: Definition):
-        self._subsort_table = self.__subsort_table(self._subsorts_for_definition(definition))
+        self._subsort_table = self._create_subsort_table(self._subsorts_for_definition(definition))
 
     @staticmethod
     def for_definition(definition: Definition) -> KoreSortTable:
         return KoreSortTable(definition)
 
     @staticmethod
-    def __subsort_table(subsorts: Iterable[tuple[Sort, Sort]]) -> dict[Sort, set[Sort]]:
+    def _create_subsort_table(subsorts: Iterable[tuple[Sort, Sort]]) -> dict[Sort, set[Sort]]:
         res: dict[Sort, set[Sort]] = {}
         for subsort, supersort in subsorts:
             if supersort not in res:
