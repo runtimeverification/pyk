@@ -139,6 +139,8 @@ def _symbol_decl_from_dict(dct: Any) -> SymbolDecl:
     )
 
 
+@final
+@dataclass
 class KoreSortTable:
     _subsort_table: dict[Sort, set[Sort]]
 
@@ -205,6 +207,8 @@ class KoreSortTable:
         return subsort
 
 
+@final
+@dataclass
 class KoreSymbolTable:
     _symbol_table: dict[str, SymbolDecl]
 
