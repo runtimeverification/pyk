@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from itertools import chain
@@ -31,6 +32,9 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
+_PYK_DEFINITION_NAME: Final = 'pyk-definition.json'
+
+
 @final
 @dataclass(frozen=True)
 class KompiledKore:
@@ -41,16 +45,35 @@ class KompiledKore:
     def load(definition_dir: str | Path) -> KompiledKore:
         definition_dir = Path(definition_dir)
         check_dir_path(definition_dir)
+
+        json_file = definition_dir / _PYK_DEFINITION_NAME
+        if json_file.exists():
+            return KompiledKore.load_from_json(json_file)
+
         kore_file = definition_dir / 'definition.kore'
+        return KompiledKore.load_from_kore(kore_file)
+
+    @staticmethod
+    def load_from_kore(kore_file: str | Path) -> KompiledKore:
+        kore_file = Path(kore_file)
         check_file_path(kore_file)
 
-        _LOGGER.info(f'Reading kore definition: {kore_file}')
+        _LOGGER.info(f'Reading KORE definition: {kore_file}')
         kore_text = kore_file.read_text()
 
-        _LOGGER.info(f'Parsing kore definition: {kore_file}')
+        _LOGGER.info(f'Parsing KORE definition: {kore_file}')
         definition = KoreParser(kore_text).definition()
 
         return KompiledKore.for_definition(definition)
+
+    @staticmethod
+    def load_from_json(json_file: str | Path) -> KompiledKore:
+        json_file = Path(json_file)
+        check_file_path(json_file)
+        _LOGGER.info(f'Reading JSON definition: {json_file}')
+        with json_file.open() as f:
+            json_data = json.load(f)
+        return KompiledKore.from_dict(json_data)
 
     @staticmethod
     def for_definition(definition: Definition) -> KompiledKore:
@@ -67,6 +90,14 @@ class KompiledKore:
             ),
             symbol_table=KoreSymbolTable(_symbol_decl_from_dict(symbol_decl) for symbol_decl in dct['symbols']),
         )
+
+    def write(self, definition_dir: str | Path) -> None:
+        definition_dir = Path(definition_dir)
+        check_dir_path(definition_dir)
+        json_data = self.to_dict()
+        json_file = definition_dir / _PYK_DEFINITION_NAME
+        with json_file.open('w') as f:
+            json.dump(json_data, f)
 
     def to_dict(self) -> dict[str, Any]:
         return {
