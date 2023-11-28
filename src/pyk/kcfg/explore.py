@@ -77,7 +77,7 @@ class KCFGExplore:
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
         module_name: str | None = None,
-    ) -> tuple[bool, int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
+    ) -> tuple[KInner | None, bool, int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         er = self._kore_client.execute(
@@ -92,10 +92,6 @@ class KCFGExplore:
             log_failed_simplifications=self._trace_rewrites if self._trace_rewrites else None,
         )
 
-        if isinstance(er, AbortedResult):
-            unknown_predicate = er.unknown_predicate.text if er.unknown_predicate else None
-            raise ValueError(f'Backend responded with aborted state. Unknown predicate: {unknown_predicate}')
-
         _is_vacuous = er.reason is StopReason.VACUOUS
         depth = er.depth
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
@@ -103,13 +99,16 @@ class KCFGExplore:
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
         next_states = [cterm for cterm in next_states if not cterm.is_bottom]
         if len(next_states) == 1 and len(next_states) < len(_next_states):
-            return _is_vacuous, depth + 1, next_states[0], [], er.logs
+            return None, _is_vacuous, depth + 1, next_states[0], [], er.logs
         elif len(next_states) == 1:
             if er.reason == StopReason.CUT_POINT_RULE:
-                return _is_vacuous, depth, next_state, next_states, er.logs
+                return None, _is_vacuous, depth, next_state, next_states, er.logs
             else:
                 next_states = []
-        return _is_vacuous, depth, next_state, next_states, er.logs
+        unknown_predicate = None
+        if isinstance(er, AbortedResult):
+            unknown_predicate = self.kprint.kore_to_kast(er.unknown_predicate) if er.unknown_predicate else None
+        return unknown_predicate, _is_vacuous, depth, next_state, next_states, er.logs
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
@@ -302,7 +301,7 @@ class KCFGExplore:
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        _, actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+        _, _, actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
             node.cterm, depth=depth, module_name=module_name
         )
         if actual_depth != depth:
@@ -405,7 +404,7 @@ class KCFGExplore:
         if len(branches) > 1:
             return Branch(branches, heuristic=True)
 
-        _is_vacuous, depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+        unknown_predicate, _is_vacuous, depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
             _cterm,
             depth=execute_depth,
             cut_point_rules=cut_point_rules,
@@ -417,10 +416,12 @@ class KCFGExplore:
         if depth > 0:
             return Step(cterm, depth, next_node_logs)
 
-        # Stuck or vacuous
+        # Stuck, vacuous or unknown
         if not next_cterms:
             if _is_vacuous:
                 return Vacuous()
+            if unknown_predicate is not None:
+                return Unknown(cterm, unknown_predicate, depth)
             return Stuck()
 
         # Cut rule
@@ -524,6 +525,15 @@ class Vacuous(ExtendResult):
 @final
 @dataclass(frozen=True)
 class Stuck(ExtendResult):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class Unknown(ExtendResult):
+    cterm: CTerm
+    unknown_predicate: KInner
+    depth: int
     ...
 
 
