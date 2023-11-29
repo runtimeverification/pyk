@@ -201,7 +201,7 @@ def test_simplify(
     rpc_client.assume_response(response)
 
     # When
-    actual, _logs = kore_client.simplify(pattern)
+    _unknwon_predicate, actual, _logs = kore_client.simplify(pattern)
 
     # Then
     rpc_client.assert_request('simplify', **params)
