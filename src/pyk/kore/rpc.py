@@ -861,7 +861,7 @@ class KoreClient(ContextManager['KoreClient']):
 
         try:
             result = self._request('simplify', **params)
-        except JsonRpcError as err:
+        except KoreClientError as err:
             try:
                 unknown_predicate = kore_term(err.data, Pattern)  # type: ignore
                 return unknown_predicate, pattern, tuple()
