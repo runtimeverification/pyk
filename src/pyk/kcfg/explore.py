@@ -20,7 +20,7 @@ from ..kast.manip import (
 )
 from ..kast.outer import KRule
 from ..konvert import krule_to_kore
-from ..kore.rpc import AbortedResult, SatResult, StopReason, UnknownResult, UnsatResult
+from ..kore.rpc import AbortedResult, JsonRpcError, SatResult, StopReason, UnknownResult, UnsatResult
 from ..kore.syntax import Import, Module
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
@@ -110,17 +110,24 @@ class KCFGExplore:
             unknown_predicate = self.kprint.kore_to_kast(er.unknown_predicate) if er.unknown_predicate else None
         return unknown_predicate, _is_vacuous, depth, next_state, next_states, er.logs
 
-    def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
+    def cterm_simplify(self, cterm: CTerm) -> tuple[KInner | None, CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        kore_simplified, logs = self._kore_client.simplify(kore)
+        kore_unknown_predicate, kore_simplified, logs = self._kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
-        return CTerm.from_kast(kast_simplified), logs
+        unknown_predicate = (
+            self.kprint.kore_to_kast(kore_unknown_predicate) if kore_unknown_predicate is not None else None
+        )
+        return unknown_predicate, CTerm.from_kast(kast_simplified), logs
 
     def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        kore_simplified, logs = self._kore_client.simplify(kore)
+        unknown_predicate, kore_simplified, logs = self._kore_client.simplify(kore)
+        if unknown_predicate is not None:
+            _LOGGER.warning(
+                f"Could not decide predicate:" + self.kprint.pretty_print(self.kprint.kore_to_kast(unknown_predicate))
+            )
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
@@ -270,7 +277,11 @@ class KCFGExplore:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        kore_simplified, _logs = self._kore_client.simplify(kore)
+        unknown_predicate, kore_simplified, _logs = self._kore_client.simplify(kore)
+        if unknown_predicate is not None:
+            _LOGGER.warning(
+                f"Could not decide predicate:" + self.kprint.pretty_print(self.kprint.kore_to_kast(unknown_predicate))
+            )
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
@@ -278,13 +289,18 @@ class KCFGExplore:
     def simplify(self, cfg: KCFG, logs: dict[int, tuple[LogEntry, ...]]) -> None:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
-            new_term, next_node_logs = self.cterm_simplify(node.cterm)
+            unknown_predicate, new_term, next_node_logs = self.cterm_simplify(node.cterm)
             if new_term != node.cterm:
                 cfg.replace_node(node.id, new_term)
                 if node.id in logs:
                     logs[node.id] += next_node_logs
                 else:
                     logs[node.id] = next_node_logs
+            if unknown_predicate is not None:
+                _LOGGER.warning(
+                    f"Could not decide predicate while simplifiyng node {node.id}:"
+                    + self.kprint.pretty_print(unknown_predicate)
+                )
 
     def step(
         self,

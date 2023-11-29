@@ -850,7 +850,7 @@ class KoreClient(ContextManager['KoreClient']):
         pattern: Pattern,
         log_successful_simplifications: bool | None = None,
         log_failed_simplifications: bool | None = None,
-    ) -> tuple[Pattern, tuple[LogEntry, ...]]:
+    ) -> tuple[Pattern | None, Pattern, tuple[LogEntry, ...]]:
         params = filter_none(
             {
                 'state': self._state(pattern),
@@ -859,9 +859,16 @@ class KoreClient(ContextManager['KoreClient']):
             }
         )
 
-        result = self._request('simplify', **params)
+        try:
+            result = self._request('simplify', **params)
+        except JsonRpcError as err:
+            try:
+                unknown_predicate = kore_term(err.data, Pattern)  # type: ignore
+                return unknown_predicate, pattern, tuple()
+            except ValueError:
+                raise err
         logs = tuple(LogEntry.from_dict(l) for l in result['logs']) if 'logs' in result else ()
-        return kore_term(result['state'], Pattern), logs  # type: ignore # https://github.com/python/mypy/issues/4717
+        return None, kore_term(result['state'], Pattern), logs  # type: ignore # https://github.com/python/mypy/issues/4717
 
     def get_model(self, pattern: Pattern, module_name: str | None = None) -> GetModelResult:
         params = filter_none(
