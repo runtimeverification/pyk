@@ -120,16 +120,16 @@ class KCFGExplore:
         )
         return unknown_predicate, CTerm.from_kast(kast_simplified), logs
 
-    def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
+    def kast_simplify(self, kast: KInner) -> tuple[KInner | None, KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        unknown_predicate, kore_simplified, logs = self._kore_client.simplify(kore)
-        if unknown_predicate is not None:
-            _LOGGER.warning(
-                f"Could not decide predicate:" + self.kprint.pretty_print(self.kprint.kore_to_kast(unknown_predicate))
-            )
+        unknown_predicate_kore, kore_simplified, logs = self._kore_client.simplify(kore)
+        unknown_predicate = None
+        if unknown_predicate_kore is not None:
+            unknown_predicate = self.kprint.kore_to_kast(unknown_predicate_kore)
+            _LOGGER.warning(f"Could not decide predicate:" + self.kprint.pretty_print(unknown_predicate))
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
-        return kast_simplified, logs
+        return unknown_predicate, kast_simplified, logs
 
     def cterm_get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
         _LOGGER.info(f'Getting model: {cterm}')
@@ -414,8 +414,8 @@ class KCFGExplore:
         branches = []
         for constraint in _branches:
             kast = mlAnd(list(_cterm.constraints) + [constraint])
-            kast, _ = self.kast_simplify(kast)
-            if not CTerm._is_bottom(kast):
+            unknown_predicate, kast, _ = self.kast_simplify(kast)
+            if not CTerm._is_bottom(kast) and unknown_predicate is None:
                 branches.append(constraint)
         if len(branches) > 1:
             return Branch(branches, heuristic=True)
