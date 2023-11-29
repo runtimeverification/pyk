@@ -107,7 +107,9 @@ class KCFGExplore:
                 next_states = []
         unknown_predicate = None
         if isinstance(er, AbortedResult):
-            unknown_predicate = self.kprint.kore_to_kast(er.unknown_predicate) if er.unknown_predicate else None
+            unknown_predicate = (
+                self.kprint.kore_to_kast(er.unknown_predicate) if er.unknown_predicate is not None else None
+            )
         return unknown_predicate, _is_vacuous, depth, next_state, next_states, er.logs
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[KInner | None, CTerm, tuple[LogEntry, ...]]:
@@ -396,6 +398,8 @@ class KCFGExplore:
             raise ValueError(f'Cannot extend vacuous node {self.id}: {node.id}')
         if kcfg_exploration.is_terminal(node.id):
             raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
+        if kcfg.is_undecided(node.id):
+            raise ValueError(f'Cannot extend undecided node {self.id}: {node.id}')
 
     def extend_cterm(
         self,
@@ -432,13 +436,15 @@ class KCFGExplore:
         if depth > 0:
             return Step(cterm, depth, next_node_logs)
 
-        # Stuck, vacuous or unknown
+        # Stuck, Vacuous
         if not next_cterms:
             if _is_vacuous:
                 return Vacuous()
-            if unknown_predicate is not None:
-                return Unknown(cterm, unknown_predicate, depth)
             return Stuck()
+
+        # Undecided
+        if unknown_predicate is not None:
+            return Undecided(cterm, unknown_predicate, depth)
 
         # Cut rule
         if len(next_cterms) == 1:
@@ -482,6 +488,12 @@ class KCFGExplore:
             case Stuck():
                 kcfg.add_stuck(node.id)
                 log(f'stuck node: {node.id}')
+
+            case Undecided(cterm, _unknown_predicate, depth):
+                next_node = kcfg.create_node(cterm)
+                kcfg.add_undecided(next_node.id)
+                kcfg.create_edge(node.id, next_node.id, depth)
+                log(f'undecided node: {node.id}')
 
             case Abstract(cterm):
                 new_node = kcfg.create_node(cterm)
@@ -546,7 +558,7 @@ class Stuck(ExtendResult):
 
 @final
 @dataclass(frozen=True)
-class Unknown(ExtendResult):
+class Undecided(ExtendResult):
     cterm: CTerm
     unknown_predicate: KInner
     depth: int
