@@ -208,6 +208,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _ndbranches: dict[int, NDBranch]
     _vacuous: set[int]
     _stuck: set[int]
+    _undecided: set[int]
     _aliases: dict[str, int]
     _lock: RLock
     cfg_dir: Path | None
@@ -223,6 +224,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._ndbranches = {}
         self._vacuous = set()
         self._stuck = set()
+        self._undecided = set()
         self._aliases = {}
         self._lock = RLock()
         self.cfg_dir = cfg_dir
@@ -677,6 +679,19 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node_id = self._resolve(node_id)
         self._stuck.discard(node_id)
 
+    def add_undecided(self, node_id: NodeIdLike) -> None:
+        self._undecided.add(self._resolve(node_id))
+
+    def remove_undecided(self, node_id: NodeIdLike) -> None:
+        node_id = self._resolve(node_id)
+        if node_id not in self._undecided:
+            raise ValueError(f'Node is not undecided: {node_id}')
+        self._undecided.remove(node_id)
+
+    def discard_undecided(self, node_id: NodeIdLike) -> None:
+        node_id = self._resolve(node_id)
+        self._undecided.discard(node_id)
+
     def splits(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[Split]:
         source_id = self._resolve(source_id) if source_id is not None else None
         target_id = self._resolve(target_id) if target_id is not None else None
@@ -758,6 +773,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def is_stuck(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return node_id in self._stuck
+
+    def is_undecided(self, node_id: NodeIdLike) -> bool:
+        node_id = self._resolve(node_id)
+        return node_id in self._undecided
 
     def is_split(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)

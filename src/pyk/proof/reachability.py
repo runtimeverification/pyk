@@ -909,8 +909,8 @@ class APRFailureInfo:
         failure_reasons = {}
         models = {}
         for node in proof.failing:
-            node_cterm, _ = kcfg_explore.cterm_simplify(node.cterm)
-            target_cterm, _ = kcfg_explore.cterm_simplify(target.cterm)
+            _unknwon_predicate, node_cterm, _ = kcfg_explore.cterm_simplify(node.cterm)
+            _unknwon_predicate, target_cterm, _ = kcfg_explore.cterm_simplify(target.cterm)
             _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
             path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
             failure_reasons[node.id] = reason

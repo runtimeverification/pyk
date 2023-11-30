@@ -34,6 +34,7 @@ class KCFGExploration:
             and not self.is_terminal(node_id)
             and not self.kcfg.is_stuck(node_id)
             and not self.kcfg.is_vacuous(node_id)
+            and not self.kcfg.is_undecided(node_id)
         )
 
     #

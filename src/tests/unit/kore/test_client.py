@@ -118,6 +118,7 @@ EXECUTE_TEST_DATA: Final = (
         },
         AbortedResult(
             state=State(term=int_dv(1), substitution=int_dv(2), predicate=int_dv(3)),
+            next_states=(),
             depth=4,
             unknown_predicate=int_dv(5),
             logs=(),
@@ -201,7 +202,7 @@ def test_simplify(
     rpc_client.assume_response(response)
 
     # When
-    actual, _logs = kore_client.simplify(pattern)
+    _unknwon_predicate, actual, _logs = kore_client.simplify(pattern)
 
     # Then
     rpc_client.assert_request('simplify', **params)
