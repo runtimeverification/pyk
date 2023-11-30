@@ -151,11 +151,15 @@ class Kompile(ABC):
                 err.returncode,
             ) from err
 
-        if proc_res.stdout:
-            print(proc_res.stdout.rstrip())
-
         definition_dir = output_dir if output_dir else Path(self.base_args.main_file.stem + '-kompiled')
         assert definition_dir.is_dir()
+
+        if proc_res.stdout:
+            out = proc_res.stdout.rstrip()
+            print(out)
+            with open(definition_dir / 'kompile.log', 'w') as f:
+                f.write(out)
+
         return definition_dir
 
     @abstractmethod

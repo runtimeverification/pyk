@@ -1056,6 +1056,14 @@ class BoosterServer(KoreServer):
         if bug_report:
             bug_report.add_file(llvm_definition, Path('llvm_definition/definition.kore'))
             bug_report.add_file(llvm_dt, Path('llvm_definition/dt'))
+            llvm_version = run_process('llvm-backend-version', pipe_stderr=True, logger=_LOGGER).stdout.strip()
+            bug_report.add_file_contents(llvm_version, Path('llvm_version.txt'))
+            llvm_kompile_command = run_process(
+                ('grep', '-o', 'llvm-kompile.*$', f'{llvm_kompiled_dir / "kompile.log"}'),
+                pipe_stderr=True,
+                logger=_LOGGER,
+            ).stdout.strip()
+            bug_report.add_file_contents(llvm_kompile_command, Path('llvm_kompile_command.txt'))
 
         self._check_none_or_positive(smt_timeout, 'smt_timeout')
         self._check_none_or_positive(smt_retry_limit, 'smt_retry_limit')
