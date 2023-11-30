@@ -666,11 +666,11 @@ class VacuousResult(ExecuteResult):
 @dataclass(frozen=True)
 class AbortedResult(ExecuteResult):
     reason = StopReason.ABORTED
+    next_states = None
     rule = None
 
     state: State
     depth: int
-    next_states: tuple[State, ...]
     unknown_predicate: Pattern | None
     logs: tuple[LogEntry, ...]
 
@@ -681,7 +681,6 @@ class AbortedResult(ExecuteResult):
         return AbortedResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
-            next_states=tuple(State.from_dict(next_state) for next_state in dct['next-states']),
             unknown_predicate=kore_term(dct['unknown-predicate'], Pattern) if dct.get('unknown-predicate') else None,  # type: ignore
             logs=logs,
         )
