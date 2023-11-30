@@ -436,15 +436,13 @@ class KCFGExplore:
         if depth > 0:
             return Step(cterm, depth, next_node_logs)
 
-        # Stuck, Vacuous
+        # Stuck, Vacuous or Undecided
         if not next_cterms:
             if _is_vacuous:
                 return Vacuous()
+            if unknown_predicate is not None:
+                return Undecided(unknown_predicate)
             return Stuck()
-
-        # Undecided
-        if unknown_predicate is not None:
-            return Undecided(cterm, unknown_predicate, depth)
 
         # Cut rule
         if len(next_cterms) == 1:
@@ -489,10 +487,8 @@ class KCFGExplore:
                 kcfg.add_stuck(node.id)
                 log(f'stuck node: {node.id}')
 
-            case Undecided(cterm, _, depth):
-                next_node = kcfg.create_node(cterm)
-                kcfg.add_undecided(next_node.id)
-                kcfg.create_edge(node.id, next_node.id, depth)
+            case Undecided(_):
+                kcfg.add_undecided(node.id)
                 log(f'undecided node: {node.id}')
 
             case Abstract(cterm):
@@ -559,9 +555,7 @@ class Stuck(ExtendResult):
 @final
 @dataclass(frozen=True)
 class Undecided(ExtendResult):
-    cterm: CTerm
     unknown_predicate: KInner
-    depth: int
     ...
 
 
