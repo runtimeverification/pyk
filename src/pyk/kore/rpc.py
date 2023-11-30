@@ -865,7 +865,7 @@ class KoreClient(ContextManager['KoreClient']):
         except KoreClientError as err:
             try:
                 unknown_predicate = kore_term(err.data, Pattern)  # type: ignore
-                return unknown_predicate, pattern, tuple()
+                return unknown_predicate, pattern, ()
             except ValueError:
                 raise err
         logs = tuple(LogEntry.from_dict(l) for l in result['logs']) if 'logs' in result else ()

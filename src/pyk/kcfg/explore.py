@@ -20,7 +20,7 @@ from ..kast.manip import (
 )
 from ..kast.outer import KRule
 from ..konvert import krule_to_kore
-from ..kore.rpc import AbortedResult, JsonRpcError, SatResult, StopReason, UnknownResult, UnsatResult
+from ..kore.rpc import AbortedResult, SatResult, StopReason, UnknownResult, UnsatResult
 from ..kore.syntax import Import, Module
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
@@ -129,7 +129,7 @@ class KCFGExplore:
         unknown_predicate = None
         if unknown_predicate_kore is not None:
             unknown_predicate = self.kprint.kore_to_kast(unknown_predicate_kore)
-            _LOGGER.warning(f"Could not decide predicate:" + self.kprint.pretty_print(unknown_predicate))
+            _LOGGER.warning('Could not decide predicate:' + self.kprint.pretty_print(unknown_predicate))
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         return unknown_predicate, kast_simplified, logs
 
@@ -282,7 +282,7 @@ class KCFGExplore:
         unknown_predicate, kore_simplified, _logs = self._kore_client.simplify(kore)
         if unknown_predicate is not None:
             _LOGGER.warning(
-                f"Could not decide predicate:" + self.kprint.pretty_print(self.kprint.kore_to_kast(unknown_predicate))
+                'Could not decide predicate:' + self.kprint.pretty_print(self.kprint.kore_to_kast(unknown_predicate))
             )
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
@@ -300,7 +300,7 @@ class KCFGExplore:
                     logs[node.id] = next_node_logs
             if unknown_predicate is not None:
                 _LOGGER.warning(
-                    f"Could not decide predicate while simplifiyng node {node.id}:"
+                    f'Could not decide predicate while simplifiyng node {node.id}:'
                     + self.kprint.pretty_print(unknown_predicate)
                 )
 
@@ -489,7 +489,7 @@ class KCFGExplore:
                 kcfg.add_stuck(node.id)
                 log(f'stuck node: {node.id}')
 
-            case Undecided(cterm, _unknown_predicate, depth):
+            case Undecided(cterm, _, depth):
                 next_node = kcfg.create_node(cterm)
                 kcfg.add_undecided(next_node.id)
                 kcfg.create_edge(node.id, next_node.id, depth)

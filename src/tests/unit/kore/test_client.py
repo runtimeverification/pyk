@@ -118,6 +118,7 @@ EXECUTE_TEST_DATA: Final = (
         },
         AbortedResult(
             state=State(term=int_dv(1), substitution=int_dv(2), predicate=int_dv(3)),
+            next_states=(),
             depth=4,
             unknown_predicate=int_dv(5),
             logs=(),
