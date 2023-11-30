@@ -941,6 +941,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         vacuous = sorted(self._vacuous)
         stuck = sorted(self._stuck)
+        undecided = sorted(self._undecided)
         aliases = dict(sorted(self._aliases.items()))
         dct: dict[str, list[int] | int | dict[str, int] | list[dict[str, Any]]] = {}
         dct['next'] = self._node_id
@@ -951,6 +952,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         dct['ndbranches'] = ndbranches
         dct['vacuous'] = vacuous
         dct['stuck'] = stuck
+        dct['undecided'] = undecided
         dct['aliases'] = aliases
         cfg_json.write_text(json.dumps(dct))
 
@@ -1022,6 +1024,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         for stuck_id in dct.get('stuck') or []:
             cfg.add_stuck(stuck_id)
+
+        for undecided_id in dct.get('undecided') or []:
+            cfg.add_undecided(undecided_id)
 
         for alias, node_id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=node_id)
