@@ -35,7 +35,6 @@ def kompile(
     output_dir: str | Path | None = None,
     temp_dir: str | Path | None = None,
     debug: bool = False,
-    verbose: bool = False,
     cwd: Path | None = None,
     check: bool = True,
     **kwargs: Any,
@@ -47,7 +46,6 @@ def kompile(
         output_dir=output_dir,
         temp_dir=temp_dir,
         debug=debug,
-        verbose=verbose,
         cwd=cwd,
         check=check,
     )
@@ -114,7 +112,6 @@ class Kompile(ABC):
         output_dir: str | Path | None = None,
         temp_dir: str | Path | None = None,
         debug: bool = False,
-        verbose: bool = False,
         cwd: Path | None = None,
         check: bool = True,
     ) -> Path:
@@ -137,9 +134,6 @@ class Kompile(ABC):
 
         if debug:
             args += ['--debug']
-
-        if verbose:
-            args += ['--verbose']
 
         try:
             proc_res = run_process(args, logger=_LOGGER, cwd=cwd, check=check)
@@ -311,6 +305,7 @@ class KompileArgs:
     bison_parser_library: bool
     post_process: str | None
     read_only: bool
+    verbose: bool
 
     def __init__(
         self,
@@ -326,6 +321,7 @@ class KompileArgs:
         bison_parser_library: bool = False,
         post_process: str | None = None,
         read_only: bool = False,
+        verbose: bool = False,
     ):
         main_file = Path(main_file)
         include_dirs = tuple(sorted(Path(include_dir) for include_dir in include_dirs))
@@ -342,6 +338,7 @@ class KompileArgs:
         object.__setattr__(self, 'bison_parser_library', bison_parser_library)
         object.__setattr__(self, 'post_process', post_process)
         object.__setattr__(self, 'read_only', read_only)
+        object.__setattr__(self, 'verbose', verbose)
 
     def args(self) -> list[str]:
         args = [str(self.main_file)]
@@ -375,6 +372,9 @@ class KompileArgs:
 
         if self.read_only:
             args += ['--read-only-kompiled-directory']
+
+        if self.verbose:
+            args += ['--verbose']
 
         return args
 
