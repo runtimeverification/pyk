@@ -27,12 +27,14 @@ class TestHaskellKompile(KompiledTest):
 class TestLlvmKompile(KompiledTest):
     KOMPILE_MAIN_FILE = K_FILES / 'imp.k'
     KOMPILE_BACKEND = 'llvm'
+    KOMPILE_ARGS = {'verbose': True}
 
     def test(self, definition_info: DefinitionInfo) -> None:
         assert definition_info.backend == KompileBackend.LLVM
         assert definition_info.main_module_name == 'IMP'
         assert definition_info.syntax_module_name == 'IMP-SYNTAX'
         assert definition_info.timestamp >= 0
+        assert (definition_info.path / 'kompile.log').resolve().exists()
 
 
 def test_kompile_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
