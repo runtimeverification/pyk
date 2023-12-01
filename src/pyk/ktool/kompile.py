@@ -406,5 +406,9 @@ class DefinitionInfo:
         return (self.path / 'mainSyntaxModule.txt').read_text()
 
     @cached_property
+    def kompile_log(self) -> str:
+        return (self.path / 'kompile.log').read_text()
+
+    @cached_property
     def timestamp(self) -> int:
         return (self.path / 'timestamp').stat().st_mtime_ns
