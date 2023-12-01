@@ -157,8 +157,7 @@ class Kompile(ABC):
         if proc_res.stdout:
             out = proc_res.stdout.rstrip()
             print(out)
-            with open(definition_dir / 'kompile.log', 'w') as f:
-                f.write(out)
+            (definition_dir / 'kompile.log').write_text(out)
 
         return definition_dir
 
