@@ -117,6 +117,7 @@ class Kompile(ABC):
         verbose: bool = False,
         cwd: Path | None = None,
         check: bool = True,
+        bug_report: BugReport | None = None,
     ) -> Path:
         check_file_path(abs_or_rel_to(self.base_args.main_file, cwd or Path()))
         for include_dir in self.base_args.include_dirs:
@@ -151,13 +152,14 @@ class Kompile(ABC):
                 err.returncode,
             ) from err
 
-        definition_dir = output_dir if output_dir else Path(self.base_args.main_file.stem + '-kompiled')
-        assert definition_dir.is_dir()
-
         if proc_res.stdout:
             out = proc_res.stdout.rstrip()
             print(out)
-            (definition_dir / 'kompile.log').write_text(out)
+            if bug_report:
+                bug_report.add_file_contents(out, 'kompile.log')
+
+        definition_dir = output_dir if output_dir else Path(self.base_args.main_file.stem + '-kompiled')
+        assert definition_dir.is_dir()
 
         return definition_dir
 
@@ -404,10 +406,6 @@ class DefinitionInfo:
     @cached_property
     def syntax_module_name(self) -> str:
         return (self.path / 'mainSyntaxModule.txt').read_text()
-
-    @cached_property
-    def kompile_log(self) -> str:
-        return (self.path / 'kompile.log').read_text()
 
     @cached_property
     def timestamp(self) -> int:
