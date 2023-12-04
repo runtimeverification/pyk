@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from typing import Any, Final, Literal
 
+    from ..utils import BugReport
+
 _LOGGER: Final = logging.getLogger(__name__)
 
 
@@ -156,7 +158,7 @@ class Kompile(ABC):
             out = proc_res.stdout.rstrip()
             print(out)
             if bug_report:
-                bug_report.add_file_contents(out, 'kompile.log')
+                bug_report.add_file_contents(out, Path('kompile.log'))
 
         definition_dir = output_dir if output_dir else Path(self.base_args.main_file.stem + '-kompiled')
         assert definition_dir.is_dir()
