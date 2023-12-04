@@ -117,6 +117,7 @@ class Kompile(ABC):
         verbose: bool = False,
         cwd: Path | None = None,
         check: bool = True,
+        bug_report: BugReport | None = None,
     ) -> Path:
         check_file_path(abs_or_rel_to(self.base_args.main_file, cwd or Path()))
         for include_dir in self.base_args.include_dirs:
@@ -152,10 +153,14 @@ class Kompile(ABC):
             ) from err
 
         if proc_res.stdout:
-            print(proc_res.stdout.rstrip())
+            out = proc_res.stdout.rstrip()
+            print(out)
+            if bug_report:
+                bug_report.add_file_contents(out, 'kompile.log')
 
         definition_dir = output_dir if output_dir else Path(self.base_args.main_file.stem + '-kompiled')
         assert definition_dir.is_dir()
+
         return definition_dir
 
     @abstractmethod
