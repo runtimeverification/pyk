@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-_PYK_DEFINITION_NAME: Final = 'pyk-definition.json'
+_PYK_DEFINITION_NAME: Final = 'pyk-definition.kore.json'
 
 
 @final
