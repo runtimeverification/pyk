@@ -54,6 +54,8 @@ def main() -> None:
     # This change makes it so that in most cases, by default, pyk doesn't run out of stack space.
     sys.setrecursionlimit(10**7)
 
+    exit(1)
+
     cli_parser = create_argument_parser()
     args = cli_parser.parse_args()
 

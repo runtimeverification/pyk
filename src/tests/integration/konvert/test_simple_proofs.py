@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import sys
 import pytest
+import json
 
-from pyk.kast.inner import KApply, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
+from pyk.kast.inner import KApply, KLabel, KRewrite, KSequence, KSort, KToken, KVariable, KAst
 from pyk.kast.outer import KRule
 from pyk.konvert import kast_to_kore, kore_to_kast, krule_to_kore
 from pyk.kore.kompiled import KompiledKore
 from pyk.kore.parser import KoreParser
+from pyk.kore.syntax import Kore
 from pyk.prelude.bytes import bytesToken
 from pyk.prelude.kbool import BOOL, TRUE
 from pyk.prelude.kint import INT, intToken
@@ -18,9 +21,9 @@ from pyk.testing import KPrintTest
 from pyk.utils import single
 
 from ..utils import K_FILES, TEST_DATA_DIR
+from pathlib import Path
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from typing import Final
 
     from pyk.kast import KInner
@@ -683,6 +686,36 @@ class TestKonvertSimpleProofs(KPrintTest):
 
         # Then
         assert actual_kore == kore
+
+    def test_kast_to_kore_bug(
+        self,
+        definition: KDefinition,
+        kompiled_kore: KompiledKore,
+    ) -> None:
+
+        sys.setrecursionlimit(10**8)
+
+        bug_json = json.loads(Path(TEST_DATA_DIR / 'bug.json').read_text())
+
+        kore_json = bug_json['result']['state']['term']
+
+        print(kore_json.keys())
+
+        print(kore_json['sort'])
+
+        kore = Kore.from_dict(kore_json)
+
+#          print(kore)
+
+        kast = kore_to_kast(definition, kore)
+
+#          print(kast)
+
+        kore_2 = kast_to_kore(definition, kompiled_kore, kast, sort=KSort('GeneratedTopCell'))
+
+#          print(kore_2)
+
+        assert 1 == 2
 
     @pytest.mark.parametrize(
         'test_id,sort,kore_text,kast',
