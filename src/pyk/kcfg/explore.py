@@ -310,16 +310,14 @@ class KCFGExplore:
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        _, actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
-            node.cterm, depth=depth, module_name=module_name
-        )
-        if actual_depth != depth:
-            raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
-        if len(next_cterms) > 0:
+        exec_res = self.cterm_execute(node.cterm, depth=depth, module_name=module_name)
+        if exec_res.depth != depth:
+            raise ValueError(f'Unable to take {depth} steps from node, got {exec_res.depth} steps {self.id}: {node.id}')
+        if len(exec_res.next_states) > 0:
             raise ValueError(f'Found branch within {depth} steps {self.id}: {node.id}')
-        new_node = cfg.create_node(cterm)
+        new_node = cfg.create_node(exec_res.state)
         _LOGGER.info(f'Found new node at depth {depth} {self.id}: {shorten_hashes((node.id, new_node.id))}')
-        logs[new_node.id] = next_node_logs
+        logs[new_node.id] = exec_res.logs
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) == 0:
             cfg.create_edge(node.id, new_node.id, depth=depth)
