@@ -88,7 +88,7 @@ class KCFGExplore:
     ) -> CTermExecute:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        er = self._kore_client.execute(
+        response = self._kore_client.execute(
             kore,
             max_depth=depth,
             cut_point_rules=cut_point_rules,
@@ -100,23 +100,23 @@ class KCFGExplore:
             log_failed_simplifications=self._trace_rewrites,
         )
 
-        if isinstance(er, AbortedResult):
-            unknown_predicate = er.unknown_predicate.text if er.unknown_predicate else None
+        if isinstance(response, AbortedResult):
+            unknown_predicate = response.unknown_predicate.text if response.unknown_predicate else None
             raise ValueError(f'Backend responded with aborted state. Unknown predicate: {unknown_predicate}')
 
-        state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
-        resp_next_states = er.next_states or ()
+        state = CTerm.from_kast(self.kprint.kore_to_kast(response.state.kore))
+        resp_next_states = response.next_states or ()
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in resp_next_states]
 
         assert all(not cterm.is_bottom for cterm in next_states)
-        assert len(next_states) != 1 or er.reason is StopReason.CUT_POINT_RULE
+        assert len(next_states) != 1 or response.reason is StopReason.CUT_POINT_RULE
 
         return CTermExecute(
-            vacuous=er.reason is StopReason.VACUOUS,
-            depth=er.depth,
+            vacuous=response.reason is StopReason.VACUOUS,
+            depth=response.depth,
             state=state,
             next_states=next_states,
-            logs=er.logs,
+            logs=response.logs,
         )
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
