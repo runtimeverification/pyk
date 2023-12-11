@@ -114,10 +114,8 @@ class KCFGExplore:
             raise AssertionError(f'#Bottom value in next-states in response: {er}')
 
         if len(next_states) == 1:
-            if er.reason == StopReason.CUT_POINT_RULE:
-                return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
-            else:
-                next_states = []
+            assert er.reason is StopReason.CUT_POINT_RULE:
+            return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
         return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
