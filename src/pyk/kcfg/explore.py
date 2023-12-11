@@ -50,7 +50,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 class CTermExecute(NamedTuple):
     vacuous: bool
     depth: int
-    next_state: CTerm
+    state: CTerm
     next_states: list[CTerm]
     logs: tuple[LogEntry, ...]
 
@@ -104,7 +104,7 @@ class KCFGExplore:
             unknown_predicate = er.unknown_predicate.text if er.unknown_predicate else None
             raise ValueError(f'Backend responded with aborted state. Unknown predicate: {unknown_predicate}')
 
-        next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
+        state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None else []
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
 
@@ -114,7 +114,7 @@ class KCFGExplore:
         return CTermExecute(
             vacuous=er.reason is StopReason.VACUOUS,
             depth=er.depth,
-            next_state=next_state,
+            state=state,
             next_states=next_states,
             logs=er.logs,
         )
