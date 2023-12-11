@@ -105,8 +105,8 @@ class KCFGExplore:
             raise ValueError(f'Backend responded with aborted state. Unknown predicate: {unknown_predicate}')
 
         state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
-        _next_states = er.next_states if er.next_states is not None else []
-        next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
+        resp_next_states = er.next_states or ()
+        next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in resp_next_states]
 
         assert all(not cterm.is_bottom for cterm in next_states)
         assert len(next_states) != 1 or er.reason is StopReason.CUT_POINT_RULE
