@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, NamedTuple, final
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
@@ -47,6 +47,14 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
+class CTermExecute(NamedTuple):
+    vacuous: bool
+    depth: int
+    next_state: CTerm
+    next_states: list[CTerm]
+    logs: tuple[LogEntry, ...]
+
+
 class KCFGExplore:
     kprint: KPrint
     _kore_client: KoreClient
@@ -77,7 +85,7 @@ class KCFGExplore:
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
         module_name: str | None = None,
-    ) -> tuple[bool, int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
+    ) -> CTermExecute:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
         er = self._kore_client.execute(
@@ -103,13 +111,13 @@ class KCFGExplore:
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
         next_states = [cterm for cterm in next_states if not cterm.is_bottom]
         if len(next_states) == 1 and len(next_states) < len(_next_states):
-            return _is_vacuous, depth + 1, next_states[0], [], er.logs
+            return CTermExecute(_is_vacuous, depth + 1, next_states[0], [], er.logs)
         elif len(next_states) == 1:
             if er.reason == StopReason.CUT_POINT_RULE:
-                return _is_vacuous, depth, next_state, next_states, er.logs
+                return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
             else:
                 next_states = []
-        return _is_vacuous, depth, next_state, next_states, er.logs
+        return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
