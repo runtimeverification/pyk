@@ -104,8 +104,6 @@ class KCFGExplore:
             unknown_predicate = er.unknown_predicate.text if er.unknown_predicate else None
             raise ValueError(f'Backend responded with aborted state. Unknown predicate: {unknown_predicate}')
 
-        _is_vacuous = er.reason is StopReason.VACUOUS
-        depth = er.depth
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None else []
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
@@ -113,7 +111,13 @@ class KCFGExplore:
         assert all(not cterm.is_bottom for cterm in next_states)
         assert len(next_states) != 1 or er.reason is StopReason.CUT_POINT_RULE
 
-        return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
+        return CTermExecute(
+            vacuous=er.reason is StopReason.VACUOUS,
+            depth=er.depth,
+            next_state=next_state,
+            next_states=next_states,
+            logs=er.logs,
+        )
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
