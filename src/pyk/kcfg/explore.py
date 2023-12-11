@@ -109,9 +109,12 @@ class KCFGExplore:
         next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
         _next_states = er.next_states if er.next_states is not None else []
         next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
-        next_states = [cterm for cterm in next_states if not cterm.is_bottom]
+
+        if any(cterm.is_bottom for cterm in next_states):
+            raise AssertionError(f'#Bottom value in next-states in response: {er}')
+
         if len(next_states) == 1 and len(next_states) < len(_next_states):
-            return CTermExecute(_is_vacuous, depth + 1, next_states[0], [], er.logs)
+            raise AssertionError('Should be unreachable')
         elif len(next_states) == 1:
             if er.reason == StopReason.CUT_POINT_RULE:
                 return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
