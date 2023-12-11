@@ -115,7 +115,7 @@ class KCFGExplore:
 
         if len(next_states) == 1:
             assert er.reason is StopReason.CUT_POINT_RULE:
-            return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
+
         return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
