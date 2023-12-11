@@ -51,7 +51,7 @@ class CTermExecute(NamedTuple):
     vacuous: bool
     depth: int
     state: CTerm
-    next_states: list[CTerm]
+    next_states: tuple[CTerm, ...]
     logs: tuple[LogEntry, ...]
 
 
@@ -106,7 +106,7 @@ class KCFGExplore:
 
         state = CTerm.from_kast(self.kprint.kore_to_kast(response.state.kore))
         resp_next_states = response.next_states or ()
-        next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in resp_next_states]
+        next_states = tuple(CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in resp_next_states)
 
         assert all(not cterm.is_bottom for cterm in next_states)
         assert len(next_states) != 1 or response.reason is StopReason.CUT_POINT_RULE
