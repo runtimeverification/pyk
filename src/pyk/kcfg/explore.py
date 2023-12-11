@@ -113,9 +113,7 @@ class KCFGExplore:
         if any(cterm.is_bottom for cterm in next_states):
             raise AssertionError(f'#Bottom value in next-states in response: {er}')
 
-        if len(next_states) == 1 and len(next_states) < len(_next_states):
-            raise AssertionError('Should be unreachable')
-        elif len(next_states) == 1:
+        if len(next_states) == 1:
             if er.reason == StopReason.CUT_POINT_RULE:
                 return CTermExecute(_is_vacuous, depth, next_state, next_states, er.logs)
             else:
