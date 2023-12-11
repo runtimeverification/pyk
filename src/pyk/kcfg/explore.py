@@ -48,10 +48,10 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class CTermExecute(NamedTuple):
-    vacuous: bool
-    depth: int
     state: CTerm
     next_states: tuple[CTerm, ...]
+    depth: int
+    vacuous: bool
     logs: tuple[LogEntry, ...]
 
 
@@ -112,10 +112,10 @@ class KCFGExplore:
         assert len(next_states) != 1 or response.reason is StopReason.CUT_POINT_RULE
 
         return CTermExecute(
-            vacuous=response.reason is StopReason.VACUOUS,
-            depth=response.depth,
             state=state,
             next_states=next_states,
+            depth=response.depth,
+            vacuous=response.reason is StopReason.VACUOUS,
             logs=response.logs,
         )
 
@@ -411,7 +411,7 @@ class KCFGExplore:
         if len(branches) > 1:
             return Branch(branches, heuristic=True)
 
-        _is_vacuous, depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+        cterm, next_cterms, depth, vacuous, next_node_logs = self.cterm_execute(
             _cterm,
             depth=execute_depth,
             cut_point_rules=cut_point_rules,
@@ -425,7 +425,7 @@ class KCFGExplore:
 
         # Stuck or vacuous
         if not next_cterms:
-            if _is_vacuous:
+            if vacuous:
                 return Vacuous()
             return Stuck()
 
