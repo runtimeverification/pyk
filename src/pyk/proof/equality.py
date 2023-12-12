@@ -347,8 +347,8 @@ class ImpliesProver(Prover):
 
         # to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.
         # "LHS equals RHS under these constraints"
-        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._antecedent_kast)
-        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._consequent_kast)
+        _, antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._antecedent_kast)
+        _, consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._consequent_kast)
         self.proof.simplified_antecedent = antecedent_simplified_kast
         self.proof.simplified_consequent = consequent_simplified_kast
         _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')

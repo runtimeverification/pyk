@@ -49,6 +49,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class CTermExecute(NamedTuple):
     state: CTerm
+    unknown_predicate: KInner | None
     next_states: tuple[CTerm, ...]
     depth: int
     vacuous: bool
@@ -100,9 +101,11 @@ class KCFGExplore:
             log_failed_simplifications=self._trace_rewrites,
         )
 
+        unknown_predicate = None
         if isinstance(response, AbortedResult):
-            unknown_predicate = response.unknown_predicate.text if response.unknown_predicate else None
-            raise ValueError(f'Backend responded with aborted state. Unknown predicate: {unknown_predicate}')
+            unknown_predicate = (
+                self.kprint.kore_to_kast(response.unknown_predicate) if response.unknown_predicate is not None else None
+            )
 
         state = CTerm.from_kast(self.kprint.kore_to_kast(response.state.kore))
         resp_next_states = response.next_states or ()
@@ -113,25 +116,33 @@ class KCFGExplore:
 
         return CTermExecute(
             state=state,
+            unknown_predicate=unknown_predicate,
             next_states=next_states,
             depth=response.depth,
             vacuous=response.reason is StopReason.VACUOUS,
             logs=response.logs,
         )
 
-    def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
+    def cterm_simplify(self, cterm: CTerm) -> tuple[KInner | None, CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        kore_simplified, logs = self._kore_client.simplify(kore)
+        kore_unknown_predicate, kore_simplified, logs = self._kore_client.simplify(kore)
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
-        return CTerm.from_kast(kast_simplified), logs
+        unknown_predicate = (
+            self.kprint.kore_to_kast(kore_unknown_predicate) if kore_unknown_predicate is not None else None
+        )
+        return unknown_predicate, CTerm.from_kast(kast_simplified), logs
 
-    def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
+    def kast_simplify(self, kast: KInner) -> tuple[KInner | None, KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        kore_simplified, logs = self._kore_client.simplify(kore)
+        unknown_predicate_kore, kore_simplified, logs = self._kore_client.simplify(kore)
+        unknown_predicate = None
+        if unknown_predicate_kore is not None:
+            unknown_predicate = self.kprint.kore_to_kast(unknown_predicate_kore)
+            _LOGGER.warning('Could not decide predicate:' + self.kprint.pretty_print(unknown_predicate))
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
-        return kast_simplified, logs
+        return unknown_predicate, kast_simplified, logs
 
     def cterm_get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
         _LOGGER.info(f'Getting model: {cterm}')
@@ -279,7 +290,11 @@ class KCFGExplore:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
         kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
-        kore_simplified, _logs = self._kore_client.simplify(kore)
+        unknown_predicate, kore_simplified, _logs = self._kore_client.simplify(kore)
+        if unknown_predicate is not None:
+            _LOGGER.warning(
+                'Could not decide predicate:' + self.kprint.pretty_print(self.kprint.kore_to_kast(unknown_predicate))
+            )
         kast_simplified = self.kprint.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
@@ -287,13 +302,18 @@ class KCFGExplore:
     def simplify(self, cfg: KCFG, logs: dict[int, tuple[LogEntry, ...]]) -> None:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
-            new_term, next_node_logs = self.cterm_simplify(node.cterm)
+            unknown_predicate, new_term, next_node_logs = self.cterm_simplify(node.cterm)
             if new_term != node.cterm:
                 cfg.replace_node(node.id, new_term)
                 if node.id in logs:
                     logs[node.id] += next_node_logs
                 else:
                     logs[node.id] = next_node_logs
+            if unknown_predicate is not None:
+                _LOGGER.warning(
+                    f'Could not decide predicate while simplifiyng node {node.id}:'
+                    + self.kprint.pretty_print(unknown_predicate)
+                )
 
     def step(
         self,
@@ -387,6 +407,8 @@ class KCFGExplore:
             raise ValueError(f'Cannot extend vacuous node {self.id}: {node.id}')
         if kcfg_exploration.is_terminal(node.id):
             raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
+        if kcfg.is_undecided(node.id):
+            raise ValueError(f'Cannot extend undecided node {self.id}: {node.id}')
 
     def extend_cterm(
         self,
@@ -405,13 +427,13 @@ class KCFGExplore:
         branches = []
         for constraint in _branches:
             kast = mlAnd(list(_cterm.constraints) + [constraint])
-            kast, _ = self.kast_simplify(kast)
-            if not CTerm._is_bottom(kast):
+            unknown_predicate, kast, _ = self.kast_simplify(kast)
+            if not CTerm._is_bottom(kast) and unknown_predicate is None:
                 branches.append(constraint)
         if len(branches) > 1:
             return Branch(branches, heuristic=True)
 
-        cterm, next_cterms, depth, vacuous, next_node_logs = self.cterm_execute(
+        cterm, unknown_predicate, next_cterms, depth, vacuous, next_node_logs = self.cterm_execute(
             _cterm,
             depth=execute_depth,
             cut_point_rules=cut_point_rules,
@@ -423,10 +445,12 @@ class KCFGExplore:
         if depth > 0:
             return Step(cterm, depth, next_node_logs)
 
-        # Stuck or vacuous
+        # Stuck, Vacuous or Undecided
         if not next_cterms:
             if vacuous:
                 return Vacuous()
+            if unknown_predicate is not None:
+                return Undecided(unknown_predicate)
             return Stuck()
 
         # Cut rule
@@ -471,6 +495,10 @@ class KCFGExplore:
             case Stuck():
                 kcfg.add_stuck(node.id)
                 log(f'stuck node: {node.id}')
+
+            case Undecided(_):
+                kcfg.add_undecided(node.id)
+                log(f'undecided node: {node.id}')
 
             case Abstract(cterm):
                 new_node = kcfg.create_node(cterm)
@@ -530,6 +558,13 @@ class Vacuous(ExtendResult):
 @final
 @dataclass(frozen=True)
 class Stuck(ExtendResult):
+    ...
+
+
+@final
+@dataclass(frozen=True)
+class Undecided(ExtendResult):
+    unknown_predicate: KInner
     ...
 
 
