@@ -113,7 +113,7 @@ class TestSimpleProof(KCFGExploreTest):
         expected_k, expected_state, *_ = expected_post
 
         # When
-        actual_post, _logs = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, *pre))
+        _unknwon_predicate, actual_post, _logs = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, *pre))
         actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post.kast, 'K_CELL'))
         actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post.kast, 'STATE_CELL'))
 
