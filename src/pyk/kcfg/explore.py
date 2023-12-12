@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, NamedTuple, final
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
@@ -47,6 +47,15 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
+class CTermExecute(NamedTuple):
+    state: CTerm
+    unknown_predicate: KInner | None
+    next_states: tuple[CTerm, ...]
+    depth: int
+    vacuous: bool
+    logs: tuple[LogEntry, ...]
+
+
 class KCFGExplore:
     kprint: KPrint
     _kore_client: KoreClient
@@ -77,40 +86,42 @@ class KCFGExplore:
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
         module_name: str | None = None,
-    ) -> tuple[KInner | None, bool, int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
+    ) -> CTermExecute:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        er = self._kore_client.execute(
+        response = self._kore_client.execute(
             kore,
             max_depth=depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
             module_name=module_name,
-            log_successful_rewrites=self._trace_rewrites if self._trace_rewrites else None,
-            log_failed_rewrites=self._trace_rewrites if self._trace_rewrites else None,
-            log_successful_simplifications=self._trace_rewrites if self._trace_rewrites else None,
-            log_failed_simplifications=self._trace_rewrites if self._trace_rewrites else None,
+            log_successful_rewrites=self._trace_rewrites,
+            log_failed_rewrites=self._trace_rewrites,
+            log_successful_simplifications=self._trace_rewrites,
+            log_failed_simplifications=self._trace_rewrites,
         )
 
-        _is_vacuous = er.reason is StopReason.VACUOUS
-        depth = er.depth
-        next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
-        _next_states = er.next_states if er.next_states is not None else []
-        next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
-        next_states = [cterm for cterm in next_states if not cterm.is_bottom]
-        if len(next_states) == 1 and len(next_states) < len(_next_states):
-            return None, _is_vacuous, depth + 1, next_states[0], [], er.logs
-        elif len(next_states) == 1:
-            if er.reason == StopReason.CUT_POINT_RULE:
-                return None, _is_vacuous, depth, next_state, next_states, er.logs
-            else:
-                next_states = []
         unknown_predicate = None
-        if isinstance(er, AbortedResult):
+        if isinstance(response, AbortedResult):
             unknown_predicate = (
-                self.kprint.kore_to_kast(er.unknown_predicate) if er.unknown_predicate is not None else None
+                self.kprint.kore_to_kast(response.unknown_predicate) if response.unknown_predicate is not None else None
             )
-        return unknown_predicate, _is_vacuous, depth, next_state, next_states, er.logs
+
+        state = CTerm.from_kast(self.kprint.kore_to_kast(response.state.kore))
+        resp_next_states = response.next_states or ()
+        next_states = tuple(CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in resp_next_states)
+
+        assert all(not cterm.is_bottom for cterm in next_states)
+        assert len(next_states) != 1 or response.reason is StopReason.CUT_POINT_RULE
+
+        return CTermExecute(
+            state=state,
+            unknown_predicate=unknown_predicate,
+            next_states=next_states,
+            depth=response.depth,
+            vacuous=response.reason is StopReason.VACUOUS,
+            logs=response.logs,
+        )
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[KInner | None, CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
@@ -319,16 +330,14 @@ class KCFGExplore:
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        _, _, actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
-            node.cterm, depth=depth, module_name=module_name
-        )
-        if actual_depth != depth:
-            raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
-        if len(next_cterms) > 0:
+        exec_res = self.cterm_execute(node.cterm, depth=depth, module_name=module_name)
+        if exec_res.depth != depth:
+            raise ValueError(f'Unable to take {depth} steps from node, got {exec_res.depth} steps {self.id}: {node.id}')
+        if len(exec_res.next_states) > 0:
             raise ValueError(f'Found branch within {depth} steps {self.id}: {node.id}')
-        new_node = cfg.create_node(cterm)
+        new_node = cfg.create_node(exec_res.state)
         _LOGGER.info(f'Found new node at depth {depth} {self.id}: {shorten_hashes((node.id, new_node.id))}')
-        logs[new_node.id] = next_node_logs
+        logs[new_node.id] = exec_res.logs
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) == 0:
             cfg.create_edge(node.id, new_node.id, depth=depth)
@@ -424,7 +433,7 @@ class KCFGExplore:
         if len(branches) > 1:
             return Branch(branches, heuristic=True)
 
-        unknown_predicate, _is_vacuous, depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+        cterm, unknown_predicate, next_cterms, depth, vacuous, next_node_logs = self.cterm_execute(
             _cterm,
             depth=execute_depth,
             cut_point_rules=cut_point_rules,
@@ -438,7 +447,7 @@ class KCFGExplore:
 
         # Stuck, Vacuous or Undecided
         if not next_cterms:
-            if _is_vacuous:
+            if vacuous:
                 return Vacuous()
             if unknown_predicate is not None:
                 return Undecided(unknown_predicate)

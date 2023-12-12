@@ -11,7 +11,7 @@ from ..kllvm.compiler import compile_runtime
 from ..kllvm.importer import import_runtime
 from ..kore.pool import KoreServerPool
 from ..kore.rpc import BoosterServer, KoreClient, KoreServer
-from ..ktool.kompile import DefinitionInfo, Kompile
+from ..ktool.kompile import DefinitionInfo, Kompile, TypeInferenceMode
 from ..ktool.kprint import KPrint
 from ..ktool.kprove import KProve
 from ..ktool.krun import KRun
@@ -19,13 +19,13 @@ from ..ktool.krun import KRun
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from pathlib import Path
-    from types import ModuleType
     from typing import Any, ClassVar
 
     from pytest import TempPathFactory
 
     from ..kast.outer import KDefinition
     from ..kcfg.semantics import KCFGSemantics
+    from ..kllvm.runtime import Runtime
     from ..ktool.kprint import SymbolTable
     from ..utils import BugReport
 
@@ -43,7 +43,7 @@ class Kompiler:
         kompile = Kompile.from_dict(kwargs)
         if kompile not in self._cache:
             output_dir = self._path / self._uid(kompile)
-            self._cache[kompile] = kompile(output_dir=output_dir)
+            self._cache[kompile] = kompile(output_dir=output_dir, type_inference_mode=TypeInferenceMode.CHECKED)
 
         return self._cache[kompile]
 
@@ -212,6 +212,6 @@ class RuntimeTest(KompiledTest):
     KOMPILE_BACKEND = 'llvm'
 
     @pytest.fixture(scope='class')
-    def runtime(self, definition_dir: Path) -> ModuleType:
+    def runtime(self, definition_dir: Path) -> Runtime:
         compile_runtime(definition_dir)
         return import_runtime(definition_dir)

@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from typing import Any, Final, Literal
 
+    from ..utils import BugReport
+
 _LOGGER: Final = logging.getLogger(__name__)
 
 
@@ -28,12 +30,20 @@ class KompileNotFoundError(RuntimeError):
         super().__init__(f'Kompile command not found: {str}')
 
 
+class TypeInferenceMode(Enum):
+    Z3 = 'z3'
+    SIMPLESUB = 'simplesub'
+    CHECKED = 'checked'
+    DEFAULT = 'default'
+
+
 def kompile(
     main_file: str | Path,
     *,
     command: Iterable[str] = ('kompile',),
     output_dir: str | Path | None = None,
     temp_dir: str | Path | None = None,
+    type_inference_mode: str | TypeInferenceMode | None = None,
     debug: bool = False,
     verbose: bool = False,
     cwd: Path | None = None,
@@ -46,6 +56,7 @@ def kompile(
         command=command,
         output_dir=output_dir,
         temp_dir=temp_dir,
+        type_inference_mode=type_inference_mode,
         debug=debug,
         verbose=verbose,
         cwd=cwd,
@@ -113,10 +124,12 @@ class Kompile(ABC):
         *,
         output_dir: str | Path | None = None,
         temp_dir: str | Path | None = None,
+        type_inference_mode: str | TypeInferenceMode | None = None,
         debug: bool = False,
         verbose: bool = False,
         cwd: Path | None = None,
         check: bool = True,
+        bug_report: BugReport | None = None,
     ) -> Path:
         check_file_path(abs_or_rel_to(self.base_args.main_file, cwd or Path()))
         for include_dir in self.base_args.include_dirs:
@@ -135,6 +148,10 @@ class Kompile(ABC):
             temp_dir = Path(temp_dir)
             args += ['--temp-dir', str(temp_dir)]
 
+        if type_inference_mode is not None:
+            type_inference_mode = TypeInferenceMode(type_inference_mode)
+            args += ['--type-inference-mode', type_inference_mode.value]
+
         if debug:
             args += ['--debug']
 
@@ -152,10 +169,14 @@ class Kompile(ABC):
             ) from err
 
         if proc_res.stdout:
-            print(proc_res.stdout.rstrip())
+            out = proc_res.stdout.rstrip()
+            print(out)
+            if bug_report:
+                bug_report.add_file_contents(out, Path('kompile.log'))
 
         definition_dir = output_dir if output_dir else Path(self.base_args.main_file.stem + '-kompiled')
         assert definition_dir.is_dir()
+
         return definition_dir
 
     @abstractmethod
