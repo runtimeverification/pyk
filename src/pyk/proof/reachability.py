@@ -171,7 +171,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         admitted = dct.get('admitted', False)
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
-        checked_for_subsumption = dct['_checked_for_subsumption']
+        checked_for_subsumption = dct['checked_for_subsumption']
         if 'node_refutation' in dct:
             node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
         if 'logs' in dct:
