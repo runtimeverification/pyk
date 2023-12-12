@@ -294,7 +294,21 @@ class Pattern(Kore):
                 stack.append([])
 
     def top_down(self, f: Callable[[Pattern], Pattern]) -> Pattern:
-        return f(self).map_patterns(lambda pattern: pattern.top_down(f))
+        stack: list = [f(self), []]
+        while True:
+            patterns = stack[-1]
+            pattern = stack[-2]
+            idx = len(patterns) - len(pattern.patterns)
+            if not idx:
+                stack.pop()
+                stack.pop()
+                pattern = pattern.let_patterns(patterns)
+                if not stack:
+                    return pattern
+                stack[-1].append(pattern)
+            else:
+                stack.append(f(pattern.patterns[idx]))
+                stack.append([])
 
 
 class VarPattern(Pattern, WithSort):
