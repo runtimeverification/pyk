@@ -56,3 +56,22 @@ def test_bottom_up() -> None:
 
     # Then
     assert actual == expected
+
+
+def test_top_down() -> None:
+    # Given
+    expected = App(
+        'f0',
+        (),
+        (
+            App('f1', (), (dv(2), dv(3))),
+            dv(4),
+            App('f5', (), (dv(6), dv(7), dv(8))),
+        ),
+    )
+
+    # When
+    actual = PATTERN.top_down(rewriter())
+
+    # Then
+    assert actual == expected
