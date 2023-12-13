@@ -243,9 +243,37 @@ def kore_to_kast(kast_defn: KDefinition, kore: Pattern) -> KInner:
     return kast_defn.remove_cell_map_items(kast)
 
 
-def _kore_to_kast(kore: Pattern) -> KInner:
-    match kore:
+def _kore_to_kast(pattern: Pattern) -> KInner:
+    stack: list = [
+        pattern,
+        (pattern.app,) if isinstance(pattern, Assoc) else pattern.patterns,
+        [],
+    ]
+
+    while True:
+        terms = stack[-1]
+        patterns = stack[-2]
+        pattern = stack[-3]
+        idx = len(terms) - len(patterns)
+        if not idx:
+            stack.pop()
+            stack.pop()
+            stack.pop()
+            term = _pattern_to_kast(pattern, terms)
+            if not stack:
+                return term
+            stack[-1].append(term)
+        else:
+            pattern = patterns[idx]
+            stack.append(pattern)
+            stack.append((pattern.app,) if isinstance(pattern, Assoc) else pattern.patterns)
+            stack.append([])
+
+
+def _pattern_to_kast(pattern: Pattern, terms: list[KInner]) -> KInner:
+    match pattern:
         case DV(sort, String(value)):
+            assert not terms
             if sort == KORE_STRING:
                 return stringToken(value)
             if sort == KORE_BYTES:
@@ -253,29 +281,27 @@ def _kore_to_kast(kore: Pattern) -> KInner:
             return KToken(value, _sort_to_kast(sort))
 
         case EVar(name, sort):
+            assert not terms
             return KVariable(name=unmunge(name[3:]), sort=_sort_to_kast(sort))
 
-        case App(symbol, sorts, args):
+        case App(symbol, sorts, _):
             if symbol == 'inj':
                 _, _ = sorts
-                (arg,) = args
-                return _kore_to_kast(arg)
+                (term,) = terms
+                return term
 
             elif not sorts:
                 if symbol == 'dotk':
-                    () = args
+                    () = terms
                     return KSequence(())
 
                 elif symbol == 'kseq':
-                    arg0, arg1 = args
-                    p0 = _kore_to_kast(arg0)
-                    p1 = _kore_to_kast(arg1)
-                    return KSequence((p0, p1))
+                    _, _ = terms
+                    return KSequence(terms)
 
                 else:
                     klabel = KLabel(unmunge(symbol[3:]))
-                    kargs = tuple(_kore_to_kast(_a) for _a in args)
-                    return KApply(klabel, kargs)
+                    return KApply(klabel, terms)
 
             # hardcoded polymorphic operators
             elif (
@@ -283,26 +309,22 @@ def _kore_to_kast(kore: Pattern) -> KInner:
                 == "Lbl'Hash'if'UndsHash'then'UndsHash'else'UndsHash'fi'Unds'K-EQUAL-SYNTAX'Unds'Sort'Unds'Bool'Unds'Sort'Unds'Sort"
             ):
                 (sort,) = sorts
-                _label_name = unmunge(symbol[3:])
-                klabel = KLabel(
-                    _label_name,
-                    (_sort_to_kast(sort),),
-                )
-                kargs = tuple(_kore_to_kast(_a) for _a in args)
-                return KApply(klabel, kargs)
+                klabel = KLabel(unmunge(symbol[3:]), (_sort_to_kast(sort),))
+                return KApply(klabel, terms)
 
             else:
                 raise ValueError(f'Unsupported polymorphic operator: {symbol}')
 
         case Top(sort):
+            assert not terms
             return mlTop(sort=_sort_to_kast(sort))
 
         case Bottom(sort):
+            assert not terms
             return mlBottom(sort=_sort_to_kast(sort))
 
-        case And(sort, ops):
-            kargs = tuple(_kore_to_kast(op) for op in ops)
-            return mlAnd(kargs, sort=_sort_to_kast(sort))
+        case And(sort, _):
+            return mlAnd(terms, sort=_sort_to_kast(sort))
 
         case Implies(sort, left, right):
             larg = _kore_to_kast(left)
@@ -338,10 +360,10 @@ def _kore_to_kast(kore: Pattern) -> KInner:
             )
 
         case Assoc():
-            return _kore_to_kast(kore.pattern)
+            return _kore_to_kast(pattern.pattern)
 
         case _:
-            raise ValueError(f'Unsupported Pattern: {kore}')
+            raise ValueError(f'Unsupported Pattern: {pattern}')
 
 
 def _sort_to_kast(sort: Sort) -> KSort:
