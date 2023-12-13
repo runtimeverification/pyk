@@ -120,10 +120,34 @@ class KompiledKore:
     def add_injections(self, pattern: Pattern, sort: Sort | None = None) -> Pattern:
         if sort is None:
             sort = SortApp('SortK')
-        patterns = pattern.patterns
-        sorts = self.symbol_table.pattern_sorts(pattern)
-        pattern = pattern.let_patterns(tuple(self.add_injections(p, s) for p, s in zip(patterns, sorts, strict=True)))
-        return self._inject(pattern, sort)
+
+        stack: list = [pattern, sort, self.symbol_table.pattern_sorts(pattern), pattern.patterns, []]
+        while True:
+            done_patterns = stack[-1]
+            patterns = stack[-2]
+            pattern_sorts = stack[-3]
+            _sort = stack[-4]
+            pattern = stack[-5]
+
+            idx = len(done_patterns) - len(patterns)
+            if not idx:
+                stack.pop()
+                stack.pop()
+                stack.pop()
+                stack.pop()
+                stack.pop()
+                pattern = pattern.let_patterns(done_patterns)
+                pattern = self._inject(pattern, _sort)
+                if not stack:
+                    return pattern
+                stack[-1].append(pattern)
+            else:
+                pattern = patterns[idx]
+                stack.append(pattern)
+                stack.append(pattern_sorts[idx])
+                stack.append(self.symbol_table.pattern_sorts(pattern))
+                stack.append(pattern.patterns)
+                stack.append([])
 
     def _inject(self, pattern: Pattern, sort: Sort) -> Pattern:
         actual_sort = self.symbol_table.infer_sort(pattern)
