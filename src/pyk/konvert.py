@@ -244,101 +244,104 @@ def kore_to_kast(kast_defn: KDefinition, kore: Pattern) -> KInner:
 
 
 def _kore_to_kast(kore: Pattern) -> KInner:
-    if type(kore) is DV:
-        if kore.sort == KORE_STRING:
-            return stringToken(kore.value.value)
-        if kore.sort == KORE_BYTES:
-            return bytesToken_from_str(kore.value.value)  # noqa: N802(kore.value.value)
-        return KToken(kore.value.value, _sort_to_kast(kore.sort))
+    match kore:
+        case DV(sort, String(value)):
+            if sort == KORE_STRING:
+                return stringToken(value)
+            if sort == KORE_BYTES:
+                return bytesToken_from_str(value)
+            return KToken(value, _sort_to_kast(sort))
 
-    elif type(kore) is EVar:
-        vname = unmunge(kore.name[3:])
-        return KVariable(vname, sort=_sort_to_kast(kore.sort))
+        case EVar(name, sort):
+            return KVariable(name=unmunge(name[3:]), sort=_sort_to_kast(sort))
 
-    elif type(kore) is App:
-        if kore.symbol == 'inj' and len(kore.sorts) == 2 and len(kore.args) == 1:
-            return _kore_to_kast(kore.args[0])
+        case App(symbol, sorts, args):
+            if symbol == 'inj':
+                _, _ = sorts
+                (arg,) = args
+                return _kore_to_kast(arg)
 
-        elif len(kore.sorts) == 0:
-            if kore.symbol == 'dotk' and len(kore.args) == 0:
-                return KSequence(())
+            elif not sorts:
+                if symbol == 'dotk':
+                    () = args
+                    return KSequence(())
 
-            elif kore.symbol == 'kseq' and len(kore.args) == 2:
-                p0 = _kore_to_kast(kore.args[0])
-                p1 = _kore_to_kast(kore.args[1])
-                return KSequence((p0, p1))
+                elif symbol == 'kseq':
+                    arg0, arg1 = args
+                    p0 = _kore_to_kast(arg0)
+                    p1 = _kore_to_kast(arg1)
+                    return KSequence((p0, p1))
+
+                else:
+                    klabel = KLabel(unmunge(symbol[3:]))
+                    kargs = tuple(_kore_to_kast(_a) for _a in args)
+                    return KApply(klabel, kargs)
+
+            # hardcoded polymorphic operators
+            elif (
+                symbol
+                == "Lbl'Hash'if'UndsHash'then'UndsHash'else'UndsHash'fi'Unds'K-EQUAL-SYNTAX'Unds'Sort'Unds'Bool'Unds'Sort'Unds'Sort"
+            ):
+                (sort,) = sorts
+                _label_name = unmunge(symbol[3:])
+                klabel = KLabel(
+                    _label_name,
+                    (_sort_to_kast(sort),),
+                )
+                kargs = tuple(_kore_to_kast(_a) for _a in args)
+                return KApply(klabel, kargs)
 
             else:
-                _label_name = unmunge(kore.symbol[3:])
-                klabel = KLabel(_label_name, tuple(_sort_to_kast(sort) for sort in kore.sorts))
-                args = tuple(_kore_to_kast(_a) for _a in kore.args)
-                return KApply(klabel, args)
+                raise ValueError(f'Unsupported polymorphic operator: {symbol}')
 
-        # hardcoded polymorphic operators
-        elif (
-            len(kore.sorts) == 1
-            and kore.symbol
-            == "Lbl'Hash'if'UndsHash'then'UndsHash'else'UndsHash'fi'Unds'K-EQUAL-SYNTAX'Unds'Sort'Unds'Bool'Unds'Sort'Unds'Sort"
-        ):
-            _label_name = unmunge(kore.symbol[3:])
-            klabel = KLabel(
-                _label_name,
-                (_sort_to_kast(kore.sorts[0]),),
+        case Top(sort):
+            return mlTop(sort=_sort_to_kast(sort))
+
+        case Bottom(sort):
+            return mlBottom(sort=_sort_to_kast(sort))
+
+        case And(sort, ops):
+            kargs = tuple(_kore_to_kast(op) for op in ops)
+            return mlAnd(kargs, sort=_sort_to_kast(sort))
+
+        case Implies(sort, left, right):
+            larg = _kore_to_kast(left)
+            rarg = _kore_to_kast(right)
+            return mlImplies(larg, rarg, sort=_sort_to_kast(sort))
+
+        case Not(sort, pattern):
+            karg = _kore_to_kast(pattern)
+            return mlNot(karg, sort=_sort_to_kast(sort))
+
+        case Exists(sort, var, pattern):
+            kvar = _kore_to_kast(var)
+            body = _kore_to_kast(pattern)
+            assert isinstance(kvar, KVariable)
+            return mlExists(kvar, body, sort=_sort_to_kast(sort))
+
+        case Equals(op_sort, sort, left, right):
+            larg = _kore_to_kast(left)
+            rarg = _kore_to_kast(right)
+            return mlEquals(
+                larg,
+                rarg,
+                arg_sort=_sort_to_kast(op_sort),
+                sort=_sort_to_kast(sort),
             )
-            args = tuple(_kore_to_kast(_a) for _a in kore.args)
-            return KApply(klabel, args)
 
-        else:
-            raise ValueError(f'Unsupported polymorphic operator: {kore.symbol}')
+        case Ceil(op_sort, sort, pattern):
+            karg = _kore_to_kast(pattern)
+            return mlCeil(
+                karg,
+                arg_sort=_sort_to_kast(op_sort),
+                sort=_sort_to_kast(sort),
+            )
 
-    elif type(kore) is Top:
-        return mlTop(sort=_sort_to_kast(kore.sort))
+        case Assoc():
+            return _kore_to_kast(kore.pattern)
 
-    elif type(kore) is Bottom:
-        return mlBottom(sort=_sort_to_kast(kore.sort))
-
-    elif type(kore) is And:
-        args = tuple(_kore_to_kast(op) for op in kore.ops)
-        return mlAnd(args, sort=_sort_to_kast(kore.sort))
-
-    elif type(kore) is Implies:
-        larg = _kore_to_kast(kore.left)
-        rarg = _kore_to_kast(kore.right)
-        return mlImplies(larg, rarg, sort=_sort_to_kast(kore.sort))
-
-    elif type(kore) is Not:
-        arg = _kore_to_kast(kore.pattern)
-        return mlNot(arg, sort=_sort_to_kast(kore.sort))
-
-    elif type(kore) is Exists:
-        var = _kore_to_kast(kore.var)
-        assert type(var) is KVariable
-        body = _kore_to_kast(kore.pattern)
-        return mlExists(var, body, sort=_sort_to_kast(kore.sort))
-
-    elif type(kore) is Equals:
-        larg = _kore_to_kast(kore.left)
-        rarg = _kore_to_kast(kore.right)
-        return mlEquals(
-            larg,
-            rarg,
-            arg_sort=_sort_to_kast(kore.op_sort),
-            sort=_sort_to_kast(kore.sort),
-        )
-
-    elif type(kore) is Ceil:
-        arg = _kore_to_kast(kore.pattern)
-        return mlCeil(
-            arg,
-            arg_sort=_sort_to_kast(kore.op_sort),
-            sort=_sort_to_kast(kore.sort),
-        )
-
-    elif isinstance(kore, Assoc):
-        return _kore_to_kast(kore.pattern)
-
-    else:
-        raise ValueError(f'Unsupported Pattern: {kore}')
+        case _:
+            raise ValueError(f'Unsupported Pattern: {kore}')
 
 
 def _sort_to_kast(sort: Sort) -> KSort:
