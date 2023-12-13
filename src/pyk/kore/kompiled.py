@@ -173,9 +173,15 @@ def _symbol_decl_from_dict(dct: Any) -> SymbolDecl:
         ),
         param_sorts=tuple(_sort_from_dict(sort) for sort in dct['param-sorts']),
         sort=_sort_from_dict(dct['sort']),
-        attrs=tuple(App.from_dict(attr) for attr in dct['attrs']),
+        attrs=tuple(_app_from_dict(attr) for attr in dct['attrs']),
         hooked=dct['hooked'],
     )
+
+
+def _app_from_dict(dct: Any) -> App:
+    app = Pattern.from_dict(dct)
+    assert isinstance(app, App)
+    return app
 
 
 @final
