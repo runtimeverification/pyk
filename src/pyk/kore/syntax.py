@@ -258,11 +258,6 @@ class Pattern(Kore):
 
     @classmethod
     @abstractmethod
-    def _tag(cls) -> str:  # TODO This should be an abstract immutable class attribute for efficiency
-        ...
-
-    @classmethod
-    @abstractmethod
     def _from_dict(cls: type[T], dct: Mapping[str, Any], patterns: list[Pattern]) -> T:
         ...
 
@@ -270,10 +265,41 @@ class Pattern(Kore):
     def json(self) -> str:
         return json.dumps(self.dict, sort_keys=True)
 
-    @property
     @abstractmethod
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
         ...
+
+    @classmethod
+    @abstractmethod
+    def _tag(cls) -> str:  # TODO This should be an abstract immutable class attribute for efficiency
+        ...
+
+    @property
+    def dict(self) -> dict[str, Any]:
+        stack: list = [
+            self,
+            (self.app,) if isinstance(self, Assoc) else self.patterns,
+            [],
+        ]
+
+        while True:
+            dicts = stack[-1]
+            patterns = stack[-2]
+            pattern = stack[-3]
+            idx = len(dicts) - len(patterns)
+            if not idx:
+                stack.pop()
+                stack.pop()
+                stack.pop()
+                dct = pattern._dict(dicts)
+                if not stack:
+                    return dct
+                stack[-1].append(dct)
+            else:
+                pattern = patterns[idx]
+                stack.append(pattern)
+                stack.append((pattern.app,) if isinstance(pattern, Assoc) else pattern.patterns)
+                stack.append([])
 
     @property
     @abstractmethod
@@ -332,8 +358,8 @@ class VarPattern(Pattern, WithSort):
     def patterns(self) -> tuple[()]:
         return ()
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        assert not dicts
         return {'tag': self._tag(), 'name': self.name, 'sort': self.sort.dict}
 
     def write(self, output: IO[str]) -> None:
@@ -438,8 +464,8 @@ class String(Pattern):
     def patterns(self) -> tuple[()]:
         return ()
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        assert not dicts
         return {'tag': 'String', 'value': self.value}
 
     def write(self, output: IO[str]) -> None:
@@ -495,13 +521,12 @@ class App(Pattern):
     def patterns(self) -> tuple[Pattern, ...]:
         return self.args
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
         return {
             'tag': 'App',
             'name': self.symbol,
             'sorts': [sort.dict for sort in self.sorts],
-            'args': [pattern.dict for pattern in self.args],
+            'args': dicts,
         }
 
     def write(self, output: IO[str]) -> None:
@@ -565,8 +590,8 @@ class MLConn(MLPattern, WithSort):
 
 
 class NullaryConn(MLConn):
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        assert not dicts
         return {'tag': self._tag(), 'sort': self.sort.dict}
 
     @property
@@ -655,9 +680,9 @@ class UnaryConn(MLConn):
     def patterns(self) -> tuple[Pattern]:
         return (self.pattern,)
 
-    @property
-    def dict(self) -> dict[str, Any]:
-        return {'tag': self._tag(), 'sort': self.sort.dict, 'arg': self.pattern.dict}
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        (arg,) = dicts
+        return {'tag': self._tag(), 'sort': self.sort.dict, 'arg': arg}
 
 
 @final
@@ -711,14 +736,9 @@ class BinaryConn(MLConn):
     def patterns(self) -> tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
-    @property
-    def dict(self) -> dict[str, Any]:
-        return {
-            'tag': self._tag(),
-            'sort': self.sort.dict,
-            'first': self.left.dict,
-            'second': self.right.dict,
-        }
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        first, second = dicts
+        return {'tag': self._tag(), 'sort': self.sort.dict, 'first': first, 'second': second}
 
 
 @final
@@ -825,13 +845,8 @@ class MultiaryConn(MLConn):
     def patterns(self) -> tuple[Pattern, ...]:
         return self.ops
 
-    @property
-    def dict(self) -> dict[str, Any]:
-        return {
-            'tag': self._tag(),
-            'sort': self.sort.dict,
-            'patterns': [op.dict for op in self.ops],
-        }
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        return {'tag': self._tag(), 'sort': self.sort.dict, 'patterns': dicts}
 
 
 @final
@@ -941,14 +956,14 @@ class MLQuant(MLPattern, WithSort):
     def ctor_patterns(self) -> tuple[EVar, Pattern]:
         return (self.var, self.pattern)
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        (arg,) = dicts
         return {
             'tag': self._tag(),
             'sort': self.sort.dict,
             'var': self.var.name,
             'varSort': self.var.sort.dict,
-            'arg': self.pattern.dict,
+            'arg': arg,
         }
 
 
@@ -1072,13 +1087,13 @@ class MLFixpoint(MLPattern):
     def ctor_patterns(self) -> tuple[SVar, Pattern]:
         return (self.var, self.pattern)
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        (arg,) = dicts
         return {
             'tag': self._tag(),
             'var': self.var.name,
             'varSort': self.var.sort.dict,
-            'arg': self.pattern.dict,
+            'arg': arg,
         }
 
 
@@ -1177,13 +1192,13 @@ class RoundPred(MLPred):
     def patterns(self) -> tuple[Pattern]:
         return (self.pattern,)
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        (arg,) = dicts
         return {
             'tag': self._tag(),
             'argSort': self.op_sort.dict,
             'sort': self.sort.dict,
-            'arg': self.pattern.dict,
+            'arg': arg,
         }
 
 
@@ -1301,14 +1316,14 @@ class BinaryPred(MLPred):
     def patterns(self) -> tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        first, second = dicts
         return {
             'tag': self._tag(),
             'argSort': self.op_sort.dict,
             'sort': self.sort.dict,
-            'first': self.left.dict,
-            'second': self.right.dict,
+            'first': first,
+            'second': second,
         }
 
 
@@ -1473,9 +1488,9 @@ class Next(MLRewrite):
     def patterns(self) -> tuple[Pattern]:
         return (self.pattern,)
 
-    @property
-    def dict(self) -> dict[str, Any]:
-        return {'tag': 'Next', 'sort': self.sort.dict, 'dest': self.pattern.dict}
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        (dest,) = dicts
+        return {'tag': 'Next', 'sort': self.sort.dict, 'dest': dest}
 
 
 @final
@@ -1532,13 +1547,13 @@ class Rewrites(MLRewrite):
     def patterns(self) -> tuple[Pattern, Pattern]:
         return (self.left, self.right)
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        source, dest = dicts
         return {
             'tag': 'Rewrites',
             'sort': self.sort.dict,
-            'source': self.left.dict,
-            'dest': self.right.dict,
+            'source': source,
+            'dest': dest,
         }
 
 
@@ -1596,8 +1611,8 @@ class DV(MLPattern, WithSort):
     def ctor_patterns(self) -> tuple[String]:
         return (self.value,)
 
-    @property
-    def dict(self) -> dict[str, Any]:
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        assert not dicts
         return {'tag': 'DV', 'sort': self.sort.dict, 'value': self.value.value}
 
 
@@ -1626,9 +1641,9 @@ class Assoc(MLSyntaxSugar):
     def ctor_patterns(self) -> tuple[App]:
         return (self.app,)
 
-    @property
-    def dict(self) -> dict[str, Any]:
-        return {'tag': self._tag(), 'app': self.app.dict}
+    def _dict(self, dicts: list) -> dict[str, Any]:
+        (app,) = dicts
+        return {'tag': self._tag(), 'app': app}
 
 
 @final
