@@ -288,6 +288,9 @@ def _kore_to_kast(kore: Pattern) -> KInner:
             args = tuple(_kore_to_kast(_a) for _a in kore.args)
             return KApply(klabel, args)
 
+        else:
+            raise ValueError(f'Unsupported polymorphic operator: {kore.symbol}')
+
     elif type(kore) is Top:
         return mlTop(sort=_sort_to_kast(kore.sort))
 
@@ -334,7 +337,8 @@ def _kore_to_kast(kore: Pattern) -> KInner:
     elif isinstance(kore, Assoc):
         return _kore_to_kast(kore.pattern)
 
-    raise ValueError(f'Unsupported Pattern: {kore}')
+    else:
+        raise ValueError(f'Unsupported Pattern: {kore}')
 
 
 def _sort_to_kast(sort: Sort) -> KSort:
