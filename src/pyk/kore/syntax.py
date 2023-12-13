@@ -1667,7 +1667,7 @@ class LeftAssoc(Assoc):
             raise ValueError(f'Cannot associate a pattern with no arguments: {self}')
         ret = self.app.args[0]
         for a in self.app.args[1:]:
-            ret = App(self.app.symbol, [], [ret, a])
+            ret = App(self.app.symbol, (), (ret, a))
         return ret
 
     @classmethod
@@ -1719,7 +1719,7 @@ class RightAssoc(Assoc):
             raise ValueError(f'Cannot associate a pattern with no arguments: {self}')
         ret = self.app.args[-1]
         for a in reversed(self.app.args[:-1]):
-            ret = App(self.app.symbol, [], [a, ret])
+            ret = App(self.app.symbol, (), (a, ret))
         return ret
 
     @classmethod
