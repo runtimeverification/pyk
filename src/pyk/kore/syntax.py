@@ -258,7 +258,7 @@ class Pattern(Kore):
 
     @classmethod
     @abstractmethod
-    def _from_dict(cls: type[T], dct: Mapping[str, Any], patterns: list[Pattern]) -> T:
+    def _from_dict(cls: type[P], dct: Mapping[str, Any], patterns: list[Pattern]) -> P:
         ...
 
     @property

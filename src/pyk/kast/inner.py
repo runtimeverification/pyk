@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
@@ -17,180 +18,15 @@ if TYPE_CHECKING:
 
     T = TypeVar('T', bound='KAst')
     KI = TypeVar('KI', bound='KInner')
-    A = TypeVar('A', bound='Any')
-    B = TypeVar('B', bound='Any')
+    A = TypeVar('A')
+    B = TypeVar('B')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class KInner(KAst):
-    """Represent the AST of a given K inner term.
-
-    This class represents the AST of a given term.
-    The nodes in the AST should be coming from a given KDefinition, so that they can be checked for well-typedness.
-    """
-
-    _INNER_NODES: Final = {'KVariable', 'KSort', 'KToken', 'KLabel', 'KApply', 'KAs', 'KRewrite', 'KSequence'}
-
-    @classmethod
-    @abstractmethod
-    def from_dict(cls: type[KInner], d: Mapping[str, Any]) -> KInner:
-        """Deserialize a given `KInner` into a more specific type from a dictionary."""
-        node = d['node']
-        if node in KInner._INNER_NODES:
-            return globals()[node].from_dict(d)
-
-        raise ValueError(f'Expected KInner label as "node" value, found: {node}')
-
-    @abstractmethod
-    def map_inner(self: KI, f: Callable[[KInner], KInner]) -> KI:
-        """Apply a transformation to all children of this given `KInner`."""
-        ...
-
-    @abstractmethod
-    def match(self, term: KInner) -> Subst | None:
-        """
-        Perform syntactic pattern matching and return the substitution.
-
-        :param term: Term to match.
-        :return: Substitution instantiating self to the term.
-        """
-        ...
-
-    @staticmethod
-    def _combine_matches(substs: Iterable[Subst | None]) -> Subst | None:
-        def combine(subst1: Subst | None, subst2: Subst | None) -> Subst | None:
-            if subst1 is None or subst2 is None:
-                return None
-
-            return subst1.union(subst2)
-
-        unit: Subst | None = Subst()
-        return reduce(combine, substs, unit)
-
-
-@dataclass(frozen=True)
-class Subst(Mapping[str, KInner]):
-    """Represents a substitution, which is a binding of variables to values of `KInner`."""
-
-    _subst: FrozenDict[str, KInner]
-
-    def __init__(self, subst: Mapping[str, KInner] = EMPTY_FROZEN_DICT):
-        """Construct a new `Subst` given a mapping fo variable names to `KInner`."""
-        object.__setattr__(self, '_subst', FrozenDict(subst))
-
-    def __iter__(self) -> Iterator[str]:
-        """Return the underlying `Subst` mapping as an iterator."""
-        return iter(self._subst)
-
-    def __len__(self) -> int:
-        """Return the length of the underlying `Subst` mapping."""
-        return len(self._subst)
-
-    def __getitem__(self, key: str) -> KInner:
-        """Get the `KInner` associated with the given variable name from the underlying `Subst` mapping."""
-        return self._subst[key]
-
-    def __mul__(self, other: Subst) -> Subst:
-        """Overload for `Subst.compose`."""
-        return self.compose(other)
-
-    def __call__(self, term: KInner) -> KInner:
-        """Overload for `Subst.apply`."""
-        return self.apply(term)
-
-    @staticmethod
-    def from_dict(d: Mapping[str, Any]) -> Subst:
-        """Deserialize a `Subst` from a given dictionary representing it."""
-        return Subst({k: KInner.from_dict(v) for k, v in d.items()})
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize a `Subst` to a dictionary representation."""
-        return {k: v.to_dict() for k, v in self.items()}
-
-    def minimize(self) -> Subst:
-        """Return a new substitution with any identity items removed."""
-        return Subst({k: v for k, v in self.items() if v != KVariable(k)})
-
-    def compose(self, other: Subst) -> Subst:
-        """Union two substitutions together, preferring the assignments in `self` if present in both."""
-        from_other = ((k, self(v)) for k, v in other.items())
-        from_self = ((k, v) for k, v in self.items() if k not in other)
-        return Subst(dict(chain(from_other, from_self)))
-
-    def union(self, other: Subst) -> Subst | None:
-        """Union two substitutions together, failing with `None` if there are conflicting assignments."""
-        subst = dict(self)
-        for v in other:
-            if v in subst and subst[v] != other[v]:
-                return None
-            subst[v] = other[v]
-        return Subst(subst)
-
-    def apply(self, term: KInner) -> KInner:
-        """Apply the given substitution to `KInner`, replacing free variable occurances with their valuations defined in this `Subst`."""
-
-        def replace(term: KInner) -> KInner:
-            if type(term) is KVariable and term.name in self:
-                return self[term.name]
-            return term
-
-        return bottom_up(replace, term)
-
-    def unapply(self, term: KInner) -> KInner:
-        """Replace occurances of valuations from this `Subst` with the variables that they are assigned to."""
-        new_term = term
-        for var_name in self:
-            lhs = self[var_name]
-            rhs = KVariable(var_name)
-            new_term = KRewrite(lhs, rhs).replace(new_term)
-        return new_term
-
-    @staticmethod
-    def from_pred(pred: KInner) -> Subst:
-        """Given a generic matching logic predicate, attempt to extract a `Subst` from it."""
-        from .manip import flatten_label
-
-        subst: dict[str, KInner] = {}
-        for conjunct in flatten_label('#And', pred):
-            match conjunct:
-                case KApply(KLabel('#Equals'), [KVariable(var), term]):
-                    subst[var] = term
-                case _:
-                    raise ValueError(f'Invalid substitution predicate: {conjunct}')
-        return Subst(subst)
-
-    @property
-    def ml_pred(self) -> KInner:
-        """Turn this `Subst` into a matching logic predicate using `{_#Equals_}` operator."""
-        items = []
-        for k in self:
-            if KVariable(k) != self[k]:
-                items.append(KApply('#Equals', [KVariable(k), self[k]]))
-        if len(items) == 0:
-            return KApply('#Top')
-        ml_term = items[0]
-        for _i in items[1:]:
-            ml_term = KApply('#And', [ml_term, _i])
-        return ml_term
-
-    @property
-    def pred(self) -> KInner:
-        """Turn this `Subst` into a boolean predicate using `_==K_` operator."""
-        conjuncts = [
-            KApply('_==K_', KVariable(name), val)
-            for name, val in self.items()
-            if type(val) is not KVariable or val.name != name
-        ]
-        if not conjuncts:
-            return KToken('true', 'Bool')
-
-        return reduce(KLabel('_andBool_'), conjuncts)
-
-
 @final
 @dataclass(frozen=True)
-class KSort(KInner):
+class KSort(KAst):
     """Store a simple sort name."""
 
     name: str
@@ -199,9 +35,8 @@ class KSort(KInner):
         """Construct a new sort given the name."""
         object.__setattr__(self, 'name', name)
 
-    @classmethod
-    def from_dict(cls: type[KSort], d: Mapping[str, Any]) -> KSort:
-        cls._check_node(d)
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KSort:
         return KSort(name=d['name'])
 
     def to_dict(self) -> dict[str, Any]:
@@ -212,112 +47,10 @@ class KSort(KInner):
         name = name if name is not None else self.name
         return KSort(name=name)
 
-    def map_inner(self: KSort, f: Callable[[KInner], KInner]) -> KSort:
-        return self
-
-    def match(self, term: KInner) -> Subst | None:
-        raise TypeError('KSort does not support pattern matching')
-
 
 @final
 @dataclass(frozen=True)
-class KToken(KInner):
-    """Represent a domain-value in K AST."""
-
-    token: str
-    sort: KSort
-
-    def __init__(self, token: str, sort: str | KSort):
-        """Construct a new `KToken` with a given string representation in the supplied sort."""
-        if type(sort) is str:
-            sort = KSort(sort)
-
-        object.__setattr__(self, 'token', token)
-        object.__setattr__(self, 'sort', sort)
-
-    @classmethod
-    def from_dict(cls: type[KToken], d: Mapping[str, Any]) -> KToken:
-        cls._check_node(d)
-        return KToken(token=d['token'], sort=KSort.from_dict(d['sort']))
-
-    def to_dict(self) -> dict[str, Any]:
-        return {'node': 'KToken', 'token': self.token, 'sort': self.sort.to_dict()}
-
-    def let(self, *, token: str | None = None, sort: str | KSort | None = None) -> KToken:
-        """Return a copy of the `KToken` with the token or sort potentially updated."""
-        token = token if token is not None else self.token
-        sort = sort if sort is not None else self.sort
-        return KToken(token=token, sort=sort)
-
-    def map_inner(self: KToken, f: Callable[[KInner], KInner]) -> KToken:
-        return self
-
-    def match(self, term: KInner) -> Subst | None:
-        if type(term) is KToken:
-            return Subst() if term.token == self.token else None
-        _LOGGER.debug(f'Matching failed: ({self}.match({term}))')
-        return None
-
-
-@final
-@dataclass(frozen=True)
-class KVariable(KInner):
-    """Represent a logical variable in a K AST, with a name and optionally a sort."""
-
-    name: str
-    sort: KSort | None
-
-    def __init__(self, name: str, sort: str | KSort | None = None):
-        """Construct a new `KVariable` with a given name and optional sort."""
-        if type(sort) is str:
-            sort = KSort(sort)
-
-        object.__setattr__(self, 'name', name)
-        object.__setattr__(self, 'sort', sort)
-
-    def __lt__(self, other: Any) -> bool:
-        """Lexicographic comparison of `KVariable` based on name for sorting."""
-        if not isinstance(other, KAst):
-            return NotImplemented
-        if type(other) is KVariable:
-            if (self.sort is None or other.sort is None) and self.name == other.name:
-                return self.sort is None
-        return super().__lt__(other)
-
-    @classmethod
-    def from_dict(cls: type[KVariable], d: Mapping[str, Any]) -> KVariable:
-        cls._check_node(d)
-        sort = None
-        if 'sort' in d:
-            sort = KSort.from_dict(d['sort'])
-        return KVariable(name=d['name'], sort=sort)
-
-    def to_dict(self) -> dict[str, Any]:
-        _d: dict[str, Any] = {'node': 'KVariable', 'name': self.name}
-        if self.sort is not None:
-            _d['sort'] = self.sort.to_dict()
-        return _d
-
-    def let(self, *, name: str | None = None, sort: str | KSort | None = None) -> KVariable:
-        """Return a copy of this `KVariable` with potentially the name or sort updated."""
-        name = name if name is not None else self.name
-        sort = sort if sort is not None else self.sort
-        return KVariable(name=name, sort=sort)
-
-    def let_sort(self, sort: KSort | None) -> KVariable:
-        """Return a copy of this `KVariable` with just the sort updated."""
-        return KVariable(self.name, sort=sort)
-
-    def map_inner(self: KVariable, f: Callable[[KInner], KInner]) -> KVariable:
-        return self
-
-    def match(self, term: KInner) -> Subst:
-        return Subst({self.name: term})
-
-
-@final
-@dataclass(frozen=True)
-class KLabel(KInner):
+class KLabel(KAst):
     """Represents a symbol that can be applied in a K AST, potentially with sort parameters."""
 
     name: str
@@ -372,9 +105,8 @@ class KLabel(KInner):
     def __call__(self, *args: Any, **kwargs: Any) -> KApply:
         return self.apply(*args, **kwargs)
 
-    @classmethod
-    def from_dict(cls: type[KLabel], d: Mapping[str, Any]) -> KLabel:
-        cls._check_node(d)
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KLabel:
         return KLabel(name=d['name'], params=(KSort.from_dict(param) for param in d['params']))
 
     def to_dict(self) -> dict[str, Any]:
@@ -385,12 +117,6 @@ class KLabel(KInner):
         name = name if name is not None else self.name
         params = params if params is not None else self.params
         return KLabel(name=name, params=params)
-
-    def map_inner(self: KLabel, f: Callable[[KInner], KInner]) -> KLabel:
-        return self
-
-    def match(self, term: KInner) -> Subst | None:
-        raise TypeError('KLabel does not support pattern matching')
 
     @overload
     def apply(self, args: Iterable[KInner]) -> KApply:
@@ -403,6 +129,154 @@ class KLabel(KInner):
     def apply(self, *args: Any, **kwargs: Any) -> KApply:
         """Construct a `KApply` with this `KLabel` as the AST head and the supplied parameters as the arguments."""
         return KApply(self, *args, **kwargs)
+
+
+class KInner(KAst):
+    """Represent the AST of a given K inner term.
+
+    This class represents the AST of a given term.
+    The nodes in the AST should be coming from a given KDefinition, so that they can be checked for well-typedness.
+    """
+
+    _NODES: Final = {'KVariable', 'KToken', 'KApply', 'KAs', 'KRewrite', 'KSequence'}
+
+    @staticmethod
+    def from_json(s: str) -> KInner:
+        return KInner.from_dict(json.loads(s))
+
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KInner:
+        """Deserialize a given `KInner` into a more specific type from a dictionary."""
+        node = d['node']
+        if node not in KInner._NODES:
+            raise ValueError(f'Invalid KInner node: {node!r}')
+        cls = globals()[node]
+        return cls._from_dict(d)
+
+    @classmethod
+    @abstractmethod
+    def _from_dict(cls: type[KI], d: Mapping[str, Any]) -> KI:
+        ...
+
+    @abstractmethod
+    def map_inner(self: KI, f: Callable[[KInner], KInner]) -> KI:
+        """Apply a transformation to all children of this given `KInner`."""
+        ...
+
+    @abstractmethod
+    def match(self, term: KInner) -> Subst | None:
+        """
+        Perform syntactic pattern matching and return the substitution.
+
+        :param term: Term to match.
+        :return: Substitution instantiating self to the term.
+        """
+        ...
+
+    @staticmethod
+    def _combine_matches(substs: Iterable[Subst | None]) -> Subst | None:
+        def combine(subst1: Subst | None, subst2: Subst | None) -> Subst | None:
+            if subst1 is None or subst2 is None:
+                return None
+
+            return subst1.union(subst2)
+
+        unit: Subst | None = Subst()
+        return reduce(combine, substs, unit)
+
+
+@final
+@dataclass(frozen=True)
+class KToken(KInner):
+    """Represent a domain-value in K AST."""
+
+    token: str
+    sort: KSort
+
+    def __init__(self, token: str, sort: str | KSort):
+        """Construct a new `KToken` with a given string representation in the supplied sort."""
+        if type(sort) is str:
+            sort = KSort(sort)
+
+        object.__setattr__(self, 'token', token)
+        object.__setattr__(self, 'sort', sort)
+
+    @classmethod
+    def _from_dict(cls: type[KToken], d: Mapping[str, Any]) -> KToken:
+        return KToken(token=d['token'], sort=KSort.from_dict(d['sort']))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {'node': 'KToken', 'token': self.token, 'sort': self.sort.to_dict()}
+
+    def let(self, *, token: str | None = None, sort: str | KSort | None = None) -> KToken:
+        """Return a copy of the `KToken` with the token or sort potentially updated."""
+        token = token if token is not None else self.token
+        sort = sort if sort is not None else self.sort
+        return KToken(token=token, sort=sort)
+
+    def map_inner(self: KToken, f: Callable[[KInner], KInner]) -> KToken:
+        return self
+
+    def match(self, term: KInner) -> Subst | None:
+        if type(term) is KToken:
+            return Subst() if term.token == self.token else None
+        _LOGGER.debug(f'Matching failed: ({self}.match({term}))')
+        return None
+
+
+@final
+@dataclass(frozen=True)
+class KVariable(KInner):
+    """Represent a logical variable in a K AST, with a name and optionally a sort."""
+
+    name: str
+    sort: KSort | None
+
+    def __init__(self, name: str, sort: str | KSort | None = None):
+        """Construct a new `KVariable` with a given name and optional sort."""
+        if type(sort) is str:
+            sort = KSort(sort)
+
+        object.__setattr__(self, 'name', name)
+        object.__setattr__(self, 'sort', sort)
+
+    def __lt__(self, other: Any) -> bool:
+        """Lexicographic comparison of `KVariable` based on name for sorting."""
+        if not isinstance(other, KAst):
+            return NotImplemented
+        if type(other) is KVariable:
+            if (self.sort is None or other.sort is None) and self.name == other.name:
+                return self.sort is None
+        return super().__lt__(other)
+
+    @classmethod
+    def _from_dict(cls: type[KVariable], d: Mapping[str, Any]) -> KVariable:
+        sort = None
+        if 'sort' in d:
+            sort = KSort.from_dict(d['sort'])
+        return KVariable(name=d['name'], sort=sort)
+
+    def to_dict(self) -> dict[str, Any]:
+        _d: dict[str, Any] = {'node': 'KVariable', 'name': self.name}
+        if self.sort is not None:
+            _d['sort'] = self.sort.to_dict()
+        return _d
+
+    def let(self, *, name: str | None = None, sort: str | KSort | None = None) -> KVariable:
+        """Return a copy of this `KVariable` with potentially the name or sort updated."""
+        name = name if name is not None else self.name
+        sort = sort if sort is not None else self.sort
+        return KVariable(name=name, sort=sort)
+
+    def let_sort(self, sort: KSort | None) -> KVariable:
+        """Return a copy of this `KVariable` with just the sort updated."""
+        return KVariable(self.name, sort=sort)
+
+    def map_inner(self: KVariable, f: Callable[[KInner], KInner]) -> KVariable:
+        return self
+
+    def match(self, term: KInner) -> Subst:
+        return Subst({self.name: term})
 
 
 @final
@@ -454,8 +328,7 @@ class KApply(KInner):
         return len(self.label.name) > 1 and self.label.name[0] == '<' and self.label.name[-1] == '>'
 
     @classmethod
-    def from_dict(cls: type[KApply], d: Mapping[str, Any]) -> KApply:
-        cls._check_node(d)
+    def _from_dict(cls: type[KApply], d: Mapping[str, Any]) -> KApply:
         return KApply(label=KLabel.from_dict(d['label']), args=(KInner.from_dict(arg) for arg in d['args']))
 
     def to_dict(self) -> dict[str, Any]:
@@ -499,8 +372,7 @@ class KAs(KInner):
         object.__setattr__(self, 'alias', alias)
 
     @classmethod
-    def from_dict(cls: type[KAs], d: Mapping[str, Any]) -> KAs:
-        cls._check_node(d)
+    def _from_dict(cls: type[KAs], d: Mapping[str, Any]) -> KAs:
         return KAs(pattern=KInner.from_dict(d['pattern']), alias=KInner.from_dict(d['alias']))
 
     def to_dict(self) -> dict[str, Any]:
@@ -543,8 +415,7 @@ class KRewrite(KInner):
         return self.apply(term)
 
     @classmethod
-    def from_dict(cls: type[KRewrite], d: Mapping[str, Any]) -> KRewrite:
-        cls._check_node(d)
+    def _from_dict(cls: type[KRewrite], d: Mapping[str, Any]) -> KRewrite:
         return KRewrite(
             lhs=KInner.from_dict(d['lhs']),
             rhs=KInner.from_dict(d['rhs']),
@@ -674,8 +545,7 @@ class KSequence(KInner, Sequence[KInner]):
         return len(self.items)
 
     @classmethod
-    def from_dict(cls: type[KSequence], d: Mapping[str, Any]) -> KSequence:
-        cls._check_node(d)
+    def _from_dict(cls: type[KSequence], d: Mapping[str, Any]) -> KSequence:
         return KSequence(items=(KInner.from_dict(item) for item in d['items']))
 
     def to_dict(self) -> dict[str, Any]:
@@ -703,6 +573,125 @@ class KSequence(KInner, Sequence[KInner]):
                 return _subst
         _LOGGER.debug(f'Matching failed: ({self}.match({term}))')
         return None
+
+
+@dataclass(frozen=True)
+class Subst(Mapping[str, KInner]):
+    """Represents a substitution, which is a binding of variables to values of `KInner`."""
+
+    _subst: FrozenDict[str, KInner]
+
+    def __init__(self, subst: Mapping[str, KInner] = EMPTY_FROZEN_DICT):
+        """Construct a new `Subst` given a mapping fo variable names to `KInner`."""
+        object.__setattr__(self, '_subst', FrozenDict(subst))
+
+    def __iter__(self) -> Iterator[str]:
+        """Return the underlying `Subst` mapping as an iterator."""
+        return iter(self._subst)
+
+    def __len__(self) -> int:
+        """Return the length of the underlying `Subst` mapping."""
+        return len(self._subst)
+
+    def __getitem__(self, key: str) -> KInner:
+        """Get the `KInner` associated with the given variable name from the underlying `Subst` mapping."""
+        return self._subst[key]
+
+    def __mul__(self, other: Subst) -> Subst:
+        """Overload for `Subst.compose`."""
+        return self.compose(other)
+
+    def __call__(self, term: KInner) -> KInner:
+        """Overload for `Subst.apply`."""
+        return self.apply(term)
+
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> Subst:
+        """Deserialize a `Subst` from a given dictionary representing it."""
+        return Subst({k: KInner.from_dict(v) for k, v in d.items()})
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize a `Subst` to a dictionary representation."""
+        return {k: v.to_dict() for k, v in self.items()}
+
+    def minimize(self) -> Subst:
+        """Return a new substitution with any identity items removed."""
+        return Subst({k: v for k, v in self.items() if v != KVariable(k)})
+
+    def compose(self, other: Subst) -> Subst:
+        """Union two substitutions together, preferring the assignments in `self` if present in both."""
+        from_other = ((k, self(v)) for k, v in other.items())
+        from_self = ((k, v) for k, v in self.items() if k not in other)
+        return Subst(dict(chain(from_other, from_self)))
+
+    def union(self, other: Subst) -> Subst | None:
+        """Union two substitutions together, failing with `None` if there are conflicting assignments."""
+        subst = dict(self)
+        for v in other:
+            if v in subst and subst[v] != other[v]:
+                return None
+            subst[v] = other[v]
+        return Subst(subst)
+
+    def apply(self, term: KInner) -> KInner:
+        """Apply the given substitution to `KInner`, replacing free variable occurances with their valuations defined in this `Subst`."""
+
+        def replace(term: KInner) -> KInner:
+            if type(term) is KVariable and term.name in self:
+                return self[term.name]
+            return term
+
+        return bottom_up(replace, term)
+
+    def unapply(self, term: KInner) -> KInner:
+        """Replace occurances of valuations from this `Subst` with the variables that they are assigned to."""
+        new_term = term
+        for var_name in self:
+            lhs = self[var_name]
+            rhs = KVariable(var_name)
+            new_term = KRewrite(lhs, rhs).replace(new_term)
+        return new_term
+
+    @staticmethod
+    def from_pred(pred: KInner) -> Subst:
+        """Given a generic matching logic predicate, attempt to extract a `Subst` from it."""
+        from .manip import flatten_label
+
+        subst: dict[str, KInner] = {}
+        for conjunct in flatten_label('#And', pred):
+            match conjunct:
+                case KApply(KLabel('#Equals'), [KVariable(var), term]):
+                    subst[var] = term
+                case _:
+                    raise ValueError(f'Invalid substitution predicate: {conjunct}')
+        return Subst(subst)
+
+    @property
+    def ml_pred(self) -> KInner:
+        """Turn this `Subst` into a matching logic predicate using `{_#Equals_}` operator."""
+        items = []
+        for k in self:
+            if KVariable(k) != self[k]:
+                items.append(KApply('#Equals', [KVariable(k), self[k]]))
+        if len(items) == 0:
+            return KApply('#Top')
+        ml_term = items[0]
+        for _i in items[1:]:
+            ml_term = KApply('#And', [ml_term, _i])
+        return ml_term
+
+    @property
+    def pred(self) -> KInner:
+        """Turn this `Subst` into a boolean predicate using `_==K_` operator."""
+        conjuncts = [
+            KApply('_==K_', KVariable(name), val)
+            for name, val in self.items()
+            if type(val) is not KVariable or val.name != name
+        ]
+        if not conjuncts:
+            return KToken('true', 'Bool')
+
+        return reduce(KLabel('_andBool_'), conjuncts)
 
 
 def bottom_up_with_summary(f: Callable[[KInner, list[A]], tuple[KInner, A]], kinner: KInner) -> tuple[KInner, A]:
