@@ -142,16 +142,17 @@ def _kast_to_kore(kast: KInner) -> Pattern:
 
 
 def _kinner_to_kore(kinner: KInner) -> Pattern:
-    if type(kinner) is KToken:
-        return _ktoken_to_kore(kinner)
-    elif type(kinner) is KVariable:
-        return _kvariable_to_kore(kinner)
-    elif type(kinner) is KSequence:
-        return _ksequence_to_kore(kinner)
-    elif type(kinner) is KApply:
-        return _kapply_to_kore(kinner)
-    else:
-        raise ValueError(f'Unsupported KInner: {kinner}')
+    match kinner:
+        case KToken():
+            return _ktoken_to_kore(kinner)
+        case KVariable():
+            return _kvariable_to_kore(kinner)
+        case KSequence():
+            return _ksequence_to_kore(kinner)
+        case KApply():
+            return _kapply_to_kore(kinner)
+        case _:
+            raise ValueError(f'Unsupported KInner: {kinner}')
 
 
 def _ktoken_to_kore(ktoken: KToken) -> DV:
