@@ -1282,6 +1282,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                     dependencies_as_claims=[d.as_claim(self.kprint) for d in apr_subproofs],
                     self_proof_as_claim=proof.as_claim(self.kprint),
                     circularity=proof.circularity,
+                    depth_is_nonzero=self.prover.nonzero_depth(pending_node),
                 )
             )
         return steps
@@ -1406,6 +1407,7 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     dependencies_as_claims: list[KClaim]
     self_proof_as_claim: KClaim
     circularity: bool
+    depth_is_nonzero: bool
 
     @property
     def circularities_module_name(self) -> str:
@@ -1488,11 +1490,12 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                         extend_cterm_time=extend_cterm_time,
                     )
 
+            self.circularities_module_name if self.depth_is_nonzero else self.dependencies_module_name
             init_extend_cterm_time = time.time_ns()
             result = kcfg_explore.extend_cterm(
                 self.cterm,
-                # module_name=self.module_name,
-                module_name=self.dependencies_module_name,
+                module_name=self.module_name,
+                # module_name=self.dependencies_module_name,
                 execute_depth=self.execute_depth,
                 terminal_rules=self.terminal_rules,
                 cut_point_rules=self.cut_point_rules,
