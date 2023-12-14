@@ -27,7 +27,7 @@ PARALLEL_PROVE_TEST_DATA = (
     ('addition-1', ProofStatus.PASSED, False),
     ('sum-10', ProofStatus.PASSED, False),
     ('dep-fail-1', ProofStatus.PASSED, True),
-    #('sum-N', ProofStatus.PASSED, True),
+    ('sum-N', ProofStatus.PASSED, True),
     ('failing-if', ProofStatus.FAILED, False),
 )
 
