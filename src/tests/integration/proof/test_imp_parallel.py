@@ -24,9 +24,11 @@ if TYPE_CHECKING:
     from pyk.ktool.kprove import KProve
 
 PARALLEL_PROVE_TEST_DATA = (
-    ('addition-1', ProofStatus.PASSED),
-    ('sum-10', ProofStatus.PASSED),
-    ('failing-if', ProofStatus.FAILED),
+    ('addition-1', ProofStatus.PASSED, False),
+    ('sum-10', ProofStatus.PASSED, False),
+    ('dep-fail-1', ProofStatus.PASSED, True),
+    ('sum-N', ProofStatus.PASSED, True),
+    ('failing-if', ProofStatus.FAILED, False),
 )
 
 
@@ -42,7 +44,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         return ImpSemantics(definition)
 
     @pytest.mark.parametrize(
-        'claim_id,expected_status',
+        'claim_id,expected_status,admit_deps',
         PARALLEL_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in PARALLEL_PROVE_TEST_DATA],
     )
@@ -50,50 +52,71 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         self,
         claim_id: str,
         expected_status: ProofStatus,
+        admit_deps: bool,
         kcfg_explore: KCFGExplore,
-        proof_dir: Path,
+        # proof_dir: Path,
         kprove: KProve,
         kprint: KPrint,
+        tmp_path_factory: TempPathFactory,
     ) -> None:
-        #          claim_id = 'addition-1'
-        spec_file = K_FILES / 'imp-simple-spec.k'
-        spec_module = 'IMP-SIMPLE-SPEC'
+        with tmp_path_factory.mktemp(f'apr_tmp_proofs-{claim_id}') as proof_dir:
+            #          claim_id = 'addition-1'
+            spec_file = K_FILES / 'imp-simple-spec.k'
+            spec_module = 'IMP-SIMPLE-SPEC'
 
-        claim = single(
-            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
-        )
+            # claim = single(
+            #     kprove.get_claims(
+            #         Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
+            #     )
+            # )
 
-        proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
+            # proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
 
-        semantics = self.semantics(kprove.definition)
-        parallel_prover = ParallelAPRProver(
-            proof=proof,
-            module_name=kprove.main_module,
-            definition_dir=kprove.definition_dir,
-            execute_depth=1000,
-            kprint=kprint,
-            kcfg_semantics=semantics,
-            id=claim_id,
-            trace_rewrites=False,
-            cut_point_rules=(),
-            terminal_rules=(),
-            bug_report=None,
-            bug_report_id=None,
-        )
+            spec_modules = kprove.get_claim_modules(Path(spec_file), spec_module_name=spec_module)
+            spec_label = f'{spec_module}.{claim_id}'
+            proofs = APRProof.from_spec_modules(
+                kprove.definition,
+                spec_modules,
+                spec_labels=[spec_label],
+                logs={},
+                proof_dir=proof_dir,
+            )
+            proof = single([p for p in proofs if p.id == spec_label])
 
-        process_data = APRProofProcessData(
-            kprint=kprint,
-            kcfg_semantics=semantics,
-            definition_dir=kprove.definition_dir,
-            module_name=kprove.main_module,
-        )
+            if admit_deps:
+                for subproof in proof.subproofs:
+                    subproof.admit()
+                    subproof.write_proof_data()
 
-        results = prove_parallel(
-            proofs={'proof1': proof},
-            provers={'proof1': parallel_prover},
-            max_workers=2,
-            process_data=process_data,
-        )
+            semantics = self.semantics(kprove.definition)
+            parallel_prover = ParallelAPRProver(
+                proof=proof,
+                module_name=kprove.main_module,
+                definition_dir=kprove.definition_dir,
+                execute_depth=1000,
+                kprint=kprint,
+                kcfg_semantics=semantics,
+                id=claim_id,
+                trace_rewrites=False,
+                cut_point_rules=(),
+                terminal_rules=(),
+                bug_report=None,
+                bug_report_id=None,
+            )
 
-        assert len(list(results)) == 1
-        assert list(results)[0].status == expected_status
+            process_data = APRProofProcessData(
+                kprint=kprint,
+                kcfg_semantics=semantics,
+                definition_dir=kprove.definition_dir,
+                module_name=kprove.main_module,
+            )
+
+            results = prove_parallel(
+                proofs={'proof1': proof},
+                provers={'proof1': parallel_prover},
+                max_workers=2,
+                process_data=process_data,
+            )
+
+            assert len(list(results)) == 1
+            assert list(results)[0].status == expected_status
