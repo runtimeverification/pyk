@@ -138,16 +138,20 @@ def krule_to_kore(kast_defn: KDefinition, kompiled_kore: KompiledKore, krule: KR
 
 
 def _kast_to_kore(kast: KInner) -> Pattern:
-    if type(kast) is KToken:
-        return _ktoken_to_kore(kast)
-    elif type(kast) is KVariable:
-        return _kvariable_to_kore(kast)
-    elif type(kast) is KSequence:
-        return _ksequence_to_kore(kast)
-    elif type(kast) is KApply:
-        return _kapply_to_kore(kast)
+    return _kinner_to_kore(kast)
 
-    raise ValueError(f'Unsupported KInner: {kast}')
+
+def _kinner_to_kore(kinner: KInner) -> Pattern:
+    if type(kinner) is KToken:
+        return _ktoken_to_kore(kinner)
+    elif type(kinner) is KVariable:
+        return _kvariable_to_kore(kinner)
+    elif type(kinner) is KSequence:
+        return _ksequence_to_kore(kinner)
+    elif type(kinner) is KApply:
+        return _kapply_to_kore(kinner)
+    else:
+        raise ValueError(f'Unsupported KInner: {kinner}')
 
 
 def _ktoken_to_kore(ktoken: KToken) -> DV:
