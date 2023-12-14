@@ -8,6 +8,7 @@ from .cterm import CTerm
 from .kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
 from .kast.manip import bool_to_ml_pred, extract_lhs, extract_rhs
 from .kore.prelude import BYTES as KORE_BYTES
+from .kore.prelude import DOTK, SORT_K
 from .kore.prelude import STRING as KORE_STRING
 from .kore.syntax import (
     DV,
@@ -178,27 +179,27 @@ def _kvariable_to_kore(kvar: KVariable) -> EVar:
     if kvar.sort:
         sort = _ksort_to_kore(kvar.sort)
     else:
-        sort = SortApp('SortK')
+        sort = SORT_K
     return EVar('Var' + munge(kvar.name), sort)
 
 
 def _ksequence_to_kore(kseq: KSequence) -> Pattern:
-    if not kseq:
-        return App('dotk')
+    patterns = tuple(_kast_to_kore(item) for item in kseq.items)
+    if not patterns:
+        return DOTK
 
     unit: Pattern
-    items: tuple[KInner, ...]
+    args: tuple[Pattern, ...]
 
-    last = kseq[-1]
-    if type(last) is KVariable and (not last.sort or last.sort == KSort('K')):
-        unit = _kvariable_to_kore(last)
-        items = kseq[:-1]
+    last = patterns[-1]
+    if type(last) is EVar and last.sort == SORT_K:
+        unit = last
+        args = patterns[:-1]
     else:
-        unit = App('dotk')
-        items = kseq.items
+        unit = DOTK
+        args = patterns
 
-    patterns = tuple(_kast_to_kore(item) for item in items)
-    return reduce(lambda x, y: App('kseq', (), (y, x)), reversed(patterns), unit)
+    return reduce(lambda x, y: App('kseq', (), (y, x)), reversed(args), unit)
 
 
 def _kapply_to_kore(kapply: KApply) -> Pattern:
