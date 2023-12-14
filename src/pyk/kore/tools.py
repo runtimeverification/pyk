@@ -24,6 +24,8 @@ def kore_print(
     pattern: str | Pattern,
     definition_dir: str | Path | None = None,
     output: str | PrintOutput | None = None,
+    *,
+    color: bool | None = None,
 ) -> str:
     if output is not None:
         output = PrintOutput(output)
@@ -41,13 +43,15 @@ def kore_print(
             raise TypeError(f'Unexpected type, expected [str | Pattern], got: {type(pattern)}')
         f.flush()
 
-        return _kore_print(f.name, definition_dir, output)
+        return _kore_print(f.name, definition_dir, output, color=color)
 
 
 def _kore_print(
     input_file: str | Path,
     definition_dir: str | Path | None = None,
     output: str | PrintOutput | None = None,
+    *,
+    color: bool | None = None,
 ) -> str:
     args = ['kore-print']
 
@@ -63,6 +67,9 @@ def _kore_print(
     if output is not None:
         output = PrintOutput(output)
         args += ['--output', output.value]
+
+    if color is not None:
+        args += ['--color']
 
     run_res = run_process(args)
     return run_res.stdout.strip()
