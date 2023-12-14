@@ -195,6 +195,28 @@ class KInner(KAst):
         unit: Subst | None = Subst()
         return reduce(combine, substs, unit)
 
+    @final
+    def to_dict(self) -> dict[str, Any]:
+        stack: list = [self, []]
+        while True:
+            dicts = stack[-1]
+            term = stack[-2]
+            idx = len(dicts) - len(term.terms)
+            if not idx:
+                stack.pop()
+                stack.pop()
+                dct = term._to_dict(dicts)
+                if not stack:
+                    return dct
+                stack[-1].append(dct)
+            else:
+                stack.append(term.terms[idx])
+                stack.append([])
+
+    @abstractmethod
+    def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
+        ...
+
 
 @final
 @dataclass(frozen=True)
@@ -216,7 +238,8 @@ class KToken(KInner):
     def _from_dict(cls: type[KToken], d: Mapping[str, Any]) -> KToken:
         return KToken(token=d['token'], sort=KSort.from_dict(d['sort']))
 
-    def to_dict(self) -> dict[str, Any]:
+    def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
+        assert not terms
         return {'node': 'KToken', 'token': self.token, 'sort': self.sort.to_dict()}
 
     def let(self, *, token: str | None = None, sort: str | KSort | None = None) -> KToken:
@@ -272,7 +295,8 @@ class KVariable(KInner):
             sort = KSort.from_dict(d['sort'])
         return KVariable(name=d['name'], sort=sort)
 
-    def to_dict(self) -> dict[str, Any]:
+    def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
+        assert not terms
         _d: dict[str, Any] = {'node': 'KVariable', 'name': self.name}
         if self.sort is not None:
             _d['sort'] = self.sort.to_dict()
@@ -352,11 +376,11 @@ class KApply(KInner):
     def _from_dict(cls: type[KApply], d: Mapping[str, Any]) -> KApply:
         return KApply(label=KLabel.from_dict(d['label']), args=(KInner.from_dict(arg) for arg in d['args']))
 
-    def to_dict(self) -> dict[str, Any]:
+    def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
         return {
             'node': 'KApply',
             'label': self.label.to_dict(),
-            'args': [arg.to_dict() for arg in self.args],
+            'args': terms,
             'arity': self.arity,
             'variable': False,
         }
@@ -400,8 +424,9 @@ class KAs(KInner):
     def _from_dict(cls: type[KAs], d: Mapping[str, Any]) -> KAs:
         return KAs(pattern=KInner.from_dict(d['pattern']), alias=KInner.from_dict(d['alias']))
 
-    def to_dict(self) -> dict[str, Any]:
-        return {'node': 'KAs', 'pattern': self.pattern.to_dict(), 'alias': self.alias.to_dict()}
+    def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
+        pattern, alias = terms
+        return {'node': 'KAs', 'pattern': pattern, 'alias': alias}
 
     def let(self, *, pattern: KInner | None = None, alias: KInner | None = None) -> KAs:
         """Return a copy of this `KAs` with potentially the pattern or alias updated."""
@@ -451,12 +476,9 @@ class KRewrite(KInner):
             rhs=KInner.from_dict(d['rhs']),
         )
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            'node': 'KRewrite',
-            'lhs': self.lhs.to_dict(),
-            'rhs': self.rhs.to_dict(),
-        }
+    def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
+        lhs, rhs = terms
+        return {'node': 'KRewrite', 'lhs': lhs, 'rhs': rhs}
 
     def let(
         self,
@@ -583,8 +605,8 @@ class KSequence(KInner, Sequence[KInner]):
     def _from_dict(cls: type[KSequence], d: Mapping[str, Any]) -> KSequence:
         return KSequence(items=(KInner.from_dict(item) for item in d['items']))
 
-    def to_dict(self) -> dict[str, Any]:
-        return {'node': 'KSequence', 'items': [item.to_dict() for item in self.items], 'arity': self.arity}
+    def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
+        return {'node': 'KSequence', 'items': terms, 'arity': self.arity}
 
     def let(self, *, items: Iterable[KInner] | None = None) -> KSequence:
         """Return a copy of this `KSequence` with the items potentially updated."""

@@ -274,6 +274,7 @@ class Pattern(Kore):
     def _tag(cls) -> str:  # TODO This should be an abstract immutable class attribute for efficiency
         ...
 
+    @final
     @property
     def dict(self) -> dict[str, Any]:
         stack: list = [
