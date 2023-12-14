@@ -138,20 +138,40 @@ def krule_to_kore(kast_defn: KDefinition, kompiled_kore: KompiledKore, krule: KR
     return axiom
 
 
-def _kast_to_kore(kast: KInner) -> Pattern:
-    return _kinner_to_kore(kast)
+def _ksort_to_kore(ksort: KSort) -> SortApp:
+    return SortApp('Sort' + ksort.name)
 
 
-def _kinner_to_kore(kinner: KInner) -> Pattern:
+def _kast_to_kore(term: KInner) -> Pattern:
+    stack: list = [term, []]
+    while True:
+        patterns = stack[-1]
+        term = stack[-2]
+        idx = len(patterns) - len(term.terms)
+        if not idx:
+            stack.pop()
+            stack.pop()
+            pattern = _kinner_to_kore(term, patterns)
+            if not stack:
+                return pattern
+            stack[-1].append(pattern)
+        else:
+            stack.append(term.terms[idx])
+            stack.append([])
+
+
+def _kinner_to_kore(kinner: KInner, patterns: list[Pattern]) -> Pattern:
     match kinner:
         case KToken():
+            assert not patterns
             return _ktoken_to_kore(kinner)
         case KVariable():
+            assert not patterns
             return _kvariable_to_kore(kinner)
         case KSequence():
-            return _ksequence_to_kore(kinner)
+            return _ksequence_to_kore(kinner, patterns)
         case KApply():
-            return _kapply_to_kore(kinner)
+            return _kapply_to_kore(kinner, patterns)
         case _:
             raise ValueError(f'Unsupported KInner: {kinner}')
 
@@ -170,10 +190,6 @@ def _ktoken_to_kore(ktoken: KToken) -> DV:
     return DV(sort, value)
 
 
-def _ksort_to_kore(ksort: KSort) -> SortApp:
-    return SortApp('Sort' + ksort.name)
-
-
 def _kvariable_to_kore(kvar: KVariable) -> EVar:
     sort: Sort
     if kvar.sort:
@@ -183,13 +199,12 @@ def _kvariable_to_kore(kvar: KVariable) -> EVar:
     return EVar('Var' + munge(kvar.name), sort)
 
 
-def _ksequence_to_kore(kseq: KSequence) -> Pattern:
-    patterns = tuple(_kast_to_kore(item) for item in kseq.items)
+def _ksequence_to_kore(kseq: KSequence, patterns: list[Pattern]) -> Pattern:
     if not patterns:
         return DOTK
 
     unit: Pattern
-    args: tuple[Pattern, ...]
+    args: list[Pattern]
 
     last = patterns[-1]
     if type(last) is EVar and last.sort == SORT_K:
@@ -199,32 +214,28 @@ def _ksequence_to_kore(kseq: KSequence) -> Pattern:
         unit = DOTK
         args = patterns
 
-    return reduce(lambda x, y: App('kseq', (), (y, x)), reversed(args), unit)
+    args.reverse()
+    return reduce(lambda x, y: App('kseq', (), (y, x)), args, unit)
 
 
-def _kapply_to_kore(kapply: KApply) -> Pattern:
+def _kapply_to_kore(kapply: KApply, patterns: list[Pattern]) -> Pattern:
     if kapply.label.name in ML_QUANT_LABELS:
-        return _kapply_to_ml_quant(kapply)
+        return _kapply_to_ml_quant(kapply, patterns)
 
-    return _kapply_to_pattern(kapply)
+    return _kapply_to_pattern(kapply, patterns)
 
 
-def _kapply_to_ml_quant(kapply: KApply) -> MLQuant:
+def _kapply_to_ml_quant(kapply: KApply, patterns: list[Pattern]) -> MLQuant:
     label = kapply.label
     symbol = ML_QUANT_LABELS[label.name]
     sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
-    kvar, kast = kapply.args
-    var = _kast_to_kore(kvar)
-    pattern = _kast_to_kore(kast)
-    patterns = (var, pattern)
     return MLQuant.of(symbol, sorts, patterns)
 
 
-def _kapply_to_pattern(kapply: KApply) -> Pattern:
+def _kapply_to_pattern(kapply: KApply, patterns: list[Pattern]) -> Pattern:
     label = kapply.label
     symbol = _label_to_kore(label.name)
     sorts = tuple(_ksort_to_kore(ksort) for ksort in label.params)
-    patterns = tuple(_kast_to_kore(kast) for kast in kapply.args)
 
     if label.name in ML_PATTERN_LABELS:
         return MLPattern.of(symbol, sorts, patterns)
