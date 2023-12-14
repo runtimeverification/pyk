@@ -158,10 +158,21 @@ class KInner(KAst):
     def _from_dict(cls: type[KI], d: Mapping[str, Any]) -> KI:
         ...
 
+    @property
     @abstractmethod
+    def terms(self) -> tuple[KInner, ...]:
+        """Returns the children of this given `KInner`."""
+        ...
+
+    @abstractmethod
+    def let_terms(self: KI, terms: Iterable[KInner]) -> KI:
+        """Set children of this given `KInner`."""
+        ...
+
+    @final
     def map_inner(self: KI, f: Callable[[KInner], KInner]) -> KI:
         """Apply a transformation to all children of this given `KInner`."""
-        ...
+        return self.let_terms(f(term) for term in self.terms)
 
     @abstractmethod
     def match(self, term: KInner) -> Subst | None:
@@ -214,7 +225,12 @@ class KToken(KInner):
         sort = sort if sort is not None else self.sort
         return KToken(token=token, sort=sort)
 
-    def map_inner(self: KToken, f: Callable[[KInner], KInner]) -> KToken:
+    @property
+    def terms(self) -> tuple[()]:
+        return ()
+
+    def let_terms(self, terms: Iterable[KInner]) -> KToken:
+        () = terms
         return self
 
     def match(self, term: KInner) -> Subst | None:
@@ -272,7 +288,12 @@ class KVariable(KInner):
         """Return a copy of this `KVariable` with just the sort updated."""
         return KVariable(self.name, sort=sort)
 
-    def map_inner(self: KVariable, f: Callable[[KInner], KInner]) -> KVariable:
+    @property
+    def terms(self) -> tuple[()]:
+        return ()
+
+    def let_terms(self, terms: Iterable[KInner]) -> KVariable:
+        () = terms
         return self
 
     def match(self, term: KInner) -> Subst:
@@ -346,8 +367,12 @@ class KApply(KInner):
         args = args if args is not None else self.args
         return KApply(label=label, args=args)
 
-    def map_inner(self: KApply, f: Callable[[KInner], KInner]) -> KApply:
-        return self.let(args=tuple(f(arg) for arg in self.args))
+    @property
+    def terms(self) -> tuple[KInner, ...]:
+        return self.args
+
+    def let_terms(self, terms: Iterable[KInner]) -> KApply:
+        return self.let(args=terms)
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KApply and term.label.name == self.label.name and term.arity == self.arity:
@@ -384,8 +409,13 @@ class KAs(KInner):
         alias = alias if alias is not None else self.alias
         return KAs(pattern=pattern, alias=alias)
 
-    def map_inner(self: KAs, f: Callable[[KInner], KInner]) -> KAs:
-        return self.let(pattern=f(self.pattern), alias=f(self.alias))
+    @property
+    def terms(self) -> tuple[KInner, KInner]:
+        return (self.pattern, self.alias)
+
+    def let_terms(self, terms: Iterable[KInner]) -> KAs:
+        pattern, alias = terms
+        return KAs(pattern=pattern, alias=alias)
 
     def match(self, term: KInner) -> Subst | None:
         raise TypeError('KAs does not support pattern matching')
@@ -439,8 +469,13 @@ class KRewrite(KInner):
         rhs = rhs if rhs is not None else self.rhs
         return KRewrite(lhs=lhs, rhs=rhs)
 
-    def map_inner(self: KRewrite, f: Callable[[KInner], KInner]) -> KRewrite:
-        return self.let(lhs=f(self.lhs), rhs=f(self.rhs))
+    @property
+    def terms(self) -> tuple[KInner, KInner]:
+        return (self.lhs, self.rhs)
+
+    def let_terms(self, terms: Iterable[KInner]) -> KRewrite:
+        lhs, rhs = terms
+        return KRewrite(lhs=lhs, rhs=rhs)
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KRewrite:
@@ -556,8 +591,12 @@ class KSequence(KInner, Sequence[KInner]):
         items = items if items is not None else self.items
         return KSequence(items=items)
 
-    def map_inner(self: KSequence, f: Callable[[KInner], KInner]) -> KSequence:
-        return self.let(items=tuple(f(item) for item in self.items))
+    @property
+    def terms(self) -> tuple[KInner, ...]:
+        return self.items
+
+    def let_terms(self, terms: Iterable[KInner]) -> KSequence:
+        return KSequence(items=terms)
 
     def match(self, term: KInner) -> Subst | None:
         if type(term) is KSequence:
