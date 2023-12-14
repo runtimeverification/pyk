@@ -145,17 +145,46 @@ class KInner(KAst):
         return KInner.from_dict(json.loads(s))
 
     @staticmethod
-    def from_dict(d: Mapping[str, Any]) -> KInner:
+    def from_dict(dct: Mapping[str, Any]) -> KInner:
         """Deserialize a given `KInner` into a more specific type from a dictionary."""
-        node = d['node']
-        if node not in KInner._NODES:
-            raise ValueError(f'Invalid KInner node: {node!r}')
-        cls = globals()[node]
-        return cls._from_dict(d)
+        stack: list = [dct, KInner._extract_dicts(dct), []]
+        while True:
+            terms = stack[-1]
+            dcts = stack[-2]
+            dct = stack[-3]
+            idx = len(terms) - len(dcts)
+            if not idx:
+                stack.pop()
+                stack.pop()
+                stack.pop()
+                cls = globals()[dct['node']]
+                term = cls._from_dict(dct, terms)
+                if not stack:
+                    return term
+                stack[-1].append(term)
+            else:
+                dct = dcts[idx]
+                stack.append(dct)
+                stack.append(KInner._extract_dicts(dct))
+                stack.append([])
+
+    @staticmethod
+    def _extract_dicts(dct: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+        match dct['node']:
+            case 'KApply':
+                return dct['args']
+            case 'KSequence':
+                return dct['items']
+            case 'KRewrite':
+                return [dct['lhs'], dct['rhs']]
+            case 'KAs':
+                return [dct['pattern'], dct['alias']]
+            case _:
+                return []
 
     @classmethod
     @abstractmethod
-    def _from_dict(cls: type[KI], d: Mapping[str, Any]) -> KI:
+    def _from_dict(cls: type[KI], d: Mapping[str, Any], terms: list[KInner]) -> KI:
         ...
 
     @property
@@ -235,8 +264,9 @@ class KToken(KInner):
         object.__setattr__(self, 'sort', sort)
 
     @classmethod
-    def _from_dict(cls: type[KToken], d: Mapping[str, Any]) -> KToken:
-        return KToken(token=d['token'], sort=KSort.from_dict(d['sort']))
+    def _from_dict(cls: type[KToken], dct: Mapping[str, Any], terms: list[KInner]) -> KToken:
+        assert not terms
+        return KToken(token=dct['token'], sort=KSort.from_dict(dct['sort']))
 
     def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
         assert not terms
@@ -289,11 +319,12 @@ class KVariable(KInner):
         return super().__lt__(other)
 
     @classmethod
-    def _from_dict(cls: type[KVariable], d: Mapping[str, Any]) -> KVariable:
+    def _from_dict(cls: type[KVariable], dct: Mapping[str, Any], terms: list[KInner]) -> KVariable:
+        assert not terms
         sort = None
-        if 'sort' in d:
-            sort = KSort.from_dict(d['sort'])
-        return KVariable(name=d['name'], sort=sort)
+        if 'sort' in dct:
+            sort = KSort.from_dict(dct['sort'])
+        return KVariable(name=dct['name'], sort=sort)
 
     def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
         assert not terms
@@ -373,8 +404,8 @@ class KApply(KInner):
         return len(self.label.name) > 1 and self.label.name[0] == '<' and self.label.name[-1] == '>'
 
     @classmethod
-    def _from_dict(cls: type[KApply], d: Mapping[str, Any]) -> KApply:
-        return KApply(label=KLabel.from_dict(d['label']), args=(KInner.from_dict(arg) for arg in d['args']))
+    def _from_dict(cls: type[KApply], dct: Mapping[str, Any], terms: list[KInner]) -> KApply:
+        return KApply(label=KLabel.from_dict(dct['label']), args=terms)
 
     def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
         return {
@@ -421,8 +452,9 @@ class KAs(KInner):
         object.__setattr__(self, 'alias', alias)
 
     @classmethod
-    def _from_dict(cls: type[KAs], d: Mapping[str, Any]) -> KAs:
-        return KAs(pattern=KInner.from_dict(d['pattern']), alias=KInner.from_dict(d['alias']))
+    def _from_dict(cls: type[KAs], dct: Mapping[str, Any], terms: list[KInner]) -> KAs:
+        pattern, alias = terms
+        return KAs(pattern=pattern, alias=alias)
 
     def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
         pattern, alias = terms
@@ -470,11 +502,9 @@ class KRewrite(KInner):
         return self.apply(term)
 
     @classmethod
-    def _from_dict(cls: type[KRewrite], d: Mapping[str, Any]) -> KRewrite:
-        return KRewrite(
-            lhs=KInner.from_dict(d['lhs']),
-            rhs=KInner.from_dict(d['rhs']),
-        )
+    def _from_dict(cls: type[KRewrite], dct: Mapping[str, Any], terms: list[KInner]) -> KRewrite:
+        lhs, rhs = terms
+        return KRewrite(lhs=lhs, rhs=rhs)
 
     def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
         lhs, rhs = terms
@@ -602,8 +632,8 @@ class KSequence(KInner, Sequence[KInner]):
         return len(self.items)
 
     @classmethod
-    def _from_dict(cls: type[KSequence], d: Mapping[str, Any]) -> KSequence:
-        return KSequence(items=(KInner.from_dict(item) for item in d['items']))
+    def _from_dict(cls: type[KSequence], dct: Mapping[str, Any], terms: list[KInner]) -> KSequence:
+        return KSequence(items=terms)
 
     def _to_dict(self, terms: list[KInner]) -> dict[str, Any]:
         return {'node': 'KSequence', 'items': terms, 'arity': self.arity}
