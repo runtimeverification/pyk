@@ -741,16 +741,25 @@ def bottom_up_with_summary(f: Callable[[KInner, list[A]], tuple[KInner, A]], kin
     :param kinner: KInner to apply this transformation to.
     :return: A tuple of the transformed term and the summarized results.
     """
-    child_summaries = []
-
-    def map_child(child: KInner) -> KInner:
-        nonlocal child_summaries
-        (mapped_child, summarized_child) = bottom_up_with_summary(f, child)
-        child_summaries.append(summarized_child)
-        return mapped_child
-
-    mapped = kinner.map_inner(map_child)
-    return f(mapped, child_summaries)
+    stack: list = [kinner, [], []]
+    while True:
+        summaries = stack[-1]
+        terms = stack[-2]
+        term = stack[-3]
+        idx = len(terms) - len(term.terms)
+        if not idx:
+            stack.pop()
+            stack.pop()
+            stack.pop()
+            term, summary = f(term.let_terms(terms), summaries)
+            if not stack:
+                return term, summary
+            stack[-1].append(summary)
+            stack[-2].append(term)
+        else:
+            stack.append(term.terms[idx])
+            stack.append([])
+            stack.append([])
 
 
 # TODO make method of KInner
