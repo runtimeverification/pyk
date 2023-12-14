@@ -1425,8 +1425,7 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
 
-        #init_kcfg_explore = False
-        init_kcfg_explore = True
+        init_kcfg_explore = False
 
         if data.kore_servers.get(self.proof_id) is None:
             init_kcfg_explore = True
