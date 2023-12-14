@@ -762,7 +762,21 @@ def bottom_up(f: Callable[[KInner], KInner], kinner: KInner) -> KInner:
     :param kinner: Original term to transform.
     :return: The transformed term.
     """
-    return f(kinner.map_inner(lambda _kinner: bottom_up(f, _kinner)))
+    stack: list = [kinner, []]
+    while True:
+        terms = stack[-1]
+        term = stack[-2]
+        idx = len(terms) - len(term.terms)
+        if not idx:
+            stack.pop()
+            stack.pop()
+            term = f(term.let_terms(terms))
+            if not stack:
+                return term
+            stack[-1].append(term)
+        else:
+            stack.append(term.terms[idx])
+            stack.append([])
 
 
 # TODO make method of KInner
