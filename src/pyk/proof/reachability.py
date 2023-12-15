@@ -1495,7 +1495,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
             result = kcfg_explore.extend_cterm(
                 self.cterm,
                 module_name=self.module_name,
-                # module_name=self.dependencies_module_name,
                 execute_depth=self.execute_depth,
                 terminal_rules=self.terminal_rules,
                 cut_point_rules=self.cut_point_rules,

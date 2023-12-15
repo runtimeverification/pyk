@@ -55,7 +55,6 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         expected_status: ProofStatus,
         admit_deps: bool,
         kcfg_explore: KCFGExplore,
-        # proof_dir: Path,
         kprove: KProve,
         kprint: KPrint,
         proof_dir: Path,
@@ -63,14 +62,6 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         #          claim_id = 'addition-1'
         spec_file = K_FILES / 'imp-simple-spec.k'
         spec_module = 'IMP-SIMPLE-SPEC'
-
-        # claim = single(
-        #     kprove.get_claims(
-        #         Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}']
-        #     )
-        # )
-
-        # proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
 
         spec_modules = kprove.get_claim_modules(Path(spec_file), spec_module_name=spec_module)
         spec_label = f'{spec_module}.{claim_id}'
