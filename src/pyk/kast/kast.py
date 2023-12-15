@@ -91,12 +91,13 @@ class KAtt(KAst, Mapping[str, Any]):
         return KAtt(atts=d['att'])
 
     def to_dict(self) -> dict[str, Any]:
-        def _to_dict(m: Any) -> Any:
-            if isinstance(m, FrozenDict):
-                return {k: _to_dict(v) for (k, v) in m.items()}
-            return m
+        return {'node': 'KAtt', 'att': KAtt._unfreeze(self.atts)}
 
-        return {'node': 'KAtt', 'att': _to_dict(self.atts)}
+    @staticmethod
+    def _unfreeze(x: Any) -> Any:
+        if isinstance(x, FrozenDict):
+            return {k: KAtt._unfreeze(v) for (k, v) in x.items()}
+        return x
 
     def let(self, *, atts: Mapping[str, Any] | None = None) -> KAtt:
         atts = atts if atts is not None else self.atts
