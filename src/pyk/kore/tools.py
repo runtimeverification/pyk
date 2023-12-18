@@ -30,9 +30,11 @@ def kore_print(
     output: str | PrintOutput | None = None,
     color: bool | None = None,
 ) -> str:
-    if output is PrintOutput.KORE and isinstance(pattern, str):
-        return pattern
     input = pattern if isinstance(pattern, str) else pattern.text
+    if output is not None:
+        output = PrintOutput(output)
+    if output is PrintOutput.KORE:
+        return input
     return _kore_print(
         '/dev/stdin',
         definition_dir=definition_dir,
