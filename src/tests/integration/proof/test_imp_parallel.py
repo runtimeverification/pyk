@@ -24,9 +24,12 @@ if TYPE_CHECKING:
     from pyk.ktool.kprove import KProve
 
 PARALLEL_PROVE_TEST_DATA = (
-    ('addition-1', ProofStatus.PASSED),
-    ('sum-10', ProofStatus.PASSED),
-    ('failing-if', ProofStatus.FAILED),
+    ('addition-1', ProofStatus.PASSED, False),
+    ('sum-10', ProofStatus.PASSED, False),
+    ('dep-fail-1', ProofStatus.PASSED, True),
+    ('sum-N', ProofStatus.PASSED, True),
+    ('sum-loop', ProofStatus.PASSED, False),
+    ('failing-if', ProofStatus.FAILED, False),
 )
 
 
@@ -42,7 +45,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         return ImpSemantics(definition)
 
     @pytest.mark.parametrize(
-        'claim_id,expected_status',
+        'claim_id,expected_status,admit_deps',
         PARALLEL_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in PARALLEL_PROVE_TEST_DATA],
     )
@@ -50,20 +53,31 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         self,
         claim_id: str,
         expected_status: ProofStatus,
+        admit_deps: bool,
         kcfg_explore: KCFGExplore,
-        proof_dir: Path,
         kprove: KProve,
         kprint: KPrint,
+        proof_dir: Path,
     ) -> None:
         #          claim_id = 'addition-1'
         spec_file = K_FILES / 'imp-simple-spec.k'
         spec_module = 'IMP-SIMPLE-SPEC'
 
-        claim = single(
-            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
+        spec_modules = kprove.get_claim_modules(Path(spec_file), spec_module_name=spec_module)
+        spec_label = f'{spec_module}.{claim_id}'
+        proofs = APRProof.from_spec_modules(
+            kprove.definition,
+            spec_modules,
+            spec_labels=[spec_label],
+            logs={},
+            proof_dir=proof_dir,
         )
+        proof = single([p for p in proofs if p.id == spec_label])
 
-        proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
+        if admit_deps:
+            for subproof in proof.subproofs:
+                subproof.admit()
+                subproof.write_proof_data()
 
         semantics = self.semantics(kprove.definition)
         parallel_prover = ParallelAPRProver(

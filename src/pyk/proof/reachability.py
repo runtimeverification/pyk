@@ -1252,6 +1252,14 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                 else self.prover.dependencies_module_name
             )
 
+            subproofs: list[Proof] = (
+                [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
+                if proof.proof_dir is not None
+                else []
+            )
+
+            apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
+
             steps.append(
                 APRProofStep(
                     proof_id=proof.id,
@@ -1271,6 +1279,10 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                     is_terminal=(self.kcfg_explore.kcfg_semantics.is_terminal(pending_node.cterm)),
                     target_is_terminal=(proof.target not in proof._terminal),
                     main_module_name=self.prover.main_module_name,
+                    dependencies_as_claims=[d.as_claim(self.kprint) for d in apr_subproofs],
+                    self_proof_as_claim=proof.as_claim(self.kprint),
+                    circularity=proof.circularity,
+                    depth_is_nonzero=self.prover.nonzero_depth(pending_node),
                 )
             )
         return steps
@@ -1392,6 +1404,19 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     id: str | None
     trace_rewrites: bool
 
+    dependencies_as_claims: list[KClaim]
+    self_proof_as_claim: KClaim
+    circularity: bool
+    depth_is_nonzero: bool
+
+    @property
+    def circularities_module_name(self) -> str:
+        return self.main_module_name + '-CIRCULARITIES-MODULE'
+
+    @property
+    def dependencies_module_name(self) -> str:
+        return self.main_module_name + '-DEPENDS-MODULE'
+
     def __hash__(self) -> int:
         return hash((self.cterm, self.node_id))
 
@@ -1436,22 +1461,16 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
             )
 
             if init_kcfg_explore:
-                #                  dependencies_as_claims: list[KClaim] = [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
-
-                dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
                 kcfg_explore.add_dependencies_module(
                     self.main_module_name,
-                    dependencies_module_name,
-                    #                      dependencies_as_claims,
-                    [],
+                    self.dependencies_module_name,
+                    self.dependencies_as_claims,
                     priority=1,
                 )
-                circularities_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'
                 kcfg_explore.add_dependencies_module(
                     self.main_module_name,
-                    circularities_module_name,
-                    #                      dependencies_as_claims + ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []),
-                    [],
+                    self.circularities_module_name,
+                    self.dependencies_as_claims + ([self.self_proof_as_claim] if self.circularity else []),
                     priority=1,
                 )
 
@@ -1471,6 +1490,7 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                         extend_cterm_time=extend_cterm_time,
                     )
 
+            self.circularities_module_name if self.depth_is_nonzero else self.dependencies_module_name
             init_extend_cterm_time = time.time_ns()
             result = kcfg_explore.extend_cterm(
                 self.cterm,
