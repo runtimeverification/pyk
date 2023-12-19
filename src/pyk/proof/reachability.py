@@ -1280,7 +1280,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                     target_is_terminal=(proof.target not in proof._terminal),
                     main_module_name=self.prover.main_module_name,
                     dependencies_as_claims=[d.as_claim(self.kprint) for d in apr_subproofs],
-                    self_proof_as_claim=proof.as_claim(self.kprint),
+                    self_proof_as_claim=(proof.as_claim(self.kprint) if proof.circularity else None),
                     circularity=proof.circularity,
                     depth_is_nonzero=self.prover.nonzero_depth(pending_node),
                 )
@@ -1405,7 +1405,7 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     trace_rewrites: bool
 
     dependencies_as_claims: list[KClaim]
-    self_proof_as_claim: KClaim
+    self_proof_as_claim: KClaim | None
     circularity: bool
     depth_is_nonzero: bool
 
@@ -1470,7 +1470,12 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 kcfg_explore.add_dependencies_module(
                     self.main_module_name,
                     self.circularities_module_name,
-                    self.dependencies_as_claims + ([self.self_proof_as_claim] if self.circularity else []),
+                    self.dependencies_as_claims
+                    + (
+                        [self.self_proof_as_claim]
+                        if (self.circularity and (self.self_proof_as_claim is not None))
+                        else []
+                    ),
                     priority=1,
                 )
 
