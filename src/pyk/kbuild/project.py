@@ -58,33 +58,21 @@ class PackageSource(Source):
 class Target:
     name: str  # TODO Maybe remove name and store in project as Dict
 
-    main_file: Path  # relative to source folder
-    args: Mapping[str, Any]
+    args: dict[str, Any]
 
     def __init__(
         self,
         *,
         name: str,
-        main_file: str | Path,
-        **kwargs: Any,
+        args: Mapping[str, Any],
     ):
-        main_file = Path(main_file)
-        check_relative_path(main_file)
+        if args['main-file']:
+            main_file = Path(args['main-file'])
+            check_relative_path(main_file)
+        newargs = {key.replace('-', '_'): value for key, value in args.items()}
+        newargs['main_file'] = main_file
         object.__setattr__(self, 'name', name)
-        object.__setattr__(self, 'main_file', main_file)
-        object.__setattr__(self, 'args', kwargs)
-
-    @staticmethod
-    def from_dict(name: str, dct: Mapping[str, Any]) -> Target:
-        return Target(
-            name=name,
-            main_file=Path(dct['main-file']),
-            **{key.replace('-', '_'): value for key, value in dct.items() if key != 'main-file'},
-        )
-
-    @property
-    def dict(self) -> dict[str, Any]:
-        return dict(name=self.name, main_file=self.main_file, **self.args)
+        object.__setattr__(self, 'args', newargs)
 
 
 @final
@@ -154,7 +142,7 @@ class Project:
             dependencies=tuple(
                 _load_dependency(name, source_dct) for name, source_dct in dct.get('dependencies', {}).items()
             ),
-            targets=tuple(Target.from_dict(name, target) for name, target in dct.get('targets', {}).items()),
+            targets=tuple(Target(name=name, args=target) for name, target in dct.get('targets', {}).items()),
         )
 
         return project
