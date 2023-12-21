@@ -630,6 +630,8 @@ class APRProver(Prover):
     dependencies_module_name: str
     circularities_module_name: str
     counterexample_info: bool
+    always_check_subsumption: bool
+    fast_check_subsumption: bool
 
     _checked_for_terminal: set[int]
     _checked_for_subsumption: set[int]
@@ -639,11 +641,15 @@ class APRProver(Prover):
         proof: APRProof,
         kcfg_explore: KCFGExplore,
         counterexample_info: bool = False,
+        always_check_subsumption: bool = True,
+        fast_check_subsumption: bool = False,
     ) -> None:
         super().__init__(kcfg_explore)
         self.proof = proof
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
         self.counterexample_info = counterexample_info
+        self.always_check_subsumption = always_check_subsumption
+        self.fast_check_subsumption = fast_check_subsumption
 
         subproofs: list[Proof] = (
             [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
@@ -693,6 +699,14 @@ class APRProver(Prover):
         _LOGGER.info(
             f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
         )
+        if self.fast_check_subsumption:
+            node_k_cell = node.cterm.try_cell('K_CELL')
+            target_k_cell = self.proof.kcfg.node(self.proof.target).cterm.try_cell('K_CELL')
+            if node_k_cell and target_k_cell and not target_k_cell.match(node_k_cell):
+                _LOGGER.info(
+                    f'Subsumption check failed with fast k-cell check {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
+                )
+                return False
         csubst = self.kcfg_explore.cterm_implies(node.cterm, self.proof.kcfg.node(self.proof.target).cterm)
         if csubst is not None:
             self.proof.kcfg.create_cover(node.id, self.proof.target, csubst=csubst)
@@ -709,7 +723,7 @@ class APRProver(Prover):
         terminal_rules: Iterable[str] = (),
     ) -> None:
         if self.proof.target not in self.proof._terminal:
-            if self._check_subsume(node):
+            if self.always_check_subsumption and self._check_subsume(node):
                 return
 
         module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
@@ -981,11 +995,15 @@ class APRBMCProver(APRProver):
         proof: APRBMCProof,
         kcfg_explore: KCFGExplore,
         counterexample_info: bool = False,
+        always_check_subsumption: bool = True,
+        fast_check_subsumption: bool = False,
     ) -> None:
         super().__init__(
             proof,
             kcfg_explore=kcfg_explore,
             counterexample_info=counterexample_info,
+            always_check_subsumption=always_check_subsumption,
+            fast_check_subsumption=fast_check_subsumption,
         )
         self._checked_nodes = []
 
