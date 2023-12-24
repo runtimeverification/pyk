@@ -690,15 +690,15 @@ class APRProver(Prover):
             if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
                 _LOGGER.info(f'Terminal node: {node.id}.')
                 self.proof._terminal.add(node.id)
+            if self.fast_check_subsumption and self._fast_check_subsume(node):
+                _LOGGER.info(f'Marking node as terminal because of fast-subsumption check {self.proof.id}: {node.id}')
+                self.proof._terminal.add(node.id)
 
     def _check_all_terminals(self) -> None:
         for node in self.proof.kcfg.nodes:
             self._check_terminal(node)
 
-    def _check_subsume(self, node: KCFG.Node) -> bool:
-        _LOGGER.info(
-            f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
-        )
+    def _fast_check_subsume(self, node: KCFG.Node) -> bool:
         if self.fast_check_subsumption:
             node_k_cell = node.cterm.try_cell('K_CELL')
             target_k_cell = self.proof.kcfg.node(self.proof.target).cterm.try_cell('K_CELL')
@@ -707,6 +707,14 @@ class APRProver(Prover):
                     f'Subsumption check failed with fast k-cell check {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
                 )
                 return False
+        return True
+
+    def _check_subsume(self, node: KCFG.Node) -> bool:
+        _LOGGER.info(
+            f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
+        )
+        if not self._fast_check_subsume(node):
+            return False
         csubst = self.kcfg_explore.cterm_implies(node.cterm, self.proof.kcfg.node(self.proof.target).cterm)
         if csubst is not None:
             self.proof.kcfg.create_cover(node.id, self.proof.target, csubst=csubst)
