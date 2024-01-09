@@ -293,9 +293,7 @@ class KPrint:
     def pretty_print(
         self, kast: KAst, *, in_module: str | None = None, unalias: bool = True, sort_collections: bool = False
     ) -> str:
-        defn = self.definition
-        if in_module is not None:
-            defn = KDefinition(in_module, self.definition.all_modules, self.definition.requires, self.definition.att)
+        defn = self.definition.let(main_module_name=in_module)
 
         return PrettyPrinter(
             defn,
