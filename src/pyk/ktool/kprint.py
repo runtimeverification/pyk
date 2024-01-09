@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from ..cli.utils import check_dir_path, check_file_path
 from ..kast import KAst, kast_term
 from ..kast.inner import KInner
-from ..kast.outer import KDefinition, read_kast_definition
+from ..kast.outer import read_kast_definition
 from ..kast.pretty import PrettyPrinter
 from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.kompiled import KompiledKore
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast.inner import KSort, KToken
-    from ..kast.outer import KFlatModule
+    from ..kast.outer import KDefinition, KFlatModule
     from ..kast.pretty import SymbolTable
     from ..kore.syntax import Pattern
     from ..utils import BugReport
