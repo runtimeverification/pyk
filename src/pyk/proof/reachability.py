@@ -690,7 +690,7 @@ class APRProver(Prover):
             if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
                 _LOGGER.info(f'Terminal node: {node.id}.')
                 self.proof._terminal.add(node.id)
-            if self.fast_check_subsumption and self._may_subsume(node):
+            elif self.fast_check_subsumption and self._may_subsume(node):
                 _LOGGER.info(f'Marking node as terminal because of fast may subsume check {self.proof.id}: {node.id}')
                 self.proof._terminal.add(node.id)
 
