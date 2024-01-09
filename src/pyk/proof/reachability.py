@@ -690,15 +690,15 @@ class APRProver(Prover):
             if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
                 _LOGGER.info(f'Terminal node: {node.id}.')
                 self.proof._terminal.add(node.id)
-            if self.fast_check_subsumption and self._fast_check_subsume(node):
-                _LOGGER.info(f'Marking node as terminal because of fast subsumption check {self.proof.id}: {node.id}')
+            if self.fast_check_subsumption and self._may_subsume(node):
+                _LOGGER.info(f'Marking node as terminal because of fast may subsume check {self.proof.id}: {node.id}')
                 self.proof._terminal.add(node.id)
 
     def _check_all_terminals(self) -> None:
         for node in self.proof.kcfg.nodes:
             self._check_terminal(node)
 
-    def _fast_check_subsume(self, node: KCFG.Node) -> bool:
+    def _may_subsume(self, node: KCFG.Node) -> bool:
         node_k_cell = node.cterm.try_cell('K_CELL')
         target_k_cell = self.proof.kcfg.node(self.proof.target).cterm.try_cell('K_CELL')
         if node_k_cell and target_k_cell and not target_k_cell.match(node_k_cell):
@@ -709,9 +709,9 @@ class APRProver(Prover):
         _LOGGER.info(
             f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
         )
-        if self.fast_check_subsumption and not self._fast_check_subsume(node):
+        if self.fast_check_subsumption and not self._may_subsume(node):
             _LOGGER.info(
-                f'Skipping full subsumption check because of fast subsumption check {self.proof.id}: {node.id}'
+                f'Skipping full subsumption check because of fast may subsume check {self.proof.id}: {node.id}'
             )
             return False
         csubst = self.kcfg_explore.cterm_implies(node.cterm, self.proof.kcfg.node(self.proof.target).cterm)
