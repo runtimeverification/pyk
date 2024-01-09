@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from ..cli.utils import check_dir_path, check_file_path
 from ..kast import KAst, kast_term
 from ..kast.inner import KInner
-from ..kast.outer import read_kast_definition
+from ..kast.outer import KDefinition, read_kast_definition
 from ..kast.pretty import PrettyPrinter
 from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.kompiled import KompiledKore
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast.inner import KSort, KToken
-    from ..kast.outer import KDefinition, KFlatModule
+    from ..kast.outer import KFlatModule
     from ..kast.pretty import SymbolTable
     from ..kore.syntax import Pattern
     from ..utils import BugReport
@@ -290,9 +290,13 @@ class KPrint:
             )
         return App('inj', [SortApp('Sort' + isort.name), SortApp('Sort' + osort.name)], [pat])
 
-    def pretty_print(self, kast: KAst, *, unalias: bool = True, sort_collections: bool = False) -> str:
+    def pretty_print(
+        self, kast: KAst, *, in_module: str | None = None, unalias: bool = True, sort_collections: bool = False
+    ) -> str:
+        defn = self.definition.let(main_module_name=in_module)
+
         return PrettyPrinter(
-            self.definition,
+            defn,
             extra_unparsing_modules=self._extra_unparsing_modules,
             patch_symbol_table=self._patch_symbol_table,
             unalias=unalias,
