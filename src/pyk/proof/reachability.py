@@ -702,9 +702,6 @@ class APRProver(Prover):
         node_k_cell = node.cterm.try_cell('K_CELL')
         target_k_cell = self.proof.kcfg.node(self.proof.target).cterm.try_cell('K_CELL')
         if node_k_cell and target_k_cell and not target_k_cell.match(node_k_cell):
-            _LOGGER.info(
-                f'Subsumption check failed with fast k-cell check {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
-            )
             return False
         return True
 
