@@ -287,8 +287,8 @@ def test_add_module(
     params: dict[str, Any],
 ) -> None:
     # Given
-    expected = module.name
-    rpc_client.assume_response({'module': module.name})
+    expected = 'm0123456789abcdef'
+    rpc_client.assume_response({'module': 'm0123456789abcdef'})
 
     # When
     actual = kore_client.add_module(module)
