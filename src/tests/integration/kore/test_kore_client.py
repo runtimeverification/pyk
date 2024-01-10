@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict
 from itertools import count
 from string import Template
@@ -346,7 +347,8 @@ class TestKoreClient(KoreClientTest):
         module: Module,
     ) -> None:
         # Given
-        expected = module.name
+        module_hash = hashlib.sha256(module.text.encode()).hexdigest()
+        expected = f'm{module_hash}'
 
         # When
         actual = kore_client.add_module(module)
