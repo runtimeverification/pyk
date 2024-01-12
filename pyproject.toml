@@ -38,6 +38,7 @@ pytest-cov = "*"
 pytest-mock = "*"
 pytest-xdist = "*"
 pyupgrade = "*"
+sphinx = "*"
 types-psutil = "^5.9.5.10"
 
 [tool.poetry.scripts]
