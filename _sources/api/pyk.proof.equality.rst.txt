@@ -1,0 +1,7 @@
+pyk.proof.equality module
+=========================
+
+.. automodule:: pyk.proof.equality
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+pyk.proof.parallel module
+=========================
+
+.. automodule:: pyk.proof.parallel
+   :members:
+   :undoc-members:
+   :show-inheritance:
