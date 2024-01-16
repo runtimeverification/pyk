@@ -7,8 +7,9 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'pyk'
-copyright = '2024, Runtime Verification, Inc'
 author = 'Runtime Verification, Inc'
+copyright = '2024, Runtime Verification, Inc'
+version = '0.1.572'
 release = '0.1.572'
 
 # -- General configuration ---------------------------------------------------
