@@ -20,7 +20,7 @@ from ..kast.manip import (
 )
 from ..kast.outer import KRule
 from ..konvert import krule_to_kore
-from ..kore.rpc import AbortedResult, SatResult, StopReason, UnknownResult, UnsatResult
+from ..kore.rpc import AbortedResult, RewriteSuccess, SatResult, StopReason, UnknownResult, UnsatResult
 from ..kore.syntax import Import, Module
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
@@ -95,7 +95,7 @@ class KCFGExplore:
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
             module_name=module_name,
-            log_successful_rewrites=self._trace_rewrites,
+            log_successful_rewrites=True,
             log_failed_rewrites=self._trace_rewrites,
             log_successful_simplifications=self._trace_rewrites,
             log_failed_simplifications=self._trace_rewrites,
@@ -493,7 +493,9 @@ class KCFGExplore:
             case Step(cterm, depth, next_node_logs, cut):
                 next_node = kcfg.create_node(cterm)
                 logs[next_node.id] = next_node_logs
-                kcfg.create_edge(node.id, next_node.id, depth)
+                rules_by_id = [log.result.rule_id for log in next_node_logs if type(log.result) is RewriteSuccess]
+                rules_by_label = [self.kprint.definition.sentence_by_unique_id[id].label for id in rules_by_id]
+                kcfg.create_edge(node.id, next_node.id, depth, rules_by_label)
                 cut_str = 'cut-rule ' if cut else ''
                 log(f'{cut_str}basic block at depth {depth}: {node.id} -> {next_node.id}')
 
