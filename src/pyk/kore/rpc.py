@@ -1021,8 +1021,8 @@ class KoreServer(ContextManager['KoreServer']):
         elif type(command) is str:
             command = (command,)
 
-        args = list(command)
-        args += [str(definition_file)]
+        cli_args = list(command)
+        cli_args += [str(definition_file)]
         server_args = ['--module', module_name, '--server-port', str(port or 0)]
         smt_server_args = []
         if smt_timeout:
@@ -1048,9 +1048,9 @@ class KoreServer(ContextManager['KoreServer']):
             if log_axioms_file
             else []
         )
-        args += server_args
-        args += smt_server_args
-        args += haskell_log_args
+        cli_args += server_args
+        cli_args += smt_server_args
+        cli_args += haskell_log_args
 
         if bug_report:
             self._gather_server_report(
@@ -1061,9 +1061,9 @@ class KoreServer(ContextManager['KoreServer']):
                 list(command)[1:] + smt_server_args + haskell_log_args,
             )
 
-        _LOGGER.info(f'Starting KoreServer: {" ".join(args)}')
+        _LOGGER.info(f'Starting KoreServer: {" ".join(cli_args)}')
 
-        self._proc = Popen(args)
+        self._proc = Popen(cli_args)
         self._pid = self._proc.pid
         self._host, self._port = self._get_host_and_port(self._pid)
         if port:
