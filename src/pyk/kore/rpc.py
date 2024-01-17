@@ -1024,9 +1024,6 @@ class KoreServer(ContextManager['KoreServer']):
         else:
             command = list(command)
 
-        cli_args = list(command)
-        cli_args += [str(definition_file)]
-
         server_args = ['--module', args['module_name'], '--server-port', str(args.get('port') or 0)]
 
         smt_server_args = []
@@ -1053,10 +1050,6 @@ class KoreServer(ContextManager['KoreServer']):
         else:
             haskell_log_args = []
 
-        cli_args += server_args
-        cli_args += smt_server_args
-        cli_args += haskell_log_args
-
         if bug_report := args.get('bug_report'):
             self._gather_server_report(
                 args['module_name'],
@@ -1066,6 +1059,11 @@ class KoreServer(ContextManager['KoreServer']):
                 command[1:] + smt_server_args + haskell_log_args,
             )
 
+        cli_args = list(command)
+        cli_args += [str(definition_file)]
+        cli_args += server_args
+        cli_args += smt_server_args
+        cli_args += haskell_log_args
         _LOGGER.info(f'Starting KoreServer: {" ".join(cli_args)}')
 
         self._proc = Popen(cli_args)
