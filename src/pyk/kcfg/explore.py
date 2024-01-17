@@ -493,9 +493,12 @@ class KCFGExplore:
             case Step(cterm, depth, next_node_logs, cut):
                 next_node = kcfg.create_node(cterm)
                 logs[next_node.id] = next_node_logs
-                rules_by_id = [log.result.rule_id for log in next_node_logs if type(log.result) is RewriteSuccess]
-                rules_by_label = [self.kprint.definition.sentence_by_unique_id[id].label for id in rules_by_id]
-                kcfg.create_edge(node.id, next_node.id, depth, rules_by_label)
+                rule_lines = []
+                for node_log in next_node_logs:
+                    if type(node_log.result) is RewriteSuccess:
+                        sent = self.kprint.definition.sentence_by_unique_id[node_log.result.rule_id]
+                        rule_lines.append(f'{sent.label}:{sent.source}')
+                kcfg.create_edge(node.id, next_node.id, depth, rules=rule_lines)
                 cut_str = 'cut-rule ' if cut else ''
                 log(f'{cut_str}basic block at depth {depth}: {node.id} -> {next_node.id}')
 
