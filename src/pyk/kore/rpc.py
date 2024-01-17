@@ -1002,8 +1002,8 @@ class KoreServer(ContextManager['KoreServer']):
         smt_tactic: str | None = None,
         command: str | Iterable[str] | None = None,
         bug_report: BugReport | None = None,
-        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-        haskell_log_entries: Iterable[str] = (),
+        haskell_log_format: KoreExecLogFormat | None = None,
+        haskell_log_entries: Iterable[str] | None = None,
         log_axioms_file: Path | None = None,
     ):
         kompiled_dir = Path(kompiled_dir)
@@ -1034,6 +1034,8 @@ class KoreServer(ContextManager['KoreServer']):
         if smt_tactic:
             smt_server_args += ['--smt-tactic', smt_tactic]
 
+        haskell_log_format = haskell_log_format or KoreExecLogFormat.ONELINE
+        haskell_log_entries = haskell_log_entries or ()
         haskell_log_args = (
             [
                 '--log',
@@ -1135,8 +1137,8 @@ class BoosterServer(KoreServer):
         smt_tactic: str | None = None,
         command: str | Iterable[str] | None = None,
         bug_report: BugReport | None = None,
-        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-        haskell_log_entries: Iterable[str] = (),
+        haskell_log_format: KoreExecLogFormat | None = None,
+        haskell_log_entries: Iterable[str] | None = None,
         log_axioms_file: Path | None = None,
     ):
         llvm_kompiled_dir = Path(llvm_kompiled_dir)
@@ -1208,8 +1210,8 @@ def kore_server(
     smt_timeout: int | None = None,
     smt_retry_limit: int | None = None,
     smt_tactic: str | None = None,
-    haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-    haskell_log_entries: Iterable[str] = (),
+    haskell_log_format: KoreExecLogFormat | None = None,
+    haskell_log_entries: Iterable[str] | None = None,
     log_axioms_file: Path | None = None,
 ) -> KoreServer:
     if llvm_definition_dir:
