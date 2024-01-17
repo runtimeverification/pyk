@@ -1007,6 +1007,8 @@ class KoreServer(ContextManager['KoreServer']):
     _host: str
     _port: int
 
+    _arg_list: list[str]
+
     def __init__(self, args: KoreServerArgs):
         kompiled_dir = Path(args['kompiled_dir'])
         check_dir_path(kompiled_dir)
@@ -1059,19 +1061,16 @@ class KoreServer(ContextManager['KoreServer']):
                 command[1:] + smt_server_args + haskell_log_args,
             )
 
-        cli_args = list(command)
-        cli_args += [str(definition_file)]
-        cli_args += server_args
-        cli_args += smt_server_args
-        cli_args += haskell_log_args
-        _LOGGER.info(f'Starting KoreServer: {" ".join(cli_args)}')
+        arg_list = list(command)
+        arg_list += [str(definition_file)]
+        arg_list += server_args
+        arg_list += smt_server_args
+        arg_list += haskell_log_args
 
-        self._proc = Popen(cli_args)
-        self._pid = self._proc.pid
-        self._host, self._port = self._get_host_and_port(self._pid)
+        self._arg_list = arg_list
+        self.start()
         if args.get('port'):
             assert self.port == args['port']
-        _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
 
     @staticmethod
     def _gather_server_report(
@@ -1120,7 +1119,15 @@ class KoreServer(ContextManager['KoreServer']):
     def __exit__(self, *args: Any) -> None:
         self.close()
 
+    def start(self) -> None:
+        _LOGGER.info(f'Starting KoreServer: {" ".join(self._arg_list)}')
+        self._proc = Popen(self._arg_list)
+        self._pid = self._proc.pid
+        self._host, self._port = self._get_host_and_port(self._pid)
+        _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
+
     def close(self) -> None:
+        _LOGGER.info(f'Stopping KoreServer: {self.host}:{self.port}, pid={self.pid}')
         self._proc.send_signal(SIGINT)
         self._proc.wait()
         _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
