@@ -204,10 +204,9 @@ class KSentence(KOuter, WithKAtt):
             return self.att['label']
         elif self.unique_id is not None:
             return self.unique_id
-        else:
+        elif self.source is not None:
             _LOGGER.warning(f'Found a sentence without label or UNIQUE_ID: {self}')
-            if self.source is not None:
-                return self.source
+            return self.source
         raise ValueError(f'Found sentence without label, UNIQUE_ID, or SOURCE:LOCATION: {self}')
 
 
