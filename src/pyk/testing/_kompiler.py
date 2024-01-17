@@ -195,18 +195,22 @@ class KoreClientTest(KompiledTest):
             case ServerType.LEGACY:
                 assert not llvm_dir
                 with KoreServer(
-                    kompiled_dir=definition_dir,
-                    module_name=definition_info.main_module_name,
-                    bug_report=bug_report,
+                    {
+                        'kompiled_dir': definition_dir,
+                        'module_name': definition_info.main_module_name,
+                        'bug_report': bug_report,
+                    }
                 ) as server:
                     yield server
             case ServerType.BOOSTER:
                 assert llvm_dir
                 with BoosterServer(
-                    kompiled_dir=definition_dir,
-                    llvm_kompiled_dir=llvm_dir,
-                    module_name=definition_info.main_module_name,
-                    bug_report=bug_report,
+                    {
+                        'kompiled_dir': definition_dir,
+                        'llvm_kompiled_dir': llvm_dir,
+                        'module_name': definition_info.main_module_name,
+                        'bug_report': bug_report,
+                    }
                 ) as server:
                     yield server
             case _:
@@ -246,7 +250,7 @@ class KoreServerPoolTest(KompiledTest, ABC):
     @pytest.fixture
     def create_server(self, definition_dir: Path) -> Callable[[], KoreServer]:
         def _create_server() -> KoreServer:
-            return KoreServer(kompiled_dir=definition_dir, module_name=self.POOL_MODULE_NAME)
+            return KoreServer({'kompiled_dir': definition_dir, 'module_name': self.POOL_MODULE_NAME})
 
         return _create_server
 
