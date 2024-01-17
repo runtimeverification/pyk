@@ -992,9 +992,9 @@ class KoreServer(ContextManager['KoreServer']):
 
     def __init__(
         self,
+        *,
         kompiled_dir: str | Path,
         module_name: str,
-        *,
         port: int | None = None,
         smt_timeout: int | None = None,
         smt_retry_limit: int | None = None,
