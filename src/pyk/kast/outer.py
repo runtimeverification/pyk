@@ -185,6 +185,13 @@ class KSentence(KOuter, WithKAtt):
         return None
 
     @property
+    def source(self) -> str | None:
+        """Return the source assigned to this sentence, or None."""
+        if KAtt.SOURCE in self.att and KAtt.LOCATION in self.att:
+            return f'{self.att[KAtt.SOURCE]}:{self.att[KAtt.LOCATION]}'
+        return None
+
+    @property
     def label(self) -> str:
         """Return a (hopefully) unique label associated with the given `KSentence`.
 
@@ -199,10 +206,9 @@ class KSentence(KOuter, WithKAtt):
             return self.unique_id
         else:
             _LOGGER.warning(f'Found a sentence without label or UNIQUE_ID: {self}')
-            if KAtt.SOURCE in self.att and KAtt.LOCATION in self.att:
-                return f'{self.att[KAtt.SOURCE]}:{self.att[KAtt.LOCATION]}'
-            else:
-                raise ValueError(f'Found sentence without label, UNIQUE_ID, or SOURCE:LOCATION: {self}')
+            if self.source is not None:
+                return self.source
+        raise ValueError(f'Found sentence without label, UNIQUE_ID, or SOURCE:LOCATION: {self}')
 
 
 @final
