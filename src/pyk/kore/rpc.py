@@ -13,7 +13,7 @@ from pathlib import Path
 from signal import SIGINT
 from subprocess import Popen
 from time import sleep
-from typing import TYPE_CHECKING, ContextManager, TypedDict, final
+from typing import TYPE_CHECKING, ContextManager, NamedTuple, TypedDict, final
 
 from psutil import Process
 
@@ -1001,13 +1001,15 @@ class KoreServerArgs(TypedDict, total=False):
     log_axioms_file: Path | None
 
 
+class KoreServerInfo(NamedTuple):
+    pid: int
+    host: str
+    port: int
+
+
 class KoreServer(ContextManager['KoreServer']):
     _proc: Popen
-    _pid: int
-    _host: str
-    _port: int
-
-    _arg_list: list[str]
+    _info: KoreServerInfo
 
     def __init__(self, args: KoreServerArgs):
         kompiled_dir = Path(args['kompiled_dir'])
@@ -1103,15 +1105,15 @@ class KoreServer(ContextManager['KoreServer']):
 
     @property
     def pid(self) -> int:
-        return self._pid
+        return self._info.pid
 
     @property
     def host(self) -> str:
-        return self._host
+        return self._info.host
 
     @property
     def port(self) -> int:
-        return self._port
+        return self._info.port
 
     def __enter__(self) -> KoreServer:
         return self
@@ -1122,8 +1124,9 @@ class KoreServer(ContextManager['KoreServer']):
     def start(self) -> None:
         _LOGGER.info(f'Starting KoreServer: {" ".join(self._arg_list)}')
         self._proc = Popen(self._arg_list)
-        self._pid = self._proc.pid
-        self._host, self._port = self._get_host_and_port(self._pid)
+        pid = self._proc.pid
+        host, port = self._get_host_and_port(pid)
+        self._info = KoreServerInfo(pid=pid, host=host, port=port)
         _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
 
     def close(self) -> None:
