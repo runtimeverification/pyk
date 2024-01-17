@@ -362,7 +362,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             target_id = edge_dict['target']
             depth = edge_dict['depth']
             rules = edge_dict['rules']
-            cfg.create_edge(source_id, target_id, depth, rules)
+            cfg.create_edge(source_id, target_id, depth, rules=rules)
 
         for cover_dict in dct.get('covers') or []:
             source_id = cover_dict['source']
@@ -993,7 +993,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             source_id = edge_dict['source']
             target_id = edge_dict['target']
             depth = edge_dict['depth']
-            cfg.create_edge(source_id, target_id, depth)
+            rules = edge_dict['rules']
+            cfg.create_edge(source_id, target_id, depth, rules=rules)
 
         for cover_dict in dct.get('covers') or []:
             source_id = cover_dict['source']
