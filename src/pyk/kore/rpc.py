@@ -1133,7 +1133,7 @@ class BoosterServer(KoreServer):
         smt_retry_limit: int | None = None,
         smt_reset_interval: int | None = None,
         smt_tactic: str | None = None,
-        command: str | Iterable[str] | None,
+        command: str | Iterable[str] | None = None,
         bug_report: BugReport | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),

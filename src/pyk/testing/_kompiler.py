@@ -207,7 +207,6 @@ class KoreClientTest(KompiledTest):
                     llvm_kompiled_dir=llvm_dir,
                     module_name=definition_info.main_module_name,
                     bug_report=bug_report,
-                    command=None,
                 ) as server:
                     yield server
             case _:
