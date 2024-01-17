@@ -496,8 +496,11 @@ class KCFGExplore:
                 rule_lines = []
                 for node_log in next_node_logs:
                     if type(node_log.result) is RewriteSuccess:
-                        sent = self.kprint.definition.sentence_by_unique_id[node_log.result.rule_id]
-                        rule_lines.append(f'{sent.label}:{sent.source}')
+                        if node_log.result.rule_id in self.kprint.definition.sentence_by_unique_id:
+                            sent = self.kprint.definition.sentence_by_unique_id[node_log.result.rule_id]
+                            rule_lines.append(f'{sent.label}:{sent.source}')
+                        else:
+                            rule_lines.append('UNKNOWN')
                 kcfg.create_edge(node.id, next_node.id, depth, rules=rule_lines)
                 cut_str = 'cut-rule ' if cut else ''
                 log(f'{cut_str}basic block at depth {depth}: {node.id} -> {next_node.id}')
