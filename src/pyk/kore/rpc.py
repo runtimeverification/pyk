@@ -1166,9 +1166,14 @@ class BoosterServerArgs(KoreServerArgs):
 
 
 class BoosterServer(KoreServer):
+    _llvm_kompiled_dir: Path
+    _dylib: Path
+    _llvm_definition: Path
+    _llvm_dt: Path
+
     def __init__(self, args: BoosterServerArgs):
-        llvm_kompiled_dir = Path(args['llvm_kompiled_dir'])
-        check_dir_path(llvm_kompiled_dir)
+        self._llvm_kompiled_dir = Path(args['llvm_kompiled_dir'])
+        check_dir_path(self._llvm_kompiled_dir)
 
         ext: str
         match sys.platform:
@@ -1179,15 +1184,15 @@ class BoosterServer(KoreServer):
             case _:
                 raise ValueError('Unsupported platform: {sys.platform}')
 
-        dylib = llvm_kompiled_dir / f'interpreter.{ext}'
-        check_file_path(dylib)
-        llvm_definition = llvm_kompiled_dir / 'definition.kore'
-        check_file_path(llvm_definition)
-        llvm_dt = llvm_kompiled_dir / 'dt'
-        check_dir_path(llvm_dt)
+        self._dylib = self._llvm_kompiled_dir / f'interpreter.{ext}'
+        check_file_path(self._dylib)
+        self._llvm_definition = self._llvm_kompiled_dir / 'definition.kore'
+        check_file_path(self._llvm_definition)
+        self._llvm_dt = self._llvm_kompiled_dir / 'dt'
+        check_dir_path(self._llvm_dt)
 
         if bug_report := args.get('bug_report'):
-            self._gather_booster_report(llvm_kompiled_dir, llvm_definition, llvm_dt, bug_report)
+            self._gather_booster_report(self._llvm_kompiled_dir, self._llvm_definition, self._llvm_dt, bug_report)
 
         command = args.get('command') or 'kore-rpc-booster'
         if isinstance(command, str):
@@ -1195,7 +1200,7 @@ class BoosterServer(KoreServer):
         else:
             command = list(command)
 
-        args['command'] = command + ['--llvm-backend-library', str(dylib)]
+        args['command'] = command + ['--llvm-backend-library', str(self._dylib)]
         super().__init__(args)
 
     @staticmethod
