@@ -1099,11 +1099,15 @@ class KoreServer(ContextManager['KoreServer']):
             assert self.port == self._port
 
     def _validate(self) -> None:
+        def _check_none_or_positive(n: int | None, param_name: str) -> None:
+            if n is not None and n <= 0:
+                raise ValueError(f'Expected positive integer for: {param_name}, got: {n}')
+
         check_dir_path(self._kompiled_dir)
         check_file_path(self._definition_file)
-        self._check_none_or_positive(self._smt_timeout, 'smt_timeout')
-        self._check_none_or_positive(self._smt_retry_limit, 'smt_retry_limit')
-        self._check_none_or_positive(self._smt_reset_interval, 'smt_reset_interval')
+        _check_none_or_positive(self._smt_timeout, 'smt_timeout')
+        _check_none_or_positive(self._smt_retry_limit, 'smt_retry_limit')
+        _check_none_or_positive(self._smt_reset_interval, 'smt_reset_interval')
 
     @staticmethod
     def _gather_server_report(
@@ -1118,11 +1122,6 @@ class KoreServer(ContextManager['KoreServer']):
             'extra_args': extra_args,
         }
         bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
-
-    @staticmethod
-    def _check_none_or_positive(n: int | None, param_name: str) -> None:
-        if n is not None and n <= 0:
-            raise ValueError(f'Expected positive integer for: {param_name}, got: {n}')
 
     @staticmethod
     def _get_host_and_port(pid: int) -> tuple[str, int]:
