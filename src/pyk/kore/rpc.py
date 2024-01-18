@@ -1053,11 +1053,7 @@ class KoreServer(ContextManager['KoreServer']):
         self._bug_report = args.get('bug_report')
 
         self._validate()
-
-        self._arg_list = self._cli_args()
         self.start()
-        if self._port:
-            assert self.port == self._port
 
     def _validate(self) -> None:
         def _check_none_or_positive(n: int | None, param_name: str) -> None:
@@ -1148,10 +1144,13 @@ class KoreServer(ContextManager['KoreServer']):
 
     def start(self) -> None:
         self._populate_bug_report()
-        _LOGGER.info(f'Starting KoreServer: {" ".join(self._arg_list)}')
-        self._proc = Popen(self._arg_list)
+        cli_args = self._cli_args()
+        _LOGGER.info(f'Starting KoreServer: {" ".join(cli_args)}')
+        self._proc = Popen(cli_args)
         pid = self._proc.pid
         host, port = self._get_host_and_port(pid)
+        if self._port:
+            assert port == self._port
         self._info = KoreServerInfo(pid=pid, host=host, port=port)
         _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
 
