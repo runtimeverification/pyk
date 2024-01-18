@@ -1078,20 +1078,21 @@ class KoreServer(ContextManager['KoreServer']):
         else:
             haskell_log_args = []
 
+        extra_args = smt_server_args + haskell_log_args
+
         if self._bug_report:
             self._gather_server_report(
                 self._module_name,
                 self._command[0],
                 self._bug_report,
                 self._definition_file,
-                self._command[1:] + smt_server_args + haskell_log_args,
+                self._command[1:] + extra_args,
             )
 
         arg_list = list(self._command)
         arg_list += [str(self._definition_file)]
         arg_list += server_args
-        arg_list += smt_server_args
-        arg_list += haskell_log_args
+        arg_list += extra_args
 
         self._arg_list = arg_list
         self.start()
