@@ -1052,11 +1052,7 @@ class KoreServer(ContextManager['KoreServer']):
 
         self._bug_report = args.get('bug_report')
 
-        check_dir_path(self._kompiled_dir)
-        check_file_path(self._definition_file)
-        self._check_none_or_positive(self._smt_timeout, 'smt_timeout')
-        self._check_none_or_positive(self._smt_retry_limit, 'smt_retry_limit')
-        self._check_none_or_positive(self._smt_reset_interval, 'smt_reset_interval')
+        self._validate()
 
         server_args = ['--module', self._module_name, '--server-port', str(self._port)]
 
@@ -1101,6 +1097,13 @@ class KoreServer(ContextManager['KoreServer']):
         self.start()
         if self._port:
             assert self.port == self._port
+
+    def _validate(self) -> None:
+        check_dir_path(self._kompiled_dir)
+        check_file_path(self._definition_file)
+        self._check_none_or_positive(self._smt_timeout, 'smt_timeout')
+        self._check_none_or_positive(self._smt_retry_limit, 'smt_retry_limit')
+        self._check_none_or_positive(self._smt_reset_interval, 'smt_reset_interval')
 
     @staticmethod
     def _gather_server_report(
