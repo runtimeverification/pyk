@@ -1187,13 +1187,9 @@ class BoosterServer(KoreServer):
         self._llvm_definition = self._llvm_kompiled_dir / 'definition.kore'
         self._llvm_dt = self._llvm_kompiled_dir / 'dt'
 
-        command = args.get('command') or 'kore-rpc-booster'
-        if isinstance(command, str):
-            command = [command]
-        else:
-            command = list(command)
+        if not args.get('command'):
+            args['command'] = 'kore-rpc-booster'
 
-        args['command'] = command
         super().__init__(args)
 
     def _validate(self) -> None:
