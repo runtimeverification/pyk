@@ -1032,10 +1032,12 @@ class KoreServer(ContextManager['KoreServer']):
         self._module_name = args['module_name']
         self._port = args.get('port') or 0
 
-        if command := args.get('command'):
-            self._command = list(command)
-        else:
+        if not (command := args.get('command')):
             self._command = ['kore-rpc']
+        elif type(command) is str:
+            self._command = [command]
+        else:
+            self._command = list(command)
 
         self._smt_timeout = args.get('smt_timeout')
         self._smt_retry_limit = args.get('smt_retry_limit')
