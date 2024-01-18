@@ -1054,14 +1054,7 @@ class KoreServer(ContextManager['KoreServer']):
 
         self._validate()
 
-        server_args = ['--module', self._module_name, '--server-port', str(self._port)]
-
-        arg_list = list(self._command)
-        arg_list += [str(self._definition_file)]
-        arg_list += server_args
-        arg_list += self._extra_args()
-
-        self._arg_list = arg_list
+        self._arg_list = self._cli_args()
         self.start()
         if self._port:
             assert self.port == self._port
@@ -1076,6 +1069,14 @@ class KoreServer(ContextManager['KoreServer']):
         _check_none_or_positive(self._smt_timeout, 'smt_timeout')
         _check_none_or_positive(self._smt_retry_limit, 'smt_retry_limit')
         _check_none_or_positive(self._smt_reset_interval, 'smt_reset_interval')
+
+    def _cli_args(self) -> list[str]:
+        server_args = ['--module', self._module_name, '--server-port', str(self._port)]
+        res = list(self._command)
+        res += [str(self._definition_file)]
+        res += server_args
+        res += self._extra_args()
+        return res
 
     def _extra_args(self) -> list[str]:
         smt_server_args = []
