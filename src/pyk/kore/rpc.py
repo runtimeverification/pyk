@@ -1190,9 +1190,6 @@ class BoosterServer(KoreServer):
         self._llvm_dt = self._llvm_kompiled_dir / 'dt'
         check_dir_path(self._llvm_dt)
 
-        if bug_report := args.get('bug_report'):
-            self._gather_booster_report(self._llvm_kompiled_dir, self._llvm_definition, self._llvm_dt, bug_report)
-
         command = args.get('command') or 'kore-rpc-booster'
         if isinstance(command, str):
             command = [command]
@@ -1202,12 +1199,10 @@ class BoosterServer(KoreServer):
         args['command'] = command + ['--llvm-backend-library', str(self._dylib)]
         super().__init__(args)
 
-    @staticmethod
-    def _gather_booster_report(
-        llvm_kompiled_dir: Path, llvm_definition: Path, llvm_dt: Path, bug_report: BugReport
-    ) -> None:
-        bug_report.add_file(llvm_definition, Path('llvm_definition/definition.kore'))
-        bug_report.add_file(llvm_dt, Path('llvm_definition/dt'))
+    def _populate_bug_report(self, bug_report: BugReport) -> None:
+        super()._populate_bug_report(bug_report)
+        bug_report.add_file(self._llvm_definition, Path('llvm_definition/definition.kore'))
+        bug_report.add_file(self._llvm_dt, Path('llvm_definition/dt'))
         llvm_version = run_process('llvm-backend-version', pipe_stderr=True, logger=_LOGGER).stdout.strip()
         bug_report.add_file_contents(llvm_version, Path('llvm_version.txt'))
 
