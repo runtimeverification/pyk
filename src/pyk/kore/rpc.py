@@ -1074,7 +1074,9 @@ class KoreServer(ContextManager['KoreServer']):
         self.close()
 
     def start(self) -> None:
-        self._populate_bug_report()
+        if self._bug_report:
+            self._populate_bug_report(self._bug_report)
+
         cli_args = self._cli_args()
         _LOGGER.info(f'Starting KoreServer: {" ".join(cli_args)}')
         self._proc = Popen(cli_args)
@@ -1135,20 +1137,17 @@ class KoreServer(ContextManager['KoreServer']):
 
         return smt_server_args + haskell_log_args
 
-    def _populate_bug_report(self) -> None:
-        if not self._bug_report:
-            return
-
+    def _populate_bug_report(self, bug_report: BugReport) -> None:
         prog_name = self._command[0]
-        self._bug_report.add_file(self._definition_file, Path('definition.kore'))
+        bug_report.add_file(self._definition_file, Path('definition.kore'))
         version_info = run_process((prog_name, '--version'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
-        self._bug_report.add_file_contents(version_info, Path('server_version.txt'))
+        bug_report.add_file_contents(version_info, Path('server_version.txt'))
         server_instance = {
             'exe': prog_name,
             'module': self._module_name,
             'extra_args': self._command[1:] + self._extra_args(),
         }
-        self._bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
+        bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
 
     @staticmethod
     def _get_host_and_port(pid: int) -> tuple[str, int]:
