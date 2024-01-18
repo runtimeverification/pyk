@@ -1055,6 +1055,42 @@ class KoreServer(ContextManager['KoreServer']):
         self._validate()
         self.start()
 
+    @property
+    def pid(self) -> int:
+        return self._info.pid
+
+    @property
+    def host(self) -> str:
+        return self._info.host
+
+    @property
+    def port(self) -> int:
+        return self._info.port
+
+    def __enter__(self) -> KoreServer:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
+    def start(self) -> None:
+        self._populate_bug_report()
+        cli_args = self._cli_args()
+        _LOGGER.info(f'Starting KoreServer: {" ".join(cli_args)}')
+        self._proc = Popen(cli_args)
+        pid = self._proc.pid
+        host, port = self._get_host_and_port(pid)
+        if self._port:
+            assert port == self._port
+        self._info = KoreServerInfo(pid=pid, host=host, port=port)
+        _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
+
+    def close(self) -> None:
+        _LOGGER.info(f'Stopping KoreServer: {self.host}:{self.port}, pid={self.pid}')
+        self._proc.send_signal(SIGINT)
+        self._proc.wait()
+        _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
+
     def _validate(self) -> None:
         def _check_none_or_positive(n: int | None, param_name: str) -> None:
             if n is not None and n <= 0:
@@ -1123,42 +1159,6 @@ class KoreServer(ContextManager['KoreServer']):
         assert len(conns) == 1
         conn = conns[0]
         return conn.laddr
-
-    @property
-    def pid(self) -> int:
-        return self._info.pid
-
-    @property
-    def host(self) -> str:
-        return self._info.host
-
-    @property
-    def port(self) -> int:
-        return self._info.port
-
-    def __enter__(self) -> KoreServer:
-        return self
-
-    def __exit__(self, *args: Any) -> None:
-        self.close()
-
-    def start(self) -> None:
-        self._populate_bug_report()
-        cli_args = self._cli_args()
-        _LOGGER.info(f'Starting KoreServer: {" ".join(cli_args)}')
-        self._proc = Popen(cli_args)
-        pid = self._proc.pid
-        host, port = self._get_host_and_port(pid)
-        if self._port:
-            assert port == self._port
-        self._info = KoreServerInfo(pid=pid, host=host, port=port)
-        _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
-
-    def close(self) -> None:
-        _LOGGER.info(f'Stopping KoreServer: {self.host}:{self.port}, pid={self.pid}')
-        self._proc.send_signal(SIGINT)
-        self._proc.wait()
-        _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
 
 
 class BoosterServerArgs(KoreServerArgs):
