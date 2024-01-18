@@ -1056,14 +1056,7 @@ class KoreServer(ContextManager['KoreServer']):
 
         server_args = ['--module', self._module_name, '--server-port', str(self._port)]
 
-        if self._bug_report:
-            self._gather_server_report(
-                self._module_name,
-                self._command[0],
-                self._bug_report,
-                self._definition_file,
-                self._command[1:] + self._extra_args(),
-            )
+        self._gather_server_report()
 
         arg_list = list(self._command)
         arg_list += [str(self._definition_file)]
@@ -1111,19 +1104,20 @@ class KoreServer(ContextManager['KoreServer']):
 
         return smt_server_args + haskell_log_args
 
-    @staticmethod
-    def _gather_server_report(
-        module_name: str, prog_name: str, bug_report: BugReport, definition_file: Path, extra_args: list[str]
-    ) -> None:
-        bug_report.add_file(definition_file, Path('definition.kore'))
+    def _gather_server_report(self) -> None:
+        if not self._bug_report:
+            return
+
+        prog_name = self._command[0]
+        self._bug_report.add_file(self._definition_file, Path('definition.kore'))
         version_info = run_process((prog_name, '--version'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
-        bug_report.add_file_contents(version_info, Path('server_version.txt'))
+        self._bug_report.add_file_contents(version_info, Path('server_version.txt'))
         server_instance = {
             'exe': prog_name,
-            'module': module_name,
-            'extra_args': extra_args,
+            'module': self._module_name,
+            'extra_args': self._command[1:] + self._extra_args(),
         }
-        bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
+        self._bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
 
     @staticmethod
     def _get_host_and_port(pid: int) -> tuple[str, int]:
