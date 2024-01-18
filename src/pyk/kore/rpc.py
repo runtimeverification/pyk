@@ -1056,6 +1056,37 @@ class KoreServer(ContextManager['KoreServer']):
 
         server_args = ['--module', self._module_name, '--server-port', str(self._port)]
 
+        if self._bug_report:
+            self._gather_server_report(
+                self._module_name,
+                self._command[0],
+                self._bug_report,
+                self._definition_file,
+                self._command[1:] + self._extra_args(),
+            )
+
+        arg_list = list(self._command)
+        arg_list += [str(self._definition_file)]
+        arg_list += server_args
+        arg_list += self._extra_args()
+
+        self._arg_list = arg_list
+        self.start()
+        if self._port:
+            assert self.port == self._port
+
+    def _validate(self) -> None:
+        def _check_none_or_positive(n: int | None, param_name: str) -> None:
+            if n is not None and n <= 0:
+                raise ValueError(f'Expected positive integer for: {param_name}, got: {n}')
+
+        check_dir_path(self._kompiled_dir)
+        check_file_path(self._definition_file)
+        _check_none_or_positive(self._smt_timeout, 'smt_timeout')
+        _check_none_or_positive(self._smt_retry_limit, 'smt_retry_limit')
+        _check_none_or_positive(self._smt_reset_interval, 'smt_reset_interval')
+
+    def _extra_args(self) -> list[str]:
         smt_server_args = []
         if self._smt_timeout:
             smt_server_args += ['--smt-timeout', str(self._smt_timeout)]
@@ -1078,37 +1109,7 @@ class KoreServer(ContextManager['KoreServer']):
         else:
             haskell_log_args = []
 
-        extra_args = smt_server_args + haskell_log_args
-
-        if self._bug_report:
-            self._gather_server_report(
-                self._module_name,
-                self._command[0],
-                self._bug_report,
-                self._definition_file,
-                self._command[1:] + extra_args,
-            )
-
-        arg_list = list(self._command)
-        arg_list += [str(self._definition_file)]
-        arg_list += server_args
-        arg_list += extra_args
-
-        self._arg_list = arg_list
-        self.start()
-        if self._port:
-            assert self.port == self._port
-
-    def _validate(self) -> None:
-        def _check_none_or_positive(n: int | None, param_name: str) -> None:
-            if n is not None and n <= 0:
-                raise ValueError(f'Expected positive integer for: {param_name}, got: {n}')
-
-        check_dir_path(self._kompiled_dir)
-        check_file_path(self._definition_file)
-        _check_none_or_positive(self._smt_timeout, 'smt_timeout')
-        _check_none_or_positive(self._smt_retry_limit, 'smt_retry_limit')
-        _check_none_or_positive(self._smt_reset_interval, 'smt_reset_interval')
+        return smt_server_args + haskell_log_args
 
     @staticmethod
     def _gather_server_report(
