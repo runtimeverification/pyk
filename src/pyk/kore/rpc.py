@@ -1056,8 +1056,6 @@ class KoreServer(ContextManager['KoreServer']):
 
         server_args = ['--module', self._module_name, '--server-port', str(self._port)]
 
-        self._gather_server_report()
-
         arg_list = list(self._command)
         arg_list += [str(self._definition_file)]
         arg_list += server_args
@@ -1104,7 +1102,7 @@ class KoreServer(ContextManager['KoreServer']):
 
         return smt_server_args + haskell_log_args
 
-    def _gather_server_report(self) -> None:
+    def _populate_bug_report(self) -> None:
         if not self._bug_report:
             return
 
@@ -1148,6 +1146,7 @@ class KoreServer(ContextManager['KoreServer']):
         self.close()
 
     def start(self) -> None:
+        self._populate_bug_report()
         _LOGGER.info(f'Starting KoreServer: {" ".join(self._arg_list)}')
         self._proc = Popen(self._arg_list)
         pid = self._proc.pid
