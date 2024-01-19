@@ -979,8 +979,14 @@ class KoreClient(ContextManager['KoreClient']):
         result = self._request('get-model', **params)
         return GetModelResult.from_dict(result)
 
-    def add_module(self, module: Module) -> str:
-        result = self._request('add-module', module=module.text)
+    def add_module(self, module: Module, *, name_as_id: bool | None = None) -> str:
+        params = filter_none(
+            {
+                'module': module.text,
+                'name-as-id': name_as_id,
+            }
+        )
+        result = self._request('add-module', **params)
         return result['module']
 
 

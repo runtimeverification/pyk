@@ -536,7 +536,7 @@ class KCFGExplore:
         sentences = sentences + kore_axioms
         m = Module(name=new_module_name, sentences=sentences)
         _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
-        self._kore_client.add_module(m)
+        self._kore_client.add_module(m, name_as_id=True)
 
 
 class ExtendResult(ABC):
