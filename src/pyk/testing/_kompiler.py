@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import pytest
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, ClassVar
 
-    from pytest import TempPathFactory
+    from pytest import FixtureRequest, TempPathFactory
 
     from ..kast.outer import KDefinition
     from ..kcfg.semantics import KCFGSemantics
@@ -142,50 +143,106 @@ class KCFGExploreTest(KPrintTest):
                 yield KCFGExplore(kprint, client, kcfg_semantics=semantics)
 
 
-class KoreClientTest(KompiledTest):
-    KOMPILE_BACKEND = 'haskell'
-
-    KORE_MODULE_NAME: ClassVar[str]
-    KORE_CLIENT_TIMEOUT: ClassVar = 1000
-
-    @pytest.fixture
-    def kore_client(self, definition_dir: Path, bug_report: BugReport | None) -> Iterator[KoreClient]:
-        server = KoreServer(definition_dir, self.KORE_MODULE_NAME, bug_report=bug_report)
-        client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
-        yield client
-        client.close()
-        server.close()
+class UseServer(Enum):
+    LEGACY = 'legacy'
+    BOOSTER = 'booster'
+    BOTH = 'both'
+    NONE = 'none'
 
 
-class BoosterClientTest:
+class KoreClientTest:
+    DISABLE_LEGACY: ClassVar = False
+    DISABLE_BOOSTER: ClassVar = False
+
     MAIN_FILE: ClassVar[str | Path]
-    MODULE_NAME: ClassVar[str]
+    MAIN_MODULE: ClassVar[str]
     HASKELL_ARGS: ClassVar[dict[str, Any]] = {}
     LLVM_ARGS: ClassVar[dict[str, Any]] = {}
-    KORE_CLIENT_TIMEOUT: ClassVar = 1000
+
+    CLIENT_TIMEOUT: ClassVar = 1000
+
+    class ServerType(Enum):
+        LEGACY = 'legacy'
+        BOOSTER = 'booster'
+
+        def enabled(self, use_server: UseServer) -> bool:
+            match use_server:
+                case UseServer.LEGACY:
+                    return self is KoreClientTest.ServerType.LEGACY
+                case UseServer.BOOSTER:
+                    return self is KoreClientTest.ServerType.BOOSTER
+                case UseServer.BOTH:
+                    return True
+                case UseServer.NONE:
+                    return False
+                case _:
+                    raise AssertionError()
+
+    @pytest.fixture(scope='class', params=['legacy', 'booster'])
+    def _server_type(self, request: FixtureRequest, use_server: UseServer) -> ServerType:
+        res = self.ServerType(request.param)
+        if not res.enabled(use_server):
+            pytest.skip(f'Server is disabled globally: {res.value}')
+        if (res is self.ServerType.LEGACY and self.DISABLE_LEGACY) or (
+            res is self.ServerType.BOOSTER and self.DISABLE_BOOSTER
+        ):
+            pytest.skip(f'Server is disabled for this test: {res.value}')
+        return res
 
     @pytest.fixture(scope='class')
-    def haskell_dir(self, kompile: Kompiler) -> Path:
-        kwargs = self.HASKELL_ARGS
+    def haskell_dir(self, kompile: Kompiler, _server_type: ServerType) -> Path:
+        kwargs = dict(self.HASKELL_ARGS)
         kwargs['main_file'] = self.MAIN_FILE
+        kwargs['main_module'] = self.MAIN_MODULE
         kwargs['backend'] = 'haskell'
         return kompile(**kwargs)
 
     @pytest.fixture(scope='class')
-    def llvm_dir(self, kompile: Kompiler) -> Path:
-        kwargs = self.LLVM_ARGS
+    def llvm_dir(self, kompile: Kompiler, _server_type: ServerType) -> Path | None:
+        if _server_type is not self.ServerType.BOOSTER:
+            return None
+
+        kwargs = dict(self.LLVM_ARGS)
         kwargs['main_file'] = self.MAIN_FILE
+        kwargs['main_module'] = self.MAIN_MODULE
         kwargs['backend'] = 'llvm'
         kwargs['llvm_kompile_type'] = 'c'
         return kompile(**kwargs)
 
     @pytest.fixture
-    def booster_client(self, haskell_dir: Path, llvm_dir: Path, bug_report: BugReport | None) -> Iterator[KoreClient]:
-        server = BoosterServer(haskell_dir, llvm_dir, self.MODULE_NAME, bug_report=bug_report, command=None)
-        client = KoreClient('localhost', server.port, timeout=self.KORE_CLIENT_TIMEOUT, bug_report=bug_report)
-        yield client
-        client.close()
-        server.close()
+    def _kore_server(
+        self,
+        haskell_dir: Path,
+        llvm_dir: Path | None,
+        bug_report: BugReport | None,
+        _server_type: ServerType,
+    ) -> Iterator[KoreServer]:
+        match _server_type:
+            case self.ServerType.LEGACY:
+                assert not llvm_dir
+                with KoreServer(
+                    haskell_dir,
+                    self.MAIN_MODULE,
+                    bug_report=bug_report,
+                ) as server:
+                    yield server
+            case self.ServerType.BOOSTER:
+                assert llvm_dir
+                with BoosterServer(
+                    haskell_dir,
+                    llvm_dir,
+                    self.MAIN_MODULE,
+                    bug_report=bug_report,
+                    command=None,
+                ) as server:
+                    yield server
+            case _:
+                raise AssertionError
+
+    @pytest.fixture
+    def kore_client(self, _kore_server: KoreServer, bug_report: BugReport) -> Iterator[KoreClient]:
+        with KoreClient('localhost', _kore_server.port, timeout=self.CLIENT_TIMEOUT, bug_report=bug_report) as client:
+            yield client
 
 
 class KoreServerPoolTest(KompiledTest, ABC):

@@ -1,24 +1,16 @@
 from __future__ import annotations
 
-from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from ..utils import BugReport, ensure_dir_path
-from ._kompiler import Kompiler
+from ._kompiler import Kompiler, UseServer
 from ._profiler import Profiler
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest, Parser, TempPathFactory
-
-
-class UseServer(Enum):
-    LEGACY = 'legacy'
-    BOOSTER = 'booster'
-    BOTH = 'both'
-    NONE = 'none'
 
 
 def pytest_addoption(parser: Parser) -> None:
@@ -36,7 +28,7 @@ def pytest_addoption(parser: Parser) -> None:
     parser.addoption(
         '--use-server',
         type=UseServer,
-        default=UseServer.LEGACY,
+        default=UseServer.BOTH,
         help='KORE RPC server to use for tests',
     )
 
