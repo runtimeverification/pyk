@@ -135,6 +135,24 @@ class UseServer(Enum):
     NONE = 'none'
 
 
+class ServerType(Enum):
+    LEGACY = 'legacy'
+    BOOSTER = 'booster'
+
+    def enabled(self, use_server: UseServer) -> bool:
+        match use_server:
+            case UseServer.LEGACY:
+                return self is ServerType.LEGACY
+            case UseServer.BOOSTER:
+                return self is ServerType.BOOSTER
+            case UseServer.BOTH:
+                return True
+            case UseServer.NONE:
+                return False
+            case _:
+                raise AssertionError()
+
+
 class KoreClientTest(KompiledTest):
     DISABLE_LEGACY: ClassVar = False
     DISABLE_BOOSTER: ClassVar = False
@@ -144,37 +162,18 @@ class KoreClientTest(KompiledTest):
 
     CLIENT_TIMEOUT: ClassVar = 1000
 
-    class ServerType(Enum):
-        LEGACY = 'legacy'
-        BOOSTER = 'booster'
-
-        def enabled(self, use_server: UseServer) -> bool:
-            match use_server:
-                case UseServer.LEGACY:
-                    return self is KoreClientTest.ServerType.LEGACY
-                case UseServer.BOOSTER:
-                    return self is KoreClientTest.ServerType.BOOSTER
-                case UseServer.BOTH:
-                    return True
-                case UseServer.NONE:
-                    return False
-                case _:
-                    raise AssertionError()
-
     @pytest.fixture(scope='class', params=['legacy', 'booster'])
-    def _server_type(self, request: FixtureRequest, use_server: UseServer) -> ServerType:
-        res = self.ServerType(request.param)
+    def server_type(self, request: FixtureRequest, use_server: UseServer) -> ServerType:
+        res = ServerType(request.param)
         if not res.enabled(use_server):
             pytest.skip(f'Server is disabled globally: {res.value}')
-        if (res is self.ServerType.LEGACY and self.DISABLE_LEGACY) or (
-            res is self.ServerType.BOOSTER and self.DISABLE_BOOSTER
-        ):
+        if (res is ServerType.LEGACY and self.DISABLE_LEGACY) or (res is ServerType.BOOSTER and self.DISABLE_BOOSTER):
             pytest.skip(f'Server is disabled for this test: {res.value}')
         return res
 
     @pytest.fixture(scope='class')
-    def llvm_dir(self, _server_type: ServerType, kompile: Kompiler) -> Path | None:
-        if _server_type is not self.ServerType.BOOSTER:
+    def llvm_dir(self, server_type: ServerType, kompile: Kompiler) -> Path | None:
+        if server_type is not ServerType.BOOSTER:
             return None
 
         kwargs = dict(self.LLVM_ARGS)
@@ -186,14 +185,14 @@ class KoreClientTest(KompiledTest):
     @pytest.fixture
     def _kore_server(
         self,
-        _server_type: ServerType,
+        server_type: ServerType,
         definition_dir: Path,
         definition_info: DefinitionInfo,
         llvm_dir: Path | None,
         bug_report: BugReport | None,
     ) -> Iterator[KoreServer]:
-        match _server_type:
-            case self.ServerType.LEGACY:
+        match server_type:
+            case ServerType.LEGACY:
                 assert not llvm_dir
                 with KoreServer(
                     definition_dir,
@@ -201,7 +200,7 @@ class KoreClientTest(KompiledTest):
                     bug_report=bug_report,
                 ) as server:
                     yield server
-            case self.ServerType.BOOSTER:
+            case ServerType.BOOSTER:
                 assert llvm_dir
                 with BoosterServer(
                     definition_dir,
@@ -214,7 +213,7 @@ class KoreClientTest(KompiledTest):
             case _:
                 raise AssertionError
 
-    # definition_dir should ideally depend on _server_type to avoid triggering kompilation,
+    # definition_dir should ideally depend on server_type to avoid triggering kompilation,
     # but it can't due to method signature in superclass.
     # In the parameter list, always put `definition_dir` after `kore_client`.
     @pytest.fixture
