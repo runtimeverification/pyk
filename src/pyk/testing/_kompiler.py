@@ -60,7 +60,7 @@ class KompiledTest:
 
     @pytest.fixture(scope='class')
     def definition_dir(self, kompile: Kompiler) -> Path:
-        kwargs = self.KOMPILE_ARGS
+        kwargs = dict(self.KOMPILE_ARGS)
         kwargs['main_file'] = self.KOMPILE_MAIN_FILE
         kwargs['backend'] = self.KOMPILE_BACKEND
         return kompile(**kwargs)
@@ -150,13 +150,15 @@ class UseServer(Enum):
     NONE = 'none'
 
 
-class KoreClientTest:
+class KoreClientTest(KompiledTest):
     DISABLE_LEGACY: ClassVar = False
     DISABLE_BOOSTER: ClassVar = False
 
-    MAIN_FILE: ClassVar[str | Path]
-    MAIN_MODULE: ClassVar[str]
-    HASKELL_ARGS: ClassVar[dict[str, Any]] = {}
+    KOMPILE_BACKEND: ClassVar = 'haskell'
+    KOMPILE_MAIN_FILE: ClassVar[str | Path]
+    KOMPILE_MAIN_MODULE: ClassVar[str]
+    KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
+
     LLVM_ARGS: ClassVar[dict[str, Any]] = {}
 
     CLIENT_TIMEOUT: ClassVar = 1000
@@ -178,6 +180,18 @@ class KoreClientTest:
                 case _:
                     raise AssertionError()
 
+    # Should ideally depend on _server_type to avoid triggering kompilation,
+    # but it can't due to method signature in superclass.
+    # In the parameter list, always put after `kore_client`.
+    @pytest.fixture(scope='class')
+    def definition_dir(self, kompile: Kompiler) -> Path:
+        assert self.KOMPILE_BACKEND == 'haskell'
+        kwargs = dict(self.KOMPILE_ARGS)
+        kwargs['backend'] = 'haskell'
+        kwargs['main_file'] = self.KOMPILE_MAIN_FILE
+        kwargs['main_module'] = self.KOMPILE_MAIN_MODULE
+        return kompile(**kwargs)
+
     @pytest.fixture(scope='class', params=['legacy', 'booster'])
     def _server_type(self, request: FixtureRequest, use_server: UseServer) -> ServerType:
         res = self.ServerType(request.param)
@@ -190,48 +204,40 @@ class KoreClientTest:
         return res
 
     @pytest.fixture(scope='class')
-    def haskell_dir(self, kompile: Kompiler, _server_type: ServerType) -> Path:
-        kwargs = dict(self.HASKELL_ARGS)
-        kwargs['main_file'] = self.MAIN_FILE
-        kwargs['main_module'] = self.MAIN_MODULE
-        kwargs['backend'] = 'haskell'
-        return kompile(**kwargs)
-
-    @pytest.fixture(scope='class')
-    def llvm_dir(self, kompile: Kompiler, _server_type: ServerType) -> Path | None:
+    def llvm_dir(self, _server_type: ServerType, kompile: Kompiler) -> Path | None:
         if _server_type is not self.ServerType.BOOSTER:
             return None
 
         kwargs = dict(self.LLVM_ARGS)
-        kwargs['main_file'] = self.MAIN_FILE
-        kwargs['main_module'] = self.MAIN_MODULE
         kwargs['backend'] = 'llvm'
+        kwargs['main_file'] = self.KOMPILE_MAIN_FILE
+        kwargs['main_module'] = self.KOMPILE_MAIN_MODULE
         kwargs['llvm_kompile_type'] = 'c'
         return kompile(**kwargs)
 
     @pytest.fixture
     def _kore_server(
         self,
-        haskell_dir: Path,
+        _server_type: ServerType,
+        definition_dir: Path,
         llvm_dir: Path | None,
         bug_report: BugReport | None,
-        _server_type: ServerType,
     ) -> Iterator[KoreServer]:
         match _server_type:
             case self.ServerType.LEGACY:
                 assert not llvm_dir
                 with KoreServer(
-                    haskell_dir,
-                    self.MAIN_MODULE,
+                    definition_dir,
+                    self.KOMPILE_MAIN_MODULE,
                     bug_report=bug_report,
                 ) as server:
                     yield server
             case self.ServerType.BOOSTER:
                 assert llvm_dir
                 with BoosterServer(
-                    haskell_dir,
+                    definition_dir,
                     llvm_dir,
-                    self.MAIN_MODULE,
+                    self.KOMPILE_MAIN_MODULE,
                     bug_report=bug_report,
                     command=None,
                 ) as server:
