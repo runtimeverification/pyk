@@ -237,7 +237,6 @@ def assert_execute_result_equals(actual: ExecuteResult, expected: ExecuteResult)
 
 class TestKoreClient(KoreClientTest):
     KOMPILE_MAIN_FILE = K_FILES / 'kore-rpc-test.k'
-    KOMPILE_MAIN_MODULE = 'KORE-RPC-TEST'
 
     @pytest.mark.parametrize(
         'test_id,n,params,expected',
@@ -354,7 +353,6 @@ class TestKoreClient(KoreClientTest):
 
 class TestKoreClientWithSMTLemmas(KoreClientTest):
     KOMPILE_MAIN_FILE = K_FILES / 'smt.k'
-    KOMPILE_MAIN_MODULE = 'SMT'
 
     @pytest.mark.parametrize(
         'test_id,pattern,module_name,expected',

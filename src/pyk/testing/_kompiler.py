@@ -128,21 +128,6 @@ class KProveTest(KompiledTest):
         pass
 
 
-class KCFGExploreTest(KPrintTest):
-    @abstractmethod
-    def semantics(self, definition: KDefinition) -> KCFGSemantics:
-        ...
-
-    @pytest.fixture
-    def kcfg_explore(self, kprint: KProve, bug_report: BugReport | None) -> Iterator[KCFGExplore]:
-        definition_dir = kprint.definition_dir
-        main_module_name = kprint.main_module
-        semantics = self.semantics(kprint.definition)
-        with KoreServer(definition_dir, main_module_name, bug_report=bug_report) as server:
-            with KoreClient('localhost', server.port, bug_report=bug_report) as client:
-                yield KCFGExplore(kprint, client, kcfg_semantics=semantics)
-
-
 class UseServer(Enum):
     LEGACY = 'legacy'
     BOOSTER = 'booster'
@@ -155,10 +140,6 @@ class KoreClientTest(KompiledTest):
     DISABLE_BOOSTER: ClassVar = False
 
     KOMPILE_BACKEND: ClassVar = 'haskell'
-    KOMPILE_MAIN_FILE: ClassVar[str | Path]
-    KOMPILE_MAIN_MODULE: ClassVar[str]
-    KOMPILE_ARGS: ClassVar[dict[str, Any]] = {}
-
     LLVM_ARGS: ClassVar[dict[str, Any]] = {}
 
     CLIENT_TIMEOUT: ClassVar = 1000
@@ -180,18 +161,6 @@ class KoreClientTest(KompiledTest):
                 case _:
                     raise AssertionError()
 
-    # Should ideally depend on _server_type to avoid triggering kompilation,
-    # but it can't due to method signature in superclass.
-    # In the parameter list, always put after `kore_client`.
-    @pytest.fixture(scope='class')
-    def definition_dir(self, kompile: Kompiler) -> Path:
-        assert self.KOMPILE_BACKEND == 'haskell'
-        kwargs = dict(self.KOMPILE_ARGS)
-        kwargs['backend'] = 'haskell'
-        kwargs['main_file'] = self.KOMPILE_MAIN_FILE
-        kwargs['main_module'] = self.KOMPILE_MAIN_MODULE
-        return kompile(**kwargs)
-
     @pytest.fixture(scope='class', params=['legacy', 'booster'])
     def _server_type(self, request: FixtureRequest, use_server: UseServer) -> ServerType:
         res = self.ServerType(request.param)
@@ -211,7 +180,6 @@ class KoreClientTest(KompiledTest):
         kwargs = dict(self.LLVM_ARGS)
         kwargs['backend'] = 'llvm'
         kwargs['main_file'] = self.KOMPILE_MAIN_FILE
-        kwargs['main_module'] = self.KOMPILE_MAIN_MODULE
         kwargs['llvm_kompile_type'] = 'c'
         return kompile(**kwargs)
 
@@ -220,6 +188,7 @@ class KoreClientTest(KompiledTest):
         self,
         _server_type: ServerType,
         definition_dir: Path,
+        definition_info: DefinitionInfo,
         llvm_dir: Path | None,
         bug_report: BugReport | None,
     ) -> Iterator[KoreServer]:
@@ -228,7 +197,7 @@ class KoreClientTest(KompiledTest):
                 assert not llvm_dir
                 with KoreServer(
                     definition_dir,
-                    self.KOMPILE_MAIN_MODULE,
+                    definition_info.main_module_name,
                     bug_report=bug_report,
                 ) as server:
                     yield server
@@ -237,7 +206,7 @@ class KoreClientTest(KompiledTest):
                 with BoosterServer(
                     definition_dir,
                     llvm_dir,
-                    self.KOMPILE_MAIN_MODULE,
+                    definition_info.main_module_name,
                     bug_report=bug_report,
                     command=None,
                 ) as server:
@@ -245,10 +214,29 @@ class KoreClientTest(KompiledTest):
             case _:
                 raise AssertionError
 
+    # definition_dir should ideally depend on _server_type to avoid triggering kompilation,
+    # but it can't due to method signature in superclass.
+    # In the parameter list, always put `definition_dir` after `kore_client`.
     @pytest.fixture
     def kore_client(self, _kore_server: KoreServer, bug_report: BugReport) -> Iterator[KoreClient]:
         with KoreClient('localhost', _kore_server.port, timeout=self.CLIENT_TIMEOUT, bug_report=bug_report) as client:
             yield client
+
+
+class KCFGExploreTest(KoreClientTest, KPrintTest):
+    @abstractmethod
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        ...
+
+    @pytest.fixture
+    def kcfg_explore(
+        self,
+        kore_client: KoreClient,
+        kprint: KProve,
+        bug_report: BugReport | None,
+    ) -> Iterator[KCFGExplore]:
+        semantics = self.semantics(kprint.definition)
+        yield KCFGExplore(kprint, kore_client, kcfg_semantics=semantics)
 
 
 class KoreServerPoolTest(KompiledTest, ABC):
