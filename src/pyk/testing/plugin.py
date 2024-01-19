@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,13 @@ if TYPE_CHECKING:
     from pytest import FixtureRequest, Parser, TempPathFactory
 
 
+class UseServer(Enum):
+    LEGACY = 'legacy'
+    BOOSTER = 'booster'
+    BOTH = 'both'
+    NONE = 'none'
+
+
 def pytest_addoption(parser: Parser) -> None:
     parser.addoption(
         '--bug-report',
@@ -24,6 +32,12 @@ def pytest_addoption(parser: Parser) -> None:
         '--bug-report-dir',
         type=ensure_dir_path,
         help='Directory to store bug reports',
+    )
+    parser.addoption(
+        '--use-server',
+        type=UseServer,
+        default=UseServer.LEGACY,
+        help='KORE RPC server to use for tests',
     )
 
 
@@ -39,6 +53,11 @@ def bug_report(request: FixtureRequest, tmp_path: Path) -> BugReport | None:
     br_path = Path(bug_report_dir / br_name)
     ensure_dir_path(br_path.parent)
     return BugReport(br_path)
+
+
+@pytest.fixture(scope='session')
+def use_server(request: FixtureRequest) -> UseServer:
+    return request.config.getoption('--use-server')
 
 
 @pytest.fixture
