@@ -519,7 +519,7 @@ class KCFGExplore:
                 next_ids = [kcfg.create_node(cterm).id for cterm in cterms]
                 for i in next_ids:
                     logs[i] = next_node_logs
-                kcfg.create_ndbranch(node.id, next_ids)
+                kcfg.create_ndbranch(node.id, next_ids, rules=extract_rule_labels(next_node_logs))
                 log(f'{len(next_ids)} non-deterministic branches: {node.id} -> {next_ids}')
 
             case _:
