@@ -1163,8 +1163,17 @@ class KoreServer(ContextManager['KoreServer']):
         return conn.laddr
 
 
-class BoosterServerArgs(KoreServerArgs):
+class FallbackReason(Enum):
+    BRANCHING = 'Branching'
+    STUCK = 'Stuck'
+    ABORTED = 'Aborted'
+
+
+class BoosterServerArgs(KoreServerArgs, total=False):
     llvm_kompiled_dir: Required[str | Path]
+    fallback_on: Iterable[str | FallbackReason] | None
+    interim_simplification: int | None
+    no_post_exec_simplify: bool | None
 
 
 class BoosterServer(KoreServer):
