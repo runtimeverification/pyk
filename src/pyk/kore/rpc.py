@@ -1250,7 +1250,6 @@ def kore_server(
     definition_dir: str | Path,
     module_name: str,
     *,
-    llvm_definition_dir: Path | None = None,
     port: int | None = None,
     command: str | Iterable[str] | None = None,
     smt_timeout: int | None = None,
@@ -1259,6 +1258,12 @@ def kore_server(
     log_axioms_file: Path | None = None,
     haskell_log_format: KoreExecLogFormat | None = None,
     haskell_log_entries: Iterable[str] | None = None,
+    # booster
+    llvm_definition_dir: Path | None = None,
+    fallback_on: Iterable[str | FallbackReason] | None,
+    interim_simplification: int | None,
+    no_post_exec_simplify: bool | None,
+    # ---
     bug_report: BugReport | None = None,
 ) -> KoreServer:
     kore_args: KoreServerArgs = {
@@ -1275,6 +1280,12 @@ def kore_server(
         'bug_report': bug_report,
     }
     if llvm_definition_dir:
-        booster_args: BoosterServerArgs = {'llvm_kompiled_dir': llvm_definition_dir, **kore_args}
+        booster_args: BoosterServerArgs = {
+            'llvm_kompiled_dir': llvm_definition_dir,
+            'fallback_on': fallback_on,
+            'interim_simplification': interim_simplification,
+            'no_post_exec_simplify': no_post_exec_simplify,
+            **kore_args,
+        }
         return BoosterServer(booster_args)
     return KoreServer(kore_args)
