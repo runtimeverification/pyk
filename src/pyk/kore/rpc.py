@@ -1182,6 +1182,10 @@ class BoosterServer(KoreServer):
     _llvm_definition: Path
     _llvm_dt: Path
 
+    _fallback_on: list[FallbackReason] | None
+    _interim_simplification: int | None
+    _no_post_exec_simplify: bool
+
     def __init__(self, args: BoosterServerArgs):
         self._llvm_kompiled_dir = Path(args['llvm_kompiled_dir'])
 
@@ -1198,6 +1202,14 @@ class BoosterServer(KoreServer):
         self._llvm_definition = self._llvm_kompiled_dir / 'definition.kore'
         self._llvm_dt = self._llvm_kompiled_dir / 'dt'
 
+        if fallback_on := args.get('fallback_on'):
+            self._fallback_on = [FallbackReason(reason) for reason in fallback_on]
+        else:
+            self._fallback_on = None
+
+        self._interim_simplification = args.get('interim_simplification')
+        self._no_post_exec_simplify = bool(args.get('no_post_exec_simplify'))
+
         if not args.get('command'):
             args['command'] = 'kore-rpc-booster'
 
@@ -1209,9 +1221,21 @@ class BoosterServer(KoreServer):
         check_file_path(self._llvm_definition)
         check_dir_path(self._llvm_dt)
 
+        if self._fallback_on is not None and not self._fallback_on:
+            raise ValueError("'fallback_on' must not be empty")
+
+        if self._interim_simplification and self._interim_simplification < 0:
+            raise ValueError(f"'interim_simplification' must not be negative, got: {self._interim_simplification}")
+
     def _extra_args(self) -> list[str]:
         res = super()._extra_args()
         res += ['--llvm-backend-library', str(self._dylib)]
+        if self._fallback_on is not None:
+            res += ['--fallback-on', ','.join(reason.value for reason in self._fallback_on)]
+        if self._interim_simplification is not None:
+            res += ['--interim-simplification', str(self._interim_simplification)]
+        if self._no_post_exec_simplify:
+            res += ['--no-post-exec-simplify']
         return res
 
     def _populate_bug_report(self, bug_report: BugReport) -> None:
