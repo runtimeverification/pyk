@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pyk.konvert &#8212; pyk 0.1.586 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=12dfc556" />
+    <script src="../../_static/documentation_options.js?v=be14377c"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for pyk.konvert</h1><div class="highlight"><pre>
+<span></span><span class="linenos">  1</span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="linenos">  2</span>
+<span class="linenos">  3</span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="linenos">  4</span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">reduce</span>
+<span class="linenos">  5</span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="linenos">  6</span>
+<span class="linenos">  7</span><span class="kn">from</span> <span class="nn">.cterm</span> <span class="kn">import</span> <span class="n">CTerm</span>
+<span class="linenos">  8</span><span class="kn">from</span> <span class="nn">.kast.inner</span> <span class="kn">import</span> <span class="n">KApply</span><span class="p">,</span> <span class="n">KLabel</span><span class="p">,</span> <span class="n">KSequence</span><span class="p">,</span> <span class="n">KSort</span><span class="p">,</span> <span class="n">KToken</span><span class="p">,</span> <span class="n">KVariable</span>
+<span class="linenos">  9</span><span class="kn">from</span> <span class="nn">.kast.manip</span> <span class="kn">import</span> <span class="n">bool_to_ml_pred</span><span class="p">,</span> <span class="n">extract_lhs</span><span class="p">,</span> <span class="n">extract_rhs</span>
+<span class="linenos"> 10</span><span class="kn">from</span> <span class="nn">.kore.prelude</span> <span class="kn">import</span> <span class="n">BYTES</span> <span class="k">as</span> <span class="n">KORE_BYTES</span>
+<span class="linenos"> 11</span><span class="kn">from</span> <span class="nn">.kore.prelude</span> <span class="kn">import</span> <span class="n">DOTK</span><span class="p">,</span> <span class="n">SORT_K</span>
+<span class="linenos"> 12</span><span class="kn">from</span> <span class="nn">.kore.prelude</span> <span class="kn">import</span> <span class="n">STRING</span> <span class="k">as</span> <span class="n">KORE_STRING</span>
+<span class="linenos"> 13</span><span class="kn">from</span> <span class="nn">.kore.syntax</span> <span class="kn">import</span> <span class="p">(</span>
+<span class="linenos"> 14</span>    <span class="n">DV</span><span class="p">,</span>
+<span class="linenos"> 15</span>    <span class="n">And</span><span class="p">,</span>
+<span class="linenos"> 16</span>    <span class="n">App</span><span class="p">,</span>
+<span class="linenos"> 17</span>    <span class="n">Assoc</span><span class="p">,</span>
+<span class="linenos"> 18</span>    <span class="n">Axiom</span><span class="p">,</span>
+<span class="linenos"> 19</span>    <span class="n">Bottom</span><span class="p">,</span>
+<span class="linenos"> 20</span>    <span class="n">Ceil</span><span class="p">,</span>
+<span class="linenos"> 21</span>    <span class="n">Equals</span><span class="p">,</span>
+<span class="linenos"> 22</span>    <span class="n">EVar</span><span class="p">,</span>
+<span class="linenos"> 23</span>    <span class="n">Exists</span><span class="p">,</span>
+<span class="linenos"> 24</span>    <span class="n">Implies</span><span class="p">,</span>
+<span class="linenos"> 25</span>    <span class="n">MLPattern</span><span class="p">,</span>
+<span class="linenos"> 26</span>    <span class="n">MLQuant</span><span class="p">,</span>
+<span class="linenos"> 27</span>    <span class="n">Not</span><span class="p">,</span>
+<span class="linenos"> 28</span>    <span class="n">Rewrites</span><span class="p">,</span>
+<span class="linenos"> 29</span>    <span class="n">SortApp</span><span class="p">,</span>
+<span class="linenos"> 30</span>    <span class="n">String</span><span class="p">,</span>
+<span class="linenos"> 31</span>    <span class="n">Top</span><span class="p">,</span>
+<span class="linenos"> 32</span><span class="p">)</span>
+<span class="linenos"> 33</span><span class="kn">from</span> <span class="nn">.prelude.bytes</span> <span class="kn">import</span> <span class="n">BYTES</span><span class="p">,</span> <span class="n">bytesToken_from_str</span><span class="p">,</span> <span class="n">pretty_bytes_str</span>
+<span class="linenos"> 34</span><span class="kn">from</span> <span class="nn">.prelude.k</span> <span class="kn">import</span> <span class="n">K</span>
+<span class="linenos"> 35</span><span class="kn">from</span> <span class="nn">.prelude.ml</span> <span class="kn">import</span> <span class="n">mlAnd</span><span class="p">,</span> <span class="n">mlBottom</span><span class="p">,</span> <span class="n">mlCeil</span><span class="p">,</span> <span class="n">mlEquals</span><span class="p">,</span> <span class="n">mlExists</span><span class="p">,</span> <span class="n">mlImplies</span><span class="p">,</span> <span class="n">mlNot</span><span class="p">,</span> <span class="n">mlTop</span>
+<span class="linenos"> 36</span><span class="kn">from</span> <span class="nn">.prelude.string</span> <span class="kn">import</span> <span class="n">STRING</span><span class="p">,</span> <span class="n">pretty_string</span><span class="p">,</span> <span class="n">stringToken</span>
+<span class="linenos"> 37</span><span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">FrozenDict</span>
+<span class="linenos"> 38</span>
+<span class="linenos"> 39</span><span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+<span class="linenos"> 40</span>    <span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Iterator</span>
+<span class="linenos"> 41</span>    <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Final</span>
+<span class="linenos"> 42</span>
+<span class="linenos"> 43</span>    <span class="kn">from</span> <span class="nn">.kast</span> <span class="kn">import</span> <span class="n">KInner</span>
+<span class="linenos"> 44</span>    <span class="kn">from</span> <span class="nn">.kast.outer</span> <span class="kn">import</span> <span class="n">KDefinition</span><span class="p">,</span> <span class="n">KRule</span>
+<span class="linenos"> 45</span>    <span class="kn">from</span> <span class="nn">.kore.kompiled</span> <span class="kn">import</span> <span class="n">KompiledKore</span>
+<span class="linenos"> 46</span>    <span class="kn">from</span> <span class="nn">.kore.syntax</span> <span class="kn">import</span> <span class="n">Pattern</span><span class="p">,</span> <span class="n">Sort</span>
+<span class="linenos"> 47</span>
+<span class="linenos"> 48</span><span class="n">_LOGGER</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="linenos"> 49</span>
+<span class="linenos"> 50</span><span class="c1"># ------------</span>
+<span class="linenos"> 51</span><span class="c1"># KAST-to-KORE</span>
+<span class="linenos"> 52</span><span class="c1"># ------------</span>
+<span class="linenos"> 53</span>
+<span class="linenos"> 54</span><span class="n">ML_CONN_LABELS</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="p">{</span>
+<span class="linenos"> 55</span>    <span class="s1">&#39;#Top&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\top&#39;</span><span class="p">,</span>
+<span class="linenos"> 56</span>    <span class="s1">&#39;#Bottom&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\bottom&#39;</span><span class="p">,</span>
+<span class="linenos"> 57</span>    <span class="s1">&#39;#Not&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\not&#39;</span><span class="p">,</span>
+<span class="linenos"> 58</span>    <span class="s1">&#39;#And&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\and&#39;</span><span class="p">,</span>
+<span class="linenos"> 59</span>    <span class="s1">&#39;#Or&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\or&#39;</span><span class="p">,</span>
+<span class="linenos"> 60</span>    <span class="s1">&#39;#Implies&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\implies&#39;</span><span class="p">,</span>
+<span class="linenos"> 61</span>    <span class="s1">&#39;#Iff&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\iff&#39;</span><span class="p">,</span>
+<span class="linenos"> 62</span><span class="p">}</span>
+<span class="linenos"> 63</span>
+<span class="linenos"> 64</span><span class="n">ML_QUANT_LABELS</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="p">{</span>
+<span class="linenos"> 65</span>    <span class="s1">&#39;#Exists&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\exists&#39;</span><span class="p">,</span>
+<span class="linenos"> 66</span>    <span class="s1">&#39;#Forall&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\forall&#39;</span><span class="p">,</span>
+<span class="linenos"> 67</span><span class="p">}</span>
+<span class="linenos"> 68</span>
+<span class="linenos"> 69</span><span class="n">ML_PRED_LABELS</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="p">{</span>
+<span class="linenos"> 70</span>    <span class="s1">&#39;#Ceil&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\ceil&#39;</span><span class="p">,</span>
+<span class="linenos"> 71</span>    <span class="s1">&#39;#Floor&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\floor&#39;</span><span class="p">,</span>
+<span class="linenos"> 72</span>    <span class="s1">&#39;#Equals&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\equals&#39;</span><span class="p">,</span>
+<span class="linenos"> 73</span>    <span class="s1">&#39;#In&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;\in&#39;</span><span class="p">,</span>
+<span class="linenos"> 74</span><span class="p">}</span>
+<span class="linenos"> 75</span>
+<span class="linenos"> 76</span><span class="n">ML_PATTERN_LABELS</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+<span class="linenos"> 77</span>    <span class="o">**</span><span class="n">ML_CONN_LABELS</span><span class="p">,</span>
+<span class="linenos"> 78</span>    <span class="o">**</span><span class="n">ML_QUANT_LABELS</span><span class="p">,</span>
+<span class="linenos"> 79</span>    <span class="o">**</span><span class="n">ML_PRED_LABELS</span><span class="p">,</span>
+<span class="linenos"> 80</span><span class="p">)</span>
+<span class="linenos"> 81</span>
+<span class="linenos"> 82</span>
+<div class="viewcode-block" id="kast_to_kore">
+<a class="viewcode-back" href="../../api/pyk.konvert.html#pyk.konvert.kast_to_kore">[docs]</a>
+<span class="linenos"> 83</span><span class="k">def</span> <span class="nf">kast_to_kore</span><span class="p">(</span>
+<span class="linenos"> 84</span>    <span class="n">kast_defn</span><span class="p">:</span> <span class="n">KDefinition</span><span class="p">,</span>
+<span class="linenos"> 85</span>    <span class="n">kompiled_kore</span><span class="p">:</span> <span class="n">KompiledKore</span><span class="p">,</span>
+<span class="linenos"> 86</span>    <span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
+<span class="linenos"> 87</span>    <span class="n">sort</span><span class="p">:</span> <span class="n">KSort</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="linenos"> 88</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Pattern</span><span class="p">:</span>
+<span class="linenos"> 89</span>    <span class="k">if</span> <span class="n">sort</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<span class="linenos"> 90</span>        <span class="n">sort</span> <span class="o">=</span> <span class="n">K</span>
+<span class="linenos"> 91</span>    <span class="n">kast</span> <span class="o">=</span> <span class="n">kast_defn</span><span class="o">.</span><span class="n">add_ksequence_under_k_productions</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span>
+<span class="linenos"> 92</span>    <span class="n">kast</span> <span class="o">=</span> <span class="n">kast_defn</span><span class="o">.</span><span class="n">sort_vars</span><span class="p">(</span><span class="n">kast</span><span class="p">,</span> <span class="n">sort</span><span class="p">)</span>
+<span class="linenos"> 93</span>    <span class="n">kast</span> <span class="o">=</span> <span class="n">kast_defn</span><span class="o">.</span><span class="n">add_cell_map_items</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span>
+<span class="linenos"> 94</span>    <span class="n">kast</span> <span class="o">=</span> <span class="n">kast_defn</span><span class="o">.</span><span class="n">add_sort_params</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span>
+<span class="linenos"> 95</span>    <span class="n">kore</span> <span class="o">=</span> <span class="n">_kast_to_kore</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span>
+<span class="linenos"> 96</span>    <span class="n">kore</span> <span class="o">=</span> <span class="n">kompiled_kore</span><span class="o">.</span><span class="n">add_injections</span><span class="p">(</span><span class="n">kore</span><span class="p">,</span> <span class="n">_ksort_to_kore</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos"> 97</span>    <span class="k">return</span> <span class="n">kore</span></div>
+
+<span class="linenos"> 98</span>
+<span class="linenos"> 99</span>
+<span class="linenos">100</span><span class="c1"># &#39;krule&#39; should have sorts on variables</span>
+<div class="viewcode-block" id="krule_to_kore">
+<a class="viewcode-back" href="../../api/pyk.konvert.html#pyk.konvert.krule_to_kore">[docs]</a>
+<span class="linenos">101</span><span class="k">def</span> <span class="nf">krule_to_kore</span><span class="p">(</span><span class="n">kast_defn</span><span class="p">:</span> <span class="n">KDefinition</span><span class="p">,</span> <span class="n">kompiled_kore</span><span class="p">:</span> <span class="n">KompiledKore</span><span class="p">,</span> <span class="n">krule</span><span class="p">:</span> <span class="n">KRule</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Axiom</span><span class="p">:</span>
+<span class="linenos">102</span>    <span class="n">krule_body</span> <span class="o">=</span> <span class="n">krule</span><span class="o">.</span><span class="n">body</span>
+<span class="linenos">103</span>    <span class="n">krule_lhs</span> <span class="o">=</span> <span class="n">CTerm</span><span class="p">(</span><span class="n">extract_lhs</span><span class="p">(</span><span class="n">krule_body</span><span class="p">),</span> <span class="p">[</span><span class="n">bool_to_ml_pred</span><span class="p">(</span><span class="n">krule</span><span class="o">.</span><span class="n">requires</span><span class="p">)])</span>
+<span class="linenos">104</span>    <span class="n">krule_rhs</span> <span class="o">=</span> <span class="n">CTerm</span><span class="p">(</span><span class="n">extract_rhs</span><span class="p">(</span><span class="n">krule_body</span><span class="p">),</span> <span class="p">[</span><span class="n">bool_to_ml_pred</span><span class="p">(</span><span class="n">krule</span><span class="o">.</span><span class="n">ensures</span><span class="p">)])</span>
+<span class="linenos">105</span>
+<span class="linenos">106</span>    <span class="n">top_level_kore_sort</span> <span class="o">=</span> <span class="n">SortApp</span><span class="p">(</span><span class="s1">&#39;SortGeneratedTopCell&#39;</span><span class="p">)</span>
+<span class="linenos">107</span>    <span class="n">top_level_k_sort</span> <span class="o">=</span> <span class="n">KSort</span><span class="p">(</span><span class="s1">&#39;GeneratedTopCell&#39;</span><span class="p">)</span>
+<span class="linenos">108</span>    <span class="c1"># The backend does not like rewrite rules without a precondition</span>
+<span class="linenos">109</span>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">krule_lhs</span><span class="o">.</span><span class="n">constraints</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+<span class="linenos">110</span>        <span class="n">kore_lhs0</span><span class="p">:</span> <span class="n">Pattern</span> <span class="o">=</span> <span class="n">kast_to_kore</span><span class="p">(</span><span class="n">kast_defn</span><span class="p">,</span> <span class="n">kompiled_kore</span><span class="p">,</span> <span class="n">krule_lhs</span><span class="o">.</span><span class="n">kast</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">top_level_k_sort</span><span class="p">)</span>
+<span class="linenos">111</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">112</span>        <span class="n">kore_lhs0</span> <span class="o">=</span> <span class="n">And</span><span class="p">(</span>
+<span class="linenos">113</span>            <span class="n">top_level_kore_sort</span><span class="p">,</span>
+<span class="linenos">114</span>            <span class="p">(</span>
+<span class="linenos">115</span>                <span class="n">kast_to_kore</span><span class="p">(</span><span class="n">kast_defn</span><span class="p">,</span> <span class="n">kompiled_kore</span><span class="p">,</span> <span class="n">krule_lhs</span><span class="o">.</span><span class="n">kast</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">top_level_k_sort</span><span class="p">),</span>
+<span class="linenos">116</span>                <span class="n">Top</span><span class="p">(</span><span class="n">top_level_kore_sort</span><span class="p">),</span>
+<span class="linenos">117</span>            <span class="p">),</span>
+<span class="linenos">118</span>        <span class="p">)</span>
+<span class="linenos">119</span>
+<span class="linenos">120</span>    <span class="n">kore_rhs0</span><span class="p">:</span> <span class="n">Pattern</span> <span class="o">=</span> <span class="n">kast_to_kore</span><span class="p">(</span><span class="n">kast_defn</span><span class="p">,</span> <span class="n">kompiled_kore</span><span class="p">,</span> <span class="n">krule_rhs</span><span class="o">.</span><span class="n">kast</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">top_level_k_sort</span><span class="p">)</span>
+<span class="linenos">121</span>
+<span class="linenos">122</span>    <span class="n">kore_lhs</span> <span class="o">=</span> <span class="n">kompiled_kore</span><span class="o">.</span><span class="n">add_injections</span><span class="p">(</span><span class="n">kore_lhs0</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">top_level_kore_sort</span><span class="p">)</span>
+<span class="linenos">123</span>    <span class="n">kore_rhs</span> <span class="o">=</span> <span class="n">kompiled_kore</span><span class="o">.</span><span class="n">add_injections</span><span class="p">(</span><span class="n">kore_rhs0</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">top_level_kore_sort</span><span class="p">)</span>
+<span class="linenos">124</span>    <span class="n">prio</span> <span class="o">=</span> <span class="n">krule</span><span class="o">.</span><span class="n">priority</span>
+<span class="linenos">125</span>    <span class="n">attrs</span> <span class="o">=</span> <span class="p">[</span><span class="n">App</span><span class="p">(</span><span class="n">symbol</span><span class="o">=</span><span class="s1">&#39;priority&#39;</span><span class="p">,</span> <span class="n">sorts</span><span class="o">=</span><span class="p">(),</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">prio</span><span class="p">)),))]</span>
+<span class="linenos">126</span>    <span class="k">if</span> <span class="s1">&#39;label&#39;</span> <span class="ow">in</span> <span class="n">krule</span><span class="o">.</span><span class="n">att</span><span class="p">:</span>
+<span class="linenos">127</span>        <span class="n">label</span> <span class="o">=</span> <span class="n">krule</span><span class="o">.</span><span class="n">att</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">]</span>
+<span class="linenos">128</span>        <span class="n">attrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">App</span><span class="p">(</span><span class="n">symbol</span><span class="o">=</span><span class="s1">&#39;label&#39;</span><span class="p">,</span> <span class="n">sorts</span><span class="o">=</span><span class="p">(),</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="n">label</span><span class="p">),)))</span>
+<span class="linenos">129</span>    <span class="n">axiom</span> <span class="o">=</span> <span class="n">Axiom</span><span class="p">(</span>
+<span class="linenos">130</span>        <span class="nb">vars</span><span class="o">=</span><span class="p">(),</span>
+<span class="linenos">131</span>        <span class="n">pattern</span><span class="o">=</span><span class="n">Rewrites</span><span class="p">(</span>
+<span class="linenos">132</span>            <span class="n">sort</span><span class="o">=</span><span class="n">top_level_kore_sort</span><span class="p">,</span>
+<span class="linenos">133</span>            <span class="n">left</span><span class="o">=</span><span class="n">kore_lhs</span><span class="p">,</span>
+<span class="linenos">134</span>            <span class="n">right</span><span class="o">=</span><span class="n">kore_rhs</span><span class="p">,</span>
+<span class="linenos">135</span>        <span class="p">),</span>
+<span class="linenos">136</span>        <span class="n">attrs</span><span class="o">=</span><span class="n">attrs</span><span class="p">,</span>
+<span class="linenos">137</span>    <span class="p">)</span>
+<span class="linenos">138</span>    <span class="k">return</span> <span class="n">axiom</span></div>
+
+<span class="linenos">139</span>
+<span class="linenos">140</span>
+<span class="linenos">141</span><span class="k">def</span> <span class="nf">_ksort_to_kore</span><span class="p">(</span><span class="n">ksort</span><span class="p">:</span> <span class="n">KSort</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SortApp</span><span class="p">:</span>
+<span class="linenos">142</span>    <span class="k">return</span> <span class="n">SortApp</span><span class="p">(</span><span class="s1">&#39;Sort&#39;</span> <span class="o">+</span> <span class="n">ksort</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="linenos">143</span>
+<span class="linenos">144</span>
+<span class="linenos">145</span><span class="k">def</span> <span class="nf">_kast_to_kore</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Pattern</span><span class="p">:</span>
+<span class="linenos">146</span>    <span class="n">stack</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">term</span><span class="p">,</span> <span class="p">[]]</span>
+<span class="linenos">147</span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+<span class="linenos">148</span>        <span class="n">patterns</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="linenos">149</span>        <span class="n">term</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+<span class="linenos">150</span>        <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
+<span class="linenos">151</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
+<span class="linenos">152</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">153</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">154</span>            <span class="n">pattern</span> <span class="o">=</span> <span class="n">_kinner_to_kore</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">155</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="p">:</span>
+<span class="linenos">156</span>                <span class="k">return</span> <span class="n">pattern</span>
+<span class="linenos">157</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+<span class="linenos">158</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">159</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+<span class="linenos">160</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+<span class="linenos">161</span>
+<span class="linenos">162</span>
+<span class="linenos">163</span><span class="k">def</span> <span class="nf">_kinner_to_kore</span><span class="p">(</span><span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">patterns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Pattern</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pattern</span><span class="p">:</span>
+<span class="linenos">164</span>    <span class="k">match</span> <span class="n">kinner</span><span class="p">:</span>
+<span class="linenos">165</span>        <span class="k">case</span> <span class="n">KToken</span><span class="p">():</span>
+<span class="linenos">166</span>            <span class="k">assert</span> <span class="ow">not</span> <span class="n">patterns</span>
+<span class="linenos">167</span>            <span class="k">return</span> <span class="n">_ktoken_to_kore</span><span class="p">(</span><span class="n">kinner</span><span class="p">)</span>
+<span class="linenos">168</span>        <span class="k">case</span> <span class="n">KVariable</span><span class="p">():</span>
+<span class="linenos">169</span>            <span class="k">assert</span> <span class="ow">not</span> <span class="n">patterns</span>
+<span class="linenos">170</span>            <span class="k">return</span> <span class="n">_kvariable_to_kore</span><span class="p">(</span><span class="n">kinner</span><span class="p">)</span>
+<span class="linenos">171</span>        <span class="k">case</span> <span class="n">KSequence</span><span class="p">():</span>
+<span class="linenos">172</span>            <span class="k">return</span> <span class="n">_ksequence_to_kore</span><span class="p">(</span><span class="n">kinner</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">173</span>        <span class="k">case</span> <span class="n">KApply</span><span class="p">():</span>
+<span class="linenos">174</span>            <span class="k">return</span> <span class="n">_kapply_to_kore</span><span class="p">(</span><span class="n">kinner</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">175</span>        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<span class="linenos">176</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unsupported KInner: </span><span class="si">{</span><span class="n">kinner</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">177</span>
+<span class="linenos">178</span>
+<span class="linenos">179</span><span class="k">def</span> <span class="nf">_ktoken_to_kore</span><span class="p">(</span><span class="n">ktoken</span><span class="p">:</span> <span class="n">KToken</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DV</span><span class="p">:</span>
+<span class="linenos">180</span>    <span class="n">value</span><span class="p">:</span> <span class="n">String</span>
+<span class="linenos">181</span>    <span class="k">if</span> <span class="n">ktoken</span><span class="o">.</span><span class="n">sort</span> <span class="o">==</span> <span class="n">STRING</span><span class="p">:</span>
+<span class="linenos">182</span>        <span class="n">value</span> <span class="o">=</span> <span class="n">String</span><span class="p">(</span><span class="n">pretty_string</span><span class="p">(</span><span class="n">ktoken</span><span class="p">))</span>
+<span class="linenos">183</span>    <span class="k">elif</span> <span class="n">ktoken</span><span class="o">.</span><span class="n">sort</span> <span class="o">==</span> <span class="n">BYTES</span><span class="p">:</span>
+<span class="linenos">184</span>        <span class="n">value</span> <span class="o">=</span> <span class="n">String</span><span class="p">(</span><span class="n">pretty_bytes_str</span><span class="p">(</span><span class="n">ktoken</span><span class="p">))</span>
+<span class="linenos">185</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">186</span>        <span class="n">value</span> <span class="o">=</span> <span class="n">String</span><span class="p">(</span><span class="n">ktoken</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+<span class="linenos">187</span>
+<span class="linenos">188</span>    <span class="n">sort</span> <span class="o">=</span> <span class="n">_ksort_to_kore</span><span class="p">(</span><span class="n">ktoken</span><span class="o">.</span><span class="n">sort</span><span class="p">)</span>
+<span class="linenos">189</span>
+<span class="linenos">190</span>    <span class="k">return</span> <span class="n">DV</span><span class="p">(</span><span class="n">sort</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+<span class="linenos">191</span>
+<span class="linenos">192</span>
+<span class="linenos">193</span><span class="k">def</span> <span class="nf">_kvariable_to_kore</span><span class="p">(</span><span class="n">kvar</span><span class="p">:</span> <span class="n">KVariable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EVar</span><span class="p">:</span>
+<span class="linenos">194</span>    <span class="n">sort</span><span class="p">:</span> <span class="n">Sort</span>
+<span class="linenos">195</span>    <span class="k">if</span> <span class="n">kvar</span><span class="o">.</span><span class="n">sort</span><span class="p">:</span>
+<span class="linenos">196</span>        <span class="n">sort</span> <span class="o">=</span> <span class="n">_ksort_to_kore</span><span class="p">(</span><span class="n">kvar</span><span class="o">.</span><span class="n">sort</span><span class="p">)</span>
+<span class="linenos">197</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">198</span>        <span class="n">sort</span> <span class="o">=</span> <span class="n">SORT_K</span>
+<span class="linenos">199</span>    <span class="k">return</span> <span class="n">EVar</span><span class="p">(</span><span class="s1">&#39;Var&#39;</span> <span class="o">+</span> <span class="n">munge</span><span class="p">(</span><span class="n">kvar</span><span class="o">.</span><span class="n">name</span><span class="p">),</span> <span class="n">sort</span><span class="p">)</span>
+<span class="linenos">200</span>
+<span class="linenos">201</span>
+<span class="linenos">202</span><span class="k">def</span> <span class="nf">_ksequence_to_kore</span><span class="p">(</span><span class="n">kseq</span><span class="p">:</span> <span class="n">KSequence</span><span class="p">,</span> <span class="n">patterns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Pattern</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pattern</span><span class="p">:</span>
+<span class="linenos">203</span>    <span class="k">if</span> <span class="ow">not</span> <span class="n">patterns</span><span class="p">:</span>
+<span class="linenos">204</span>        <span class="k">return</span> <span class="n">DOTK</span>
+<span class="linenos">205</span>
+<span class="linenos">206</span>    <span class="n">unit</span><span class="p">:</span> <span class="n">Pattern</span>
+<span class="linenos">207</span>    <span class="n">args</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Pattern</span><span class="p">]</span>
+<span class="linenos">208</span>
+<span class="linenos">209</span>    <span class="n">last</span> <span class="o">=</span> <span class="n">patterns</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="linenos">210</span>    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">last</span><span class="p">)</span> <span class="ow">is</span> <span class="n">EVar</span> <span class="ow">and</span> <span class="n">last</span><span class="o">.</span><span class="n">sort</span> <span class="o">==</span> <span class="n">SORT_K</span><span class="p">:</span>
+<span class="linenos">211</span>        <span class="n">unit</span> <span class="o">=</span> <span class="n">last</span>
+<span class="linenos">212</span>        <span class="n">args</span> <span class="o">=</span> <span class="n">patterns</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="linenos">213</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">214</span>        <span class="n">unit</span> <span class="o">=</span> <span class="n">DOTK</span>
+<span class="linenos">215</span>        <span class="n">args</span> <span class="o">=</span> <span class="n">patterns</span>
+<span class="linenos">216</span>
+<span class="linenos">217</span>    <span class="n">args</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+<span class="linenos">218</span>    <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">App</span><span class="p">(</span><span class="s1">&#39;kseq&#39;</span><span class="p">,</span> <span class="p">(),</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)),</span> <span class="n">args</span><span class="p">,</span> <span class="n">unit</span><span class="p">)</span>
+<span class="linenos">219</span>
+<span class="linenos">220</span>
+<span class="linenos">221</span><span class="k">def</span> <span class="nf">_kapply_to_kore</span><span class="p">(</span><span class="n">kapply</span><span class="p">:</span> <span class="n">KApply</span><span class="p">,</span> <span class="n">patterns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Pattern</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pattern</span><span class="p">:</span>
+<span class="linenos">222</span>    <span class="k">if</span> <span class="n">kapply</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">ML_QUANT_LABELS</span><span class="p">:</span>
+<span class="linenos">223</span>        <span class="k">return</span> <span class="n">_kapply_to_ml_quant</span><span class="p">(</span><span class="n">kapply</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">224</span>
+<span class="linenos">225</span>    <span class="k">return</span> <span class="n">_kapply_to_pattern</span><span class="p">(</span><span class="n">kapply</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">226</span>
+<span class="linenos">227</span>
+<span class="linenos">228</span><span class="k">def</span> <span class="nf">_kapply_to_ml_quant</span><span class="p">(</span><span class="n">kapply</span><span class="p">:</span> <span class="n">KApply</span><span class="p">,</span> <span class="n">patterns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Pattern</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">MLQuant</span><span class="p">:</span>
+<span class="linenos">229</span>    <span class="n">label</span> <span class="o">=</span> <span class="n">kapply</span><span class="o">.</span><span class="n">label</span>
+<span class="linenos">230</span>    <span class="n">symbol</span> <span class="o">=</span> <span class="n">ML_QUANT_LABELS</span><span class="p">[</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+<span class="linenos">231</span>    <span class="n">sorts</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">_ksort_to_kore</span><span class="p">(</span><span class="n">ksort</span><span class="p">)</span> <span class="k">for</span> <span class="n">ksort</span> <span class="ow">in</span> <span class="n">label</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+<span class="linenos">232</span>    <span class="k">return</span> <span class="n">MLQuant</span><span class="o">.</span><span class="n">of</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">sorts</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">233</span>
+<span class="linenos">234</span>
+<span class="linenos">235</span><span class="k">def</span> <span class="nf">_kapply_to_pattern</span><span class="p">(</span><span class="n">kapply</span><span class="p">:</span> <span class="n">KApply</span><span class="p">,</span> <span class="n">patterns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Pattern</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pattern</span><span class="p">:</span>
+<span class="linenos">236</span>    <span class="n">label</span> <span class="o">=</span> <span class="n">kapply</span><span class="o">.</span><span class="n">label</span>
+<span class="linenos">237</span>    <span class="n">symbol</span> <span class="o">=</span> <span class="n">_label_to_kore</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="linenos">238</span>    <span class="n">sorts</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">_ksort_to_kore</span><span class="p">(</span><span class="n">ksort</span><span class="p">)</span> <span class="k">for</span> <span class="n">ksort</span> <span class="ow">in</span> <span class="n">label</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+<span class="linenos">239</span>
+<span class="linenos">240</span>    <span class="k">if</span> <span class="n">label</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">ML_PATTERN_LABELS</span><span class="p">:</span>
+<span class="linenos">241</span>        <span class="k">return</span> <span class="n">MLPattern</span><span class="o">.</span><span class="n">of</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">sorts</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">242</span>
+<span class="linenos">243</span>    <span class="k">return</span> <span class="n">App</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">sorts</span><span class="p">,</span> <span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">244</span>
+<span class="linenos">245</span>
+<span class="linenos">246</span><span class="k">def</span> <span class="nf">_label_to_kore</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="linenos">247</span>    <span class="k">if</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">ML_PATTERN_LABELS</span><span class="p">:</span>
+<span class="linenos">248</span>        <span class="k">return</span> <span class="n">ML_PATTERN_LABELS</span><span class="p">[</span><span class="n">label</span><span class="p">]</span>
+<span class="linenos">249</span>
+<span class="linenos">250</span>    <span class="k">return</span> <span class="s1">&#39;Lbl&#39;</span> <span class="o">+</span> <span class="n">munge</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+<span class="linenos">251</span>
+<span class="linenos">252</span>
+<span class="linenos">253</span><span class="c1"># ------------</span>
+<span class="linenos">254</span><span class="c1"># KORE-to-KAST</span>
+<span class="linenos">255</span><span class="c1"># ------------</span>
+<span class="linenos">256</span>
+<span class="linenos">257</span>
+<div class="viewcode-block" id="kore_to_kast">
+<a class="viewcode-back" href="../../api/pyk.konvert.html#pyk.konvert.kore_to_kast">[docs]</a>
+<span class="linenos">258</span><span class="k">def</span> <span class="nf">kore_to_kast</span><span class="p">(</span><span class="n">kast_defn</span><span class="p">:</span> <span class="n">KDefinition</span><span class="p">,</span> <span class="n">kore</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">259</span>    <span class="n">kast</span> <span class="o">=</span> <span class="n">_kore_to_kast</span><span class="p">(</span><span class="n">kore</span><span class="p">)</span>
+<span class="linenos">260</span>    <span class="k">return</span> <span class="n">kast_defn</span><span class="o">.</span><span class="n">remove_cell_map_items</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span></div>
+
+<span class="linenos">261</span>
+<span class="linenos">262</span>
+<span class="linenos">263</span><span class="k">def</span> <span class="nf">_kore_to_kast</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">264</span>    <span class="n">stack</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">pattern</span><span class="o">.</span><span class="n">pattern</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">Assoc</span><span class="p">)</span> <span class="k">else</span> <span class="n">pattern</span><span class="p">,</span> <span class="p">[]]</span>
+<span class="linenos">265</span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+<span class="linenos">266</span>        <span class="n">terms</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="linenos">267</span>        <span class="n">pattern</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+<span class="linenos">268</span>        <span class="n">patterns</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">patterns</span>
+<span class="linenos">269</span>        <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">patterns</span><span class="p">)</span>
+<span class="linenos">270</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
+<span class="linenos">271</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">272</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">273</span>            <span class="n">term</span> <span class="o">=</span> <span class="n">_pattern_to_kast</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">terms</span><span class="p">)</span>
+<span class="linenos">274</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="p">:</span>
+<span class="linenos">275</span>                <span class="k">return</span> <span class="n">term</span>
+<span class="linenos">276</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
+<span class="linenos">277</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">278</span>            <span class="n">pattern</span> <span class="o">=</span> <span class="n">patterns</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+<span class="linenos">279</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pattern</span><span class="o">.</span><span class="n">pattern</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">Assoc</span><span class="p">)</span> <span class="k">else</span> <span class="n">pattern</span><span class="p">)</span>
+<span class="linenos">280</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+<span class="linenos">281</span>
+<span class="linenos">282</span>
+<span class="linenos">283</span><span class="k">def</span> <span class="nf">_pattern_to_kast</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">KInner</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">284</span>    <span class="k">match</span> <span class="n">pattern</span><span class="p">:</span>
+<span class="linenos">285</span>        <span class="k">case</span> <span class="n">DV</span><span class="p">(</span><span class="n">sort</span><span class="p">,</span> <span class="n">String</span><span class="p">(</span><span class="n">value</span><span class="p">)):</span>
+<span class="linenos">286</span>            <span class="k">assert</span> <span class="ow">not</span> <span class="n">terms</span>
+<span class="linenos">287</span>            <span class="k">if</span> <span class="n">sort</span> <span class="o">==</span> <span class="n">KORE_STRING</span><span class="p">:</span>
+<span class="linenos">288</span>                <span class="k">return</span> <span class="n">stringToken</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+<span class="linenos">289</span>            <span class="k">if</span> <span class="n">sort</span> <span class="o">==</span> <span class="n">KORE_BYTES</span><span class="p">:</span>
+<span class="linenos">290</span>                <span class="k">return</span> <span class="n">bytesToken_from_str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+<span class="linenos">291</span>            <span class="k">return</span> <span class="n">KToken</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos">292</span>
+<span class="linenos">293</span>        <span class="k">case</span> <span class="n">EVar</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">sort</span><span class="p">):</span>
+<span class="linenos">294</span>            <span class="k">assert</span> <span class="ow">not</span> <span class="n">terms</span>
+<span class="linenos">295</span>            <span class="k">return</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">unmunge</span><span class="p">(</span><span class="n">name</span><span class="p">[</span><span class="mi">3</span><span class="p">:]),</span> <span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos">296</span>
+<span class="linenos">297</span>        <span class="k">case</span><span class="w"> </span><span class="n">App</span><span class="p">(</span><span class="n">symbol</span><span class="p">,</span> <span class="n">sorts</span><span class="p">,</span> <span class="k">_</span><span class="p">):</span>
+<span class="linenos">298</span>            <span class="k">if</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;inj&#39;</span><span class="p">:</span>
+<span class="linenos">299</span>                <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">sorts</span>
+<span class="linenos">300</span>                <span class="p">(</span><span class="n">term</span><span class="p">,)</span> <span class="o">=</span> <span class="n">terms</span>
+<span class="linenos">301</span>                <span class="k">return</span> <span class="n">term</span>
+<span class="linenos">302</span>
+<span class="linenos">303</span>            <span class="k">elif</span> <span class="ow">not</span> <span class="n">sorts</span><span class="p">:</span>
+<span class="linenos">304</span>                <span class="k">if</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;dotk&#39;</span><span class="p">:</span>
+<span class="linenos">305</span>                    <span class="p">()</span> <span class="o">=</span> <span class="n">terms</span>
+<span class="linenos">306</span>                    <span class="k">return</span> <span class="n">KSequence</span><span class="p">(())</span>
+<span class="linenos">307</span>
+<span class="linenos">308</span>                <span class="k">elif</span> <span class="n">symbol</span> <span class="o">==</span> <span class="s1">&#39;kseq&#39;</span><span class="p">:</span>
+<span class="linenos">309</span>                    <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">terms</span>
+<span class="linenos">310</span>                    <span class="k">return</span> <span class="n">KSequence</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
+<span class="linenos">311</span>
+<span class="linenos">312</span>                <span class="k">else</span><span class="p">:</span>
+<span class="linenos">313</span>                    <span class="n">klabel</span> <span class="o">=</span> <span class="n">KLabel</span><span class="p">(</span><span class="n">unmunge</span><span class="p">(</span><span class="n">symbol</span><span class="p">[</span><span class="mi">3</span><span class="p">:]))</span>
+<span class="linenos">314</span>                    <span class="k">return</span> <span class="n">KApply</span><span class="p">(</span><span class="n">klabel</span><span class="p">,</span> <span class="n">terms</span><span class="p">)</span>
+<span class="linenos">315</span>
+<span class="linenos">316</span>            <span class="c1"># hardcoded polymorphic operators</span>
+<span class="linenos">317</span>            <span class="k">elif</span> <span class="p">(</span>
+<span class="linenos">318</span>                <span class="n">symbol</span>
+<span class="linenos">319</span>                <span class="o">==</span> <span class="s2">&quot;Lbl&#39;Hash&#39;if&#39;UndsHash&#39;then&#39;UndsHash&#39;else&#39;UndsHash&#39;fi&#39;Unds&#39;K-EQUAL-SYNTAX&#39;Unds&#39;Sort&#39;Unds&#39;Bool&#39;Unds&#39;Sort&#39;Unds&#39;Sort&quot;</span>
+<span class="linenos">320</span>            <span class="p">):</span>
+<span class="linenos">321</span>                <span class="p">(</span><span class="n">sort</span><span class="p">,)</span> <span class="o">=</span> <span class="n">sorts</span>
+<span class="linenos">322</span>                <span class="n">klabel</span> <span class="o">=</span> <span class="n">KLabel</span><span class="p">(</span><span class="n">unmunge</span><span class="p">(</span><span class="n">symbol</span><span class="p">[</span><span class="mi">3</span><span class="p">:]),</span> <span class="p">(</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">),))</span>
+<span class="linenos">323</span>                <span class="k">return</span> <span class="n">KApply</span><span class="p">(</span><span class="n">klabel</span><span class="p">,</span> <span class="n">terms</span><span class="p">)</span>
+<span class="linenos">324</span>
+<span class="linenos">325</span>            <span class="k">else</span><span class="p">:</span>
+<span class="linenos">326</span>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unsupported polymorphic operator: </span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">327</span>
+<span class="linenos">328</span>        <span class="k">case</span> <span class="n">Top</span><span class="p">(</span><span class="n">sort</span><span class="p">):</span>
+<span class="linenos">329</span>            <span class="k">assert</span> <span class="ow">not</span> <span class="n">terms</span>
+<span class="linenos">330</span>            <span class="k">return</span> <span class="n">mlTop</span><span class="p">(</span><span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos">331</span>
+<span class="linenos">332</span>        <span class="k">case</span> <span class="n">Bottom</span><span class="p">(</span><span class="n">sort</span><span class="p">):</span>
+<span class="linenos">333</span>            <span class="k">assert</span> <span class="ow">not</span> <span class="n">terms</span>
+<span class="linenos">334</span>            <span class="k">return</span> <span class="n">mlBottom</span><span class="p">(</span><span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos">335</span>
+<span class="linenos">336</span>        <span class="k">case</span><span class="w"> </span><span class="n">And</span><span class="p">(</span><span class="n">sort</span><span class="p">,</span> <span class="k">_</span><span class="p">):</span>
+<span class="linenos">337</span>            <span class="k">return</span> <span class="n">mlAnd</span><span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos">338</span>
+<span class="linenos">339</span>        <span class="k">case</span><span class="w"> </span><span class="n">Implies</span><span class="p">(</span><span class="n">sort</span><span class="p">,</span> <span class="k">_</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+<span class="linenos">340</span>            <span class="n">larg</span><span class="p">,</span> <span class="n">rarg</span> <span class="o">=</span> <span class="n">terms</span>
+<span class="linenos">341</span>            <span class="k">return</span> <span class="n">mlImplies</span><span class="p">(</span><span class="n">larg</span><span class="p">,</span> <span class="n">rarg</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos">342</span>
+<span class="linenos">343</span>        <span class="k">case</span><span class="w"> </span><span class="n">Not</span><span class="p">(</span><span class="n">sort</span><span class="p">,</span> <span class="k">_</span><span class="p">):</span>
+<span class="linenos">344</span>            <span class="p">(</span><span class="n">karg</span><span class="p">,)</span> <span class="o">=</span> <span class="n">terms</span>
+<span class="linenos">345</span>            <span class="k">return</span> <span class="n">mlNot</span><span class="p">(</span><span class="n">karg</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos">346</span>
+<span class="linenos">347</span>        <span class="k">case</span><span class="w"> </span><span class="n">Exists</span><span class="p">(</span><span class="n">sort</span><span class="p">,</span> <span class="n">EVar</span><span class="p">(</span><span class="n">vname</span><span class="p">,</span> <span class="n">vsort</span><span class="p">),</span> <span class="k">_</span><span class="p">):</span>
+<span class="linenos">348</span>            <span class="n">kvar</span> <span class="o">=</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">unmunge</span><span class="p">(</span><span class="n">vname</span><span class="p">[</span><span class="mi">3</span><span class="p">:]),</span> <span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">vsort</span><span class="p">))</span>
+<span class="linenos">349</span>            <span class="p">(</span><span class="n">body</span><span class="p">,)</span> <span class="o">=</span> <span class="n">terms</span>
+<span class="linenos">350</span>            <span class="k">return</span> <span class="n">mlExists</span><span class="p">(</span><span class="n">kvar</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">))</span>
+<span class="linenos">351</span>
+<span class="linenos">352</span>        <span class="k">case</span> <span class="n">Equals</span><span class="p">(</span><span class="n">op_sort</span><span class="p">,</span> <span class="n">sort</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+<span class="linenos">353</span>            <span class="n">larg</span><span class="p">,</span> <span class="n">rarg</span> <span class="o">=</span> <span class="n">terms</span>
+<span class="linenos">354</span>            <span class="k">return</span> <span class="n">mlEquals</span><span class="p">(</span>
+<span class="linenos">355</span>                <span class="n">larg</span><span class="p">,</span>
+<span class="linenos">356</span>                <span class="n">rarg</span><span class="p">,</span>
+<span class="linenos">357</span>                <span class="n">arg_sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">op_sort</span><span class="p">),</span>
+<span class="linenos">358</span>                <span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">),</span>
+<span class="linenos">359</span>            <span class="p">)</span>
+<span class="linenos">360</span>
+<span class="linenos">361</span>        <span class="k">case</span> <span class="n">Ceil</span><span class="p">(</span><span class="n">op_sort</span><span class="p">,</span> <span class="n">sort</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+<span class="linenos">362</span>            <span class="p">(</span><span class="n">karg</span><span class="p">,)</span> <span class="o">=</span> <span class="n">terms</span>
+<span class="linenos">363</span>            <span class="k">return</span> <span class="n">mlCeil</span><span class="p">(</span>
+<span class="linenos">364</span>                <span class="n">karg</span><span class="p">,</span>
+<span class="linenos">365</span>                <span class="n">arg_sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">op_sort</span><span class="p">),</span>
+<span class="linenos">366</span>                <span class="n">sort</span><span class="o">=</span><span class="n">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">),</span>
+<span class="linenos">367</span>            <span class="p">)</span>
+<span class="linenos">368</span>
+<span class="linenos">369</span>        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<span class="linenos">370</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unsupported Pattern: </span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">371</span>
+<span class="linenos">372</span>
+<span class="linenos">373</span><span class="k">def</span> <span class="nf">_sort_to_kast</span><span class="p">(</span><span class="n">sort</span><span class="p">:</span> <span class="n">Sort</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KSort</span><span class="p">:</span>
+<span class="linenos">374</span>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sort</span><span class="p">,</span> <span class="n">SortApp</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">sort</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;Sort&#39;</span><span class="p">):</span>
+<span class="linenos">375</span>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unsupported Sort: </span><span class="si">{</span><span class="n">sort</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">376</span>    <span class="k">return</span> <span class="n">KSort</span><span class="p">(</span><span class="n">sort</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">4</span><span class="p">:])</span>
+<span class="linenos">377</span>
+<span class="linenos">378</span>
+<span class="linenos">379</span><span class="c1"># --------------</span>
+<span class="linenos">380</span><span class="c1"># Symbol munging</span>
+<span class="linenos">381</span><span class="c1"># --------------</span>
+<span class="linenos">382</span>
+<span class="linenos">383</span><span class="n">UNMUNGE_TABLE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="n">FrozenDict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">FrozenDict</span><span class="p">(</span>
+<span class="linenos">384</span>    <span class="p">{</span>
+<span class="linenos">385</span>        <span class="s1">&#39;Spce&#39;</span><span class="p">:</span> <span class="s1">&#39; &#39;</span><span class="p">,</span>
+<span class="linenos">386</span>        <span class="s1">&#39;Bang&#39;</span><span class="p">:</span> <span class="s1">&#39;!&#39;</span><span class="p">,</span>
+<span class="linenos">387</span>        <span class="s1">&#39;Quot&#39;</span><span class="p">:</span> <span class="s1">&#39;&quot;&#39;</span><span class="p">,</span>
+<span class="linenos">388</span>        <span class="s1">&#39;Hash&#39;</span><span class="p">:</span> <span class="s1">&#39;#&#39;</span><span class="p">,</span>
+<span class="linenos">389</span>        <span class="s1">&#39;Dolr&#39;</span><span class="p">:</span> <span class="s1">&#39;$&#39;</span><span class="p">,</span>
+<span class="linenos">390</span>        <span class="s1">&#39;Perc&#39;</span><span class="p">:</span> <span class="s1">&#39;%&#39;</span><span class="p">,</span>
+<span class="linenos">391</span>        <span class="s1">&#39;And-&#39;</span><span class="p">:</span> <span class="s1">&#39;&amp;&#39;</span><span class="p">,</span>
+<span class="linenos">392</span>        <span class="s1">&#39;Apos&#39;</span><span class="p">:</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">,</span>
+<span class="linenos">393</span>        <span class="s1">&#39;LPar&#39;</span><span class="p">:</span> <span class="s1">&#39;(&#39;</span><span class="p">,</span>
+<span class="linenos">394</span>        <span class="s1">&#39;RPar&#39;</span><span class="p">:</span> <span class="s1">&#39;)&#39;</span><span class="p">,</span>
+<span class="linenos">395</span>        <span class="s1">&#39;Star&#39;</span><span class="p">:</span> <span class="s1">&#39;*&#39;</span><span class="p">,</span>
+<span class="linenos">396</span>        <span class="s1">&#39;Plus&#39;</span><span class="p">:</span> <span class="s1">&#39;+&#39;</span><span class="p">,</span>
+<span class="linenos">397</span>        <span class="s1">&#39;Comm&#39;</span><span class="p">:</span> <span class="s1">&#39;,&#39;</span><span class="p">,</span>
+<span class="linenos">398</span>        <span class="s1">&#39;Stop&#39;</span><span class="p">:</span> <span class="s1">&#39;.&#39;</span><span class="p">,</span>
+<span class="linenos">399</span>        <span class="s1">&#39;Slsh&#39;</span><span class="p">:</span> <span class="s1">&#39;/&#39;</span><span class="p">,</span>
+<span class="linenos">400</span>        <span class="s1">&#39;Coln&#39;</span><span class="p">:</span> <span class="s1">&#39;:&#39;</span><span class="p">,</span>
+<span class="linenos">401</span>        <span class="s1">&#39;SCln&#39;</span><span class="p">:</span> <span class="s1">&#39;;&#39;</span><span class="p">,</span>
+<span class="linenos">402</span>        <span class="s1">&#39;-LT-&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;&#39;</span><span class="p">,</span>
+<span class="linenos">403</span>        <span class="s1">&#39;Eqls&#39;</span><span class="p">:</span> <span class="s1">&#39;=&#39;</span><span class="p">,</span>
+<span class="linenos">404</span>        <span class="s1">&#39;-GT-&#39;</span><span class="p">:</span> <span class="s1">&#39;&gt;&#39;</span><span class="p">,</span>
+<span class="linenos">405</span>        <span class="s1">&#39;Ques&#39;</span><span class="p">:</span> <span class="s1">&#39;?&#39;</span><span class="p">,</span>
+<span class="linenos">406</span>        <span class="s1">&#39;-AT-&#39;</span><span class="p">:</span> <span class="s1">&#39;@&#39;</span><span class="p">,</span>
+<span class="linenos">407</span>        <span class="s1">&#39;LSqB&#39;</span><span class="p">:</span> <span class="s1">&#39;[&#39;</span><span class="p">,</span>
+<span class="linenos">408</span>        <span class="s1">&#39;RSqB&#39;</span><span class="p">:</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span>
+<span class="linenos">409</span>        <span class="s1">&#39;Bash&#39;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span>
+<span class="linenos">410</span>        <span class="s1">&#39;Xor-&#39;</span><span class="p">:</span> <span class="s1">&#39;^&#39;</span><span class="p">,</span>
+<span class="linenos">411</span>        <span class="s1">&#39;Unds&#39;</span><span class="p">:</span> <span class="s1">&#39;_&#39;</span><span class="p">,</span>
+<span class="linenos">412</span>        <span class="s1">&#39;BQuo&#39;</span><span class="p">:</span> <span class="s1">&#39;`&#39;</span><span class="p">,</span>
+<span class="linenos">413</span>        <span class="s1">&#39;LBra&#39;</span><span class="p">:</span> <span class="s1">&#39;{&#39;</span><span class="p">,</span>
+<span class="linenos">414</span>        <span class="s1">&#39;Pipe&#39;</span><span class="p">:</span> <span class="s1">&#39;|&#39;</span><span class="p">,</span>
+<span class="linenos">415</span>        <span class="s1">&#39;RBra&#39;</span><span class="p">:</span> <span class="s1">&#39;}&#39;</span><span class="p">,</span>
+<span class="linenos">416</span>        <span class="s1">&#39;Tild&#39;</span><span class="p">:</span> <span class="s1">&#39;~&#39;</span><span class="p">,</span>
+<span class="linenos">417</span>    <span class="p">}</span>
+<span class="linenos">418</span><span class="p">)</span>
+<span class="linenos">419</span>
+<span class="linenos">420</span>
+<span class="linenos">421</span><span class="n">MUNGE_TABLE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="n">FrozenDict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">FrozenDict</span><span class="p">({</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">UNMUNGE_TABLE</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+<span class="linenos">422</span>
+<span class="linenos">423</span>
+<div class="viewcode-block" id="munge">
+<a class="viewcode-back" href="../../api/pyk.konvert.html#pyk.konvert.munge">[docs]</a>
+<span class="linenos">424</span><span class="k">def</span> <span class="nf">munge</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="linenos">425</span>    <span class="n">symbol</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+<span class="linenos">426</span>    <span class="n">quot</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">427</span>    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">label</span><span class="p">:</span>
+<span class="linenos">428</span>        <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">MUNGE_TABLE</span><span class="p">:</span>
+<span class="linenos">429</span>            <span class="n">symbol</span> <span class="o">+=</span> <span class="s2">&quot;&#39;&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">quot</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
+<span class="linenos">430</span>            <span class="n">symbol</span> <span class="o">+=</span> <span class="n">MUNGE_TABLE</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
+<span class="linenos">431</span>            <span class="n">quot</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="linenos">432</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">433</span>            <span class="n">symbol</span> <span class="o">+=</span> <span class="s2">&quot;&#39;&quot;</span> <span class="k">if</span> <span class="n">quot</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
+<span class="linenos">434</span>            <span class="n">symbol</span> <span class="o">+=</span> <span class="n">c</span>
+<span class="linenos">435</span>            <span class="n">quot</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">436</span>    <span class="n">symbol</span> <span class="o">+=</span> <span class="s2">&quot;&#39;&quot;</span> <span class="k">if</span> <span class="n">quot</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span>
+<span class="linenos">437</span>    <span class="k">return</span> <span class="n">symbol</span></div>
+
+<span class="linenos">438</span>
+<span class="linenos">439</span>
+<div class="viewcode-block" id="unmunge">
+<a class="viewcode-back" href="../../api/pyk.konvert.html#pyk.konvert.unmunge">[docs]</a>
+<span class="linenos">440</span><span class="k">def</span> <span class="nf">unmunge</span><span class="p">(</span><span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="linenos">441</span>    <span class="k">return</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">unmunged</span><span class="p">(</span><span class="n">symbol</span><span class="p">))</span></div>
+
+<span class="linenos">442</span>
+<span class="linenos">443</span>
+<div class="viewcode-block" id="unmunged">
+<a class="viewcode-back" href="../../api/pyk.konvert.html#pyk.konvert.unmunged">[docs]</a>
+<span class="linenos">444</span><span class="k">def</span> <span class="nf">unmunged</span><span class="p">(</span><span class="n">it</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="linenos">445</span>    <span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+<span class="linenos">446</span>
+<span class="linenos">447</span>    <span class="n">startquote</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">448</span>    <span class="n">quote</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">449</span>    <span class="n">endquote</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">450</span>    <span class="n">buff</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">451</span>    <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># len(buff)</span>
+<span class="linenos">452</span>
+<span class="linenos">453</span>    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">it</span><span class="p">:</span>
+<span class="linenos">454</span>        <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="s2">&quot;&#39;&quot;</span><span class="p">:</span>
+<span class="linenos">455</span>            <span class="k">if</span> <span class="n">startquote</span><span class="p">:</span>
+<span class="linenos">456</span>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Empty quoted section&#39;</span><span class="p">)</span>
+<span class="linenos">457</span>            <span class="k">elif</span> <span class="n">quote</span><span class="p">:</span>
+<span class="linenos">458</span>                <span class="k">if</span> <span class="n">cnt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+<span class="linenos">459</span>                    <span class="n">quote</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">460</span>                    <span class="n">endquote</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="linenos">461</span>                <span class="k">else</span><span class="p">:</span>
+<span class="linenos">462</span>                    <span class="n">fragment</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">buff</span><span class="p">)</span>
+<span class="linenos">463</span>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unexpected end of symbol: </span><span class="si">{</span><span class="n">fragment</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">464</span>            <span class="k">elif</span> <span class="n">endquote</span><span class="p">:</span>
+<span class="linenos">465</span>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Quoted sections next to each other&#39;</span><span class="p">)</span>
+<span class="linenos">466</span>            <span class="k">else</span><span class="p">:</span>
+<span class="linenos">467</span>                <span class="n">quote</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="linenos">468</span>                <span class="n">startquote</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="linenos">469</span>
+<span class="linenos">470</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">471</span>            <span class="n">startquote</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">472</span>            <span class="n">endquote</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">473</span>            <span class="k">if</span> <span class="n">quote</span><span class="p">:</span>
+<span class="linenos">474</span>                <span class="k">if</span> <span class="n">cnt</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+<span class="linenos">475</span>                    <span class="n">buff</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="linenos">476</span>                    <span class="n">munged</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">buff</span><span class="p">)</span>
+<span class="linenos">477</span>                    <span class="n">buff</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">478</span>                    <span class="n">cnt</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="linenos">479</span>                    <span class="k">if</span> <span class="ow">not</span> <span class="n">munged</span> <span class="ow">in</span> <span class="n">UNMUNGE_TABLE</span><span class="p">:</span>
+<span class="linenos">480</span>                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unknown encoding &quot;</span><span class="si">{</span><span class="n">munged</span><span class="si">}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="linenos">481</span>                    <span class="k">yield</span> <span class="n">UNMUNGE_TABLE</span><span class="p">[</span><span class="n">munged</span><span class="p">]</span>
+<span class="linenos">482</span>                <span class="k">else</span><span class="p">:</span>
+<span class="linenos">483</span>                    <span class="n">buff</span> <span class="o">+=</span> <span class="p">[</span><span class="n">c</span><span class="p">]</span>
+<span class="linenos">484</span>                    <span class="n">cnt</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="linenos">485</span>            <span class="k">else</span><span class="p">:</span>
+<span class="linenos">486</span>                <span class="k">yield</span> <span class="n">c</span>
+<span class="linenos">487</span>
+<span class="linenos">488</span>    <span class="k">if</span> <span class="n">quote</span><span class="p">:</span>
+<span class="linenos">489</span>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unterminated quoted section&#39;</span><span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">pyk</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/modules.html">pyk</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Runtime Verification, Inc.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

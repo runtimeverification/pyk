@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pyk.kllvm.compiler &#8212; pyk 0.1.586 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
+    <script src="../../../_static/documentation_options.js?v=be14377c"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for pyk.kllvm.compiler</h1><div class="highlight"><pre>
+<span></span><span class="linenos"> 1</span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="linenos"> 2</span>
+<span class="linenos"> 3</span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="linenos"> 4</span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="linenos"> 5</span><span class="kn">import</span> <span class="nn">sysconfig</span>
+<span class="linenos"> 6</span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="linenos"> 7</span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="linenos"> 8</span>
+<span class="linenos"> 9</span><span class="kn">from</span> <span class="nn">..cli.utils</span> <span class="kn">import</span> <span class="n">check_dir_path</span><span class="p">,</span> <span class="n">check_file_path</span>
+<span class="linenos">10</span><span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="n">run_process</span>
+<span class="linenos">11</span>
+<span class="linenos">12</span><span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+<span class="linenos">13</span>    <span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Iterable</span>
+<span class="linenos">14</span>    <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Final</span>
+<span class="linenos">15</span>
+<span class="linenos">16</span>
+<span class="linenos">17</span><span class="n">_LOGGER</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="linenos">18</span><span class="n">PYTHON_EXTENSION_SUFFIX</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="n">sysconfig</span><span class="o">.</span><span class="n">get_config_var</span><span class="p">(</span><span class="s1">&#39;EXT_SUFFIX&#39;</span><span class="p">)</span>
+<span class="linenos">19</span>
+<span class="linenos">20</span>
+<span class="linenos">21</span><span class="c1"># ------</span>
+<span class="linenos">22</span><span class="c1"># _kllvm</span>
+<span class="linenos">23</span><span class="c1"># ------</span>
+<span class="linenos">24</span>
+<span class="linenos">25</span><span class="n">KLLVM_MODULE_NAME</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="s1">&#39;_kllvm&#39;</span>
+<span class="linenos">26</span><span class="n">KLLVM_MODULE_FILE_NAME</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">KLLVM_MODULE_NAME</span><span class="si">}{</span><span class="n">PYTHON_EXTENSION_SUFFIX</span><span class="si">}</span><span class="s1">&#39;</span>
+<span class="linenos">27</span>
+<span class="linenos">28</span>
+<div class="viewcode-block" id="compile_kllvm">
+<a class="viewcode-back" href="../../../api/pyk.kllvm.compiler.html#pyk.kllvm.compiler.compile_kllvm">[docs]</a>
+<span class="linenos">29</span><span class="k">def</span> <span class="nf">compile_kllvm</span><span class="p">(</span><span class="n">target_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="linenos">30</span>    <span class="n">target_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">target_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+<span class="linenos">31</span>    <span class="n">check_dir_path</span><span class="p">(</span><span class="n">target_dir</span><span class="p">)</span>
+<span class="linenos">32</span>
+<span class="linenos">33</span>    <span class="n">module_file</span> <span class="o">=</span> <span class="n">target_dir</span> <span class="o">/</span> <span class="n">KLLVM_MODULE_FILE_NAME</span>
+<span class="linenos">34</span>
+<span class="linenos">35</span>    <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;llvm-kompile&#39;</span><span class="p">,</span> <span class="s1">&#39;pythonast&#39;</span><span class="p">,</span> <span class="s1">&#39;--python&#39;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span> <span class="s1">&#39;--python-output-dir&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">target_dir</span><span class="p">)]</span>
+<span class="linenos">36</span>    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+<span class="linenos">37</span>        <span class="n">args</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;--verbose&#39;</span><span class="p">]</span>
+<span class="linenos">38</span>
+<span class="linenos">39</span>    <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Compiling pythonast extension: </span><span class="si">{</span><span class="n">module_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">40</span>    <span class="n">run_process</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">_LOGGER</span><span class="p">)</span>
+<span class="linenos">41</span>
+<span class="linenos">42</span>    <span class="k">assert</span> <span class="n">module_file</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
+<span class="linenos">43</span>    <span class="k">return</span> <span class="n">module_file</span></div>
+
+<span class="linenos">44</span>
+<span class="linenos">45</span>
+<span class="linenos">46</span><span class="c1"># --------------</span>
+<span class="linenos">47</span><span class="c1"># _kllvm_runtime</span>
+<span class="linenos">48</span><span class="c1"># --------------</span>
+<span class="linenos">49</span>
+<span class="linenos">50</span><span class="n">RUNTIME_MODULE_NAME</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="s1">&#39;_kllvm_runtime&#39;</span>
+<span class="linenos">51</span><span class="n">RUNTIME_MODULE_FILE_NAME</span><span class="p">:</span> <span class="n">Final</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">RUNTIME_MODULE_NAME</span><span class="si">}{</span><span class="n">PYTHON_EXTENSION_SUFFIX</span><span class="si">}</span><span class="s1">&#39;</span>
+<span class="linenos">52</span>
+<span class="linenos">53</span>
+<div class="viewcode-block" id="compile_runtime">
+<a class="viewcode-back" href="../../../api/pyk.kllvm.compiler.html#pyk.kllvm.compiler.compile_runtime">[docs]</a>
+<span class="linenos">54</span><span class="k">def</span> <span class="nf">compile_runtime</span><span class="p">(</span>
+<span class="linenos">55</span>    <span class="n">definition_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span>
+<span class="linenos">56</span>    <span class="n">target_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="linenos">57</span>    <span class="o">*</span><span class="p">,</span>
+<span class="linenos">58</span>    <span class="n">ccopts</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+<span class="linenos">59</span>    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="linenos">60</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="linenos">61</span>    <span class="n">definition_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">definition_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+<span class="linenos">62</span>    <span class="n">check_dir_path</span><span class="p">(</span><span class="n">definition_dir</span><span class="p">)</span>
+<span class="linenos">63</span>
+<span class="linenos">64</span>    <span class="k">if</span> <span class="n">target_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<span class="linenos">65</span>        <span class="n">target_dir</span> <span class="o">=</span> <span class="n">definition_dir</span>
+<span class="linenos">66</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">67</span>        <span class="n">target_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">target_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+<span class="linenos">68</span>        <span class="n">check_dir_path</span><span class="p">(</span><span class="n">target_dir</span><span class="p">)</span>
+<span class="linenos">69</span>
+<span class="linenos">70</span>    <span class="n">ccopts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ccopts</span><span class="p">)</span>
+<span class="linenos">71</span>
+<span class="linenos">72</span>    <span class="n">defn_file</span> <span class="o">=</span> <span class="n">definition_dir</span> <span class="o">/</span> <span class="s1">&#39;definition.kore&#39;</span>
+<span class="linenos">73</span>    <span class="n">check_file_path</span><span class="p">(</span><span class="n">defn_file</span><span class="p">)</span>
+<span class="linenos">74</span>
+<span class="linenos">75</span>    <span class="n">dt_dir</span> <span class="o">=</span> <span class="n">definition_dir</span> <span class="o">/</span> <span class="s1">&#39;dt&#39;</span>
+<span class="linenos">76</span>    <span class="n">check_dir_path</span><span class="p">(</span><span class="n">dt_dir</span><span class="p">)</span>
+<span class="linenos">77</span>
+<span class="linenos">78</span>    <span class="n">module_file</span> <span class="o">=</span> <span class="n">target_dir</span> <span class="o">/</span> <span class="n">RUNTIME_MODULE_FILE_NAME</span>
+<span class="linenos">79</span>
+<span class="linenos">80</span>    <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;llvm-kompile&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">defn_file</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">dt_dir</span><span class="p">),</span> <span class="s1">&#39;python&#39;</span><span class="p">,</span> <span class="s1">&#39;--python&#39;</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">]</span>
+<span class="linenos">81</span>    <span class="k">if</span> <span class="n">target_dir</span><span class="p">:</span>
+<span class="linenos">82</span>        <span class="n">args</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;--python-output-dir&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">target_dir</span><span class="p">)]</span>
+<span class="linenos">83</span>    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+<span class="linenos">84</span>        <span class="n">args</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;--verbose&#39;</span><span class="p">]</span>
+<span class="linenos">85</span>    <span class="k">if</span> <span class="n">ccopts</span><span class="p">:</span>
+<span class="linenos">86</span>        <span class="n">args</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;--&#39;</span><span class="p">]</span>
+<span class="linenos">87</span>        <span class="n">args</span> <span class="o">+=</span> <span class="n">ccopts</span>
+<span class="linenos">88</span>
+<span class="linenos">89</span>    <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Compiling python extension: </span><span class="si">{</span><span class="n">module_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">90</span>    <span class="n">run_process</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">_LOGGER</span><span class="p">)</span>
+<span class="linenos">91</span>
+<span class="linenos">92</span>    <span class="k">assert</span> <span class="n">module_file</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
+<span class="linenos">93</span>    <span class="k">return</span> <span class="n">module_file</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">pyk</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/modules.html">pyk</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Runtime Verification, Inc.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
