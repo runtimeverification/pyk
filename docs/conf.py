@@ -23,6 +23,7 @@ templates_path = ['_templates']
 exclude_patterns = []
 
 add_module_names = False
+autodoc_inherit_docstrings = False
 viewcode_line_numbers = True
 
 # -- Options for HTML output -------------------------------------------------
