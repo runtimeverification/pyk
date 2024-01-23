@@ -375,6 +375,7 @@ class UnknownModuleError(KoreClientError):
         self.module_name = module_name
         super().__init__(f'Could not find module: {self.module_name}')
 
+
 @final
 @dataclass
 class InvalidModuleError(KoreClientError):
