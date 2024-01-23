@@ -655,12 +655,16 @@ class APRProver(Prover):
 
         dependencies_as_rules: list[KRule] = [d.as_rule(priority=20) for d in apr_subproofs]
         circularity_rule = proof.as_rule(priority=20)
+
         module_name = re.sub(r'[%().:,]+', '-', self.proof.id.upper())
+        self.dependencies_module_name = module_name + '-DEPENDS-MODULE'
+        self.circularities_module_name = module_name + '-CIRCULARITIES-MODULE'
+
         dependencies_module = KFlatModule(
-            module_name + '-DEPENDS-MODULE', dependencies_as_rules, [KImport(self.main_module_name)]
+            self.dependencies_module_name, dependencies_as_rules, [KImport(self.main_module_name)]
         )
         circularity_module = KFlatModule(
-            module_name + '-CIRCULARITIES-MODULE', [circularity_rule], [KImport(module_name + '-DEPENDS-MODULE')]
+            self.circularities_module_name, [circularity_rule], [KImport(self.dependencies_module_name)]
         )
 
         self.kcfg_explore._kore_client.add_module(
