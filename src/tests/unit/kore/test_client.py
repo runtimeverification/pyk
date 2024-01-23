@@ -16,7 +16,7 @@ from pyk.kore.rpc import (
     JsonRpcError,
     KoreClient,
     KoreClientError,
-    ModuleError,
+    UnknownModuleError,
     ParseError,
     PatternError,
     SatResult,
@@ -332,7 +332,7 @@ ERROR_TEST_DATA: Final = (
     (
         'module-error',
         JsonRpcError(message='foo', code=3, data='MODULE-NAME'),
-        ModuleError(module_name='MODULE-NAME'),
+        UnknownModuleError(module_name='MODULE-NAME'),
         'Could not find module: MODULE-NAME',
     ),
     (
