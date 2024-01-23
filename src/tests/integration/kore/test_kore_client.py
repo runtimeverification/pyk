@@ -31,14 +31,16 @@ from pyk.kore.rpc import (
     BranchingResult,
     CutPointResult,
     DepthBoundResult,
+    DuplicateModuleError,
     ImplicationError,
     ImpliesResult,
-    ModuleError,
+    InvalidModuleError,
     SatResult,
     State,
     StuckResult,
     TerminalResult,
     TimeoutResult,
+    UnknownModuleError,
     UnknownResult,
     UnsatResult,
     VacuousResult,
@@ -485,7 +487,7 @@ class TestAddModule(KoreClientTest):
 
         # When + Then
         kore_client.add_module(module)
-        with pytest.raises(ModuleError):
+        with pytest.raises(UnknownModuleError):
             kore_client.execute(config, module_name='A')
 
     def test_add_module_twice(self, kore_client: KoreClient) -> None:
@@ -589,7 +591,7 @@ class TestAddModule(KoreClientTest):
 
         # When-Then
         kore_client.add_module(module_1, name_as_id=True)
-        with pytest.raises(ModuleError):
+        with pytest.raises(DuplicateModuleError):
             kore_client.add_module(module_2, name_as_id=True)
 
     def test_add_two_modules_second_with_same_name_as_id(self, kore_client: KoreClient) -> None:
@@ -671,7 +673,7 @@ class TestAddModule(KoreClientTest):
         module = Module('B', sentences=(Import('A'), self.rule(0, 1)))
 
         # Then
-        with pytest.raises(ModuleError):
+        with pytest.raises(InvalidModuleError):
             # When
             kore_client.add_module(module)
 
@@ -682,7 +684,7 @@ class TestAddModule(KoreClientTest):
         # When-Then
         kore_client.add_module(module_1)
         module_2 = Module('B', sentences=(Import('A'), self.rule(1, 2)))
-        with pytest.raises(ModuleError):
+        with pytest.raises(InvalidModuleError):
             kore_client.add_module(module_2)
 
 
