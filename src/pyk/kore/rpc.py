@@ -390,7 +390,7 @@ class InvalidModuleError(KoreClientError):
 
 @final
 @dataclass
-class DuplicateModuleNameError(KoreClientError):
+class DuplicateModuleError(KoreClientError):
     module_name: str
 
     def __init__(self, module_name: str):
@@ -899,9 +899,9 @@ class KoreClient(ContextManager['KoreClient']):
             case 4:
                 return ImplicationError(error=err.data['error'], context=err.data['context'])
             case 8:
-                return InvalidModuleError(error=err.data['error'], context=err.data['context'] if 'context' in err.data else None)
+                return InvalidModuleError(error=err.data['error'], context=err.data.get('context'))
             case 9:
-                return DuplicateModuleNameError(module_name=err.data)
+                return DuplicateModuleError(module_name=err.data)
             case _:
                 return DefaultError(message=err.message, code=err.code, data=err.data)
 

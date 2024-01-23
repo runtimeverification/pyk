@@ -29,11 +29,10 @@ from pyk.kore.rpc import (
     BranchingResult,
     CutPointResult,
     DepthBoundResult,
-    DuplicateModuleNameError,
+    DuplicateModuleError,
     ImplicationError,
     ImpliesResult,
     InvalidModuleError,
-    PatternError,
     SatResult,
     State,
     StuckResult,
@@ -588,7 +587,7 @@ class TestAddModule(KoreClientTest):
 
         # When-Then
         kore_client.add_module(module_1, name_as_id=True)
-        with pytest.raises(DuplicateModuleNameError):
+        with pytest.raises(DuplicateModuleError):
             kore_client.add_module(module_2, name_as_id=True)
 
     def test_add_two_modules_second_with_same_name_as_id(self, kore_client: KoreClient) -> None:
