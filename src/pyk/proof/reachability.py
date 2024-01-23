@@ -663,6 +663,8 @@ class APRProver(Prover):
         dependencies_as_rules: list[KRuleLike] = []
         for apr_subproof in apr_subproofs:
             dependencies_as_rules.extend(apr_subproof.kcfg.to_rules(priority=20))
+            if apr_subproof.admitted and len(apr_subproof.kcfg.predecessors(apr_subproof.target)) == 0:
+                dependencies_as_rules.append(apr_subproof.as_rule(priority=20))
         circularity_rule = proof.as_rule(priority=20)
 
         module_name = re.sub(r'[%().:,]+', '-', self.proof.id.upper())
