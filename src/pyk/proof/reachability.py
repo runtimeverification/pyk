@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
-    from ..kast.outer import KClaim, KDefinition, KFlatModuleList
+    from ..kast.outer import KClaim, KDefinition, KFlatModuleList, KRuleLike
     from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
 
@@ -660,7 +660,9 @@ class APRProver(Prover):
 
         apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
 
-        dependencies_as_rules: list[KRule] = [d.as_rule(priority=20) for d in apr_subproofs]
+        dependencies_as_rules: list[KRuleLike] = []
+        for apr_subproof in apr_subproofs:
+            dependencies_as_rules.extend(apr_subproof.kcfg.to_rules(priority=20))
         circularity_rule = proof.as_rule(priority=20)
 
         module_name = re.sub(r'[%().:,]+', '-', self.proof.id.upper())
