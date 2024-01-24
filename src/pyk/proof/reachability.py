@@ -638,7 +638,7 @@ class APRProver(Prover):
         always_check_subsumption: bool = True,
         fast_check_subsumption: bool = False,
     ) -> None:
-        def _inject_module(module_name: str, import_name: str, sentences: list[KRule]) -> None:
+        def _inject_module(module_name: str, import_name: str, sentences: list[KRuleLike]) -> None:
             _module = KFlatModule(module_name, sentences, [KImport(import_name)])
             _kore_module = kflatmodule_to_kore(
                 self.kcfg_explore.kprint.definition, self.kcfg_explore.kprint.kompiled_kore, _module
