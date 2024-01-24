@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyk.kore.rpc module &#8212; pyk 0.1.593 documentation</title>
+    <title>pyk.kore.rpc module &#8212; pyk 0.1.594 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <script src="../_static/documentation_options.js?v=82d27986"></script>
+    <script src="../_static/documentation_options.js?v=495be94b"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -316,6 +316,17 @@
 
 </dd></dl>
 
+<dl class="py exception">
+<dt class="sig sig-object py" id="pyk.kore.rpc.DuplicateModuleError">
+<em class="property"><span class="pre">final</span><span class="w"> </span><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DuplicateModuleError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'str'</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#DuplicateModuleError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.DuplicateModuleError" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pyk.kore.rpc.KoreClientError" title="pyk.kore.rpc.KoreClientError"><code class="xref py py-class docutils literal notranslate"><span class="pre">KoreClientError</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.kore.rpc.DuplicateModuleError.module_name">
+<span class="sig-name descname"><span class="pre">module_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#pyk.kore.rpc.DuplicateModuleError.module_name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="pyk.kore.rpc.ExecuteResult">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ExecuteResult</span></span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#ExecuteResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.ExecuteResult" title="Link to this definition">¶</a></dt>
@@ -468,6 +479,22 @@
 
 </dd></dl>
 
+<dl class="py exception">
+<dt class="sig sig-object py" id="pyk.kore.rpc.InvalidModuleError">
+<em class="property"><span class="pre">final</span><span class="w"> </span><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">InvalidModuleError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'str'</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'Iterable[str]</span> <span class="pre">|</span> <span class="pre">None'</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#InvalidModuleError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.InvalidModuleError" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pyk.kore.rpc.KoreClientError" title="pyk.kore.rpc.KoreClientError"><code class="xref py py-class docutils literal notranslate"><span class="pre">KoreClientError</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.kore.rpc.InvalidModuleError.context">
+<span class="sig-name descname"><span class="pre">context</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pyk.kore.rpc.InvalidModuleError.context" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.kore.rpc.InvalidModuleError.error">
+<span class="sig-name descname"><span class="pre">error</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#pyk.kore.rpc.InvalidModuleError.error" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="pyk.kore.rpc.JsonRpcClient">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">JsonRpcClient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bug_report</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.utils.html#pyk.utils.BugReport" title="pyk.utils.BugReport"><span class="pre">BugReport</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bug_report_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transport</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyk.kore.rpc.TransportType" title="pyk.kore.rpc.TransportType"><span class="pre">TransportType</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">TransportType.SINGLE_SOCKET</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#JsonRpcClient"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.JsonRpcClient" title="Link to this definition">¶</a></dt>
@@ -512,7 +539,7 @@
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ContextManager</span></code>[<a class="reference internal" href="#pyk.kore.rpc.KoreClient" title="pyk.kore.rpc.KoreClient"><code class="xref py py-class docutils literal notranslate"><span class="pre">KoreClient</span></code></a>]</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="pyk.kore.rpc.KoreClient.add_module">
-<span class="sig-name descname"><span class="pre">add_module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.kast.outer_syntax.html#pyk.kast.outer_syntax.Module" title="pyk.kast.outer_syntax.Module"><span class="pre">Module</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#KoreClient.add_module"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.KoreClient.add_module" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">add_module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.kast.outer_syntax.html#pyk.kast.outer_syntax.Module" title="pyk.kast.outer_syntax.Module"><span class="pre">Module</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_as_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#KoreClient.add_module"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.KoreClient.add_module" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -775,17 +802,6 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="pyk.kore.rpc.LogSimplification.to_dict">
 <span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#LogSimplification.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.LogSimplification.to_dict" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py exception">
-<dt class="sig sig-object py" id="pyk.kore.rpc.ModuleError">
-<em class="property"><span class="pre">final</span><span class="w"> </span><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ModuleError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'str'</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#ModuleError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.ModuleError" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#pyk.kore.rpc.KoreClientError" title="pyk.kore.rpc.KoreClientError"><code class="xref py py-class docutils literal notranslate"><span class="pre">KoreClientError</span></code></a></p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="pyk.kore.rpc.ModuleError.module_name">
-<span class="sig-name descname"><span class="pre">module_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#pyk.kore.rpc.ModuleError.module_name" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1167,6 +1183,17 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyk.kore.rpc.TransportType.SINGLE_SOCKET">
 <span class="sig-name descname"><span class="pre">SINGLE_SOCKET</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#pyk.kore.rpc.TransportType.SINGLE_SOCKET" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="pyk.kore.rpc.UnknownModuleError">
+<em class="property"><span class="pre">final</span><span class="w"> </span><span class="pre">exception</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">UnknownModuleError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'str'</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pyk/kore/rpc.html#UnknownModuleError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kore.rpc.UnknownModuleError" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#pyk.kore.rpc.KoreClientError" title="pyk.kore.rpc.KoreClientError"><code class="xref py py-class docutils literal notranslate"><span class="pre">KoreClientError</span></code></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.kore.rpc.UnknownModuleError.module_name">
+<span class="sig-name descname"><span class="pre">module_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#pyk.kore.rpc.UnknownModuleError.module_name" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
