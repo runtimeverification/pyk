@@ -638,6 +638,13 @@ class APRProver(Prover):
         always_check_subsumption: bool = True,
         fast_check_subsumption: bool = False,
     ) -> None:
+        def _inject_module(module_name: str, import_name: str, sentences: list[KRule]) -> None:
+            _module = KFlatModule(module_name, sentences, [KImport(import_name)])
+            _kore_module = kflatmodule_to_kore(
+                self.kcfg_explore.kprint.definition, self.kcfg_explore.kprint.kompiled_kore, _module
+            )
+            self.kcfg_explore._kore_client.add_module(_kore_module)
+
         super().__init__(kcfg_explore)
         self.proof = proof
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
@@ -659,24 +666,8 @@ class APRProver(Prover):
         module_name = re.sub(r'[%().:,]+', '-', self.proof.id.upper())
         self.dependencies_module_name = module_name + '-DEPENDS-MODULE'
         self.circularities_module_name = module_name + '-CIRCULARITIES-MODULE'
-
-        dependencies_module = KFlatModule(
-            self.dependencies_module_name, dependencies_as_rules, [KImport(self.main_module_name)]
-        )
-        circularity_module = KFlatModule(
-            self.circularities_module_name, [circularity_rule], [KImport(self.dependencies_module_name)]
-        )
-
-        self.kcfg_explore._kore_client.add_module(
-            kflatmodule_to_kore(
-                self.kcfg_explore.kprint.definition, self.kcfg_explore.kprint.kompiled_kore, dependencies_module
-            )
-        )
-        self.kcfg_explore._kore_client.add_module(
-            kflatmodule_to_kore(
-                self.kcfg_explore.kprint.definition, self.kcfg_explore.kprint.kompiled_kore, circularity_module
-            )
-        )
+        _inject_module(self.dependencies_module_name, self.main_module_name, dependencies_as_rules)
+        _inject_module(self.circularities_module_name, self.dependencies_module_name, [circularity_rule])
 
         self._checked_for_terminal = set()
         self._checked_for_subsumption = set()
