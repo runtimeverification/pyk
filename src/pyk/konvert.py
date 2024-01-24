@@ -5,6 +5,7 @@ from functools import reduce
 from typing import TYPE_CHECKING
 
 from .cterm import CTerm
+from .kast import KAtt
 from .kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
 from .kast.manip import bool_to_ml_pred, extract_lhs, extract_rhs
 from .kast.outer import KRule
@@ -40,8 +41,8 @@ from .prelude.string import STRING, pretty_string, stringToken
 from .utils import FrozenDict
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
-    from typing import Final
+    from collections.abc import Iterable, Iterator, Mapping
+    from typing import Any, Final
 
     from .kast import KInner
     from .kast.outer import KDefinition, KFlatModule, KImport
@@ -49,6 +50,75 @@ if TYPE_CHECKING:
     from .kore.syntax import Pattern, Sentence, Sort
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+# --------------
+# Module to KORE
+# --------------
+
+
+KORE_KEYWORDS: Final = {
+    'alias',
+    'axiom',
+    'endmodule',
+    'hooked-sort',
+    'hooked-symbol',
+    'module',
+    'sort',
+    'symbol',
+}
+
+
+def module_to_kore(module: KFlatModule) -> Module:
+    """Convert a kompiled KAST module to KORE format."""
+
+    name = name_to_kore(module.name)
+    imports = (Import('K'),)
+    attrs = atts_to_kore({key: value for key, value in module.att.items() if key != 'digest'})  # filter digest
+
+    return Module(name=name, sentences=imports, attrs=attrs)
+
+
+def name_to_kore(name: str) -> str:
+    if name in KORE_KEYWORDS:
+        return f"{name}'Kywd'"
+    return munge(name)
+
+
+def atts_to_kore(att: Mapping[str, Any]) -> list[App]:
+    res = [att_to_kore(key, value) for key, value in att.items()]
+    res.sort(key=lambda app: app.symbol)
+    return res
+
+
+def att_to_kore(key: str, value: Any) -> App:
+    symbol = name_to_kore(key)
+
+    if value == '':
+        return App(symbol)
+
+    parse_res = _parse_special_att_value(key, value)
+    if parse_res is not None:
+        sorts, args = parse_res
+        return App(symbol, sorts, args)
+
+    if isinstance(value, str):
+        return App(symbol, (), (String(value),))
+
+    raise ValueError(f'Attribute conversion is not implemented for: {key}: {value}')
+
+
+def _parse_special_att_value(key: str, value: Any) -> tuple[tuple[Sort, ...], tuple[Pattern, ...]] | None:
+    if key == KAtt.LOCATION:
+        assert isinstance(value, tuple)
+        assert len(value) == 4
+        loc_str = ','.join(str(loc) for loc in value)
+        return (), (String(f'Location({loc_str})'),)
+    if key == KAtt.SOURCE:
+        assert isinstance(value, str)
+        return (), (String(f'Source({value})'),)
+    return None
+
 
 # ------------
 # KAST-to-KORE
