@@ -1,21 +1,24 @@
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
-from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from multiprocessing import Process, Queue
+
+#  from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from pyk.proof.proof import ProofStatus
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from concurrent.futures import Executor, Future
 
 
 P = TypeVar('P', bound='Proof')
 U = TypeVar('U')
+D = TypeVar('D', bound='ProcessData')
 
 
-class Prover(ABC, Generic[P, U]):
+class Prover(ABC, Generic[P, U, D]):
     """
     Should contain all data needed to make progress on a `P` (proof).
     May be specific to a single `P` (proof) or may be able to handle multiple.
@@ -28,7 +31,7 @@ class Prover(ABC, Generic[P, U]):
     """
 
     @abstractmethod
-    def steps(self, proof: P) -> Iterable[ProofStep[U]]:
+    def steps(self, proof: P) -> Iterable[ProofStep[U, D]]:
         """
         Return a list of `ProofStep[U]` which represents all the computation jobs as defined by `ProofStep`, which have not yet been computed and committed, and are available given the current state of `proof`. Note that this is a requirement which is not enforced by the type system.
         If `steps()` or `commit()` has been called on a proof `proof`, `steps()` may never again be called on `proof`.
@@ -66,7 +69,13 @@ class Proof(ABC):
         ...
 
 
-class ProofStep(ABC, Generic[U]):
+class ProcessData(ABC):
+    @abstractmethod
+    def cleanup(self) -> None:
+        ...
+
+
+class ProofStep(ABC, Generic[U, D]):
     """
     Should be a description of a computation needed to make progress on a `Proof`.
     Must be hashable.
@@ -76,7 +85,7 @@ class ProofStep(ABC, Generic[U]):
     """
 
     @abstractmethod
-    def exec(self) -> U:
+    def exec(self, data: D) -> U:
         """
         Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
         Allowed to be nondeterministic.
@@ -89,55 +98,93 @@ def prove_parallel(
     proofs: Mapping[str, Proof],
     provers: Mapping[str, Prover],
     max_workers: int,
+    process_data: ProcessData,
 ) -> Iterable[Proof]:
-    pending: dict[Future[Any], str] = {}
     explored: set[tuple[str, ProofStep]] = set()
 
-    def submit(proof_id: str, pool: Executor) -> None:
+    in_queue: Queue = Queue()
+    out_queue: Queue = Queue()
+
+    pending_jobs: int = 0
+
+    total_commit_time = 0
+    total_steps_time = 0
+    total_process_time = 0
+    total_time = 0
+
+    total_init_time = time.time_ns()
+
+    def run_process(data: ProcessData) -> None:
+        while True:
+            dequeued = in_queue.get()
+            if dequeued == 0:
+                break
+            proof_id, proof_step = dequeued
+            update = proof_step.exec(data)
+            out_queue.put((proof_id, update))
+        data.cleanup()
+
+    def submit(proof_id: str) -> None:
         proof = proofs[proof_id]
         prover = provers[proof_id]
-        for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
+        steps_init_time = time.time_ns()
+        steps = prover.steps(proof)
+        nonlocal total_steps_time
+        total_steps_time += time.time_ns() - steps_init_time
+        for step in steps:  # <-- get next steps (represented by e.g. pending nodes, ...)
             if (proof_id, step) in explored:
                 continue
             explored.add((proof_id, step))
-            future = pool.submit(step.exec)  # <-- schedule steps for execution
-            pending[future] = proof_id
+            in_queue.put((proof_id, step))
+            nonlocal pending_jobs
+            pending_jobs += 1
 
-    with ProcessPoolExecutor(max_workers=max_workers) as pool:
-        for proof_id in proofs:
-            submit(proof_id, pool)
+    processes = [Process(target=run_process, args=(process_data,)) for _ in range(max_workers)]
+    for process in processes:
+        process.start()
 
-        while pending:
-            done, _ = wait(pending, return_when='FIRST_COMPLETED')
-            future = done.pop()
+    for proof_id in proofs.keys():
+        submit(proof_id)
 
-            proof_id = pending[future]
-            proof = proofs[proof_id]
-            prover = provers[proof_id]
-            try:
-                update = future.result()
-            except CancelledError as err:
-                raise RuntimeError(f'Task was cancelled for proof {proof_id}') from err
-            except TimeoutError as err:
-                raise RuntimeError(
-                    f"Future for proof {proof_id} was not finished executing and timed out. This shouldn't happen since this future was already waited on."
-                ) from err
-            except Exception as err:
-                raise RuntimeError('Exception was raised in ProofStep.exec() for proof {proof_id}.') from err
+    while pending_jobs > 0:
+        proof_id, update = out_queue.get()
+        pending_jobs -= 1
 
-            prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+        proof = proofs[proof_id]
+        prover = provers[proof_id]
 
-            match proof.status:
-                # terminate on first failure, yield partial results, etc.
-                case ProofStatus.FAILED:
-                    ...
-                case ProofStatus.PENDING:
-                    if not list(prover.steps(proof)):
-                        raise ValueError('Prover violated expectation. status is pending with no further steps.')
-                case ProofStatus.PASSED:
-                    if list(prover.steps(proof)):
-                        raise ValueError('Prover violated expectation. status is passed with further steps.')
+        commit_init_time = time.time_ns()
+        prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+        total_commit_time += time.time_ns() - commit_init_time
 
-            submit(proof_id, pool)
-            pending.pop(future)
+        match proof.status:
+            # terminate on first failure, yield partial results, etc.
+            case ProofStatus.FAILED:
+                ...
+            case ProofStatus.PENDING:
+                steps_init_time = time.time_ns()
+                if not list(prover.steps(proof)):
+                    raise ValueError('Prover violated expectation. status is pending with no further steps.')
+                total_steps_time += time.time_ns() - steps_init_time
+            case ProofStatus.PASSED:
+                steps_init_time = time.time_ns()
+                if list(prover.steps(proof)):
+                    raise ValueError('Prover violated expectation. status is passed with further steps.')
+                total_steps_time += time.time_ns() - steps_init_time
+
+        submit(proof_id)
+
+    for _ in range(max_workers):
+        in_queue.put(0)
+
+    for process in processes:
+        process.join()
+
+    total_time = time.time_ns() - total_init_time
+
+    print(f'total time: {total_time / 1000000000}')
+    print(f'steps time: {total_steps_time / 1000000000}')
+    print(f'commit time: {total_commit_time / 1000000000}')
+    print(f'process time: {total_process_time / 1000000000}')
+
     return proofs.values()
