@@ -3,6 +3,7 @@ from __future__ import annotations
 import graphlib
 import json
 import logging
+import re
 import time
 from abc import ABC
 from dataclasses import dataclass
@@ -11,11 +12,12 @@ from typing import TYPE_CHECKING
 import pyk.proof.parallel as parallel
 from pyk.kore.rpc import KoreClient, KoreExecLogFormat, LogEntry, kore_server
 
-from ..kast.inner import KInner, KRewrite, KSort, Subst
+from ..kast.inner import KInner, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
-from ..kast.outer import KClaim
+from ..kast.outer import KFlatModule, KImport, KRule
 from ..kcfg import KCFG, KCFGExplore
 from ..kcfg.exploration import KCFGExploration
+from ..konvert import kflatmodule_to_kore
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
@@ -32,7 +34,7 @@ if TYPE_CHECKING:
     from pyk.utils import BugReport
 
     from ..cterm import CSubst, CTerm
-    from ..kast.outer import KDefinition, KFlatModuleList
+    from ..kast.outer import KClaim, KDefinition, KFlatModuleList
     from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
@@ -218,17 +220,11 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
             **kwargs,
         )
 
-    def as_claim(self, kprint: KPrint) -> KClaim:
-        fr: CTerm = self.kcfg.node(self.init).cterm
-        to: CTerm = self.kcfg.node(self.target).cterm
-        fr_config_sorted = kprint.definition.sort_vars(fr.config, sort=KSort('GeneratedTopCell'))
-        to_config_sorted = kprint.definition.sort_vars(to.config, sort=KSort('GeneratedTopCell'))
-        kc = KClaim(
-            body=KRewrite(fr_config_sorted, to_config_sorted),
-            requires=ml_pred_to_bool(mlAnd(fr.constraints)),
-            ensures=ml_pred_to_bool(mlAnd(to.constraints)),
-        )
-        return kc
+    def as_rule(self, priority: int = 20) -> KRule:
+        _edge = KCFG.Edge(self.kcfg.node(self.init), self.kcfg.node(self.target), depth=0, rules=())
+        _rule = _edge.to_rule('BASIC-BLOCK', priority=priority)
+        assert type(_rule) is KRule
+        return _rule
 
     @staticmethod
     def from_spec_modules(
@@ -653,6 +649,8 @@ class APRProver(Prover):
     dependencies_module_name: str
     circularities_module_name: str
     counterexample_info: bool
+    always_check_subsumption: bool
+    fast_check_subsumption: bool
 
     _checked_for_terminal: set[int]
     _checked_for_subsumption: set[int]
@@ -662,11 +660,22 @@ class APRProver(Prover):
         proof: APRProof,
         kcfg_explore: KCFGExplore,
         counterexample_info: bool = False,
+        always_check_subsumption: bool = True,
+        fast_check_subsumption: bool = False,
     ) -> None:
+        def _inject_module(module_name: str, import_name: str, sentences: list[KRule]) -> None:
+            _module = KFlatModule(module_name, sentences, [KImport(import_name)])
+            _kore_module = kflatmodule_to_kore(
+                self.kcfg_explore.kprint.definition, self.kcfg_explore.kprint.kompiled_kore, _module
+            )
+            self.kcfg_explore._kore_client.add_module(_kore_module, name_as_id=True)
+
         super().__init__(kcfg_explore)
         self.proof = proof
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
         self.counterexample_info = counterexample_info
+        self.always_check_subsumption = always_check_subsumption
+        self.fast_check_subsumption = fast_check_subsumption
 
         subproofs: list[Proof] = (
             [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
@@ -676,22 +685,14 @@ class APRProver(Prover):
 
         apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
 
-        dependencies_as_claims: list[KClaim] = [d.as_claim(self.kcfg_explore.kprint) for d in apr_subproofs]
+        dependencies_as_rules: list[KRule] = [d.as_rule(priority=20) for d in apr_subproofs]
+        circularity_rule = proof.as_rule(priority=20)
 
-        self.dependencies_module_name = self.main_module_name + '-DEPENDS-MODULE'
-        self.kcfg_explore.add_dependencies_module(
-            self.main_module_name,
-            self.dependencies_module_name,
-            dependencies_as_claims,
-            priority=1,
-        )
-        self.circularities_module_name = self.main_module_name + '-CIRCULARITIES-MODULE'
-        self.kcfg_explore.add_dependencies_module(
-            self.main_module_name,
-            self.circularities_module_name,
-            dependencies_as_claims + ([proof.as_claim(self.kcfg_explore.kprint)] if proof.circularity else []),
-            priority=1,
-        )
+        module_name = re.sub(r'[%().:,]+', '-', self.proof.id.upper())
+        self.dependencies_module_name = module_name + '-DEPENDS-MODULE'
+        self.circularities_module_name = module_name + '-CIRCULARITIES-MODULE'
+        _inject_module(self.dependencies_module_name, self.main_module_name, dependencies_as_rules)
+        _inject_module(self.circularities_module_name, self.dependencies_module_name, [circularity_rule])
 
         self._checked_for_terminal = set()
         self._checked_for_subsumption = set()
@@ -707,15 +708,30 @@ class APRProver(Prover):
             if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
                 _LOGGER.info(f'Terminal node: {node.id}.')
                 self.proof._terminal.add(node.id)
+            elif self.fast_check_subsumption and self._may_subsume(node):
+                _LOGGER.info(f'Marking node as terminal because of fast may subsume check {self.proof.id}: {node.id}')
+                self.proof._terminal.add(node.id)
 
     def _check_all_terminals(self) -> None:
         for node in self.proof.kcfg.nodes:
             self._check_terminal(node)
 
+    def _may_subsume(self, node: KCFG.Node) -> bool:
+        node_k_cell = node.cterm.try_cell('K_CELL')
+        target_k_cell = self.proof.kcfg.node(self.proof.target).cterm.try_cell('K_CELL')
+        if node_k_cell and target_k_cell and not target_k_cell.match(node_k_cell):
+            return False
+        return True
+
     def _check_subsume(self, node: KCFG.Node) -> bool:
         _LOGGER.info(
             f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
         )
+        if self.fast_check_subsumption and not self._may_subsume(node):
+            _LOGGER.info(
+                f'Skipping full subsumption check because of fast may subsume check {self.proof.id}: {node.id}'
+            )
+            return False
         csubst = self.kcfg_explore.cterm_implies(node.cterm, self.proof.kcfg.node(self.proof.target).cterm)
         self.proof.checked_for_subsumption.add(node.id)
         if csubst is not None:
@@ -733,7 +749,7 @@ class APRProver(Prover):
         terminal_rules: Iterable[str] = (),
     ) -> None:
         if self.proof.target not in self.proof._terminal:
-            if self._check_subsume(node):
+            if self.always_check_subsumption and self._check_subsume(node):
                 return
 
         module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
@@ -1005,11 +1021,15 @@ class APRBMCProver(APRProver):
         proof: APRBMCProof,
         kcfg_explore: KCFGExplore,
         counterexample_info: bool = False,
+        always_check_subsumption: bool = True,
+        fast_check_subsumption: bool = False,
     ) -> None:
         super().__init__(
             proof,
             kcfg_explore=kcfg_explore,
             counterexample_info=counterexample_info,
+            always_check_subsumption=always_check_subsumption,
+            fast_check_subsumption=fast_check_subsumption,
         )
         self._checked_nodes = []
 
@@ -1215,6 +1235,9 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
             haskell_log_format=haskell_log_format,
             haskell_log_entries=haskell_log_entries,
             log_axioms_file=log_axioms_file,
+            fallback_on=None,
+            interim_simplification=None,
+            no_post_exec_simplify=None,
         )
         self.client = KoreClient(
             host='localhost',
@@ -1252,13 +1275,13 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                 else self.prover.dependencies_module_name
             )
 
-            subproofs: list[Proof] = (
-                [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
-                if proof.proof_dir is not None
-                else []
-            )
+            #              subproofs: list[Proof] = (
+            #                  [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
+            #                  if proof.proof_dir is not None
+            #                  else []
+            #              )
 
-            apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
+            #              apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
 
             steps.append(
                 APRProofStep(
@@ -1279,8 +1302,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                     is_terminal=(self.kcfg_explore.kcfg_semantics.is_terminal(pending_node.cterm)),
                     target_is_terminal=(proof.target not in proof._terminal),
                     main_module_name=self.prover.main_module_name,
-                    dependencies_as_claims=[d.as_claim(self.kprint) for d in apr_subproofs],
-                    self_proof_as_claim=proof.as_claim(self.kprint),
+                    #                      dependencies_as_claims=[d.as_rule() for d in apr_subproofs],
+                    #                      self_proof_as_claim=proof.as_rule(),
                     circularity=proof.circularity,
                     depth_is_nonzero=self.prover.nonzero_depth(pending_node),
                 )
@@ -1364,6 +1387,9 @@ class ParallelAPRBMCProver(ParallelAPRProver):
             haskell_log_format=haskell_log_format,
             haskell_log_entries=haskell_log_entries,
             log_axioms_file=log_axioms_file,
+            fallback_on=None,
+            interim_simplification=None,
+            no_post_exec_simplify=None,
         )
         self.client = KoreClient(
             host='localhost',
@@ -1404,8 +1430,8 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     id: str | None
     trace_rewrites: bool
 
-    dependencies_as_claims: list[KClaim]
-    self_proof_as_claim: KClaim
+    #      dependencies_as_claims: list[KClaim]
+    #      self_proof_as_claim: KClaim
     circularity: bool
     depth_is_nonzero: bool
 
@@ -1427,10 +1453,10 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
 
-        init_kcfg_explore = False
+        #          init_kcfg_explore = False
 
         if data.kore_servers.get(self.proof_id) is None:
-            init_kcfg_explore = True
+            #              init_kcfg_explore = True
             data.kore_servers[self.proof_id] = kore_server(
                 definition_dir=data.definition_dir,
                 llvm_definition_dir=data.llvm_definition_dir,
@@ -1443,6 +1469,9 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 haskell_log_format=data.haskell_log_format,
                 haskell_log_entries=data.haskell_log_entries,
                 log_axioms_file=data.log_axioms_file,
+                fallback_on=None,
+                interim_simplification=None,
+                no_post_exec_simplify=None,
             )
         server = data.kore_servers[self.proof_id]
 
@@ -1460,19 +1489,19 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 trace_rewrites=self.trace_rewrites,
             )
 
-            if init_kcfg_explore:
-                kcfg_explore.add_dependencies_module(
-                    self.main_module_name,
-                    self.dependencies_module_name,
-                    self.dependencies_as_claims,
-                    priority=1,
-                )
-                kcfg_explore.add_dependencies_module(
-                    self.main_module_name,
-                    self.circularities_module_name,
-                    self.dependencies_as_claims + ([self.self_proof_as_claim] if self.circularity else []),
-                    priority=1,
-                )
+            #              if init_kcfg_explore:
+            #                  kcfg_explore.add_dependencies_module(
+            #                      self.main_module_name,
+            #                      self.dependencies_module_name,
+            #                      self.dependencies_as_claims,
+            #                      priority=1,
+            #                  )
+            #                  kcfg_explore.add_dependencies_module(
+            #                      self.main_module_name,
+            #                      self.circularities_module_name,
+            #                      self.dependencies_as_claims + ([self.self_proof_as_claim] if self.circularity else []),
+            #                      priority=1,
+            #                  )
 
             cterm_implies_time = 0
             extend_cterm_time = 0

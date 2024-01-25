@@ -178,6 +178,20 @@ class KSentence(KOuter, WithKAtt):
         return cls._from_dict(d)
 
     @property
+    def unique_id(self) -> str | None:
+        """Return the unique ID assigned to this sentence, or None."""
+        if 'UNIQUE_ID' in self.att:
+            return self.att['UNIQUE_ID']
+        return None
+
+    @property
+    def source(self) -> str | None:
+        """Return the source assigned to this sentence, or None."""
+        if KAtt.SOURCE in self.att and KAtt.LOCATION in self.att:
+            return f'{self.att[KAtt.SOURCE]}:{self.att[KAtt.LOCATION]}'
+        return None
+
+    @property
     def label(self) -> str:
         """Return a (hopefully) unique label associated with the given `KSentence`.
 
@@ -188,14 +202,12 @@ class KSentence(KOuter, WithKAtt):
         """
         if 'label' in self.att:
             return self.att['label']
-        elif 'UNIQUE_ID' in self.att:
-            return self.att['UNIQUE_ID']
-        else:
+        elif self.unique_id is not None:
+            return self.unique_id
+        elif self.source is not None:
             _LOGGER.warning(f'Found a sentence without label or UNIQUE_ID: {self}')
-            if KAtt.SOURCE in self.att and KAtt.LOCATION in self.att:
-                return f'{self.att[KAtt.SOURCE]}:{self.att[KAtt.LOCATION]}'
-            else:
-                raise ValueError(f'Found sentence without label, UNIQUE_ID, or SOURCE:LOCATION: {self}')
+            return self.source
+        raise ValueError(f'Found sentence without label, UNIQUE_ID, or SOURCE:LOCATION: {self}')
 
 
 @final
@@ -812,6 +824,10 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
         """Return all the `KClaim` declared in this module."""
         return tuple(sentence for sentence in self if type(sentence) is KClaim)
 
+    @cached_property
+    def sentence_by_unique_id(self) -> dict[str, KSentence]:
+        return {sent.unique_id: sent for sent in self.sentences if sent.unique_id is not None}
+
     @staticmethod
     def from_dict(d: Mapping[str, Any]) -> KFlatModule:
         return KFlatModule(
@@ -1061,6 +1077,19 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         return tuple(rule for rule in self.rules if is_semantic(rule))
 
+    @cached_property
+    def sentence_by_unique_id(self) -> dict[str, KSentence]:
+        unique_id_map: dict[str, KSentence] = {}
+        for module in self.all_modules:
+            for unique_id, sent in module.sentence_by_unique_id.items():
+                if unique_id in unique_id_map and sent != unique_id_map[unique_id]:
+                    _LOGGER.warning(
+                        f'Same UNIQUE_ID found for two different sentences: {(sent, unique_id_map[unique_id])}'
+                    )
+                else:
+                    unique_id_map[unique_id] = sent
+        return unique_id_map
+
     def production_for_klabel(self, klabel: KLabel) -> KProduction:
         """Returns the original production for a given `KLabel` (failing if 0 or >1 are returned)."""
         if klabel not in self._production_for_klabel:
@@ -1192,16 +1221,16 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
     def add_ksequence_under_k_productions(self, kast: KInner) -> KInner:
         """Inject a `KSequence` under the given term if it's a subsort of `K` and is being used somewhere that sort `K` is expected (determined by inspecting the definition)."""
 
-        def _add_ksequence_under_k_productions(kast: KInner) -> KInner:
-            if type(kast) is not KApply:
-                return kast
+        def _add_ksequence_under_k_productions(_kast: KInner) -> KInner:
+            if type(_kast) is not KApply:
+                return _kast
 
-            prod = self.production_for_klabel(kast.label)
+            prod = self.production_for_klabel(_kast.label)
             return KApply(
-                kast.label,
+                _kast.label,
                 [
                     KSequence(arg) if sort.name == 'K' and not self.sort(arg) == KSort('K') else arg
-                    for arg, sort in zip(kast.args, prod.argument_sorts, strict=True)
+                    for arg, sort in zip(_kast.args, prod.argument_sorts, strict=True)
                 ],
             )
 

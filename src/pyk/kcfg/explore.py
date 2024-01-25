@@ -18,13 +18,11 @@ from ..kast.manip import (
     ml_pred_to_bool,
     push_down_rewrites,
 )
-from ..kast.outer import KRule
-from ..konvert import krule_to_kore
-from ..kore.rpc import AbortedResult, SatResult, StopReason, UnknownResult, UnsatResult
-from ..kore.syntax import Import, Module
+from ..kore.rpc import AbortedResult, RewriteSuccess, SatResult, StopReason, UnknownResult, UnsatResult
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import notBool
+from ..prelude.kint import leInt, ltInt
 from ..prelude.ml import is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
@@ -35,10 +33,8 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast import KInner
-    from ..kast.outer import KClaim
     from ..kcfg.exploration import KCFGExploration
     from ..kore.rpc import KoreClient, LogEntry
-    from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
     from .semantics import KCFGSemantics
@@ -94,7 +90,7 @@ class KCFGExplore:
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
             module_name=module_name,
-            log_successful_rewrites=self._trace_rewrites,
+            log_successful_rewrites=True,
             log_failed_rewrites=self._trace_rewrites,
             log_successful_simplifications=self._trace_rewrites,
             log_failed_simplifications=self._trace_rewrites,
@@ -444,6 +440,18 @@ class KCFGExplore:
             mlAnd([mlEqualsFalse(KVariable('B')), mlEqualsTrue(KVariable('B'))]),
             mlAnd([mlNot(KVariable('B')), KVariable('B')]),
             mlAnd([KVariable('B'), mlNot(KVariable('B'))]),
+            mlAnd(
+                [
+                    mlEqualsTrue(ltInt(KVariable('I1'), KVariable('I2'))),
+                    mlEqualsTrue(leInt(KVariable('I2'), KVariable('I1'))),
+                ]
+            ),
+            mlAnd(
+                [
+                    mlEqualsTrue(leInt(KVariable('I1'), KVariable('I2'))),
+                    mlEqualsTrue(ltInt(KVariable('I2'), KVariable('I1'))),
+                ]
+            ),
         ]
 
         # Split on branch patterns
@@ -463,6 +471,18 @@ class KCFGExplore:
         def log(message: str, *, warning: bool = False) -> None:
             _LOGGER.log(logging.WARNING if warning else logging.INFO, f'Extend result for {self.id}: {message}')
 
+        def extract_rule_labels(_logs: tuple[LogEntry, ...]) -> list[str]:
+            _rule_lines = []
+            for node_log in _logs:
+                if type(node_log.result) is RewriteSuccess:
+                    if node_log.result.rule_id in self.kprint.definition.sentence_by_unique_id:
+                        sent = self.kprint.definition.sentence_by_unique_id[node_log.result.rule_id]
+                        _rule_lines.append(f'{sent.label}:{sent.source}')
+                    else:
+                        _LOGGER.warning(f'Unknown unique id attached to rule log entry: {node_log}')
+                        _rule_lines.append('UNKNOWN')
+            return _rule_lines
+
         match extend_result:
             case Vacuous():
                 kcfg.add_vacuous(node.id)
@@ -480,7 +500,7 @@ class KCFGExplore:
             case Step(cterm, depth, next_node_logs, cut):
                 next_node = kcfg.create_node(cterm)
                 logs[next_node.id] = next_node_logs
-                kcfg.create_edge(node.id, next_node.id, depth)
+                kcfg.create_edge(node.id, next_node.id, depth, rules=extract_rule_labels(next_node_logs))
                 cut_str = 'cut-rule ' if cut else ''
                 log(f'{cut_str}basic block at depth {depth}: {node.id} -> {next_node.id}')
 
@@ -494,27 +514,11 @@ class KCFGExplore:
                 next_ids = [kcfg.create_node(cterm).id for cterm in cterms]
                 for i in next_ids:
                     logs[i] = next_node_logs
-                kcfg.create_ndbranch(node.id, next_ids)
+                kcfg.create_ndbranch(node.id, next_ids, rules=extract_rule_labels(next_node_logs))
                 log(f'{len(next_ids)} non-deterministic branches: {node.id} -> {next_ids}')
 
             case _:
                 raise AssertionError()
-
-    def add_dependencies_module(
-        self, old_module_name: str, new_module_name: str, dependencies: Iterable[KClaim], priority: int = 1
-    ) -> None:
-        kast_rules = [
-            KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=c.att.update({'priority': priority}))
-            for c in dependencies
-        ]
-        kore_axioms: list[Sentence] = [
-            krule_to_kore(self.kprint.definition, self.kprint.kompiled_kore, r) for r in kast_rules
-        ]
-        sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
-        sentences = sentences + kore_axioms
-        m = Module(name=new_module_name, sentences=sentences)
-        _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
-        self._kore_client.add_module(m)
 
 
 class ExtendResult(ABC):
