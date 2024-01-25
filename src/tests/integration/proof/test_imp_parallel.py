@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -60,11 +61,14 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         proof_dir: Path,
     ) -> None:
         #          claim_id = 'addition-1'
+        print('a', file=sys.stderr)
         spec_file = K_FILES / 'imp-simple-spec.k'
         spec_module = 'IMP-SIMPLE-SPEC'
+        print('b', file=sys.stderr)
 
         spec_modules = kprove.get_claim_modules(Path(spec_file), spec_module_name=spec_module)
         spec_label = f'{spec_module}.{claim_id}'
+        print('c', file=sys.stderr)
         proofs = APRProof.from_spec_modules(
             kprove.definition,
             spec_modules,
@@ -72,14 +76,17 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             logs={},
             proof_dir=proof_dir,
         )
+        print('d', file=sys.stderr)
         proof = single([p for p in proofs if p.id == spec_label])
 
         if admit_deps:
             for subproof in proof.subproofs:
                 subproof.admit()
                 subproof.write_proof_data()
+        print('e', file=sys.stderr)
 
         semantics = self.semantics(kprove.definition)
+        print('f', file=sys.stderr)
         parallel_prover = ParallelAPRProver(
             proof=proof,
             module_name=kprove.main_module,
@@ -94,6 +101,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             bug_report=None,
             bug_report_id=None,
         )
+        print('g', file=sys.stderr)
 
         process_data = APRProofProcessData(
             kprint=kprint,
@@ -101,6 +109,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             definition_dir=kprove.definition_dir,
             module_name=kprove.main_module,
         )
+        print('h', file=sys.stderr)
 
         results = prove_parallel(
             proofs={'proof1': proof},
@@ -108,6 +117,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             max_workers=2,
             process_data=process_data,
         )
+        print('i', file=sys.stderr)
 
         assert len(list(results)) == 1
         assert list(results)[0].status == expected_status

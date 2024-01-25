@@ -1275,22 +1275,24 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                 else self.prover.dependencies_module_name
             )
 
-            #              subproofs: list[Proof] = (
-            #                  [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
-            #                  if proof.proof_dir is not None
-            #                  else []
-            #              )
+            subproofs: list[Proof] = (
+                [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
+                if proof.proof_dir is not None
+                else []
+            )
 
-            #              apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
+            apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
 
             steps.append(
                 APRProofStep(
                     proof_id=proof.id,
                     cterm=pending_node.cterm,
                     node_id=pending_node.id,
-                    module_name=module_name,
+                    dependencies_module_name=self.prover.dependencies_module_name,
+                    circularities_module_name=self.prover.circularities_module_name,
                     target_cterm=target_node.cterm,
                     target_node_id=target_node.id,
+                    use_module_name=module_name,
                     #                      port=self.server.port,
                     execute_depth=self.execute_depth,
                     terminal_rules=self.terminal_rules,
@@ -1302,8 +1304,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                     is_terminal=(self.kcfg_explore.kcfg_semantics.is_terminal(pending_node.cterm)),
                     target_is_terminal=(proof.target not in proof._terminal),
                     main_module_name=self.prover.main_module_name,
-                    #                      dependencies_as_claims=[d.as_rule() for d in apr_subproofs],
-                    #                      self_proof_as_claim=proof.as_rule(),
+                    dependencies_as_rules=[d.as_rule() for d in apr_subproofs],
+                    self_proof_as_rule=proof.as_rule(),
                     circularity=proof.circularity,
                     depth_is_nonzero=self.prover.nonzero_depth(pending_node),
                 )
@@ -1412,7 +1414,9 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     proof_id: str
     cterm: CTerm
     node_id: int
-    module_name: str
+    dependencies_module_name: str
+    circularities_module_name: str
+    use_module_name: str
     target_cterm: CTerm
     target_node_id: int
     #      port: int
@@ -1430,18 +1434,18 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     id: str | None
     trace_rewrites: bool
 
-    #      dependencies_as_claims: list[KClaim]
-    #      self_proof_as_claim: KClaim
+    dependencies_as_rules: list[KRule]
+    self_proof_as_rule: KRule
     circularity: bool
     depth_is_nonzero: bool
 
-    @property
-    def circularities_module_name(self) -> str:
-        return self.main_module_name + '-CIRCULARITIES-MODULE'
-
-    @property
-    def dependencies_module_name(self) -> str:
-        return self.main_module_name + '-DEPENDS-MODULE'
+    #      @property
+    #      def circularities_module_name(self) -> str:
+    #          return self.circularities_module_name
+    #
+    #      @property
+    #      def dependencies_module_name(self) -> str:
+    #          return self.dependencies_module_name
 
     def __hash__(self) -> int:
         return hash((self.cterm, self.node_id))
@@ -1453,10 +1457,10 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
 
-        #          init_kcfg_explore = False
+        init_kcfg_explore = False
 
         if data.kore_servers.get(self.proof_id) is None:
-            #              init_kcfg_explore = True
+            init_kcfg_explore = True
             data.kore_servers[self.proof_id] = kore_server(
                 definition_dir=data.definition_dir,
                 llvm_definition_dir=data.llvm_definition_dir,
@@ -1502,6 +1506,16 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
             #                      self.dependencies_as_claims + ([self.self_proof_as_claim] if self.circularity else []),
             #                      priority=1,
             #                  )
+            def _inject_module(module_name: str, import_name: str, sentences: list[KRule]) -> None:
+                _module = KFlatModule(module_name, sentences, [KImport(import_name)])
+                _kore_module = kflatmodule_to_kore(
+                    kcfg_explore.kprint.definition, kcfg_explore.kprint.kompiled_kore, _module
+                )
+                kcfg_explore._kore_client.add_module(_kore_module, name_as_id=True)
+
+            if init_kcfg_explore:
+                _inject_module(self.dependencies_module_name, self.main_module_name, self.dependencies_as_rules)
+                _inject_module(self.circularities_module_name, self.main_module_name, [self.self_proof_as_rule])
 
             cterm_implies_time = 0
             extend_cterm_time = 0
@@ -1523,7 +1537,7 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
             init_extend_cterm_time = time.time_ns()
             result = kcfg_explore.extend_cterm(
                 self.cterm,
-                module_name=self.module_name,
+                module_name=self.use_module_name,
                 execute_depth=self.execute_depth,
                 terminal_rules=self.terminal_rules,
                 cut_point_rules=self.cut_point_rules,

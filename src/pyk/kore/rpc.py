@@ -888,6 +888,7 @@ class KoreClient(ContextManager['KoreClient']):
         try:
             return self._client.request(method, **params)
         except JsonRpcError as err:
+            print(params, file=sys.stderr)
             raise self._error(err) from err
 
     def _error(self, err: JsonRpcError) -> KoreClientError:
@@ -1009,6 +1010,7 @@ class KoreClient(ContextManager['KoreClient']):
         return GetModelResult.from_dict(result)
 
     def add_module(self, module: Module, *, name_as_id: bool | None = None) -> str:
+        print(f'adding module {module.text}', file=sys.stderr)
         params = filter_none(
             {
                 'module': module.text,
