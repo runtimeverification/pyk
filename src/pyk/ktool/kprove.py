@@ -349,8 +349,10 @@ class KProve(KPrint):
                 for sentence in module.sentences:
                     if type(sentence) is KClaim:
                         _label = KProve.qualify_name(module.name, sentence.label)
-                        _dependencies = [KProve.qualify_name(module.name, dep) for dep in sentence.dependencies]
-                        _att = sentence.att.update({'label': _label, 'depends': ','.join(_dependencies)})
+                        _att = sentence.att.update({'label': _label})
+                        if len(sentence.dependencies) > 0:
+                            _dependencies = [KProve.qualify_name(module.name, dep) for dep in sentence.dependencies]
+                            _att = _att.update({'depends': ','.join(_dependencies)})
                         sentences.append(sentence.let(att=_att))
                     else:
                         sentences.append(sentence)
