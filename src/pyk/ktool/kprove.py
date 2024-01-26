@@ -321,10 +321,6 @@ class KProve(KPrint):
         ]
         return next_states if len(next_states) > 0 else [CTerm.top()]
 
-    @staticmethod
-    def qualify_name(_module_name: str, _claim_label: str) -> str:
-        return _claim_label if _claim_label.startswith(_module_name) else f'{_module_name}.{_claim_label}'
-
     def get_claim_modules(
         self,
         spec_file: Path,
@@ -343,15 +339,18 @@ class KProve(KPrint):
             )
             flat_module_list = KFlatModuleList.from_dict(kast_term(json.loads(Path(ntf.name).read_text())))
 
+            def _qualify_name(_module_name: str, _claim_label: str) -> str:
+                return _claim_label if _claim_label.startswith(_module_name) else f'{_module_name}.{_claim_label}'
+
             modules = []
             for module in flat_module_list.modules:
                 sentences: list[KSentence] = []
                 for sentence in module.sentences:
                     if type(sentence) is KClaim:
-                        _label = KProve.qualify_name(module.name, sentence.label)
+                        _label = _qualify_name(module.name, sentence.label)
                         _att = sentence.att.update({'label': _label})
                         if len(sentence.dependencies) > 0:
-                            _dependencies = [KProve.qualify_name(module.name, dep) for dep in sentence.dependencies]
+                            _dependencies = [_qualify_name(module.name, dep) for dep in sentence.dependencies]
                             _att = _att.update({'depends': ','.join(_dependencies)})
                         sentences.append(sentence.let(att=_att))
                     else:
@@ -376,22 +375,18 @@ class KProve(KPrint):
             include_dirs=include_dirs,
             md_selector=md_selector,
         )
+        module_names = [module.name for module in flat_module_list.modules]
 
-        all_claims = {
-            KProve.qualify_name(flat_module_list.main_module, c.label): c
-            for m in flat_module_list.modules
-            for c in m.claims
-        }
+        def _qualify_label(_label: str) -> str:
+            if any(_label.startswith(mname) for mname in module_names):
+                return _label
+            return f'{flat_module_list.main_module}.{_label}'
+
+        all_claims = {c.label: c for m in flat_module_list.modules for c in m.claims}
         exclude_claim_labels = (
-            []
-            if exclude_claim_labels is None
-            else [KProve.qualify_name(flat_module_list.main_module, cl) for cl in exclude_claim_labels]
+            [] if exclude_claim_labels is None else [_qualify_label(cl) for cl in exclude_claim_labels]
         )
-        claim_labels = (
-            list(all_claims.keys())
-            if claim_labels is None
-            else [KProve.qualify_name(flat_module_list.main_module, cl) for cl in claim_labels]
-        )
+        claim_labels = list(all_claims.keys()) if claim_labels is None else [_qualify_label(cl) for cl in claim_labels]
         unfound_labels: list[str] = [cl for cl in claim_labels + exclude_claim_labels if cl not in all_claims]
         if len(unfound_labels) > 0:
             raise ValueError(f'Claim labels not found: {unfound_labels}')
