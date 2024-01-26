@@ -9,7 +9,7 @@ from pyk.testing import KProveTest
 from ..utils import K_FILES
 
 if TYPE_CHECKING:
-    from typing import Iterable
+    from collections.abc import Iterable
 
     from pyk.ktool.kprove import KProve
 
