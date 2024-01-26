@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from pyk.ktool.kprove import KProve
 
 
+GET_CLAIMS_SPEC_DATA_SKIP: Iterable[str] = ('simple-dep-in-submodule-2',)
+
+
 GET_CLAIMS_SPEC_DATA: Iterable[tuple[str, list[str], dict[str, list[str]] | None]] = (
     (
         'simple-dep-in-submodule-fail',
@@ -25,12 +28,11 @@ GET_CLAIMS_SPEC_DATA: Iterable[tuple[str, list[str], dict[str, list[str]] | None
         ['MULTI-CLAIM-SPEC-DEPENDENCY-1.dep-1.1'],
         {'MULTI-CLAIM-SPEC-DEPENDENCY-1.dep-1.1': []},
     ),
-    # TODO: This should fail because the dependency is not in scope
-    # (
-    #     'simple-dep-in-submodule-2',
-    #     ['MULTI-CLAIM-SPEC-DEPENDENCY-2.dep-2.2'],
-    #     None,
-    # ),
+    (
+        'simple-dep-in-submodule-2',
+        ['MULTI-CLAIM-SPEC-DEPENDENCY-2.dep-2.2'],
+        None,
+    ),
     (
         'no-dep-name-unqualified',
         ['dep'],
@@ -71,6 +73,8 @@ class TestGetClaims(KProveTest):
     def test_get_claims(
         self, kprove: KProve, test_id: str, include_labels: list[str], expected_graph: dict[str, list[str]] | None
     ) -> None:
+        if test_id in GET_CLAIMS_SPEC_DATA_SKIP:
+            pytest.skip()
         if expected_graph is None:
             with pytest.raises(ValueError):
                 actual_claims = kprove.get_claims(
