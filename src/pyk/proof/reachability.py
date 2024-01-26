@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import graphlib
+import sys
 import json
 import logging
 import re
@@ -173,7 +174,7 @@ class APRProof(Proof, KCFGExploration, parallel.Proof):
         admitted = dct.get('admitted', False)
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
-        checked_for_subsumption = dct['checked_for_subsumption']
+        checked_for_subsumption = set(dct['checked_for_subsumption'])
         if 'node_refutation' in dct:
             node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
         if 'logs' in dct:
@@ -688,7 +689,7 @@ class APRProver(Prover):
         dependencies_as_rules: list[KRule] = [d.as_rule(priority=20) for d in apr_subproofs]
         circularity_rule = proof.as_rule(priority=20)
 
-        module_name = re.sub(r'[%().:,]+', '-', self.proof.id.upper())
+        module_name = re.sub(r'[%().:,_]+', '-', self.proof.id.upper())
         self.dependencies_module_name = module_name + '-DEPENDS-MODULE'
         self.circularities_module_name = module_name + '-CIRCULARITIES-MODULE'
         _inject_module(self.dependencies_module_name, self.main_module_name, dependencies_as_rules)
@@ -1133,7 +1134,7 @@ class APRProofProcessData(parallel.ProcessData):
     haskell_log_entries: Iterable[str]
     log_axioms_file: Path | None
 
-    kore_servers: dict[str, KoreServer]
+    #      kore_servers: dict[str, KoreServer]
 
     def __init__(
         self,
@@ -1152,7 +1153,7 @@ class APRProofProcessData(parallel.ProcessData):
     ) -> None:
         self.kprint = kprint
         self.kcfg_semantics = kcfg_semantics
-        self.kore_servers = {}
+        #          self.kore_servers = {}
         self.definition_dir = definition_dir
         self.llvm_definition_dir = llvm_definition_dir
         self.module_name = module_name
@@ -1164,15 +1165,17 @@ class APRProofProcessData(parallel.ProcessData):
         self.haskell_log_entries = haskell_log_entries
         self.log_axioms_file = log_axioms_file
 
-    def cleanup(self) -> None:
-        for server in self.kore_servers.values():
-            server.close()
+
+#      def cleanup(self) -> None:
+#          for server in self.kore_servers.values():
+#              server.close()
 
 
 class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProcessData]):
     prover: APRProver
-    server: KoreServer
     kcfg_explore: KCFGExplore
+    port: int
+    client: KoreClient
 
     execute_depth: int | None
     cut_point_rules: Iterable[str]
@@ -1197,6 +1200,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         execute_depth: int | None,
         kprint: KPrint,
         kcfg_semantics: KCFGSemantics | None,
+        port: int,
         id: str | None,
         trace_rewrites: bool,
         cut_point_rules: Iterable[str],
@@ -1219,29 +1223,14 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         self.kcfg_semantics = kcfg_semantics
         self.id = id
         self.trace_rewrites = trace_rewrites
+        self.port = port
         self.bug_report = bug_report
         self.bug_report_id = bug_report_id
         self.total_cterm_extend_time = 0
         self.total_cterm_implies_time = 0
-        self.server = kore_server(
-            definition_dir=definition_dir,
-            llvm_definition_dir=llvm_definition_dir,
-            module_name=module_name,
-            command=command,
-            bug_report=bug_report,
-            smt_timeout=smt_timeout,
-            smt_retry_limit=smt_retry_limit,
-            smt_tactic=smt_tactic,
-            haskell_log_format=haskell_log_format,
-            haskell_log_entries=haskell_log_entries,
-            log_axioms_file=log_axioms_file,
-            fallback_on=None,
-            interim_simplification=None,
-            no_post_exec_simplify=None,
-        )
         self.client = KoreClient(
             host='localhost',
-            port=self.server.port,
+            port=self.port,
             bug_report=self.bug_report,
             bug_report_id=self.bug_report_id,
         )
@@ -1257,7 +1246,6 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
 
     def __del__(self) -> None:
         self.client.close()
-        self.server.close()
 
     def steps(self, proof: APRProof) -> Iterable[APRProofStep]:
         """
@@ -1293,7 +1281,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                     target_cterm=target_node.cterm,
                     target_node_id=target_node.id,
                     use_module_name=module_name,
-                    #                      port=self.server.port,
+                    port=self.port,
                     execute_depth=self.execute_depth,
                     terminal_rules=self.terminal_rules,
                     cut_point_rules=self.cut_point_rules,
@@ -1353,6 +1341,7 @@ class ParallelAPRBMCProver(ParallelAPRProver):
         execute_depth: int | None,
         kprint: KPrint,
         kcfg_semantics: KCFGSemantics | None,
+        port: int,
         id: str | None,
         trace_rewrites: bool,
         cut_point_rules: Iterable[str],
@@ -1377,25 +1366,9 @@ class ParallelAPRBMCProver(ParallelAPRProver):
         self.trace_rewrites = trace_rewrites
         self.bug_report = bug_report
         self.bug_report_id = bug_report_id
-        self.server = kore_server(
-            definition_dir=definition_dir,
-            llvm_definition_dir=llvm_definition_dir,
-            module_name=module_name,
-            command=command,
-            bug_report=bug_report,
-            smt_timeout=smt_timeout,
-            smt_retry_limit=smt_retry_limit,
-            smt_tactic=smt_tactic,
-            haskell_log_format=haskell_log_format,
-            haskell_log_entries=haskell_log_entries,
-            log_axioms_file=log_axioms_file,
-            fallback_on=None,
-            interim_simplification=None,
-            no_post_exec_simplify=None,
-        )
         self.client = KoreClient(
             host='localhost',
-            port=self.server.port,
+            port=self.port,
             bug_report=self.bug_report,
             bug_report_id=self.bug_report_id,
         )
@@ -1419,7 +1392,7 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     use_module_name: str
     target_cterm: CTerm
     target_node_id: int
-    #      port: int
+    port: int
     execute_depth: int | None
     cut_point_rules: Iterable[str]
     terminal_rules: Iterable[str]
@@ -1457,31 +1430,35 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
 
+        print('ba', file=sys.stderr)
+
         init_kcfg_explore = False
 
-        if data.kore_servers.get(self.proof_id) is None:
-            init_kcfg_explore = True
-            data.kore_servers[self.proof_id] = kore_server(
-                definition_dir=data.definition_dir,
-                llvm_definition_dir=data.llvm_definition_dir,
-                module_name=data.module_name,
-                command=data.command,
-                bug_report=self.bug_report,
-                smt_timeout=data.smt_timeout,
-                smt_retry_limit=data.smt_retry_limit,
-                smt_tactic=data.smt_tactic,
-                haskell_log_format=data.haskell_log_format,
-                haskell_log_entries=data.haskell_log_entries,
-                log_axioms_file=data.log_axioms_file,
-                fallback_on=None,
-                interim_simplification=None,
-                no_post_exec_simplify=None,
-            )
-        server = data.kore_servers[self.proof_id]
+        #          if data.kore_servers.get(self.proof_id) is None:
+        #              init_kcfg_explore = True
+        #              data.kore_servers[self.proof_id] = kore_server(
+        #                  definition_dir=data.definition_dir,
+        #                  llvm_definition_dir=data.llvm_definition_dir,
+        #                  module_name=data.module_name,
+        #                  command=data.command,
+        #                  bug_report=self.bug_report,
+        #                  smt_timeout=data.smt_timeout,
+        #                  smt_retry_limit=data.smt_retry_limit,
+        #                  smt_tactic=data.smt_tactic,
+        #                  haskell_log_format=data.haskell_log_format,
+        #                  haskell_log_entries=data.haskell_log_entries,
+        #                  log_axioms_file=data.log_axioms_file,
+        #                  fallback_on=None,
+        #                  interim_simplification=None,
+        #                  no_post_exec_simplify=None,
+        #              )
+        #          server = data.kore_servers[self.proof_id]
+
+        print('bb', file=sys.stderr)
 
         with KoreClient(
             host='localhost',
-            port=server.port,
+            port=self.port,
             bug_report=self.bug_report,
             bug_report_id=self.bug_report_id,
         ) as client:
@@ -1512,10 +1489,12 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                     kcfg_explore.kprint.definition, kcfg_explore.kprint.kompiled_kore, _module
                 )
                 kcfg_explore._kore_client.add_module(_kore_module, name_as_id=True)
+            print('bc', file=sys.stderr)
 
             if init_kcfg_explore:
                 _inject_module(self.dependencies_module_name, self.main_module_name, self.dependencies_as_rules)
                 _inject_module(self.circularities_module_name, self.main_module_name, [self.self_proof_as_rule])
+            print('bd', file=sys.stderr)
 
             cterm_implies_time = 0
             extend_cterm_time = 0
@@ -1533,6 +1512,8 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                         extend_cterm_time=extend_cterm_time,
                     )
 
+            print('be', file=sys.stderr)
+
             self.circularities_module_name if self.depth_is_nonzero else self.dependencies_module_name
             init_extend_cterm_time = time.time_ns()
             result = kcfg_explore.extend_cterm(
@@ -1542,6 +1523,7 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 terminal_rules=self.terminal_rules,
                 cut_point_rules=self.cut_point_rules,
             )
+            print('bf', file=sys.stderr)
             extend_cterm_time = time.time_ns() - init_extend_cterm_time
             return APRProofExtendResult(
                 extend_result=result,

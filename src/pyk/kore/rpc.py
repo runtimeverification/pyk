@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 import http.client
 import json
 import logging
@@ -1108,6 +1109,7 @@ class KoreServer(ContextManager['KoreServer']):
         return self
 
     def __exit__(self, *args: Any) -> None:
+        print(f'closing server {self.pid}', file=sys.stderr)
         self.close()
 
     def start(self) -> None:
@@ -1123,6 +1125,7 @@ class KoreServer(ContextManager['KoreServer']):
             assert port == self._port
         self._info = KoreServerInfo(pid=pid, host=host, port=port)
         _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
+        traceback.print_stack()
 
     def close(self) -> None:
         _LOGGER.info(f'Stopping KoreServer: {self.host}:{self.port}, pid={self.pid}')
@@ -1314,6 +1317,7 @@ def kore_server(
         'haskell_log_entries': haskell_log_entries,
         'bug_report': bug_report,
     }
+    server = None
     if llvm_definition_dir:
         booster_args: BoosterServerArgs = {
             'llvm_kompiled_dir': llvm_definition_dir,
@@ -1322,5 +1326,9 @@ def kore_server(
             'no_post_exec_simplify': no_post_exec_simplify,
             **kore_args,
         }
-        return BoosterServer(booster_args)
-    return KoreServer(kore_args)
+        server = BoosterServer(booster_args)
+    server = KoreServer(kore_args)
+
+    print(f'starting server {server.pid}', file=sys.stderr)
+
+    return server
