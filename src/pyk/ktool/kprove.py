@@ -356,9 +356,6 @@ class KProve(KPrint):
             md_selector=md_selector,
         )
 
-        def _qualify_label(_module_name: str, _label: str) -> str:
-            return _label if _label.startswith(_module_name) else f'{_module_name}.{_label}'
-
         all_claims = {
             f'{claim.label}': (claim, module.name) for module in flat_module_list.modules for claim in module.claims
         }
