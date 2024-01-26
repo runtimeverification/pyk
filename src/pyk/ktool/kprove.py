@@ -401,9 +401,7 @@ class KProve(KPrint):
             else:
                 final_claim_labels.append(claim_label)
                 if include_dependencies:
-                    claim_labels.extend(
-                        [d for d in all_claims[claim_label].dependencies if d not in final_claim_labels]
-                    )
+                    claim_labels.extend(all_claims[claim_label].dependencies)
 
         return [all_claims[cl] for cl in final_claim_labels]
 
