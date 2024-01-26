@@ -1327,7 +1327,8 @@ def kore_server(
             **kore_args,
         }
         server = BoosterServer(booster_args)
-    server = KoreServer(kore_args)
+    else:
+        server = KoreServer(kore_args)
 
     print(f'starting server {server.pid}', file=sys.stderr)
 
