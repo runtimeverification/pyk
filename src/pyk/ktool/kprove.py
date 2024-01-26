@@ -380,7 +380,7 @@ class KProve(KPrint):
         unfound_dependencies: list[str] = []
         while len(claim_labels) > 0:
             claim_label = claim_labels.pop(0)
-            if claim_label in final_claims:
+            if claim_label in final_claims or claim_label in exclude_claim_labels:
                 continue
             if claim_label not in all_claims:
                 claim_label = f'{flat_module_list.main_module}.{claim_label}'
