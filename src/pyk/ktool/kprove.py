@@ -357,7 +357,7 @@ class KProve(KPrint):
         )
 
         all_claims = {
-            f'{claim.label}': (claim, module.name) for module in flat_module_list.modules for claim in module.claims
+            claim.label: (claim, module.name) for module in flat_module_list.modules for claim in module.claims
         }
 
         claim_labels = list(all_claims.keys()) if claim_labels is None else list(claim_labels)
