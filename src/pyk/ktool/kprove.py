@@ -360,9 +360,7 @@ class KProve(KPrint):
             return _label if _label.startswith(_module_name) else f'{_module_name}.{_label}'
 
         all_claims = {
-            f'{module.name}.{claim.label}': (claim, module.name)
-            for module in flat_module_list.modules
-            for claim in module.claims
+            f'{claim.label}': (claim, module.name) for module in flat_module_list.modules for claim in module.claims
         }
 
         claim_labels = list(all_claims.keys()) if claim_labels is None else list(claim_labels)
@@ -385,14 +383,20 @@ class KProve(KPrint):
             if claim_label not in all_claims:
                 claim_label = f'{flat_module_list.main_module}.{claim_label}'
             _claim, _module_name = all_claims[claim_label]
-            final_claims[claim_label] = _claim
+            _updated_dependencies: list[str] = []
             for _dependency_label in _claim.dependencies:
                 if _dependency_label not in all_claims:
                     if f'{_module_name}.{_dependency_label}' not in all_claims:
                         unfound_dependencies.append(_dependency_label)
                         continue
                     _dependency_label = f'{_module_name}.{_dependency_label}'
-                claim_labels.append(_dependency_label)
+                _updated_dependencies.append(_dependency_label)
+            if len(_updated_dependencies) > 0:
+                claim_labels.extend(_updated_dependencies)
+                _claim = _claim.let(
+                    att=_claim.att.update({'label': claim_label, 'depends': ','.join(_updated_dependencies)})
+                )
+            final_claims[claim_label] = _claim
 
         if len(unfound_dependencies) > 0:
             raise ValueError(f'Dependency claim labels not found: {unfound_dependencies}')
