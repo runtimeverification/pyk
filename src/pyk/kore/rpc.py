@@ -370,12 +370,35 @@ class PatternError(KoreClientError):
 
 @final
 @dataclass
-class ModuleError(KoreClientError):
+class UnknownModuleError(KoreClientError):
     module_name: str
 
     def __init__(self, module_name: str):
         self.module_name = module_name
         super().__init__(f'Could not find module: {self.module_name}')
+
+
+@final
+@dataclass
+class InvalidModuleError(KoreClientError):
+    error: str
+    context: tuple[str, ...] | None
+
+    def __init__(self, error: str, context: Iterable[str] | None):
+        self.error = error
+        self.context = tuple(context) if context else None
+        context_str = ' Context: ' + ' ;; '.join(self.context) if self.context else ''
+        super().__init__(f'Could not verify module: {self.error}{context_str}')
+
+
+@final
+@dataclass
+class DuplicateModuleError(KoreClientError):
+    module_name: str
+
+    def __init__(self, module_name: str):
+        self.module_name = module_name
+        super().__init__(f'Duplicate module name: {self.module_name}')
 
 
 @final
@@ -875,9 +898,13 @@ class KoreClient(ContextManager['KoreClient']):
             case 2:
                 return PatternError(error=err.data['error'], context=err.data['context'])
             case 3:
-                return ModuleError(module_name=err.data)
+                return UnknownModuleError(module_name=err.data)
             case 4:
                 return ImplicationError(error=err.data['error'], context=err.data['context'])
+            case 8:
+                return InvalidModuleError(error=err.data['error'], context=err.data.get('context'))
+            case 9:
+                return DuplicateModuleError(module_name=err.data)
             case _:
                 return DefaultError(message=err.message, code=err.code, data=err.data)
 
@@ -981,8 +1008,14 @@ class KoreClient(ContextManager['KoreClient']):
         result = self._request('get-model', **params)
         return GetModelResult.from_dict(result)
 
-    def add_module(self, module: Module) -> str:
-        result = self._request('add-module', module=module.text)
+    def add_module(self, module: Module, *, name_as_id: bool | None = None) -> str:
+        params = filter_none(
+            {
+                'module': module.text,
+                'name-as-id': name_as_id,
+            }
+        )
+        result = self._request('add-module', **params)
         return result['module']
 
 
@@ -1163,8 +1196,17 @@ class KoreServer(ContextManager['KoreServer']):
         return conn.laddr
 
 
-class BoosterServerArgs(KoreServerArgs):
+class FallbackReason(Enum):
+    BRANCHING = 'Branching'
+    STUCK = 'Stuck'
+    ABORTED = 'Aborted'
+
+
+class BoosterServerArgs(KoreServerArgs, total=False):
     llvm_kompiled_dir: Required[str | Path]
+    fallback_on: Iterable[str | FallbackReason] | None
+    interim_simplification: int | None
+    no_post_exec_simplify: bool | None
 
 
 class BoosterServer(KoreServer):
@@ -1172,6 +1214,10 @@ class BoosterServer(KoreServer):
     _dylib: Path
     _llvm_definition: Path
     _llvm_dt: Path
+
+    _fallback_on: list[FallbackReason] | None
+    _interim_simplification: int | None
+    _no_post_exec_simplify: bool
 
     def __init__(self, args: BoosterServerArgs):
         self._llvm_kompiled_dir = Path(args['llvm_kompiled_dir'])
@@ -1189,6 +1235,14 @@ class BoosterServer(KoreServer):
         self._llvm_definition = self._llvm_kompiled_dir / 'definition.kore'
         self._llvm_dt = self._llvm_kompiled_dir / 'dt'
 
+        if fallback_on := args.get('fallback_on'):
+            self._fallback_on = [FallbackReason(reason) for reason in fallback_on]
+        else:
+            self._fallback_on = None
+
+        self._interim_simplification = args.get('interim_simplification')
+        self._no_post_exec_simplify = bool(args.get('no_post_exec_simplify'))
+
         if not args.get('command'):
             args['command'] = 'kore-rpc-booster'
 
@@ -1200,9 +1254,21 @@ class BoosterServer(KoreServer):
         check_file_path(self._llvm_definition)
         check_dir_path(self._llvm_dt)
 
+        if self._fallback_on is not None and not self._fallback_on:
+            raise ValueError("'fallback_on' must not be empty")
+
+        if self._interim_simplification and self._interim_simplification < 0:
+            raise ValueError(f"'interim_simplification' must not be negative, got: {self._interim_simplification}")
+
     def _extra_args(self) -> list[str]:
         res = super()._extra_args()
         res += ['--llvm-backend-library', str(self._dylib)]
+        if self._fallback_on is not None:
+            res += ['--fallback-on', ','.join(reason.value for reason in self._fallback_on)]
+        if self._interim_simplification is not None:
+            res += ['--interim-simplification', str(self._interim_simplification)]
+        if self._no_post_exec_simplify:
+            res += ['--no-post-exec-simplify']
         return res
 
     def _populate_bug_report(self, bug_report: BugReport) -> None:
@@ -1217,7 +1283,6 @@ def kore_server(
     definition_dir: str | Path,
     module_name: str,
     *,
-    llvm_definition_dir: Path | None = None,
     port: int | None = None,
     command: str | Iterable[str] | None = None,
     smt_timeout: int | None = None,
@@ -1226,6 +1291,12 @@ def kore_server(
     log_axioms_file: Path | None = None,
     haskell_log_format: KoreExecLogFormat | None = None,
     haskell_log_entries: Iterable[str] | None = None,
+    # booster
+    llvm_definition_dir: Path | None = None,
+    fallback_on: Iterable[str | FallbackReason] | None = None,
+    interim_simplification: int | None = None,
+    no_post_exec_simplify: bool | None = None,
+    # ---
     bug_report: BugReport | None = None,
 ) -> KoreServer:
     kore_args: KoreServerArgs = {
@@ -1242,6 +1313,12 @@ def kore_server(
         'bug_report': bug_report,
     }
     if llvm_definition_dir:
-        booster_args: BoosterServerArgs = {'llvm_kompiled_dir': llvm_definition_dir, **kore_args}
+        booster_args: BoosterServerArgs = {
+            'llvm_kompiled_dir': llvm_definition_dir,
+            'fallback_on': fallback_on,
+            'interim_simplification': interim_simplification,
+            'no_post_exec_simplify': no_post_exec_simplify,
+            **kore_args,
+        }
         return BoosterServer(booster_args)
     return KoreServer(kore_args)

@@ -9,17 +9,22 @@
 project = 'pyk'
 author = 'Runtime Verification, Inc'
 copyright = '2024, Runtime Verification, Inc'
-version = '0.1.584'
-release = '0.1.584'
+version = '0.1.600'
+release = '0.1.600'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+]
 templates_path = ['_templates']
 exclude_patterns = []
 
 add_module_names = False
+autodoc_inherit_docstrings = False
+viewcode_line_numbers = True
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
