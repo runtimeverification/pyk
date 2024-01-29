@@ -57,6 +57,11 @@ GET_CLAIMS_SPEC_DATA: Iterable[tuple[str, list[str], dict[str, list[str]] | None
         ['MULTI-CLAIM-SPEC.main.4'],
         None,
     ),
+    (
+        'rep-dep-in-submodule',
+        ['rep-dep'],
+        {'MULTI-CLAIM-SPEC.rep-dep': []},
+    ),
 )
 
 
