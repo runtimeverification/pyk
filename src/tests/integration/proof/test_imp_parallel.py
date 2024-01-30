@@ -31,6 +31,7 @@ PARALLEL_PROVE_TEST_DATA = (
     ('sum-N', ProofStatus.PASSED, True),
     ('sum-loop', ProofStatus.PASSED, False),
     ('failing-if', ProofStatus.FAILED, False),
+    ('long-branches', ProofStatus.PASSED, False),
 )
 
 
@@ -59,6 +60,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         kprove: KProve,
         kprint: KPrint,
         proof_dir: Path,
+        _kore_server: KoreServer,
     ) -> None:
         #          claim_id = 'addition-1'
         spec_file = K_FILES / 'imp-simple-spec.k'
@@ -85,7 +87,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             proof=proof,
             module_name=kprove.main_module,
             definition_dir=kprove.definition_dir,
-            execute_depth=1000,
+            execute_depth=100,
             kprint=kprint,
             kcfg_semantics=semantics,
             id=claim_id,
@@ -94,6 +96,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             terminal_rules=(),
             bug_report=None,
             bug_report_id=None,
+            port=_kore_server.port,
         )
 
         process_data = APRProofProcessData(
@@ -106,9 +109,16 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         results = prove_parallel(
             proofs={'proof1': proof},
             provers={'proof1': parallel_prover},
-            max_workers=2,
+            max_workers=1,
             process_data=process_data,
         )
+
+        kcfg_show = KCFGShow(
+            kcfg_explore.kprint, node_printer=APRBMCProofNodePrinter(results[0], kcfg_explore.kprint, full_printer=True)
+        )
+        cfg_lines = kcfg_show.show(proof.kcfg)
+        print('\n'.join(cfg_lines))
+        assert 1 == 2
 
         assert len(list(results)) == 1
         assert list(results)[0].status == expected_status

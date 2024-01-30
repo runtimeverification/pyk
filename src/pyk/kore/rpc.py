@@ -309,6 +309,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         _LOGGER.debug(f'Sending request to {server_addr}: {req}')
         resp = self._transport.request(req)
         if not resp:
+            print(payload)
             raise RuntimeError('Empty response received')
         _LOGGER.debug(f'Received response from {server_addr}: {resp}')
 
@@ -1125,7 +1126,6 @@ class KoreServer(ContextManager['KoreServer']):
             assert port == self._port
         self._info = KoreServerInfo(pid=pid, host=host, port=port)
         _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
-        traceback.print_stack()
 
     def close(self) -> None:
         _LOGGER.info(f'Stopping KoreServer: {self.host}:{self.port}, pid={self.pid}')
@@ -1274,6 +1274,9 @@ class BoosterServer(KoreServer):
             res += ['--interim-simplification', str(self._interim_simplification)]
         if self._no_post_exec_simplify:
             res += ['--no-post-exec-simplify']
+        if self._no_post_exec_simplify:
+            res += ['--no-post-exec-simplify']
+#          res += ['--log-level', 'debug']
         return res
 
     def _populate_bug_report(self, bug_report: BugReport) -> None:

@@ -562,7 +562,7 @@ class APRBMCProof(APRProof):
             logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        checked_for_subsumption = {kcfg._resolve(node_id) for node_id in dct['checked_for_subsumption']}
+        checked_for_subsumption = list({kcfg._resolve(node_id) for node_id in dct['checked_for_subsumption']})
 
         return APRBMCProof(
             id,
@@ -1430,8 +1430,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
 
-        print('ba', file=sys.stderr)
-
         init_kcfg_explore = False
 
         #          if data.kore_servers.get(self.proof_id) is None:
@@ -1453,8 +1451,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         #                  no_post_exec_simplify=None,
         #              )
         #          server = data.kore_servers[self.proof_id]
-
-        print('bb', file=sys.stderr)
 
         with KoreClient(
             host='localhost',
@@ -1489,12 +1485,10 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                     kcfg_explore.kprint.definition, kcfg_explore.kprint.kompiled_kore, _module
                 )
                 kcfg_explore._kore_client.add_module(_kore_module, name_as_id=True)
-            print('bc', file=sys.stderr)
 
             if init_kcfg_explore:
                 _inject_module(self.dependencies_module_name, self.main_module_name, self.dependencies_as_rules)
                 _inject_module(self.circularities_module_name, self.main_module_name, [self.self_proof_as_rule])
-            print('bd', file=sys.stderr)
 
             cterm_implies_time = 0
             extend_cterm_time = 0
@@ -1512,8 +1506,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                         extend_cterm_time=extend_cterm_time,
                     )
 
-            print('be', file=sys.stderr)
-
             self.circularities_module_name if self.depth_is_nonzero else self.dependencies_module_name
             init_extend_cterm_time = time.time_ns()
             result = kcfg_explore.extend_cterm(
@@ -1523,7 +1515,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 terminal_rules=self.terminal_rules,
                 cut_point_rules=self.cut_point_rules,
             )
-            print('bf', file=sys.stderr)
             extend_cterm_time = time.time_ns() - init_extend_cterm_time
             return APRProofExtendResult(
                 extend_result=result,
