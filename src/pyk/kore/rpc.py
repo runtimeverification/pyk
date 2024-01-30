@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 import http.client
 import json
 import logging
@@ -309,6 +310,7 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         _LOGGER.debug(f'Sending request to {server_addr}: {req}')
         resp = self._transport.request(req)
         if not resp:
+            print(payload)
             raise RuntimeError('Empty response received')
         _LOGGER.debug(f'Received response from {server_addr}: {resp}')
 
@@ -889,6 +891,7 @@ class KoreClient(ContextManager['KoreClient']):
         try:
             return self._client.request(method, **params)
         except JsonRpcError as err:
+            print(params, file=sys.stderr)
             raise self._error(err) from err
 
     def _error(self, err: JsonRpcError) -> KoreClientError:
@@ -1010,6 +1013,7 @@ class KoreClient(ContextManager['KoreClient']):
         return GetModelResult.from_dict(result)
 
     def add_module(self, module: Module, *, name_as_id: bool | None = None) -> str:
+        print(f'adding module {module.text}', file=sys.stderr)
         params = filter_none(
             {
                 'module': module.text,
@@ -1107,6 +1111,7 @@ class KoreServer(ContextManager['KoreServer']):
         return self
 
     def __exit__(self, *args: Any) -> None:
+        print(f'closing server {self.pid}', file=sys.stderr)
         self.close()
 
     def start(self) -> None:
@@ -1270,6 +1275,9 @@ class BoosterServer(KoreServer):
             res += ['--interim-simplification', str(self._interim_simplification)]
         if self._no_post_exec_simplify:
             res += ['--no-post-exec-simplify']
+        if self._no_post_exec_simplify:
+            res += ['--no-post-exec-simplify']
+#          res += ['--log-level', 'debug']
         return res
 
     def _populate_bug_report(self, bug_report: BugReport) -> None:
@@ -1313,6 +1321,7 @@ def kore_server(
         'haskell_log_entries': haskell_log_entries,
         'bug_report': bug_report,
     }
+    server = None
     if llvm_definition_dir:
         booster_args: BoosterServerArgs = {
             'llvm_kompiled_dir': llvm_definition_dir,
@@ -1321,5 +1330,10 @@ def kore_server(
             'no_post_exec_simplify': no_post_exec_simplify,
             **kore_args,
         }
-        return BoosterServer(booster_args)
-    return KoreServer(kore_args)
+        server = BoosterServer(booster_args)
+    else:
+        server = KoreServer(kore_args)
+
+    print(f'starting server {server.pid}', file=sys.stderr)
+
+    return server

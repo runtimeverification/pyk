@@ -95,6 +95,22 @@ module IMP-SIMPLE-SPEC
       requires 0 <=Int S andBool 0 <=Int K
        ensures 0 <Int ?N andBool 0 <Int ?M andBool ?I ==Int 1
 
+    claim [long-branches]: 
+      <k> 
+        if(_B:Bool) {
+          $n = 1;
+        }
+        else {
+          $n = 2;
+        }
+        $s = 10;
+        while (0 <= $s) {
+          $s = $s + -1;
+        }
+        => . 
+        ... 
+      </k>
+
     claim [failing-if]: <k> if(_B:Bool) { $n = 1 ; } else { $n = 2 ; } => . ... </k>
                         <state> $n |-> (0 => 1) </state>
 
