@@ -14,6 +14,7 @@ from pathlib import Path
 from signal import SIGINT
 from subprocess import Popen
 from time import sleep
+from typing import ClassVar  # noqa: TC003
 from typing import TYPE_CHECKING, ContextManager, NamedTuple, TypedDict, final
 
 from psutil import Process
@@ -24,7 +25,7 @@ from .syntax import And, SortApp, kore_term
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from typing import Any, ClassVar, Final, TextIO, TypeVar
+    from typing import Any, Final, TextIO, TypeVar
 
     from typing_extensions import Required
 
@@ -1301,9 +1302,9 @@ def kore_server(
     haskell_log_entries: Iterable[str] | None = None,
     # booster
     llvm_definition_dir: Path | None = None,
-    fallback_on: Iterable[str | FallbackReason] | None,
-    interim_simplification: int | None,
-    no_post_exec_simplify: bool | None,
+    fallback_on: Iterable[str | FallbackReason] | None = None,
+    interim_simplification: int | None = None,
+    no_post_exec_simplify: bool | None = None,
     # ---
     bug_report: BugReport | None = None,
 ) -> KoreServer:

@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     from ..cterm import CSubst, CTerm
     from ..kast.outer import KClaim, KDefinition, KFlatModuleList
     from ..kcfg.explore import ExtendResult
+    from ..kast.outer import KClaim, KDefinition, KFlatModuleList, KRuleLike
+    from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
 
@@ -664,7 +666,7 @@ class APRProver(Prover):
         always_check_subsumption: bool = True,
         fast_check_subsumption: bool = False,
     ) -> None:
-        def _inject_module(module_name: str, import_name: str, sentences: list[KRule]) -> None:
+        def _inject_module(module_name: str, import_name: str, sentences: list[KRuleLike]) -> None:
             _module = KFlatModule(module_name, sentences, [KImport(import_name)])
             _kore_module = kflatmodule_to_kore(
                 self.kcfg_explore.kprint.definition, self.kcfg_explore.kprint.kompiled_kore, _module
@@ -684,12 +686,14 @@ class APRProver(Prover):
             else []
         )
 
-        apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
-
-        dependencies_as_rules: list[KRule] = [d.as_rule(priority=20) for d in apr_subproofs]
+        dependencies_as_rules: list[KRuleLike] = []
+        for apr_subproof in [pf for pf in subproofs if isinstance(pf, APRProof)]:
+            dependencies_as_rules.extend(apr_subproof.kcfg.to_rules(priority=20))
+            if apr_subproof.admitted and len(apr_subproof.kcfg.predecessors(apr_subproof.target)) == 0:
+                dependencies_as_rules.append(apr_subproof.as_rule(priority=20))
         circularity_rule = proof.as_rule(priority=20)
 
-        module_name = re.sub(r'[%().:,_]+', '-', self.proof.id.upper())
+        module_name = 'M-' + re.sub(r'[_%().:,]+', '-', self.proof.id.upper())
         self.dependencies_module_name = module_name + '-DEPENDS-MODULE'
         self.circularities_module_name = module_name + '-CIRCULARITIES-MODULE'
         _inject_module(self.dependencies_module_name, self.main_module_name, dependencies_as_rules)

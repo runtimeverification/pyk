@@ -5,6 +5,7 @@ import logging
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import InitVar  # noqa: TC003
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
@@ -31,7 +32,6 @@ from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt, kast_term
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
-    from dataclasses import InitVar
     from os import PathLike
     from typing import Any, Final, TypeVar
 
@@ -813,6 +813,11 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
         return ('function' in prod.att.atts or 'functional' in prod.att.atts) and not (
             prod.klabel and is_not_actually_function(prod.klabel.name)
         )
+
+    @cached_property
+    def syntax_sorts(self) -> tuple[KSyntaxSort, ...]:
+        """Return all the `KSyntaxSort` sentences from this module."""
+        return tuple(sentence for sentence in self if isinstance(sentence, KSyntaxSort))
 
     @cached_property
     def rules(self) -> tuple[KRule, ...]:
