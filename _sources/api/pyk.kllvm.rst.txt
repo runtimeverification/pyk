@@ -17,5 +17,6 @@ Submodules
    pyk.kllvm.convert
    pyk.kllvm.importer
    pyk.kllvm.load
+   pyk.kllvm.load_static
    pyk.kllvm.parser
    pyk.kllvm.runtime
