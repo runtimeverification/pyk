@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from .cterm import CTerm
 from .kast import EMPTY_ATT, KAtt, KInner
-from .kast.inner import KApply, KLabel, KSequence, KSort, KToken, KVariable
+from .kast.inner import KApply, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
 from .kast.manip import bool_to_ml_pred, extract_lhs, extract_rhs
 from .kast.outer import KRule, KSyntaxSort
 from .kore.prelude import BYTES as KORE_BYTES
@@ -180,9 +180,15 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     """
     module_name = module_name or definition.main_module_name
     module = _flatten_module(definition, module_name)  # TODO KORE supports imports, why is definition.kore flat?
+
+    # sorts
     module = _add_syntax_sorts(module)
     module = _add_collection_atts(module)
     module = _add_domain_value_atts(module)
+
+    # symbols
+    module = _pull_up_rewrites(module)
+
     return module
 
 
@@ -321,6 +327,24 @@ def _token_sorts(module: KFlatModule) -> set[KSort]:
             res.add(production.sort)
 
     return res
+
+
+def _pull_up_rewrites(module: KFlatModule) -> KFlatModule:
+    """Ensure that each rule is of the form X => Y"""
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KRule):
+            return sentence
+        if isinstance(sentence.body, KRewrite):
+            return sentence
+        rewrite = KRewrite(
+            lhs=extract_lhs(sentence.body),
+            rhs=extract_rhs(sentence.body),
+        )
+        return sentence.let(body=rewrite)
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
 
 
 # ------------
