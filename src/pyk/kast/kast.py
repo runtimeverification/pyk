@@ -66,6 +66,10 @@ class KAtt(KAst, Mapping[str, Any]):
     KLABEL: ClassVar[str] = 'klabel'
     HAS_DOMAIN_VALUES: ClassVar[str] = 'hasDomainValues'
     TOKEN: ClassVar[str] = 'token'
+    ALIAS: ClassVar[str] = 'alias'
+    ALIAS_REC: ClassVar[str] = 'alias-rec'
+    MACRO: ClassVar[str] = 'macro'
+    MACRO_REC: ClassVar[str] = 'macro-rec'
 
     def __init__(self, atts: Mapping[str, Any] = EMPTY_FROZEN_DICT):
         def _freeze(m: Any) -> Any:

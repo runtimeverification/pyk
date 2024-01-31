@@ -8,7 +8,7 @@ from .cterm import CTerm
 from .kast import EMPTY_ATT, KAtt, KInner
 from .kast.inner import KApply, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
 from .kast.manip import bool_to_ml_pred, extract_lhs, extract_rhs
-from .kast.outer import KRule, KSyntaxSort
+from .kast.outer import KProduction, KRule, KSyntaxSort
 from .kore.prelude import BYTES as KORE_BYTES
 from .kore.prelude import DOTK, SORT_K
 from .kore.prelude import STRING as KORE_STRING
@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping
     from typing import Any, Final
 
-    from .kast.outer import KDefinition, KFlatModule, KImport, KProduction, KSentence
+    from .kast.outer import KDefinition, KFlatModule, KImport, KSentence
     from .kore.kompiled import KompiledKore
     from .kore.syntax import Pattern, Sentence, Sort
 
@@ -188,6 +188,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
 
     # symbols
     module = _pull_up_rewrites(module)
+    module = _add_macro_atts(module)
 
     return module
 
@@ -345,6 +346,46 @@ def _pull_up_rewrites(module: KFlatModule) -> KFlatModule:
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
+
+
+def _add_macro_atts(module: KFlatModule) -> KFlatModule:
+    """Add the macro attribute to all productions with a corresponding macro rule."""
+    rules = _rules_by_klabel(module)
+
+    def is_macro(rule: KRule) -> bool:
+        return any(key in rule.att for key in [KAtt.ALIAS, KAtt.ALIAS_REC, KAtt.MACRO, KAtt.MACRO_REC])
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        klabel = sentence.klabel
+        if any(is_macro(rule) for rule in rules.get(klabel, [])):
+            return sentence.let(att=sentence.att.update({KAtt.MACRO: ''}))
+
+        return sentence
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _rules_by_klabel(module: KFlatModule) -> dict[KLabel, list[KRule]]:
+    """Return a dict that maps a label l to the list of all rules l => X.
+
+    If a label does not have a matching rule, it will be not contained in the dict.
+    The function expects that all rules have a rewrite on top.
+    """
+    res: dict[KLabel, list[KRule]] = {}
+    for rule in module.rules:
+        assert isinstance(rule.body, KRewrite)
+        if not isinstance(rule.body.lhs, KApply):
+            continue
+        label = rule.body.lhs.label
+        res.setdefault(label, []).append(rule)
+    return res
 
 
 # ------------
