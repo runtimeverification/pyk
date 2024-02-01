@@ -480,20 +480,17 @@ def abs_or_rel_to(path: Path, base: Path) -> Path:
     return base / path
 
 
-class BugReport:
+class BugReportBase:
     _bug_report: Path
     _command_id: int
     _defn_id: int
     _file_remap: dict[str, str]
 
     def __init__(self, bug_report: Path) -> None:
-        self._bug_report = bug_report.with_suffix('.tar')
+        self._bug_report = bug_report
         self._command_id = 0
         self._defn_id = 0
         self._file_remap = {}
-        if self._bug_report.exists():
-            _LOGGER.warning(f'Bug report exists, removing: {self._bug_report}')
-            self._bug_report.unlink()
 
     def add_file(self, finput: Path, arcname: Path) -> None:
         if str(finput) not in self._file_remap:
@@ -524,3 +521,26 @@ class BugReport:
         shebang = '#!/usr/bin/env bash\nset -euxo pipefail\n'
         self.add_file_contents(shebang + ' '.join(remapped_args) + '\n', arcname)
         self._command_id += 1
+
+
+class BugReport(BugReportBase):
+    def __init__(self, bug_report: Path) -> None:
+        bug_report = bug_report.with_suffix('.tar')
+        if bug_report.exists():
+            _LOGGER.warning(f'Bug report exists, removing: {bug_report}')
+            bug_report.unlink()
+        super().__init__(bug_report)
+
+    def reporter(self, prefix: str) -> BugReportBase:
+        class BugReporter(BugReportBase):
+            _prefix: Path
+
+            def __init__(self, bug_report: Path, prefix: Path) -> None:
+                super().__init__(bug_report)
+                self._prefix = prefix
+
+            def add_file(self, finput: Path, arcname: Path) -> None:
+                arcname = self._prefix / arcname
+                super().add_file(finput, arcname)
+
+        return BugReporter(self._bug_report, Path(prefix))
