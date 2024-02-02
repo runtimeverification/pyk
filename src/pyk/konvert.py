@@ -189,6 +189,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     # symbols
     module = _pull_up_rewrites(module)
     module = _add_macro_atts(module)
+    module = _add_anywhere_atts(module)
 
     return module
 
@@ -365,6 +366,27 @@ def _add_macro_atts(module: KFlatModule) -> KFlatModule:
         klabel = sentence.klabel
         if any(is_macro(rule) for rule in rules.get(klabel, [])):
             return sentence.let(att=sentence.att.update({KAtt.MACRO: ''}))
+
+        return sentence
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
+    """Add the macro attribute to all productions with a corresponding anywhere rule."""
+    rules = _rules_by_klabel(module)
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        klabel = sentence.klabel
+        if any(KAtt.ANYWHERE in rule.att for rule in rules.get(klabel, [])):
+            return sentence.let(att=sentence.att.update({KAtt.ANYWHERE: ''}))
 
         return sentence
 
