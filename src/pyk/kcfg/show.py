@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast import KInner
-    from ..kast.outer import KFlatModule, KSentence
+    from ..kast.outer import KFlatModule
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
 
@@ -93,35 +93,6 @@ class KCFGShow:
         if omit_cells:
             return top_down(_hide_cells, term)
         return term
-
-    @staticmethod
-    def hide_cells_in_rules(
-        module: KFlatModule, module_name: str | None = None, omit_cells: Iterable[str] = ()
-    ) -> KFlatModule:
-        def _hide_cells_in_rule(_sent: KSentence) -> KSentence:
-            if type(_sent) is KRule:
-                return _sent.let(body=KCFGShow.hide_cells(_sent.body, omit_cells))
-            return _sent
-
-        return module.let(sentences=map(_hide_cells_in_rule, module.sentences))
-
-    @staticmethod
-    def remove_generated_cells(module: KFlatModule) -> KFlatModule:
-        def _remove_generated_cells(_sent: KSentence) -> KSentence:
-            if type(_sent) is KRule:
-                return _sent.let(body=remove_generated_cells(_sent.body))
-            return _sent
-
-        return module.let(sentences=map(_remove_generated_cells, module.sentences))
-
-    @staticmethod
-    def minimize_rule(module: KFlatModule) -> KFlatModule:
-        def _minimize_rule(_sent: KSentence) -> KSentence:
-            if type(_sent) is KRule:
-                return minimize_rule(_sent)
-            return _sent
-
-        return module.let(sentences=map(_minimize_rule, module.sentences))
 
     @staticmethod
     def simplify_config(config: KInner, omit_cells: Iterable[str]) -> KInner:
@@ -327,14 +298,18 @@ class KCFGShow:
         cfg: KCFG,
         module_name: str | None = None,
         omit_cells: Iterable[str] = (),
-        remove_generated_cells: bool = True,
-        minimize_rule: bool = True,
+        parseable_output: bool = True,
     ) -> KFlatModule:
         module = cfg.to_module(module_name)
-        module = KCFGShow.hide_cells_in_rules(module, omit_cells=omit_cells)
-        module = KCFGShow.remove_generated_cells(module) if remove_generated_cells else module
-        module = KCFGShow.minimize_rule(module) if minimize_rule else module
-        return module
+        _sentences = []
+        for sent in module.sentences:
+            if type(sent) is KRule:
+                sent = sent.let(body=KCFGShow.hide_cells(sent.body, omit_cells))
+                if parseable_output:
+                    sent = sent.let(body=remove_generated_cells(sent.body))
+                    sent = minimize_rule(sent)
+            _sentences.append(sent)
+        return module.let(sentences=_sentences)
 
     def show(
         self,
