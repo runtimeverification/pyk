@@ -9,9 +9,11 @@ from ..kast.inner import KApply, KRewrite, top_down
 from ..kast.manip import (
     flatten_label,
     inline_cell_maps,
+    minimize_rule,
     minimize_term,
     ml_pred_to_bool,
     push_down_rewrites,
+    remove_generated_cells,
     sort_ac_collections,
 )
 from ..kast.outer import KRule
@@ -102,6 +104,24 @@ class KCFGShow:
             return _sent
 
         return module.let(sentences=map(_hide_cells_in_rule, module.sentences))
+
+    @staticmethod
+    def remove_generated_cells(module: KFlatModule) -> KFlatModule:
+        def _remove_generated_cells(_sent: KSentence) -> KSentence:
+            if type(_sent) is KRule:
+                return _sent.let(body=remove_generated_cells(_sent.body))
+            return _sent
+
+        return module.let(sentences=map(_remove_generated_cells, module.sentences))
+
+    @staticmethod
+    def minimize_rule(module: KFlatModule) -> KFlatModule:
+        def _minimize_rule(_sent: KSentence) -> KSentence:
+            if type(_sent) is KRule:
+                return minimize_rule(_sent)
+            return _sent
+
+        return module.let(sentences=map(_minimize_rule, module.sentences))
 
     @staticmethod
     def simplify_config(config: KInner, omit_cells: Iterable[str]) -> KInner:
@@ -302,8 +322,19 @@ class KCFGShow:
     ) -> Iterable[str]:
         return (line for _, seg_lines in self.pretty_segments(kcfg, minimize=minimize) for line in seg_lines)
 
-    def to_module(self, cfg: KCFG, module_name: str | None = None, omit_cells: Iterable[str] = ()) -> KFlatModule:
-        return KCFGShow.hide_cells_in_rules(cfg.to_module(module_name), omit_cells=omit_cells)
+    def to_module(
+        self,
+        cfg: KCFG,
+        module_name: str | None = None,
+        omit_cells: Iterable[str] = (),
+        remove_generated_cells: bool = True,
+        minimize_rule: bool = True,
+    ) -> KFlatModule:
+        module = cfg.to_module(module_name)
+        module = KCFGShow.hide_cells_in_rules(module, omit_cells=omit_cells)
+        module = KCFGShow.remove_generated_cells(module) if remove_generated_cells else module
+        module = KCFGShow.minimize_rule(module) if minimize_rule else module
+        return module
 
     def show(
         self,
