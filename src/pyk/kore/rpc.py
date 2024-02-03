@@ -1322,6 +1322,5 @@ def kore_server(
             **kore_args,
         }
         return BoosterServer(booster_args)
-    else:
-        return KoreServer(kore_args)
+    return KoreServer(kore_args)
 
