@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import graphlib
-import sys
 import json
 import logging
 import re
@@ -11,7 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyk.proof.parallel as parallel
-from pyk.kore.rpc import KoreClient, KoreExecLogFormat, LogEntry, kore_server
+from pyk.kore.rpc import KoreClient, KoreExecLogFormat, LogEntry
 
 from ..kast.inner import KInner, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
@@ -31,14 +30,11 @@ if TYPE_CHECKING:
     from typing import Any, Final, TypeVar
 
     from pyk.kcfg.semantics import KCFGSemantics
-    from pyk.kore.rpc import KoreServer
     from pyk.utils import BugReport
 
     from ..cterm import CSubst, CTerm
-    from ..kast.outer import KClaim, KDefinition, KFlatModuleList
     from ..kcfg.explore import ExtendResult
     from ..kast.outer import KClaim, KDefinition, KFlatModuleList, KRuleLike
-    from ..kcfg import KCFGExplore
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
 

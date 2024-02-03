@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,6 +20,7 @@ if TYPE_CHECKING:
     from pyk.kast.outer import KDefinition
     from pyk.kcfg.explore import KCFGExplore
     from pyk.kcfg.semantics import KCFGSemantics
+    from pyk.kore.rpc import KoreServer
     from pyk.ktool.kprint import KPrint
     from pyk.ktool.kprove import KProve
 
@@ -62,7 +62,6 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         proof_dir: Path,
         _kore_server: KoreServer,
     ) -> None:
-        #          claim_id = 'addition-1'
         spec_file = K_FILES / 'imp-simple-spec.k'
         spec_module = 'IMP-SIMPLE-SPEC'
 
@@ -112,13 +111,6 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             max_workers=1,
             process_data=process_data,
         )
-
-        kcfg_show = KCFGShow(
-            kcfg_explore.kprint, node_printer=APRBMCProofNodePrinter(results[0], kcfg_explore.kprint, full_printer=True)
-        )
-        cfg_lines = kcfg_show.show(proof.kcfg)
-        print('\n'.join(cfg_lines))
-        assert 1 == 2
 
         assert len(list(results)) == 1
         assert list(results)[0].status == expected_status

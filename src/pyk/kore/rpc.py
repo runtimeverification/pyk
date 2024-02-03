@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import traceback
 import http.client
 import json
 import logging

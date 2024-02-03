@@ -155,7 +155,9 @@ def prove_parallel(
         print('f', file=sys.stderr)
 
     while pending_jobs > 0:
+        wait_init_time = time.time_ns()
         proof_id, update = out_queue.get()
+        total_process_time += time.time_ns() - wait_init_time
         print('g', file=sys.stderr)
         pending_jobs -= 1
 
