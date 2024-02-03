@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast import KInner
-    from ..kast.outer import KFlatModule
+    from ..kast.outer import KFlatModule, KSentence
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
 
@@ -300,16 +300,16 @@ class KCFGShow:
         omit_cells: Iterable[str] = (),
         parseable_output: bool = True,
     ) -> KFlatModule:
-        module = cfg.to_module(module_name)
-        _sentences = []
-        for sent in module.sentences:
+        def _process_sentence(sent: KSentence) -> KSentence:
             if type(sent) is KRule:
                 sent = sent.let(body=KCFGShow.hide_cells(sent.body, omit_cells))
                 if parseable_output:
                     sent = sent.let(body=remove_generated_cells(sent.body))
                     sent = minimize_rule(sent)
-            _sentences.append(sent)
-        return module.let(sentences=_sentences)
+            return sent
+
+        module = cfg.to_module(module_name)
+        return module.let(sentences=[_process_sentence(sent) for sent in module.sentences])
 
     def show(
         self,
