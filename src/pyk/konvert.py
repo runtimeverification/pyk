@@ -190,6 +190,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _pull_up_rewrites(module)
     module = _add_macro_atts(module)
     module = _add_anywhere_atts(module)
+    module = _add_functional_atts(module)
 
     return module
 
@@ -350,7 +351,7 @@ def _pull_up_rewrites(module: KFlatModule) -> KFlatModule:
 
 
 def _add_macro_atts(module: KFlatModule) -> KFlatModule:
-    """Add the macro attribute to all productions with a corresponding macro rule."""
+    """Add the macro attribute to all symbol productions with a corresponding macro rule."""
     rules = _rules_by_klabel(module)
 
     def is_macro(rule: KRule) -> bool:
@@ -374,7 +375,7 @@ def _add_macro_atts(module: KFlatModule) -> KFlatModule:
 
 
 def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
-    """Add the macro attribute to all productions with a corresponding anywhere rule."""
+    """Add the macro attribute to all symbol productions with a corresponding anywhere rule."""
     rules = _rules_by_klabel(module)
 
     def update(sentence: KSentence) -> KSentence:
@@ -408,6 +409,27 @@ def _rules_by_klabel(module: KFlatModule) -> dict[KLabel, list[KRule]]:
         label = rule.body.lhs.label
         res.setdefault(label, []).append(rule)
     return res
+
+
+def _add_functional_atts(module: KFlatModule) -> KFlatModule:
+    """Add the macro attribute to all symbol productions that are not function or total"""
+    # TODO Why defined as (function -> total) and not as (function /\ total)?
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:  # filter for symbol productions
+            return sentence
+
+        att = sentence.att
+        if KAtt.FUNCTION not in att or KAtt.TOTAL in att:
+            return sentence.let(att=att.update({KAtt.FUNCTIONAL: ''}))
+
+        return sentence
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
 
 
 # ------------

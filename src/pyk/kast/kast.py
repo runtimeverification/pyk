@@ -71,6 +71,9 @@ class KAtt(KAst, Mapping[str, Any]):
     MACRO: ClassVar[str] = 'macro'
     MACRO_REC: ClassVar[str] = 'macro-rec'
     ANYWHERE: ClassVar[str] = 'anywhere'
+    FUNCTION: ClassVar[str] = 'function'
+    FUNCTIONAL: ClassVar[str] = 'functional'
+    TOTAL: ClassVar[str] = 'total'
 
     def __init__(self, atts: Mapping[str, Any] = EMPTY_FROZEN_DICT):
         def _freeze(m: Any) -> Any:
