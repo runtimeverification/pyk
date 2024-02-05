@@ -217,6 +217,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_injective_atts(module)
     module = _add_constructor_atts(module)
     module = _remove_hook_atts(module)
+    module = _remove_production_atts(module)
 
     return module
 
@@ -524,6 +525,22 @@ def _remove_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = (
             return sentence.let(att=sentence.att.remove([KAtt.HOOK]))
 
         return sentence
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _remove_production_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = ()) -> KFlatModule:
+    """Remove production attributes from symbol productions."""
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        return sentence.let(att=sentence.att.remove([KAtt.PRODUCTION]))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
