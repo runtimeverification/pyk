@@ -107,7 +107,7 @@ def test_klabel_init_multiple_values(params: list[KSort]) -> None:
     actual_message = str(excinfo.value)
 
     # Then
-    actual_message, expected_message
+    actual_message, expected_message  # noqa: B018
 
 
 @pytest.mark.parametrize('params', KLABEL_TEST_DATA, ids=count())
