@@ -153,6 +153,29 @@ def sort_decl_to_kore(syntax_sort: KSyntaxSort) -> SortDecl:
 # ----------------------------------
 
 
+HOOK_NAMESPACES: Final = {
+    'ARRAY',
+    'BOOL',
+    'BUFFER',
+    'BYTES',
+    'FFI',
+    'FLOAT',
+    'INT',
+    'IO',
+    'JSON',
+    'KEQUAL',
+    'KREFLECTION',
+    'LIST',
+    'MAP',
+    'MINT',
+    'RANGEMAP',
+    'SET',
+    'STRING',
+    'SUBSTITUTION',
+    'UNIFICATION',
+}
+
+
 COLLECTION_HOOKS: Final = {
     'SET.Set',
     'MAP.Map',
@@ -193,6 +216,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_functional_atts(module)
     module = _add_injective_atts(module)
     module = _add_constructor_atts(module)
+    module = _remove_hook_atts(module)
 
     return module
 
@@ -469,6 +493,35 @@ def _add_constructor_atts(module: KFlatModule) -> KFlatModule:
         att = sentence.att
         if KAtt.INJECTIVE in att and KAtt.MACRO not in att and KAtt.ANYWHERE not in att:
             return sentence.let(att=sentence.att.update({KAtt.CONSTRUCTOR: ''}))
+
+        return sentence
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _remove_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = ()) -> KFlatModule:
+    """Remove hooks attributes from symbol productions that are either 1) array hooks or 2) not built in and not activated."""
+
+    def is_real_hook(hook: str) -> bool:
+        if hook.startswith('ARRAY.'):
+            return False
+        namespaces = (*hook_namespaces, *HOOK_NAMESPACES)
+        return hook.startswith(tuple(f'{namespace}.' for namespace in namespaces))
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        if not KAtt.HOOK in sentence.att:
+            return sentence
+
+        hook = sentence.att[KAtt.HOOK]
+        if not is_real_hook(hook):
+            return sentence.let(att=sentence.att.remove([KAtt.HOOK]))
 
         return sentence
 
