@@ -1033,6 +1033,7 @@ class APRBMCProver(APRProver):
                     prior_loops.append(_pl)
             _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
             if len(prior_loops) > self.proof.bmc_depth:
+                _LOGGER.warning(f'Bounded node {self.proof.id}: {node.id} at bmc depth {self.proof.bmc_depth}')
                 self.proof.add_bounded(node.id)
                 return
         super().advance_pending_node(
