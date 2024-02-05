@@ -191,6 +191,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_macro_atts(module)
     module = _add_anywhere_atts(module)
     module = _add_functional_atts(module)
+    module = _add_injective_atts(module)
 
     return module
 
@@ -425,6 +426,25 @@ def _add_functional_atts(module: KFlatModule) -> KFlatModule:
         att = sentence.att
         if KAtt.FUNCTION not in att or KAtt.TOTAL in att:
             return sentence.let(att=att.update({KAtt.FUNCTIONAL: ''}))
+
+        return sentence
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _add_injective_atts(module: KFlatModule) -> KFlatModule:
+    """Add the injective attribute to all symbol productions that satisfy the criteria"""
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        if not any(att in sentence.att for att in [KAtt.FUNCTION, KAtt.ASSOC, KAtt.COMM, KAtt.IDEM]):
+            return sentence.let(att=sentence.att.update({KAtt.INJECTIVE: ''}))
 
         return sentence
 
