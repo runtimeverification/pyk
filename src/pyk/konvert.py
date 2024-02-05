@@ -289,13 +289,13 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
 
     # symbols
     module = _pull_up_rewrites(module)
+    module = _discard_symbol_atts(module, [KAtt.PRODUCTION])
+    module = _discard_hook_atts(module)
     module = _add_macro_atts(module)
     module = _add_anywhere_atts(module)
     module = _add_symbol_atts(module, KAtt.FUNCTIONAL, _is_functional)
     module = _add_symbol_atts(module, KAtt.INJECTIVE, _is_injective)
     module = _add_symbol_atts(module, KAtt.CONSTRUCTOR, _is_constructor)
-    module = _discard_hook_atts(module)
-    module = _discard_atts_from_symbol_productions(module, [KAtt.PRODUCTION])
 
     return module
 
@@ -599,7 +599,7 @@ def _discard_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = 
     return module.let(sentences=sentences)
 
 
-def _discard_atts_from_symbol_productions(module: KFlatModule, atts: Iterable[str]) -> KFlatModule:
+def _discard_symbol_atts(module: KFlatModule, atts: Iterable[str]) -> KFlatModule:
     """Remove certain attributes from symbol productions."""
 
     def update(sentence: KSentence) -> KSentence:
