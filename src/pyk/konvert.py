@@ -32,7 +32,10 @@ from .kore.syntax import (
     Rewrites,
     SortApp,
     SortDecl,
+    SortVar,
     String,
+    Symbol,
+    SymbolDecl,
     Top,
 )
 from .prelude.bytes import BYTES, bytesToken_from_str, pretty_bytes_str
@@ -69,6 +72,24 @@ KORE_KEYWORDS: Final = {
 }
 
 
+BUILTIN_LABELS: Final = {
+    '#Bottom',
+    '#Top',
+    '#Not',
+    '#Or',
+    '#And',
+    '#Implies',
+    '#Equals',
+    '#Ceil',
+    '#Floor',
+    '#Exists',
+    '#Forall',
+    '#AG',
+    'weakExistsFinally',
+    'weakAlwaysFinally',
+}
+
+
 def module_to_kore(definition: KDefinition) -> Module:
     """Convert the main module of a kompiled KAST definition to KORE format."""
 
@@ -83,10 +104,16 @@ def module_to_kore(definition: KDefinition) -> Module:
         for syntax_sort in module.syntax_sorts
         if syntax_sort.sort.name not in [K.name, K_ITEM.name]
     ]
+    symbol_decls = [
+        symbol_prod_to_kore(sentence)
+        for sentence in module.sentences
+        if isinstance(sentence, KProduction) and sentence.klabel and sentence.klabel.name not in BUILTIN_LABELS
+    ]
 
     sentences: list[Sentence] = []
     sentences += imports
     sentences += sort_decls
+    sentences += symbol_decls
 
     return Module(name=name, sentences=sentences, attrs=attrs)
 
@@ -119,6 +146,13 @@ def att_to_kore(key: str, value: Any) -> App:
         return App(symbol, (), (String(value),))
 
     if isinstance(value, FrozenDict) and 'node' in value:
+        if value['node'] == 'KSort':
+            sort_name = _sort_name(KSort.from_dict(value).name)
+            return App(symbol, (), (String(sort_name),))
+
+        if value['node'] == 'KProduction':
+            print(key)
+
         # TODO Should be kast_to_kore, but we do not have a KompiledKore.
         # TODO We should be able to add injections based on info in KDefinition.
         pattern = _kast_to_kore(KInner.from_dict(value))
@@ -142,10 +176,49 @@ def _parse_special_att_value(key: str, value: Any) -> tuple[tuple[Sort, ...], tu
 
 
 def sort_decl_to_kore(syntax_sort: KSyntaxSort) -> SortDecl:
-    name = 'Sort' + name_to_kore(syntax_sort.sort.name)
+    name = _sort_name(syntax_sort.sort.name)
     attrs = atts_to_kore(syntax_sort.att)
     hooked = KAtt.HOOK in syntax_sort.att
     return SortDecl(name, (), attrs=attrs, hooked=hooked)
+
+
+def sort_to_kore(sort: KSort) -> SortApp:
+    return SortApp(_sort_name(sort.name))
+
+
+def _sort_name(name: str) -> str:
+    return 'Sort' + name_to_kore(name)
+
+
+def _label_name(name: str) -> str:
+    return 'Lbl' + name_to_kore(name)
+
+
+def symbol_prod_to_kore(production: KProduction) -> SymbolDecl:
+    if not production.klabel:
+        raise ValueError(f'Expected symbol production, got: {production}')
+
+    symbol_name = _label_name(production.klabel.name)
+    symbol_vars = tuple(SortVar(_sort_name(sort.name)) for sort in production.params)
+    symbol = Symbol(symbol_name, symbol_vars)
+
+    def to_sort(sort: KSort) -> Sort:
+        name = _sort_name(sort.name)
+        if sort in production.params:
+            return SortVar(name)
+        return SortApp(name)
+
+    param_sorts = tuple(to_sort(sort) for sort in production.argument_sorts)
+    sort = to_sort(production.sort)
+    attrs = atts_to_kore(production.att)
+    hooked = KAtt.HOOK in production.att
+    return SymbolDecl(
+        symbol=symbol,
+        param_sorts=param_sorts,
+        sort=sort,
+        attrs=attrs,
+        hooked=hooked,
+    )
 
 
 # ----------------------------------
@@ -403,6 +476,9 @@ def _add_macro_atts(module: KFlatModule) -> KFlatModule:
 
 def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
     """Add the macro attribute to all symbol productions with a corresponding anywhere rule."""
+
+    # TODO: overloads
+
     rules = _rules_by_klabel(module)
 
     def update(sentence: KSentence) -> KSentence:
