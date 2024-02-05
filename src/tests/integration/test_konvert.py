@@ -49,13 +49,18 @@ def test_module_to_kore(imp_kast: KDefinition, imp_kore: Module) -> None:
     assert actual.name == expected.name
     assert actual.attrs == expected.attrs
 
-    # Check if sentences under-approximate
+    check_generated_sentences(actual, expected)
+    check_missing_sentences(actual, expected)
+
+
+def check_generated_sentences(actual: Module, expected: Module) -> None:
     expected_sentences = set(expected.sentences)
     for sent in actual.sentences:
         if sent not in expected_sentences:
             pytest.fail(f'Invalid sentence: {sent.text}')
 
-    # Check if sentences over-approximate
+
+def check_missing_sentences(actual: Module, expected: Module) -> None:
     actual_sentences = set(actual.sentences)
     for sent in expected.sentences:
         # TODO remove, filter for SortDecl for now
