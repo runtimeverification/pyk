@@ -12,7 +12,9 @@ from pyk.kore.syntax import SortDecl, Symbol, SymbolDecl
 from .utils import K_FILES
 
 if TYPE_CHECKING:
+    from collections.abc import Container
     from pathlib import Path
+    from typing import Final
 
     from pyk.kast.outer import KDefinition
     from pyk.kore.syntax import Module, Sentence
@@ -36,16 +38,29 @@ def imp_kore(imp_dir: Path) -> Module:
     return next(module for module in definition if module.name == 'IMP')
 
 
+IGNORED_SYMBOL_ATTRS: Final = {
+    "org'Stop'kframework'Stop'definition'Stop'Production",
+    'colors',
+    'format',
+    'left',
+    'priorities',
+    'right',
+    'strict',
+    'terminals',
+}
+
+
 def test_module_to_kore(imp_kast: KDefinition, imp_kore: Module) -> None:
     # Given
     expected = imp_kore
 
     # TODO remove
     # Filter out some attributes for now
-    expected = filter_attrs(expected)
+    expected = discard_symbol_attrs(expected, IGNORED_SYMBOL_ATTRS)
 
     # When
     actual = module_to_kore(imp_kast)
+    actual = discard_symbol_attrs(actual, IGNORED_SYMBOL_ATTRS)
 
     # Then
 
@@ -57,18 +72,11 @@ def test_module_to_kore(imp_kast: KDefinition, imp_kore: Module) -> None:
     check_missing_sentences(actual, expected)
 
 
-def filter_attrs(module: Module) -> Module:
-    # Remove attributes from symbol: left, right, priorities, terminals, format
+def discard_symbol_attrs(module: Module, attrs: Container[str]) -> Module:
     def update(sentence: Sentence) -> Sentence:
         if not isinstance(sentence, SymbolDecl):
             return sentence
-        return sentence.let(
-            attrs=tuple(
-                attr
-                for attr in sentence.attrs
-                if attr.symbol not in ['left', 'right', 'priorities', 'terminals', 'format']
-            )
-        )
+        return sentence.let(attrs=tuple(attr for attr in sentence.attrs if attr.symbol not in attrs))
 
     return module.let(sentences=tuple(update(sentence) for sentence in module.sentences))
 

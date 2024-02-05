@@ -147,11 +147,8 @@ def att_to_kore(key: str, value: Any) -> App:
 
     if isinstance(value, FrozenDict) and 'node' in value:
         if value['node'] == 'KSort':
-            sort_name = _sort_name(KSort.from_dict(value).name)
+            sort_name = name_to_kore(KSort.from_dict(value).name)  # 'Sort' is not prepended by ModuleToKORE
             return App(symbol, (), (String(sort_name),))
-
-        if value['node'] == 'KProduction':
-            print(key)
 
         # TODO Should be kast_to_kore, but we do not have a KompiledKore.
         # TODO We should be able to add injections based on info in KDefinition.
@@ -172,6 +169,14 @@ def _parse_special_att_value(key: str, value: Any) -> tuple[tuple[Sort, ...], tu
     if key == KAtt.SOURCE:
         assert isinstance(value, str)
         return (), (String(f'Source({value})'),)
+    if key == KAtt.ELEMENT:
+        # TODO avoid special casing by pre-processing the attribute into a KApply
+        # This should be handled by the frontend
+        assert isinstance(value, str)
+        return (), (App(_label_name(value)),)
+    if key == KAtt.UNIT:  # TODO same here
+        assert isinstance(value, str)
+        return (), (App(_label_name(value)),)
     return None
 
 
@@ -289,8 +294,8 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_functional_atts(module)
     module = _add_injective_atts(module)
     module = _add_constructor_atts(module)
-    module = _remove_hook_atts(module)
-    module = _remove_production_atts(module)
+    module = _discard_hook_atts(module)
+    module = _discard_atts_from_symbol_productions(module, [KAtt.PRODUCTION])
 
     return module
 
@@ -378,13 +383,14 @@ def _add_collection_atts(module: KFlatModule) -> KFlatModule:
 
         prod_att = concat_prods[syntax_sort.sort].att
 
-        # TODO Here, attriubtes are stored as dict, but ultimately we should parse known attributes in KAtt.from_dict
         return syntax_sort.let(
             att=syntax_sort.att.update(
                 {
+                    # TODO Here, the attriubte is stored as dict, but ultimately we should parse known attributes in KAtt.from_dict
                     KAtt.CONCAT: KApply(prod_att[KAtt.KLABEL]).to_dict(),
-                    KAtt.ELEMENT: KApply(prod_att[KAtt.ELEMENT]).to_dict(),
-                    KAtt.UNIT: KApply(prod_att[KAtt.UNIT]).to_dict(),
+                    # Here, we keep the format from the fontend so that te SyntaxSort and Production ats are of the same type
+                    KAtt.ELEMENT: prod_att[KAtt.ELEMENT],
+                    KAtt.UNIT: prod_att[KAtt.UNIT],
                 }
             )
         )
@@ -545,7 +551,16 @@ def _add_injective_atts(module: KFlatModule) -> KFlatModule:
         if not sentence.klabel:
             return sentence
 
-        if not any(att in sentence.att for att in [KAtt.FUNCTION, KAtt.ASSOC, KAtt.COMM, KAtt.IDEM]):
+        if not any(
+            att in sentence.att
+            for att in [
+                KAtt.FUNCTION,
+                KAtt.ASSOC,
+                KAtt.COMM,
+                KAtt.IDEM,
+                KAtt.UNIT,
+            ]
+        ):
             return sentence.let(att=sentence.att.update({KAtt.INJECTIVE: ''}))
 
         return sentence
@@ -568,8 +583,19 @@ def _add_constructor_atts(module: KFlatModule) -> KFlatModule:
             return sentence
 
         att = sentence.att
-        if KAtt.INJECTIVE in att and KAtt.MACRO not in att and KAtt.ANYWHERE not in att:
-            return sentence.let(att=sentence.att.update({KAtt.CONSTRUCTOR: ''}))
+        if not any(
+            att in sentence.att
+            for att in [
+                KAtt.FUNCTION,
+                KAtt.ASSOC,
+                KAtt.COMM,
+                KAtt.IDEM,
+                KAtt.UNIT,
+                KAtt.MACRO,
+                KAtt.ANYWHERE,
+            ]
+        ):
+            return sentence.let(att=att.update({KAtt.CONSTRUCTOR: ''}))
 
         return sentence
 
@@ -577,7 +603,7 @@ def _add_constructor_atts(module: KFlatModule) -> KFlatModule:
     return module.let(sentences=sentences)
 
 
-def _remove_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = ()) -> KFlatModule:
+def _discard_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = ()) -> KFlatModule:
     """Remove hooks attributes from symbol productions that are either 1) array hooks or 2) not built in and not activated."""
 
     def is_real_hook(hook: str) -> bool:
@@ -606,8 +632,8 @@ def _remove_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = (
     return module.let(sentences=sentences)
 
 
-def _remove_production_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = ()) -> KFlatModule:
-    """Remove production attributes from symbol productions."""
+def _discard_atts_from_symbol_productions(module: KFlatModule, atts: Iterable[str]) -> KFlatModule:
+    """Remove certain attributes from symbol productions."""
 
     def update(sentence: KSentence) -> KSentence:
         if not isinstance(sentence, KProduction):
@@ -616,7 +642,7 @@ def _remove_production_atts(module: KFlatModule, *, hook_namespaces: Iterable[st
         if not sentence.klabel:
             return sentence
 
-        return sentence.let(att=sentence.att.remove([KAtt.PRODUCTION]))
+        return sentence.let(att=sentence.att.remove(atts))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
