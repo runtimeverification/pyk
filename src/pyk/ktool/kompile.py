@@ -109,8 +109,7 @@ class Kompile(ABC):
 
     @property
     @abstractmethod
-    def backend(self) -> KompileBackend:
-        ...
+    def backend(self) -> KompileBackend: ...
 
     def __call__(
         self,
@@ -174,8 +173,7 @@ class Kompile(ABC):
         return definition_dir
 
     @abstractmethod
-    def args(self) -> list[str]:
-        ...
+    def args(self) -> list[str]: ...
 
 
 @final

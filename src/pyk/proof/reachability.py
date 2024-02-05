@@ -33,8 +33,8 @@ if TYPE_CHECKING:
     from pyk.utils import BugReport
 
     from ..cterm import CSubst, CTerm
-    from ..kcfg.explore import ExtendResult
     from ..kast.outer import KClaim, KDefinition, KFlatModuleList, KRuleLike
+    from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
     from ..ktool.kprint import KPrint
 
@@ -560,7 +560,7 @@ class APRBMCProof(APRProof):
             logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
-        checked_for_subsumption = list({kcfg._resolve(node_id) for node_id in dct['checked_for_subsumption']})
+        checked_for_subsumption = set({kcfg._resolve(node_id) for node_id in dct['checked_for_subsumption']})
 
         return APRBMCProof(
             id,

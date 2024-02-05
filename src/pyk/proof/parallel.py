@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import time
 import sys
+import time
 from abc import ABC, abstractmethod
 from multiprocessing import Process, Queue
 
@@ -70,8 +70,7 @@ class Proof(ABC):
         ...
 
 
-class ProcessData(ABC):
-    ...
+class ProcessData(ABC): ...
 
 
 #      @abstractmethod

@@ -57,8 +57,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         @property
         @abstractmethod
-        def targets(self) -> tuple[KCFG.Node, ...]:
-            ...
+        def targets(self) -> tuple[KCFG.Node, ...]: ...
 
         @property
         def target_ids(self) -> list[int]:
@@ -131,8 +130,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return (self.source, self.target_ids) < (other.source, other.target_ids)
 
         @abstractmethod
-        def with_single_target(self, target: KCFG.Node) -> KCFG.MultiEdge:
-            ...
+        def with_single_target(self, target: KCFG.Node) -> KCFG.MultiEdge: ...
 
     @final
     @dataclass(frozen=True)

@@ -168,16 +168,16 @@ def llvm_to_sentence(decl: kllvm.Declaration) -> Sentence:
         case kllvm.ModuleImportDeclaration():  # type: ignore
             return Import(decl.module_name, attrs)
         case kllvm.CompositeSortDeclaration():  # type: ignore
-            return SortDecl(decl.name, vars, attrs, hooked=decl.is_hooked)
+            return SortDecl(decl.name, vars, attrs, hooked=decl.is_hooked)  # type: ignore
         case kllvm.SymbolDeclaration():  # type: ignore
             llvm_to_symbol = decl.symbol
-            symbol = Symbol(llvm_to_symbol.name, vars)
+            symbol = Symbol(llvm_to_symbol.name, vars)  # type: ignore
             param_sorts = (llvm_to_sort(sort) for sort in llvm_to_symbol.arguments)
             sort = llvm_to_sort(llvm_to_symbol.sort)
             return SymbolDecl(symbol, param_sorts, sort, attrs, hooked=decl.is_hooked)
         case kllvm.AliasDeclaration():  # type: ignore
             llvm_to_symbol = decl.symbol
-            symbol = Symbol(llvm_to_symbol.name, vars)
+            symbol = Symbol(llvm_to_symbol.name, vars)  # type: ignore
             param_sorts = (llvm_to_sort(sort) for sort in llvm_to_symbol.arguments)
             sort = llvm_to_sort(llvm_to_symbol.sort)
             left = App(*_unpack_composite_pattern(decl.variables))
@@ -186,9 +186,9 @@ def llvm_to_sentence(decl: kllvm.Declaration) -> Sentence:
         case kllvm.AxiomDeclaration():  # type: ignore
             pattern = llvm_to_pattern(decl.pattern)
             if decl.is_claim:
-                return Claim(vars, pattern, attrs)
+                return Claim(vars, pattern, attrs)  # type: ignore
             else:
-                return Axiom(vars, pattern, attrs)
+                return Axiom(vars, pattern, attrs)  # type: ignore
         case _:
             raise AssertionError()
 
