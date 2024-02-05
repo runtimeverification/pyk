@@ -192,6 +192,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_anywhere_atts(module)
     module = _add_functional_atts(module)
     module = _add_injective_atts(module)
+    module = _add_constructor_atts(module)
 
     return module
 
@@ -413,7 +414,7 @@ def _rules_by_klabel(module: KFlatModule) -> dict[KLabel, list[KRule]]:
 
 
 def _add_functional_atts(module: KFlatModule) -> KFlatModule:
-    """Add the macro attribute to all symbol productions that are not function or total"""
+    """Add the macro attribute to all symbol productions that are not function or total."""
     # TODO Why defined as (function -> total) and not as (function /\ total)?
 
     def update(sentence: KSentence) -> KSentence:
@@ -434,7 +435,7 @@ def _add_functional_atts(module: KFlatModule) -> KFlatModule:
 
 
 def _add_injective_atts(module: KFlatModule) -> KFlatModule:
-    """Add the injective attribute to all symbol productions that satisfy the criteria"""
+    """Add the injective attribute to all symbol productions that satisfy the criteria."""
 
     def update(sentence: KSentence) -> KSentence:
         if not isinstance(sentence, KProduction):
@@ -445,6 +446,29 @@ def _add_injective_atts(module: KFlatModule) -> KFlatModule:
 
         if not any(att in sentence.att for att in [KAtt.FUNCTION, KAtt.ASSOC, KAtt.COMM, KAtt.IDEM]):
             return sentence.let(att=sentence.att.update({KAtt.INJECTIVE: ''}))
+
+        return sentence
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _add_constructor_atts(module: KFlatModule) -> KFlatModule:
+    """Add the constructor attribute to all symbol productions that satisfy the citeria.
+
+    Depends on the macro, anywhere and injective attributes already being sorted out.
+    """
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        att = sentence.att
+        if KAtt.INJECTIVE in att and KAtt.MACRO not in att and KAtt.ANYWHERE not in att:
+            return sentence.let(att=sentence.att.update({KAtt.CONSTRUCTOR: ''}))
 
         return sentence
 

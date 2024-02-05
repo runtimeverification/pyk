@@ -62,6 +62,7 @@ class KAtt(KAst, Mapping[str, Any]):
     ASSOC: ClassVar[str] = 'assoc'
     COMM: ClassVar[str] = 'comm'
     CONCAT: ClassVar[str] = 'concat'
+    CONSTRUCTOR: ClassVar[str] = 'constructor'
     ELEMENT: ClassVar[str] = 'element'
     FUNCTION: ClassVar[str] = 'function'
     FUNCTIONAL: ClassVar[str] = 'functional'
