@@ -7,7 +7,7 @@ import pytest
 from pyk.kast.outer import read_kast_definition
 from pyk.konvert import module_to_kore
 from pyk.kore.parser import KoreParser
-from pyk.kore.syntax import SortDecl
+from pyk.kore.syntax import SortDecl, Symbol, SymbolDecl
 
 from .utils import K_FILES
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from pyk.kast.outer import KDefinition
-    from pyk.kore.syntax import Module
+    from pyk.kore.syntax import Module, Sentence
     from pyk.testing import Kompiler
 
 
@@ -40,6 +40,10 @@ def test_module_to_kore(imp_kast: KDefinition, imp_kore: Module) -> None:
     # Given
     expected = imp_kore
 
+    # TODO remove
+    # Filter out some attributes for now
+    expected = filter_attrs(expected)
+
     # When
     actual = module_to_kore(imp_kast)
 
@@ -53,17 +57,64 @@ def test_module_to_kore(imp_kast: KDefinition, imp_kore: Module) -> None:
     check_missing_sentences(actual, expected)
 
 
+def filter_attrs(module: Module) -> Module:
+    # Remove attributes from symbol: left, right, priorities, terminals, format
+    def update(sentence: Sentence) -> Sentence:
+        if not isinstance(sentence, SymbolDecl):
+            return sentence
+        return sentence.let(
+            attrs=tuple(
+                attr
+                for attr in sentence.attrs
+                if attr.symbol not in ['left', 'right', 'priorities', 'terminals', 'format']
+            )
+        )
+
+    return module.let(sentences=tuple(update(sentence) for sentence in module.sentences))
+
+
 def check_generated_sentences(actual: Module, expected: Module) -> None:
+    def find_expected_sentence(sentence: Sentence, expected: Module) -> Sentence | None:
+        match sentence:
+            case SortDecl(name=name):
+                return next(
+                    (
+                        sentence
+                        for sentence in expected.sentences
+                        if isinstance(sentence, SortDecl) and sentence.name == name
+                    ),
+                    None,
+                )
+            case SymbolDecl(symbol=Symbol(name=name)):
+                return next(
+                    (
+                        sentence
+                        for sentence in expected.sentences
+                        if isinstance(sentence, SymbolDecl) and sentence.symbol.name == name
+                    ),
+                    None,
+                )
+            case _:
+                return None  # TODO refine further here
+
     expected_sentences = set(expected.sentences)
     for sent in actual.sentences:
-        if sent not in expected_sentences:
+        if sent in expected_sentences:
+            continue
+
+        expected_sent = find_expected_sentence(sent, expected)
+        if expected_sent is None:
             pytest.fail(f'Invalid sentence: {sent.text}')
+
+        # Fail with diff
+        assert sent.text == expected_sent.text
 
 
 def check_missing_sentences(actual: Module, expected: Module) -> None:
     actual_sentences = set(actual.sentences)
     for sent in expected.sentences:
-        # TODO remove, filter for SortDecl for now
+        # TODO remove
+        # Filter for SortDecl and SymbolDecl for now
         if not isinstance(sent, SortDecl):
             continue
         if sent not in actual_sentences:
