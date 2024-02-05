@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import time
 from abc import ABC, abstractmethod
 from multiprocessing import Process, Queue
@@ -73,11 +72,6 @@ class Proof(ABC):
 class ProcessData(ABC): ...
 
 
-#      @abstractmethod
-#      def cleanup(self) -> None:
-#          ...
-
-
 class ProofStep(ABC, Generic[U, D]):
     """
     Should be a description of a computation needed to make progress on a `Proof`.
@@ -116,7 +110,6 @@ def prove_parallel(
     total_time = 0
 
     total_init_time = time.time_ns()
-    print('d', file=sys.stderr)
 
     def run_process(data: ProcessData) -> None:
         while True:
@@ -126,8 +119,6 @@ def prove_parallel(
             proof_id, proof_step = dequeued
             update = proof_step.exec(data)
             out_queue.put((proof_id, update))
-
-    #          data.cleanup()
 
     def submit(proof_id: str) -> None:
         proof = proofs[proof_id]
@@ -147,17 +138,14 @@ def prove_parallel(
     processes = [Process(target=run_process, args=(process_data,)) for _ in range(max_workers)]
     for process in processes:
         process.start()
-    print('e', file=sys.stderr)
 
     for proof_id in proofs.keys():
         submit(proof_id)
-        print('f', file=sys.stderr)
 
     while pending_jobs > 0:
         wait_init_time = time.time_ns()
         proof_id, update = out_queue.get()
         total_process_time += time.time_ns() - wait_init_time
-        print('g', file=sys.stderr)
         pending_jobs -= 1
 
         proof = proofs[proof_id]
