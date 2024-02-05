@@ -45,7 +45,7 @@ from .prelude.string import STRING, pretty_string, stringToken
 from .utils import FrozenDict
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Mapping
+    from collections.abc import Callable, Iterable, Iterator, Mapping
     from typing import Any, Final
 
     from .kast.outer import KDefinition, KFlatModule, KImport, KSentence
@@ -291,9 +291,9 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _pull_up_rewrites(module)
     module = _add_macro_atts(module)
     module = _add_anywhere_atts(module)
-    module = _add_functional_atts(module)
-    module = _add_injective_atts(module)
-    module = _add_constructor_atts(module)
+    module = _add_symbol_atts(module, KAtt.FUNCTIONAL, _is_functional)
+    module = _add_symbol_atts(module, KAtt.INJECTIVE, _is_injective)
+    module = _add_symbol_atts(module, KAtt.CONSTRUCTOR, _is_constructor)
     module = _discard_hook_atts(module)
     module = _discard_atts_from_symbol_productions(module, [KAtt.PRODUCTION])
 
@@ -520,9 +520,8 @@ def _rules_by_klabel(module: KFlatModule) -> dict[KLabel, list[KRule]]:
     return res
 
 
-def _add_functional_atts(module: KFlatModule) -> KFlatModule:
-    """Add the macro attribute to all symbol productions that are not function or total."""
-    # TODO Why defined as (function -> total) and not as (function /\ total)?
+def _add_symbol_atts(module: KFlatModule, att: str, pred: Callable[[KAtt], bool]) -> KFlatModule:
+    """Add attribute to symbol productions based on a predicate predicate."""
 
     def update(sentence: KSentence) -> KSentence:
         if not isinstance(sentence, KProduction):
@@ -531,76 +530,44 @@ def _add_functional_atts(module: KFlatModule) -> KFlatModule:
         if not sentence.klabel:  # filter for symbol productions
             return sentence
 
-        att = sentence.att
-        if KAtt.FUNCTION not in att or KAtt.TOTAL in att:
-            return sentence.let(att=att.update({KAtt.FUNCTIONAL: ''}))
+        if pred(sentence.att):
+            return sentence.let(att=sentence.att.update({att: ''}))
 
         return sentence
 
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+    return module.let(sentences=tuple(update(sent) for sent in module))
 
 
-def _add_injective_atts(module: KFlatModule) -> KFlatModule:
-    """Add the injective attribute to all symbol productions that satisfy the criteria."""
-
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
-
-        if not sentence.klabel:
-            return sentence
-
-        if not any(
-            att in sentence.att
-            for att in [
-                KAtt.FUNCTION,
-                KAtt.ASSOC,
-                KAtt.COMM,
-                KAtt.IDEM,
-                KAtt.UNIT,
-            ]
-        ):
-            return sentence.let(att=sentence.att.update({KAtt.INJECTIVE: ''}))
-
-        return sentence
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+def _is_functional(att: KAtt) -> bool:
+    return KAtt.FUNCTION not in att or KAtt.TOTAL in att
 
 
-def _add_constructor_atts(module: KFlatModule) -> KFlatModule:
-    """Add the constructor attribute to all symbol productions that satisfy the citeria.
+def _is_injective(att: KAtt) -> bool:
+    return not any(
+        key in att
+        for key in [
+            KAtt.FUNCTION,
+            KAtt.ASSOC,
+            KAtt.COMM,
+            KAtt.IDEM,
+            KAtt.UNIT,
+        ]
+    )
 
-    Depends on the macro, anywhere and injective attributes already being sorted out.
-    """
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
-
-        if not sentence.klabel:
-            return sentence
-
-        att = sentence.att
-        if not any(
-            att in sentence.att
-            for att in [
-                KAtt.FUNCTION,
-                KAtt.ASSOC,
-                KAtt.COMM,
-                KAtt.IDEM,
-                KAtt.UNIT,
-                KAtt.MACRO,
-                KAtt.ANYWHERE,
-            ]
-        ):
-            return sentence.let(att=att.update({KAtt.CONSTRUCTOR: ''}))
-
-        return sentence
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+def _is_constructor(att: KAtt) -> bool:
+    return not any(
+        key in att
+        for key in [
+            KAtt.FUNCTION,
+            KAtt.ASSOC,
+            KAtt.COMM,
+            KAtt.IDEM,
+            KAtt.UNIT,
+            KAtt.MACRO,
+            KAtt.ANYWHERE,
+        ]
+    )
 
 
 def _discard_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = ()) -> KFlatModule:
