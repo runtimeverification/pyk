@@ -291,8 +291,8 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _pull_up_rewrites(module)
     module = _discard_symbol_atts(module, [KAtt.PRODUCTION])
     module = _discard_hook_atts(module)
-    module = _add_macro_atts(module)
     module = _add_anywhere_atts(module)
+    module = _add_symbol_atts(module, KAtt.MACRO, _is_macro)
     module = _add_symbol_atts(module, KAtt.FUNCTIONAL, _is_functional)
     module = _add_symbol_atts(module, KAtt.INJECTIVE, _is_injective)
     module = _add_symbol_atts(module, KAtt.CONSTRUCTOR, _is_constructor)
@@ -456,30 +456,6 @@ def _pull_up_rewrites(module: KFlatModule) -> KFlatModule:
     return module.let(sentences=sentences)
 
 
-def _add_macro_atts(module: KFlatModule) -> KFlatModule:
-    """Add the macro attribute to all symbol productions with a corresponding macro rule."""
-    rules = _rules_by_klabel(module)
-
-    def is_macro(rule: KRule) -> bool:
-        return any(key in rule.att for key in [KAtt.ALIAS, KAtt.ALIAS_REC, KAtt.MACRO, KAtt.MACRO_REC])
-
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
-
-        if not sentence.klabel:
-            return sentence
-
-        klabel = sentence.klabel
-        if any(is_macro(rule) for rule in rules.get(klabel, [])):
-            return sentence.let(att=sentence.att.update({KAtt.MACRO: ''}))
-
-        return sentence
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
-
-
 def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
     """Add the macro attribute to all symbol productions with a corresponding anywhere rule."""
 
@@ -536,6 +512,10 @@ def _add_symbol_atts(module: KFlatModule, att: str, pred: Callable[[KAtt], bool]
         return sentence
 
     return module.let(sentences=tuple(update(sent) for sent in module))
+
+
+def _is_macro(att: KAtt) -> bool:
+    return any(key in att for key in [KAtt.ALIAS, KAtt.ALIAS_REC, KAtt.MACRO, KAtt.MACRO_REC])
 
 
 def _is_functional(att: KAtt) -> bool:
