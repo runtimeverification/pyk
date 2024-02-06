@@ -1412,14 +1412,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     circularity: bool
     depth_is_nonzero: bool
 
-    #      @property
-    #      def circularities_module_name(self) -> str:
-    #          return self.circularities_module_name
-    #
-    #      @property
-    #      def dependencies_module_name(self) -> str:
-    #          return self.dependencies_module_name
-
     def __hash__(self) -> int:
         return hash((self.cterm, self.node_id))
 
@@ -1431,26 +1423,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         """
 
         init_kcfg_explore = False
-
-        #          if data.kore_servers.get(self.proof_id) is None:
-        #              init_kcfg_explore = True
-        #              data.kore_servers[self.proof_id] = kore_server(
-        #                  definition_dir=data.definition_dir,
-        #                  llvm_definition_dir=data.llvm_definition_dir,
-        #                  module_name=data.module_name,
-        #                  command=data.command,
-        #                  bug_report=self.bug_report,
-        #                  smt_timeout=data.smt_timeout,
-        #                  smt_retry_limit=data.smt_retry_limit,
-        #                  smt_tactic=data.smt_tactic,
-        #                  haskell_log_format=data.haskell_log_format,
-        #                  haskell_log_entries=data.haskell_log_entries,
-        #                  log_axioms_file=data.log_axioms_file,
-        #                  fallback_on=None,
-        #                  interim_simplification=None,
-        #                  no_post_exec_simplify=None,
-        #              )
-        #          server = data.kore_servers[self.proof_id]
 
         with KoreClient(
             host='localhost',
@@ -1466,19 +1438,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 trace_rewrites=self.trace_rewrites,
             )
 
-            #              if init_kcfg_explore:
-            #                  kcfg_explore.add_dependencies_module(
-            #                      self.main_module_name,
-            #                      self.dependencies_module_name,
-            #                      self.dependencies_as_claims,
-            #                      priority=1,
-            #                  )
-            #                  kcfg_explore.add_dependencies_module(
-            #                      self.main_module_name,
-            #                      self.circularities_module_name,
-            #                      self.dependencies_as_claims + ([self.self_proof_as_claim] if self.circularity else []),
-            #                      priority=1,
-            #                  )
             def _inject_module(module_name: str, import_name: str, sentences: list[KRule]) -> None:
                 _module = KFlatModule(module_name, sentences, [KImport(import_name)])
                 _kore_module = kflatmodule_to_kore(
