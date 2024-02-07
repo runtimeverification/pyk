@@ -3,7 +3,6 @@ from __future__ import annotations
 import graphlib
 import json
 import logging
-import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -665,7 +664,7 @@ class APRProver(Prover):
                 dependencies_as_rules.append(apr_subproof.as_rule(priority=20))
         circularity_rule = proof.as_rule(priority=20)
 
-        module_name = 'M-' + re.sub(r'[_%().:,]+', '-', self.proof.id.upper())
+        module_name = KFlatModule.make_module_name(self.proof.id)
         self.dependencies_module_name = module_name + '-DEPENDS-MODULE'
         self.circularities_module_name = module_name + '-CIRCULARITIES-MODULE'
         _inject_module(self.dependencies_module_name, self.main_module_name, dependencies_as_rules)

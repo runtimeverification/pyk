@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
@@ -813,6 +814,12 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
         return ('function' in prod.att.atts or 'functional' in prod.att.atts) and not (
             prod.klabel and is_not_actually_function(prod.klabel.name)
         )
+
+    @staticmethod
+    def make_module_name(proof_id: str) -> str:
+        escaped_proof_id = re.sub(r'[_%().:,]+', '-', proof_id.upper())
+        escaped_proof_id = re.sub(r'[\[\]]', '-bkt-', escaped_proof_id)
+        return 'M-' + escaped_proof_id
 
     @cached_property
     def syntax_sorts(self) -> tuple[KSyntaxSort, ...]:
