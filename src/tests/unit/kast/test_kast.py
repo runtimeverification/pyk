@@ -295,7 +295,8 @@ def test_kast_compare(lkast: KInner, rkast: KInner, expected: bool) -> None:
 
 
 MODULE_NAME_TEST_DATA: Final = (
-    ('M-TEST-KONTROL-TEST-UINT256-BYTES[]-2', 'M-TEST-KONTROL-TEST-UINT256-BYTES-bkt--bkt--2'),
+    ('TEST-KONTROL-TEST-UINT256-BYTES[]-0', 'M-TEST-KONTROL-TEST-UINT256-BYTES-bkt--bkt--0'),
+    ('TEST_KONTROL_%)_UINT256-1', 'M-TEST-KONTROL-UINT256-1'),
 )
 
 
