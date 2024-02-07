@@ -817,9 +817,7 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
 
     @staticmethod
     def make_module_name(proof_id: str) -> str:
-        escaped_proof_id = re.sub(r'[_%().:,]+', '-', proof_id.upper())
-        escaped_proof_id = re.sub(r'[\[\]]', '-bkt-', escaped_proof_id)
-        return 'M-' + escaped_proof_id
+        return 'M-' + re.sub(r'[\[\]]|[_%().:,]+', lambda match: '-bkt-' if match.group(0) in '[]' else '-', proof_id.upper())
 
     @cached_property
     def syntax_sorts(self) -> tuple[KSyntaxSort, ...]:
