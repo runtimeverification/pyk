@@ -389,6 +389,10 @@ class APRProof(Proof, KCFGExploration):
         return f'{self.id}.node-infeasible-{node_id}'
 
     @staticmethod
+    def is_refutation_subproof(proof_id: str) -> bool:
+        return 'node-infeasible' in proof_id.split(':')[1]
+
+    @staticmethod
     def read_proof_data(proof_dir: Path, id: str) -> APRProof:
         proof_subdir = proof_dir / id
         proof_json = proof_subdir / 'proof.json'
