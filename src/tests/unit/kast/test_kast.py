@@ -292,22 +292,3 @@ KAST_COMPARE_TEST_DATA: Final = (
 def test_kast_compare(lkast: KInner, rkast: KInner, expected: bool) -> None:
     actual = lkast < rkast
     assert actual == expected
-
-
-MODULE_NAME_TEST_DATA: Final = (
-    ('TEST-KONTROL-TEST-UINT256-BYTES[]-0', 'M-TEST-KONTROL-TEST-UINT256-BYTES-bkt--bkt--0'),
-    ('TEST_KONTROL_%)_UINT256-1', 'M-TEST-KONTROL-UINT256-1'),
-)
-
-
-@pytest.mark.parametrize(
-    'proof_id, expected',
-    MODULE_NAME_TEST_DATA,
-    ids=count(),
-)
-def test_make_module_name(proof_id: str, expected: str) -> None:
-    # When
-    actual = KFlatModule.make_module_name(proof_id)
-
-    # Then
-    assert actual == expected
