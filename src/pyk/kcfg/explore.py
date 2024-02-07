@@ -521,17 +521,20 @@ class KCFGExplore:
                 raise AssertionError()
 
 
-class ExtendResult(ABC): ...
+class ExtendResult(ABC):
+    ...
 
 
 @final
 @dataclass(frozen=True)
-class Vacuous(ExtendResult): ...
+class Vacuous(ExtendResult):
+    ...
 
 
 @final
 @dataclass(frozen=True)
-class Stuck(ExtendResult): ...
+class Stuck(ExtendResult):
+    ...
 
 
 @final

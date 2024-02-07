@@ -11,7 +11,8 @@ if TYPE_CHECKING:
     from typing import Any, Final
 
 
-class AST(ABC): ...
+class AST(ABC):
+    ...
 
 
 @final
@@ -23,10 +24,12 @@ class Att(AST, Sequence[tuple[str, str]]):
         object.__setattr__(self, 'items', tuple(items))
 
     @overload
-    def __getitem__(self, key: int) -> tuple[str, str]: ...
+    def __getitem__(self, key: int) -> tuple[str, str]:
+        ...
 
     @overload
-    def __getitem__(self, key: slice) -> tuple[tuple[str, str], ...]: ...
+    def __getitem__(self, key: slice) -> tuple[tuple[str, str], ...]:
+        ...
 
     def __getitem__(self, key: Any) -> Any:
         return self.items[key]
@@ -38,10 +41,12 @@ class Att(AST, Sequence[tuple[str, str]]):
 EMPTY_ATT: Final = Att()
 
 
-class Sentence(AST, ABC): ...
+class Sentence(AST, ABC):
+    ...
 
 
-class SyntaxSentence(Sentence, ABC): ...
+class SyntaxSentence(Sentence, ABC):
+    ...
 
 
 class Assoc(Enum):
@@ -118,7 +123,8 @@ class Production(ProductionLike):
         object.__setattr__(self, 'att', att)
 
 
-class ProductionItem(AST, ABC): ...
+class ProductionItem(AST, ABC):
+    ...
 
 
 @final

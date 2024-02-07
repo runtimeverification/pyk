@@ -69,7 +69,8 @@ class Proof(ABC):
         ...
 
 
-class ProcessData(ABC): ...
+class ProcessData(ABC):
+    ...
 
 
 class ProofStep(ABC, Generic[U, D]):

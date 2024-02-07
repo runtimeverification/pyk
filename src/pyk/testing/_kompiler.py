@@ -228,7 +228,8 @@ class KoreClientTest(KompiledTest):
 
 class KCFGExploreTest(KoreClientTest, KPrintTest):
     @abstractmethod
-    def semantics(self, definition: KDefinition) -> KCFGSemantics: ...
+    def semantics(self, definition: KDefinition) -> KCFGSemantics:
+        ...
 
     @pytest.fixture
     def kcfg_explore(

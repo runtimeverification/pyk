@@ -1252,22 +1252,12 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         steps: list[APRProofStep] = []
         target_node = proof.kcfg.node(proof.target)
 
-
         for pending_node in proof.pending:
             module_name = (
                 self.prover.circularities_module_name
                 if self.prover.nonzero_depth(pending_node)
                 else self.prover.dependencies_module_name
             )
-
-            subproofs: list[Proof] = (
-                [Proof.read_proof_data(proof.proof_dir, i) for i in proof.subproof_ids]
-                if proof.proof_dir is not None
-                else []
-            )
-
-            apr_subproofs: list[APRProof] = [pf for pf in subproofs if isinstance(pf, APRProof)]
-
             steps.append(
                 APRProofStep(
                     proof_id=proof.id,
@@ -1414,9 +1404,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
         Allowed to be nondeterministic.
         Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
         """
-
-        init_kcfg_explore = False
-
         with KoreClient(
             host='localhost',
             port=self.port,

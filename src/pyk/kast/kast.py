@@ -27,7 +27,8 @@ class KAst(ABC):
         return 3
 
     @abstractmethod
-    def to_dict(self) -> dict[str, Any]: ...
+    def to_dict(self) -> dict[str, Any]:
+        ...
 
     @final
     def to_json(self) -> str:
@@ -143,7 +144,8 @@ class WithKAtt(ABC):
     att: KAtt
 
     @abstractmethod
-    def let_att(self: W, att: KAtt) -> W: ...
+    def let_att(self: W, att: KAtt) -> W:
+        ...
 
     def map_att(self: W, f: Callable[[KAtt], KAtt]) -> W:
         return self.let_att(att=f(self.att))

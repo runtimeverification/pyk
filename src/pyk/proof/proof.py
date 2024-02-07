@@ -171,7 +171,8 @@ class Proof(ABC):
 
     @property
     @abstractmethod
-    def status(self) -> ProofStatus: ...
+    def status(self) -> ProofStatus:
+        ...
 
     @property
     def failed(self) -> bool:
@@ -191,7 +192,8 @@ class Proof(ABC):
 
     @classmethod
     @abstractmethod
-    def from_dict(cls: type[Proof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> Proof: ...
+    def from_dict(cls: type[Proof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> Proof:
+        ...
 
     @classmethod
     def read_proof(cls: type[Proof], id: str, proof_dir: Path) -> Proof:
@@ -257,7 +259,8 @@ class ProofSummary(ABC):
 
     @property
     @abstractmethod
-    def lines(self) -> list[str]: ...
+    def lines(self) -> list[str]:
+        ...
 
     def __str__(self) -> str:
         return '\n'.join(self.lines)
