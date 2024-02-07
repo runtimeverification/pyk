@@ -1166,11 +1166,6 @@ class APRProofProcessData(parallel.ProcessData):
         self.log_axioms_file = log_axioms_file
 
 
-#      def cleanup(self) -> None:
-#          for server in self.kore_servers.values():
-#              server.close()
-
-
 class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProcessData]):
     prover: APRProver
     kcfg_explore: KCFGExplore
@@ -1256,6 +1251,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         """
         steps: list[APRProofStep] = []
         target_node = proof.kcfg.node(proof.target)
+
+
         for pending_node in proof.pending:
             module_name = (
                 self.prover.circularities_module_name
@@ -1292,8 +1289,6 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
                     is_terminal=(self.kcfg_explore.kcfg_semantics.is_terminal(pending_node.cterm)),
                     target_is_terminal=(proof.target not in proof._terminal),
                     main_module_name=self.prover.main_module_name,
-                    dependencies_as_rules=[d.as_rule() for d in apr_subproofs],
-                    self_proof_as_rule=proof.as_rule(),
                     circularity=proof.circularity,
                     depth_is_nonzero=self.prover.nonzero_depth(pending_node),
                 )
@@ -1407,8 +1402,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
     id: str | None
     trace_rewrites: bool
 
-    dependencies_as_rules: list[KRule]
-    self_proof_as_rule: KRule
     circularity: bool
     depth_is_nonzero: bool
 
@@ -1437,17 +1430,6 @@ class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
                 id=self.id,
                 trace_rewrites=self.trace_rewrites,
             )
-
-            def _inject_module(module_name: str, import_name: str, sentences: list[KRule]) -> None:
-                _module = KFlatModule(module_name, sentences, [KImport(import_name)])
-                _kore_module = kflatmodule_to_kore(
-                    kcfg_explore.kprint.definition, kcfg_explore.kprint.kompiled_kore, _module
-                )
-                kcfg_explore._kore_client.add_module(_kore_module, name_as_id=True)
-
-            if init_kcfg_explore:
-                _inject_module(self.dependencies_module_name, self.main_module_name, self.dependencies_as_rules)
-                _inject_module(self.circularities_module_name, self.main_module_name, [self.self_proof_as_rule])
 
             cterm_implies_time = 0
             extend_cterm_time = 0
