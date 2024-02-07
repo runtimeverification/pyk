@@ -38,6 +38,5 @@ endmodule
 module MULTI-CLAIM-BROKEN-SPEC
     imports MULTI-CLAIM-SPEC
 
-    claim <k> a => b </k> [depends(non-existent-1)]
-
+    claim [bad-dep]: <k> a => b </k> [depends(non-existent-1)]
 endmodule
