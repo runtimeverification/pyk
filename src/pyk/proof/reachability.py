@@ -3,6 +3,7 @@ from __future__ import annotations
 import graphlib
 import json
 import logging
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -90,6 +91,12 @@ class APRProof(Proof, KCFGExploration):
                 subproof = self._subproofs[proof_id]
                 assert type(subproof) is RefutationProof
                 self.node_refutations[node_id] = subproof
+
+    @property
+    def module_name(self) -> str:
+        return 'M-' + re.sub(
+            r'[\[\]]|[_%().:,]+', lambda match: 'bkt' if match.group(0) in ['[', ']'] else '-', self.id.upper()
+        )
 
     @property
     def pending(self) -> list[KCFG.Node]:
@@ -664,7 +671,7 @@ class APRProver(Prover):
                 dependencies_as_rules.append(apr_subproof.as_rule(priority=20))
         circularity_rule = proof.as_rule(priority=20)
 
-        module_name = KFlatModule.make_module_name(self.proof.id)
+        module_name = self.proof.module_name
         self.dependencies_module_name = module_name + '-DEPENDS-MODULE'
         self.circularities_module_name = module_name + '-CIRCULARITIES-MODULE'
         _inject_module(self.dependencies_module_name, self.main_module_name, dependencies_as_rules)
