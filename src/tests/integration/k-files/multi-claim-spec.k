@@ -30,11 +30,13 @@ module MULTI-CLAIM-SPEC
 
     claim [main.1]: <k> a => c </k> [depends(dep,MULTI-CLAIM-SPEC-DEPENDENCY-1.dep-1.1)]
 
-    claim [main.2]: <k> a => c </k> [depends(dep,MULTI-CLAIM-SPEC-DEPENDENCY-1.dep-1.2)]
-
     claim [main.3]: <k> a => c </k> [depends(MULTI-CLAIM-SPEC.dep)]
 
-    claim [main.4]: <k> a => c </k> [depends(dep-1.2)]
-
     claim [rep-dep]: <k> c => b </k>
+endmodule
+
+module MULTI-CLAIM-BROKEN-SPEC
+    imports MULTI-CLAIM-SPEC
+
+    claim [bad-dep]: <k> a => b </k> [depends(non-existent-1)]
 endmodule
