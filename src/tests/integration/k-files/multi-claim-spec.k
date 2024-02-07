@@ -26,6 +26,8 @@ module MULTI-CLAIM-SPEC
 
     claim <k> a => b </k>
 
+    claim <k> a => c </k>
+
     claim [dep]: <k> c => a </k>
 
     claim [main.1]: <k> a => c </k> [depends(dep,MULTI-CLAIM-SPEC-DEPENDENCY-1.dep-1.1)]

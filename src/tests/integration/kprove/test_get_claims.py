@@ -98,7 +98,7 @@ class TestGetClaims(KProveTest):
 
     def test_get_claims_unlabeled(self, kprove: KProve) -> None:
         claims = kprove.get_claims(self.KOMPILE_MAIN_FILE, self.SPEC_MODULE_NAME)
-        assert len(claims) == 9
+        assert len(claims) == 10
 
     def test_get_claims_broken(self, kprove: KProve) -> None:
         with pytest.raises(ValueError):
