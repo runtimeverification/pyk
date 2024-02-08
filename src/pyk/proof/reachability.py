@@ -94,9 +94,7 @@ class APRProof(Proof, KCFGExploration):
 
     @property
     def module_name(self) -> str:
-        return 'M-' + re.sub(
-            r'[\[\]]|[_%().:,]+', lambda match: 'bkt' if match.group(0) in ['[', ']'] else '-', self.id.upper()
-        )
+        return self._make_module_name(self.id)
 
     @property
     def pending(self) -> list[KCFG.Node]:
@@ -135,6 +133,12 @@ class APRProof(Proof, KCFGExploration):
     def prune(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[int]:
         pruned_nodes = super().prune(node_id, keep_nodes=list(keep_nodes) + [self.init, self.target])
         return pruned_nodes
+
+    @staticmethod
+    def _make_module_name(proof_id: str) -> str:
+        return 'M-' + re.sub(
+            r'[\[\]]|[_%().:,]+', lambda match: 'bkt' if match.group(0) in ['[', ']'] else '-', proof_id.upper()
+        )
 
     @staticmethod
     def read_proof(id: str, proof_dir: Path) -> APRProof:
