@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from multiprocessing import Process, Queue
 
 #  from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 from pyk.proof.proof import ProofStatus
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 P = TypeVar('P', bound='Proof')
 U = TypeVar('U')
-D = TypeVar('D', bound='ProcessData')
+D = TypeVar('D')
 
 
 class Prover(ABC, Generic[P, U, D]):
@@ -69,10 +69,6 @@ class Proof(ABC):
         ...
 
 
-class ProcessData(ABC):
-    ...
-
-
 class ProofStep(ABC, Generic[U, D]):
     """
     Should be a description of a computation needed to make progress on a `Proof`.
@@ -96,7 +92,7 @@ def prove_parallel(
     proofs: Mapping[str, Proof],
     provers: Mapping[str, Prover],
     max_workers: int,
-    process_data: ProcessData,
+    process_data: Any,
 ) -> Iterable[Proof]:
     explored: set[tuple[str, ProofStep]] = set()
 
@@ -112,7 +108,7 @@ def prove_parallel(
 
     total_init_time = time.time_ns()
 
-    def run_process(data: ProcessData) -> None:
+    def run_process(data: Any) -> None:
         while True:
             dequeued = in_queue.get()
             if dequeued == 0:

@@ -1119,7 +1119,7 @@ class APRProofSubsumeResult(APRProofResult):
     csubst: CSubst | None
 
 
-class APRProofProcessData(parallel.ProcessData):
+class APRProofProcessData:
     kprint: KPrint
     kcfg_semantics: KCFGSemantics | None
 

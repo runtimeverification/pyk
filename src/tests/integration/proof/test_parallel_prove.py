@@ -4,7 +4,7 @@ import sys
 import time
 from dataclasses import dataclass
 
-from pyk.proof.parallel import ProcessData, Proof, ProofStep, Prover, prove_parallel
+from pyk.proof.parallel import Proof, ProofStep, Prover, prove_parallel
 from pyk.proof.proof import ProofStatus
 
 
@@ -34,23 +34,18 @@ class TreeExploreProof(Proof):
             return ProofStatus.PENDING
 
 
-class TreeExploreProofProcessData(ProcessData):
-    def cleanup(self) -> None:
-        pass
-
-
 @dataclass(frozen=True)
-class TreeExploreProofStep(ProofStep[int, TreeExploreProofProcessData]):
+class TreeExploreProofStep(ProofStep[int, None]):
     node: int
 
-    def exec(self, data: TreeExploreProofProcessData) -> int:
+    def exec(self, data: None) -> int:
         print(f'exec {self.node}', file=sys.stderr)
         time.sleep(1)
         print(f'done {self.node}', file=sys.stderr)
         return self.node
 
 
-class TreeExploreProver(Prover[TreeExploreProof, int, TreeExploreProofProcessData]):
+class TreeExploreProver(Prover[TreeExploreProof, int, None]):
     def __init__(self) -> None:
         return
 
@@ -101,9 +96,7 @@ SIMPLE_TREE: dict[int, set[int]] = {
 def test_parallel_prove() -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof(0, 9, SIMPLE_TREE, set())
-    results = prove_parallel(
-        {'proof1': proof}, {'proof1': prover}, max_workers=2, process_data=TreeExploreProofProcessData()
-    )
+    results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, process_data=None)
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.PASSED
@@ -112,9 +105,7 @@ def test_parallel_prove() -> None:
 def test_parallel_fail() -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof(0, 9, SIMPLE_TREE, {6})
-    results = prove_parallel(
-        {'proof1': proof}, {'proof1': prover}, max_workers=2, process_data=TreeExploreProofProcessData()
-    )
+    results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, process_data=None)
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.FAILED
@@ -128,7 +119,7 @@ def test_parallel_multiple_proofs() -> None:
         proofs,
         provers_map,
         max_workers=4,
-        process_data=TreeExploreProofProcessData(),
+        process_data=None,
     )
     assert len(list(results)) == 3
     for proof in proofs.values():
