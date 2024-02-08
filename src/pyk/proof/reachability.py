@@ -1184,6 +1184,9 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
     total_cterm_implies_time: int
     total_cterm_extend_time: int
 
+    max_iterations: int | None
+    iterations: int
+
     def __init__(
         self,
         proof: APRProof,
@@ -1207,6 +1210,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
+        max_iterations: int | None = None,
     ) -> None:
         self.execute_depth = execute_depth
         self.cut_point_rules = cut_point_rules
@@ -1235,6 +1239,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         )
         self.prover = APRProver(proof=proof, kcfg_explore=self.kcfg_explore)
         self.prover._check_all_terminals()
+        self.max_iterations = max_iterations
+        self.iterations = 0
 
     def __del__(self) -> None:
         self.client.close()
@@ -1246,6 +1252,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         Must not modify `self` or `proof`.
         The output of this function must only change with calls to `self.commit()`.
         """
+        if self.max_iterations is not None and self.iterations >= self.max_iterations:
+            return []
         steps: list[APRProofStep] = []
         target_node = proof.kcfg.node(proof.target)
 
@@ -1290,6 +1298,9 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         Steps for a proof `proof` can have their results submitted any time after they are made available by `self.steps(proof)`, including in any order and multiple times, and the Prover must be able to handle this.
         """
 
+        if self.max_iterations is not None and self.iterations >= self.max_iterations:
+            return
+
         self.prover._check_all_terminals()
 
         self.total_cterm_extend_time += update.extend_cterm_time
@@ -1312,6 +1323,10 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
             self.prover.save_failure_info()
 
         proof.write_proof_data()
+
+        self.iterations += 1
+        if self.max_iterations is not None and self.iterations >= self.max_iterations:
+            _LOGGER.warning(f'Reached iteration bound {proof.id}: {self.max_iterations}')
 
 
 class ParallelAPRBMCProver(ParallelAPRProver):
