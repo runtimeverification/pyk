@@ -4,15 +4,18 @@ import graphlib
 import json
 import logging
 import re
+import time
+from abc import ABC
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from pyk.kore.rpc import LogEntry
+import pyk.proof.parallel as parallel
+from pyk.kore.rpc import KoreClient, KoreExecLogFormat, LogEntry
 
 from ..kast.inner import KInner, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
-from ..kcfg import KCFG
+from ..kcfg import KCFG, KCFGExplore
 from ..kcfg.exploration import KCFGExploration
 from ..konvert import kflatmodule_to_kore
 from ..prelude.kbool import BOOL, TRUE
@@ -26,16 +29,21 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
+    from pyk.kcfg.semantics import KCFGSemantics
+    from pyk.utils import BugReport
+
+    from ..cterm import CSubst, CTerm
     from ..kast.outer import KClaim, KDefinition, KFlatModuleList, KRuleLike
-    from ..kcfg import KCFGExplore
+    from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
+    from ..ktool.kprint import KPrint
 
     T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class APRProof(Proof, KCFGExploration):
+class APRProof(Proof, KCFGExploration, parallel.Proof):
     """APRProof and APRProver implement all-path reachability logic,
     as introduced by A. Stefanescu and others in their paper 'All-Path Reachability Logic':
     https://doi.org/10.23638/LMCS-15(2:5)2019
@@ -49,6 +57,7 @@ class APRProof(Proof, KCFGExploration):
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
     failure_info: APRFailureInfo | None
+    checked_for_subsumption: set[int]
 
     def __init__(
         self,
@@ -58,6 +67,7 @@ class APRProof(Proof, KCFGExploration):
         init: NodeIdLike,
         target: NodeIdLike,
         logs: dict[int, tuple[LogEntry, ...]],
+        checked_for_subsumption: set[int] | None = None,
         proof_dir: Path | None = None,
         node_refutations: dict[int, str] | None = None,
         subproof_ids: Iterable[str] = (),
@@ -67,6 +77,7 @@ class APRProof(Proof, KCFGExploration):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
 
+        self.checked_for_subsumption = checked_for_subsumption if checked_for_subsumption is not None else set()
         self.failure_info = None
         self.init = kcfg._resolve(init)
         self.target = kcfg._resolve(target)
@@ -115,7 +126,7 @@ class APRProof(Proof, KCFGExploration):
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return (
             self.kcfg.is_leaf(node_id)
-            and not self.is_explorable(node_id)
+            and ((node_id in self.checked_for_subsumption) or self.kcfg.is_stuck(node_id))
             and not self.is_target(node_id)
             and not self.is_refuted(node_id)
             and not self.kcfg.is_vacuous(node_id)
@@ -161,6 +172,7 @@ class APRProof(Proof, KCFGExploration):
         admitted = dct.get('admitted', False)
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
+        checked_for_subsumption = set(dct['checked_for_subsumption'])
         if 'node_refutation' in dct:
             node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
         if 'logs' in dct:
@@ -180,6 +192,7 @@ class APRProof(Proof, KCFGExploration):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            checked_for_subsumption=checked_for_subsumption,
         )
 
     @staticmethod
@@ -311,6 +324,7 @@ class APRProof(Proof, KCFGExploration):
         dct['target'] = self.target
         dct['node_refutations'] = {node_id: proof.id for (node_id, proof) in self.node_refutations.items()}
         dct['circularity'] = self.circularity
+        dct['checked_for_subsumption'] = list(self.checked_for_subsumption)
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
         return dct
@@ -354,6 +368,7 @@ class APRProof(Proof, KCFGExploration):
         terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
+        checked_for_subsumption = proof_dict['checked_for_subsumption']
         node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in proof_dict['node_refutations']}
 
         return APRProof(
@@ -368,6 +383,7 @@ class APRProof(Proof, KCFGExploration):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            checked_for_subsumption=checked_for_subsumption,
         )
 
     def write_proof_data(self) -> None:
@@ -390,6 +406,7 @@ class APRProof(Proof, KCFGExploration):
             self.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
         }
         dct['circularity'] = self.circularity
+        dct['checked_for_subsumption'] = list(self.checked_for_subsumption)
         logs = {int(k): [l.to_dict() for l in ls] for k, ls in self.logs.items()}
         dct['logs'] = logs
 
@@ -482,6 +499,7 @@ class APRBMCProof(APRProof):
         bounded: Iterable[int] | None = None,
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
+        checked_for_subsumption: set[int] | None = None,
         node_refutations: dict[int, str] | None = None,
         circularity: bool = False,
         admitted: bool = False,
@@ -498,6 +516,7 @@ class APRBMCProof(APRProof):
             node_refutations=node_refutations,
             circularity=circularity,
             admitted=admitted,
+            checked_for_subsumption=checked_for_subsumption,
         )
         self.bmc_depth = bmc_depth
         self._bounded = set(bounded) if bounded is not None else set()
@@ -519,6 +538,7 @@ class APRBMCProof(APRProof):
         node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in proof_dict['node_refutations']}
         bounded = proof_dict['bounded']
         bmc_depth = int(proof_dict['bmc_depth'])
+        checked_for_subsumption = {kcfg._resolve(node_id) for node_id in proof_dict['checked_for_subsumption']}
 
         return APRBMCProof(
             id=id,
@@ -534,6 +554,7 @@ class APRBMCProof(APRProof):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            checked_for_subsumption=checked_for_subsumption,
         )
 
     def write_proof_data(self) -> None:
@@ -560,6 +581,7 @@ class APRBMCProof(APRProof):
         dct['terminal'] = sorted(self._terminal)
         dct['bounded'] = sorted(self._bounded)
         dct['bmc_depth'] = self.bmc_depth
+        dct['checked_for_subsumption'] = list(self.checked_for_subsumption)
 
         proof_json.write_text(json.dumps(dct))
         _LOGGER.info(f'Wrote proof data for {self.id}: {proof_json}')
@@ -604,6 +626,7 @@ class APRBMCProof(APRProof):
             logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
             logs = {}
+        checked_for_subsumption = set({kcfg._resolve(node_id) for node_id in dct['checked_for_subsumption']})
 
         return APRBMCProof(
             id,
@@ -619,6 +642,7 @@ class APRBMCProof(APRProof):
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
             admitted=admitted,
+            checked_for_subsumption=checked_for_subsumption,
         )
 
     @property
@@ -776,6 +800,7 @@ class APRProver(Prover):
             )
             return False
         csubst = self.kcfg_explore.cterm_implies(node.cterm, self.proof.kcfg.node(self.proof.target).cterm)
+        self.proof.checked_for_subsumption.add(node.id)
         if csubst is not None:
             self.proof.kcfg.create_cover(node.id, self.proof.target, csubst=csubst)
             _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}')
@@ -1073,3 +1098,352 @@ class APRBMCSummary(ProofSummary):
             f'    bounded: {self.bounded}',
             f'Subproofs: {self.subproofs}',
         ]
+
+
+@dataclass(frozen=True)
+class APRProofResult(ABC):
+    cterm_implies_time: int
+    extend_cterm_time: int
+
+
+@dataclass(frozen=True)
+class APRProofExtendResult(APRProofResult):
+    extend_result: ExtendResult
+    node_id: int
+
+
+@dataclass(frozen=True)
+class APRProofSubsumeResult(APRProofResult):
+    node_id: int
+    subsume_node_id: int
+    csubst: CSubst | None
+
+
+class APRProofProcessData:
+    kprint: KPrint
+    kcfg_semantics: KCFGSemantics | None
+
+    definition_dir: str | Path
+    llvm_definition_dir: Path | None
+    module_name: str
+    command: str | Iterable[str] | None
+    smt_timeout: int | None
+    smt_retry_limit: int | None
+    smt_tactic: str | None
+    haskell_log_format: KoreExecLogFormat
+    haskell_log_entries: Iterable[str]
+    log_axioms_file: Path | None
+
+    def __init__(
+        self,
+        kprint: KPrint,
+        kcfg_semantics: KCFGSemantics,
+        definition_dir: str | Path,
+        module_name: str,
+        llvm_definition_dir: Path | None = None,
+        command: str | Iterable[str] | None = None,
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        smt_tactic: str | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ) -> None:
+        self.kprint = kprint
+        self.kcfg_semantics = kcfg_semantics
+        self.definition_dir = definition_dir
+        self.llvm_definition_dir = llvm_definition_dir
+        self.module_name = module_name
+        self.command = command
+        self.smt_timeout = smt_timeout
+        self.smt_retry_limit = smt_retry_limit
+        self.smt_tactic = smt_tactic
+        self.haskell_log_format = haskell_log_format
+        self.haskell_log_entries = haskell_log_entries
+        self.log_axioms_file = log_axioms_file
+
+
+class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProcessData]):
+    prover: APRProver
+    kcfg_explore: KCFGExplore
+    port: int
+    client: KoreClient
+
+    execute_depth: int | None
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
+
+    kprint: KPrint
+    kcfg_semantics: KCFGSemantics | None
+    id: str | None
+    trace_rewrites: bool
+
+    bug_report: BugReport | None
+    bug_report_id: str | None
+
+    total_cterm_implies_time: int
+    total_cterm_extend_time: int
+
+    def __init__(
+        self,
+        proof: APRProof,
+        module_name: str,
+        definition_dir: str | Path,
+        execute_depth: int | None,
+        kprint: KPrint,
+        kcfg_semantics: KCFGSemantics | None,
+        port: int,
+        id: str | None,
+        trace_rewrites: bool,
+        cut_point_rules: Iterable[str],
+        terminal_rules: Iterable[str],
+        bug_report_id: str | None,
+        llvm_definition_dir: Path | None = None,
+        command: str | Iterable[str] | None = None,
+        bug_report: BugReport | None = None,
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        smt_tactic: str | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ) -> None:
+        self.execute_depth = execute_depth
+        self.cut_point_rules = cut_point_rules
+        self.terminal_rules = terminal_rules
+        self.kprint = kprint
+        self.kcfg_semantics = kcfg_semantics
+        self.id = id
+        self.trace_rewrites = trace_rewrites
+        self.port = port
+        self.bug_report = bug_report
+        self.bug_report_id = bug_report_id
+        self.total_cterm_extend_time = 0
+        self.total_cterm_implies_time = 0
+        self.client = KoreClient(
+            host='localhost',
+            port=self.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
+        )
+        self.kcfg_explore = KCFGExplore(
+            kprint=self.kprint,
+            kore_client=self.client,
+            kcfg_semantics=self.kcfg_semantics,
+            id=self.id,
+            trace_rewrites=self.trace_rewrites,
+        )
+        self.prover = APRProver(proof=proof, kcfg_explore=self.kcfg_explore)
+        self.prover._check_all_terminals()
+
+    def __del__(self) -> None:
+        self.client.close()
+
+    def steps(self, proof: APRProof) -> Iterable[APRProofStep]:
+        """
+        Return a list of `ProofStep[U]` which represents all the computation jobs as defined by `ProofStep`, which have not yet been computed and committed, and are available given the current state of `proof`. Note that this is a requirement which is not enforced by the type system.
+        If `steps()` or `commit()` has been called on a proof `proof`, `steps()` may never again be called on `proof`.
+        Must not modify `self` or `proof`.
+        The output of this function must only change with calls to `self.commit()`.
+        """
+        steps: list[APRProofStep] = []
+        target_node = proof.kcfg.node(proof.target)
+
+        for pending_node in proof.pending:
+            module_name = (
+                self.prover.circularities_module_name
+                if self.prover.nonzero_depth(pending_node)
+                else self.prover.dependencies_module_name
+            )
+            steps.append(
+                APRProofStep(
+                    proof_id=proof.id,
+                    cterm=pending_node.cterm,
+                    node_id=pending_node.id,
+                    dependencies_module_name=self.prover.dependencies_module_name,
+                    circularities_module_name=self.prover.circularities_module_name,
+                    target_cterm=target_node.cterm,
+                    target_node_id=target_node.id,
+                    use_module_name=module_name,
+                    port=self.port,
+                    execute_depth=self.execute_depth,
+                    terminal_rules=self.terminal_rules,
+                    cut_point_rules=self.cut_point_rules,
+                    id=self.id,
+                    trace_rewrites=self.trace_rewrites,
+                    bug_report=self.bug_report,
+                    bug_report_id=self.bug_report_id,
+                    is_terminal=(self.kcfg_explore.kcfg_semantics.is_terminal(pending_node.cterm)),
+                    target_is_terminal=(proof.target not in proof._terminal),
+                    main_module_name=self.prover.main_module_name,
+                    circularity=proof.circularity,
+                    depth_is_nonzero=self.prover.nonzero_depth(pending_node),
+                )
+            )
+        return steps
+
+    def commit(self, proof: APRProof, update: APRProofResult) -> None:
+        """
+        Should update `proof` according to `update`.
+        If `steps()` or `commit()` has been called on a proof `proof`, `commit()` may never again be called on `proof`.
+        Must only be called with an `update` that was returned by `step.execute()` where `step` was returned by `self.steps(proof)`.
+        Steps for a proof `proof` can have their results submitted any time after they are made available by `self.steps(proof)`, including in any order and multiple times, and the Prover must be able to handle this.
+        """
+
+        self.prover._check_all_terminals()
+
+        self.total_cterm_extend_time += update.extend_cterm_time
+        self.total_cterm_implies_time += update.cterm_implies_time
+
+        # Extend proof as per `update`
+        if type(update) is APRProofExtendResult:
+            node = proof.kcfg.node(update.node_id)
+            self.kcfg_explore.extend_kcfg(
+                extend_result=update.extend_result, kcfg=proof.kcfg, node=node, logs=proof.logs
+            )
+        elif type(update) is APRProofSubsumeResult:
+            proof.checked_for_subsumption.add(update.node_id)
+            if update.csubst is None:
+                proof._terminal.add(update.node_id)
+            else:
+                proof.kcfg.create_cover(update.node_id, proof.target, csubst=update.csubst)
+
+        if proof.failed:
+            self.prover.save_failure_info()
+
+        proof.write_proof_data()
+
+
+class ParallelAPRBMCProver(ParallelAPRProver):
+    def __init__(
+        self,
+        proof: APRBMCProof,
+        module_name: str,
+        definition_dir: str | Path,
+        execute_depth: int | None,
+        kprint: KPrint,
+        kcfg_semantics: KCFGSemantics | None,
+        port: int,
+        id: str | None,
+        trace_rewrites: bool,
+        cut_point_rules: Iterable[str],
+        terminal_rules: Iterable[str],
+        bug_report_id: str | None,
+        llvm_definition_dir: Path | None = None,
+        command: str | Iterable[str] | None = None,
+        bug_report: BugReport | None = None,
+        smt_timeout: int | None = None,
+        smt_retry_limit: int | None = None,
+        smt_tactic: str | None = None,
+        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
+        haskell_log_entries: Iterable[str] = (),
+        log_axioms_file: Path | None = None,
+    ) -> None:
+        self.execute_depth = execute_depth
+        self.cut_point_rules = cut_point_rules
+        self.terminal_rules = terminal_rules
+        self.kprint = kprint
+        self.kcfg_semantics = kcfg_semantics
+        self.id = id
+        self.trace_rewrites = trace_rewrites
+        self.bug_report = bug_report
+        self.bug_report_id = bug_report_id
+        self.client = KoreClient(
+            host='localhost',
+            port=self.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
+        )
+        self.kcfg_explore = KCFGExplore(
+            kprint=self.kprint,
+            kore_client=self.client,
+            kcfg_semantics=self.kcfg_semantics,
+            id=self.id,
+            trace_rewrites=self.trace_rewrites,
+        )
+        self.prover = APRBMCProver(proof=proof, kcfg_explore=self.kcfg_explore)
+
+
+@dataclass(frozen=True, eq=True)
+class APRProofStep(parallel.ProofStep[APRProofResult, APRProofProcessData]):
+    proof_id: str
+    cterm: CTerm
+    node_id: int
+    dependencies_module_name: str
+    circularities_module_name: str
+    use_module_name: str
+    target_cterm: CTerm
+    target_node_id: int
+    port: int
+    execute_depth: int | None
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
+    is_terminal: bool
+    target_is_terminal: bool
+
+    main_module_name: str
+
+    bug_report: BugReport | None
+    bug_report_id: str | None
+
+    id: str | None
+    trace_rewrites: bool
+
+    circularity: bool
+    depth_is_nonzero: bool
+
+    def __hash__(self) -> int:
+        return hash((self.cterm, self.node_id))
+
+    def exec(self, data: APRProofProcessData) -> APRProofResult:
+        """
+        Should perform some nontrivial computation given by `self`, which can be done independently of other calls to `exec()`.
+        Allowed to be nondeterministic.
+        Able to be called on any `ProofStep` returned by `prover.steps(proof)`.
+        """
+        with KoreClient(
+            host='localhost',
+            port=self.port,
+            bug_report=self.bug_report,
+            bug_report_id=self.bug_report_id,
+        ) as client:
+            kcfg_explore = KCFGExplore(
+                kprint=data.kprint,
+                kore_client=client,
+                kcfg_semantics=data.kcfg_semantics,
+                id=self.id,
+                trace_rewrites=self.trace_rewrites,
+            )
+
+            cterm_implies_time = 0
+            extend_cterm_time = 0
+
+            if self.is_terminal or self.target_is_terminal:
+                init_cterm_implies_time = time.time_ns()
+                csubst = kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
+                cterm_implies_time = time.time_ns() - init_cterm_implies_time
+                if csubst is not None or self.is_terminal:
+                    return APRProofSubsumeResult(
+                        node_id=self.node_id,
+                        subsume_node_id=self.target_node_id,
+                        csubst=csubst,
+                        cterm_implies_time=cterm_implies_time,
+                        extend_cterm_time=extend_cterm_time,
+                    )
+
+            self.circularities_module_name if self.depth_is_nonzero else self.dependencies_module_name
+            init_extend_cterm_time = time.time_ns()
+            result = kcfg_explore.extend_cterm(
+                self.cterm,
+                module_name=self.use_module_name,
+                execute_depth=self.execute_depth,
+                terminal_rules=self.terminal_rules,
+                cut_point_rules=self.cut_point_rules,
+            )
+            extend_cterm_time = time.time_ns() - init_extend_cterm_time
+            return APRProofExtendResult(
+                extend_result=result,
+                node_id=self.node_id,
+                cterm_implies_time=cterm_implies_time,
+                extend_cterm_time=extend_cterm_time,
+            )

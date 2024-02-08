@@ -34,15 +34,15 @@ class TreeExploreProof(Proof):
 
 
 @dataclass(frozen=True)
-class TreeExploreProofStep(ProofStep[int]):
+class TreeExploreProofStep(ProofStep[int, None]):
     node: int
 
-    def exec(self) -> int:
+    def exec(self, data: None) -> int:
         time.sleep(1)
         return self.node
 
 
-class TreeExploreProver(Prover[TreeExploreProof, int]):
+class TreeExploreProver(Prover[TreeExploreProof, int, None]):
     def __init__(self) -> None:
         return
 
@@ -93,7 +93,7 @@ SIMPLE_TREE: dict[int, set[int]] = {
 def test_parallel_prove() -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof(0, 9, SIMPLE_TREE, set())
-    results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2)
+    results, _ = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, process_data=None)
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.PASSED
@@ -102,7 +102,7 @@ def test_parallel_prove() -> None:
 def test_parallel_fail() -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof(0, 9, SIMPLE_TREE, {6})
-    results = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2)
+    results, _ = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, process_data=None)
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.FAILED
@@ -112,10 +112,11 @@ def test_parallel_multiple_proofs() -> None:
     prover = TreeExploreProver()
     proofs = {f'proof{i}': TreeExploreProof(0, 9, SIMPLE_TREE, set()) for i in range(3)}
     provers_map = {f'proof{i}': prover for i in range(3)}
-    results = prove_parallel(
+    results, _ = prove_parallel(
         proofs,
         provers_map,
         max_workers=4,
+        process_data=None,
     )
     assert len(list(results)) == 3
     for proof in proofs.values():
