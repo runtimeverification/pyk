@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import count
 from typing import TYPE_CHECKING
 
 import pytest
@@ -222,25 +221,22 @@ def test_apr_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None:
 
 
 MODULE_NAME_TEST_DATA: Final = (
-    ('TEST-KONTROL-TEST-UINT256-BYTES[]-0', 'M-TEST-KONTROL-TEST-UINT256-BYTESbktbkt-0'),
-    ('TEST_KONTROL_%)_UINT256-1', 'M-TEST-KONTROL-UINT256-1'),
+    ('sq-bracket', 'TEST-KONTROL-TEST-UINT256-BYTES[]-0', 'M-TEST-KONTROL-TEST-UINT256-BYTESbktbkt-0'),
+    ('underscore', 'TEST_KONTROL_%)_UINT256-1', 'M-TEST-KONTROL-UINT256-1'),
 )
 
 
-@pytest.mark.parametrize('proof_id, expected', MODULE_NAME_TEST_DATA, ids=count())
-def test_proof_module_name(proof_id: str, expected: str) -> None:
+@pytest.mark.parametrize(
+    'test_id,proof_id,expected',
+    MODULE_NAME_TEST_DATA,
+    ids=[test_id for test_id, *_ in MODULE_NAME_TEST_DATA],
+)
+def test_proof_module_name(test_id: str, proof_id: str, expected: str) -> None:
     # Given
-    proof = APRProof(
-        id=proof_id,
-        kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
-        terminal=[],
-        init=node(1).id,
-        target=node(1).id,
-        logs={},
-    )
-
+    output = APRProof._make_module_name(proof_id)
+   
     # Then
-    assert proof.module_name == expected
+    assert output == expected
 
 
 #### APRBMCProof
