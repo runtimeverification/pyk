@@ -1134,8 +1134,6 @@ class APRProofProcessData:
     haskell_log_entries: Iterable[str]
     log_axioms_file: Path | None
 
-    #      kore_servers: dict[str, KoreServer]
-
     def __init__(
         self,
         kprint: KPrint,
@@ -1153,7 +1151,6 @@ class APRProofProcessData:
     ) -> None:
         self.kprint = kprint
         self.kcfg_semantics = kcfg_semantics
-        #          self.kore_servers = {}
         self.definition_dir = definition_dir
         self.llvm_definition_dir = llvm_definition_dir
         self.module_name = module_name
