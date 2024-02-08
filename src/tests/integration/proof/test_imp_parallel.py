@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from pyk.kcfg.explore import KCFGExplore
     from pyk.kcfg.semantics import KCFGSemantics
     from pyk.kore.rpc import KoreServer
-    from pyk.ktool.kprint import KPrint
     from pyk.ktool.kprove import KProve
 
 PARALLEL_PROVE_TEST_DATA = (
@@ -58,7 +57,6 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         admit_deps: bool,
         kcfg_explore: KCFGExplore,
         kprove: KProve,
-        kprint: KPrint,
         proof_dir: Path,
         _kore_server: KoreServer,
     ) -> None:
@@ -87,7 +85,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             module_name=kprove.main_module,
             definition_dir=kprove.definition_dir,
             execute_depth=100,
-            kprint=kprint,
+            kprint=kprove,
             kcfg_semantics=semantics,
             id=claim_id,
             trace_rewrites=False,
@@ -99,7 +97,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         )
 
         process_data = APRProofProcessData(
-            kprint=kprint,
+            kprint=kprove,
             kcfg_semantics=semantics,
             definition_dir=kprove.definition_dir,
             module_name=kprove.main_module,
