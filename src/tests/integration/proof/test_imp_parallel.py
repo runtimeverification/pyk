@@ -105,7 +105,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             module_name=kprove.main_module,
         )
 
-        results = prove_parallel(
+        results, _ = prove_parallel(
             proofs={'proof1': proof},
             provers={'proof1': parallel_prover},
             max_workers=1,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from multiprocessing import Process, Queue
 
 #  from concurrent.futures import CancelledError, ProcessPoolExecutor, wait
@@ -88,12 +89,20 @@ class ProofStep(ABC, Generic[U, D]):
         ...
 
 
+@dataclass
+class ProfilingInfo:
+    total_commit_time = 0
+    total_steps_time = 0
+    total_wait_time = 0
+    total_time = 0
+
+
 def prove_parallel(
     proofs: Mapping[str, Proof],
     provers: Mapping[str, Prover],
     max_workers: int,
     process_data: Any,
-) -> Iterable[Proof]:
+) -> tuple[Iterable[Proof], ProfilingInfo]:
     explored: set[tuple[str, ProofStep]] = set()
 
     in_queue: Queue = Queue()
@@ -101,10 +110,7 @@ def prove_parallel(
 
     pending_jobs: int = 0
 
-    total_commit_time = 0
-    total_steps_time = 0
-    total_process_time = 0
-    total_time = 0
+    profile = ProfilingInfo()
 
     total_init_time = time.time_ns()
 
@@ -122,8 +128,7 @@ def prove_parallel(
         prover = provers[proof_id]
         steps_init_time = time.time_ns()
         steps = prover.steps(proof)
-        nonlocal total_steps_time
-        total_steps_time += time.time_ns() - steps_init_time
+        profile.total_steps_time += time.time_ns() - steps_init_time
         for step in steps:  # <-- get next steps (represented by e.g. pending nodes, ...)
             if (proof_id, step) in explored:
                 continue
@@ -142,7 +147,7 @@ def prove_parallel(
     while pending_jobs > 0:
         wait_init_time = time.time_ns()
         proof_id, update = out_queue.get()
-        total_process_time += time.time_ns() - wait_init_time
+        profile.total_wait_time += time.time_ns() - wait_init_time
         pending_jobs -= 1
 
         proof = proofs[proof_id]
@@ -150,7 +155,7 @@ def prove_parallel(
 
         commit_init_time = time.time_ns()
         prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
-        total_commit_time += time.time_ns() - commit_init_time
+        profile.total_commit_time += time.time_ns() - commit_init_time
 
         match proof.status:
             # terminate on first failure, yield partial results, etc.
@@ -160,12 +165,12 @@ def prove_parallel(
                 steps_init_time = time.time_ns()
                 if not list(prover.steps(proof)):
                     raise ValueError('Prover violated expectation. status is pending with no further steps.')
-                total_steps_time += time.time_ns() - steps_init_time
+                profile.total_steps_time += time.time_ns() - steps_init_time
             case ProofStatus.PASSED:
                 steps_init_time = time.time_ns()
                 if list(prover.steps(proof)):
                     raise ValueError('Prover violated expectation. status is passed with further steps.')
-                total_steps_time += time.time_ns() - steps_init_time
+                profile.total_steps_time += time.time_ns() - steps_init_time
 
         submit(proof_id)
 
@@ -175,11 +180,11 @@ def prove_parallel(
     for process in processes:
         process.join()
 
-    total_time = time.time_ns() - total_init_time
+    profile.total_time = time.time_ns() - total_init_time
 
-    print(f'total time: {total_time / 1000000000}')
-    print(f'steps time: {total_steps_time / 1000000000}')
-    print(f'commit time: {total_commit_time / 1000000000}')
-    print(f'process time: {total_process_time / 1000000000}')
+    #      print(f'total time in prove_parallel,: {total_time / 1000000000}s')
+    #      print(f'total time executing steps(): {total_steps_time / 1000000000}s')
+    #      print(f'total time executing commit(): {total_commit_time / 1000000000}s')
+    #      print(f'time waiting for worker threads: {total_wait_time / 1000000000}s')
 
-    return proofs.values()
+    return proofs.values(), profile
