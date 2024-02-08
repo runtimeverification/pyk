@@ -1186,6 +1186,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
 
     max_iterations: int | None
     iterations: int
+    fail_fast: bool
 
     def __init__(
         self,
@@ -1211,6 +1212,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
         max_iterations: int | None = None,
+        fail_fast: bool = False,
     ) -> None:
         self.execute_depth = execute_depth
         self.cut_point_rules = cut_point_rules
@@ -1241,6 +1243,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         self.prover._check_all_terminals()
         self.max_iterations = max_iterations
         self.iterations = 0
+        self.fail_fast = fail_fast
 
     def __del__(self) -> None:
         self.client.close()
@@ -1254,6 +1257,13 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         """
         if self.max_iterations is not None and self.iterations >= self.max_iterations:
             return []
+
+        if self.fail_fast and proof.failed:
+            _LOGGER.warning(
+                f'Terminating proof early because fail_fast is set {proof.id}, failing nodes: {[nd.id for nd in proof.failing]}'
+            )
+            return []
+
         steps: list[APRProofStep] = []
         target_node = proof.kcfg.node(proof.target)
 
@@ -1328,6 +1338,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         if self.max_iterations is not None and self.iterations >= self.max_iterations:
             _LOGGER.warning(f'Reached iteration bound {proof.id}: {self.max_iterations}')
 
+        print(f'fail_fast: {self.fail_fast}')
+
 
 class ParallelAPRBMCProver(ParallelAPRProver):
     def __init__(
@@ -1353,6 +1365,8 @@ class ParallelAPRBMCProver(ParallelAPRProver):
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
+        max_iterations: int | None = None,
+        fail_fast: bool = False,
     ) -> None:
         self.execute_depth = execute_depth
         self.cut_point_rules = cut_point_rules
@@ -1361,8 +1375,11 @@ class ParallelAPRBMCProver(ParallelAPRProver):
         self.kcfg_semantics = kcfg_semantics
         self.id = id
         self.trace_rewrites = trace_rewrites
+        self.port = port
         self.bug_report = bug_report
         self.bug_report_id = bug_report_id
+        self.total_cterm_extend_time = 0
+        self.total_cterm_implies_time = 0
         self.client = KoreClient(
             host='localhost',
             port=self.port,
@@ -1377,6 +1394,10 @@ class ParallelAPRBMCProver(ParallelAPRProver):
             trace_rewrites=self.trace_rewrites,
         )
         self.prover = APRBMCProver(proof=proof, kcfg_explore=self.kcfg_explore)
+        self.prover._check_all_terminals()
+        self.max_iterations = max_iterations
+        self.iterations = 0
+        self.fail_fast = fail_fast
 
 
 @dataclass(frozen=True, eq=True)
