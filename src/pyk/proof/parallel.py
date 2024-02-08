@@ -182,9 +182,4 @@ def prove_parallel(
 
     profile.total_time = time.time_ns() - total_init_time
 
-    #      print(f'total time in prove_parallel,: {total_time / 1000000000}s')
-    #      print(f'total time executing steps(): {total_steps_time / 1000000000}s')
-    #      print(f'total time executing commit(): {total_commit_time / 1000000000}s')
-    #      print(f'time waiting for worker threads: {total_wait_time / 1000000000}s')
-
     return proofs.values(), profile
