@@ -234,7 +234,7 @@ MODULE_NAME_TEST_DATA: Final = (
 def test_proof_module_name(test_id: str, proof_id: str, expected: str) -> None:
     # Given
     output = APRProof._make_module_name(proof_id)
-   
+
     # Then
     assert output == expected
 
