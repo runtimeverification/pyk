@@ -198,7 +198,9 @@ class APRProof(Proof, KCFGExploration):
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
         if 'node_refutation' in dct:
-            node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
+            node_refutations = {
+                kcfg._resolve(int(node_id)): proof_id for node_id, proof_id in dct['node_refutations'].items()
+            }
         if 'logs' in dct:
             logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
@@ -408,7 +410,9 @@ class APRProof(Proof, KCFGExploration):
         terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
-        node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in proof_dict['node_refutations']}
+        node_refutations = {
+            kcfg._resolve(int(node_id)): proof_id for node_id, proof_id in proof_dict['node_refutations'].items()
+        }
 
         return APRProof(
             id=id,
