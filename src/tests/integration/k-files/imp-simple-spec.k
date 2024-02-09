@@ -49,6 +49,7 @@ endmodule
 module IMP-SIMPLE-SPEC
     imports IMP-VERIFICATION
     imports IMP-SIMPLE-SPEC-DEPENDENCIES
+    imports K-EQUAL-SYNTAX
 
     claim [addition-1]: <k> 3 + 4 => 7 ... </k>
 
@@ -94,6 +95,25 @@ module IMP-SIMPLE-SPEC
                                     </state>
       requires 0 <=Int S andBool 0 <=Int K
        ensures 0 <Int ?N andBool 0 <Int ?M andBool ?I ==Int 1
+
+    claim [long-branches]: 
+      <k> 
+        if(B:Bool) {
+          $n = 1;
+        }
+        else {
+          $n = 2;
+        }
+        $s = 10;
+        while (1 <= $s) {
+          $s = $s + -1;
+        }
+        => . 
+        ... 
+      </k>
+      <state> $s |-> (10 => 0) 
+              $n |-> (0 => (#if B:Bool #then 1 #else 2 #fi)) 
+      </state>
 
     claim [failing-if]: <k> if(_B:Bool) { $n = 1 ; } else { $n = 2 ; } => . ... </k>
                         <state> $n |-> (0 => 1) </state>
