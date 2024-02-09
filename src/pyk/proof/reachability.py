@@ -1348,8 +1348,6 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         if self.max_iterations is not None and self.iterations >= self.max_iterations:
             _LOGGER.warning(f'Reached iteration bound {proof.id}: {self.max_iterations}')
 
-        print(f'fail_fast: {self.fail_fast}')
-
 
 class ParallelAPRBMCProver(ParallelAPRProver):
     def __init__(
