@@ -327,14 +327,14 @@ def _imported_sentences(definition: KDefinition, module_name: str) -> list[KSent
 
 
 def _add_syntax_sorts(module: KFlatModule) -> KFlatModule:
-    """Return a module with explicit syntax declarations: each sort is declared with the union of its attributes"""
+    """Return a module with explicit syntax declarations: each sort is declared with the union of its attributes."""
     sentences = [sentence for sentence in module if not isinstance(sentence, KSyntaxSort)]
     sentences += _syntax_sorts(module)
     return module.let(sentences=sentences)
 
 
 def _syntax_sorts(module: KFlatModule) -> list[KSyntaxSort]:
-    """Return a declaration for each sort in the module"""
+    """Return a declaration for each sort in the module."""
     declarations: dict[KSort, KAtt] = {}
 
     def is_higher_order(production: KProduction) -> bool:
@@ -363,7 +363,7 @@ def _syntax_sorts(module: KFlatModule) -> list[KSyntaxSort]:
 
 
 def _add_collection_atts(module: KFlatModule) -> KFlatModule:
-    """Return a module where concat, element and unit attributes are added to collection sort declarations"""
+    """Return a module where concat, element and unit attributes are added to collection sort declarations."""
 
     # Example: syntax Map ::= Map Map [..., klabel(_Map_), element(_|->_), unit(.Map), ...]
     concat_prods = {prod.sort: prod for prod in module.productions if KAtt.ELEMENT in prod.att}
@@ -388,7 +388,7 @@ def _add_collection_atts(module: KFlatModule) -> KFlatModule:
                 {
                     # TODO Here, the attriubte is stored as dict, but ultimately we should parse known attributes in KAtt.from_dict
                     KAtt.CONCAT: KApply(prod_att[KAtt.KLABEL]).to_dict(),
-                    # Here, we keep the format from the fontend so that te SyntaxSort and Production ats are of the same type
+                    # TODO Here, we keep the format from the frontend so that the attributes on SyntaxSort and Production are of the same type.
                     KAtt.ELEMENT: prod_att[KAtt.ELEMENT],
                     KAtt.UNIT: prod_att[KAtt.UNIT],
                 }
@@ -400,9 +400,9 @@ def _add_collection_atts(module: KFlatModule) -> KFlatModule:
 
 
 def _add_domain_value_atts(module: KFlatModule) -> KFlatModule:
-    """
-    Return a module where attribute "hasDomainValues" is added to all
-    sort declarations that either have the "token" attribute directly,
+    """Return a module where attribute "hasDomainValues" is added to all sort declarations that apply.
+
+    The requirement on a sort declaration is to either have the "token" attribute directly
     or on a corresponding production.
     """
 
@@ -439,7 +439,7 @@ def _token_sorts(module: KFlatModule) -> set[KSort]:
 
 
 def _pull_up_rewrites(module: KFlatModule) -> KFlatModule:
-    """Ensure that each rule is of the form X => Y"""
+    """Ensure that each rule is of the form X => Y."""
 
     def update(sentence: KSentence) -> KSentence:
         if not isinstance(sentence, KRule):
