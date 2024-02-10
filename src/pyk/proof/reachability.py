@@ -149,9 +149,6 @@ class APRProof(Proof, KCFGExploration):
     def add_bounded(self, nid: NodeIdLike) -> None:
         self._bounded.add(self.kcfg._resolve(nid))
 
-    def remove_bounded(self, node_id: int) -> None:
-        self._bounded.discard(node_id)
-
     def shortest_path_to(self, node_id: NodeIdLike) -> tuple[KCFG.Successor, ...]:
         spb = self.kcfg.shortest_path_between(self.init, node_id)
         assert spb is not None
@@ -160,7 +157,7 @@ class APRProof(Proof, KCFGExploration):
     def prune(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[int]:
         pruned_nodes = super().prune(node_id, keep_nodes=list(keep_nodes) + [self.init, self.target])
         for nid in pruned_nodes:
-            self.remove_bounded(nid)
+            self._bounded.discard(nid)
         return pruned_nodes
 
     @staticmethod
