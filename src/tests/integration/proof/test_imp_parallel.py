@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.proof.show import KCFGShow, NodePrinter
 from pyk.proof.parallel import prove_parallel
 from pyk.proof.proof import ProofStatus
 from pyk.proof.reachability import APRBMCProof, APRProof, APRProofProcessData, ParallelAPRBMCProver, ParallelAPRProver
@@ -142,7 +141,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             kcfg_semantics=semantics,
             id=claim_id,
             trace_rewrites=False,
-            cut_point_rules= ['IMP.while'],
+            cut_point_rules=['IMP.while'],
             terminal_rules=(),
             bug_report=None,
             bug_report_id=None,
