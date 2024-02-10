@@ -60,6 +60,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         proof_dir: Path,
         _kore_server: KoreServer,
     ) -> None:
+
         spec_file = K_FILES / 'imp-simple-spec.k'
         spec_module = 'IMP-SIMPLE-SPEC'
 
@@ -106,7 +107,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         results, _ = prove_parallel(
             proofs={'proof1': proof},
             provers={'proof1': parallel_prover},
-            max_workers=1,
+            max_workers=2,
             process_data=process_data,
         )
 
@@ -120,6 +121,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         proof_dir: Path,
         _kore_server: KoreServer,
     ) -> None:
+
         claim_id = 'bmc-infinite-loop'
         expected_status = ProofStatus.PASSED
 
@@ -158,7 +160,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         results, _ = prove_parallel(
             proofs={'proof1': proof},
             provers={'proof1': parallel_prover},
-            max_workers=1,
+            max_workers=2,
             process_data=process_data,
         )
 
