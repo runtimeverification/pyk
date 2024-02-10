@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from pyk.proof.show import KCFGShow, NodePrinter
 from pyk.proof.parallel import prove_parallel
 from pyk.proof.proof import ProofStatus
-from pyk.proof.reachability import APRProof, APRProofProcessData, ParallelAPRProver
+from pyk.proof.reachability import APRBMCProof, APRProof, APRProofProcessData, ParallelAPRBMCProver, ParallelAPRProver
 from pyk.testing import KCFGExploreTest, KPrintTest, KProveTest
 from pyk.utils import single
 
@@ -90,6 +91,58 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             id=claim_id,
             trace_rewrites=False,
             cut_point_rules=(),
+            terminal_rules=(),
+            bug_report=None,
+            bug_report_id=None,
+            port=_kore_server.port,
+        )
+
+        process_data = APRProofProcessData(
+            kprint=kprove,
+            kcfg_semantics=semantics,
+            definition_dir=kprove.definition_dir,
+            module_name=kprove.main_module,
+        )
+
+        results, _ = prove_parallel(
+            proofs={'proof1': proof},
+            provers={'proof1': parallel_prover},
+            max_workers=1,
+            process_data=process_data,
+        )
+
+        assert len(list(results)) == 1
+        assert list(results)[0].status == expected_status
+
+    def test_imp_bmc_parallel_prove(
+        self,
+        kcfg_explore: KCFGExplore,
+        kprove: KProve,
+        proof_dir: Path,
+        _kore_server: KoreServer,
+    ) -> None:
+        claim_id = 'bmc-infinite-loop'
+        expected_status = ProofStatus.PASSED
+
+        spec_file = K_FILES / 'imp-simple-spec.k'
+        spec_module = 'IMP-SIMPLE-SPEC'
+
+        spec_label = f'{spec_module}.{claim_id}'
+
+        claim = single(kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[spec_label]))
+        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, 5)
+
+        semantics = self.semantics(kprove.definition)
+        parallel_prover = ParallelAPRBMCProver(
+            proof=proof,
+            module_name=kprove.main_module,
+            definition_dir=kprove.definition_dir,
+            execute_depth=100,
+            kprint=kprove,
+            kcfg_semantics=semantics,
+            id=claim_id,
+            trace_rewrites=False,
+            cut_point_rules= ['IMP.while'],
             terminal_rules=(),
             bug_report=None,
             bug_report_id=None,

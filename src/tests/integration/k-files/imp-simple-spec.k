@@ -84,6 +84,13 @@ module IMP-SIMPLE-SPEC
       requires 0 <=Int S
        ensures 0 <Int ?N andBool ?I ==Int 1
 
+    claim [bmc-infinite-loop]: <k> while ($n <= $s) { $n = $n + 1 ; }
+                                => . ...
+                                </k>
+                               <state> ($n |-> (0 => (?N)))
+                                       ($s |-> S:Int)
+                               </state>
+
     claim [bmc-two-loops-symbolic]: <k> while ($s <= $n) { $n = $n + -1 ; }
                                         while ($k <= $m) { $m = $m + -1 ; }
                                         $i = 1;
