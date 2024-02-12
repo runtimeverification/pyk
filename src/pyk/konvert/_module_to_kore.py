@@ -10,7 +10,7 @@ from ..kast.outer import KDefinition, KProduction, KRule, KSyntaxSort
 from ..kore.syntax import App, Import, Module, SortApp, SortDecl, SortVar, String, Symbol, SymbolDecl
 from ..prelude.k import K_ITEM, K
 from ..utils import FrozenDict
-from ._konvert import _kast_to_kore
+from ._kast_to_kore import _kast_to_kore
 from ._utils import munge
 
 if TYPE_CHECKING:

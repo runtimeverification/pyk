@@ -1,3 +1,4 @@
-from ._konvert import _kast_to_kore, _kore_to_kast, kast_to_kore, kflatmodule_to_kore, kore_to_kast, krule_to_kore
+from ._kast_to_kore import _kast_to_kore, kast_to_kore, kflatmodule_to_kore, krule_to_kore
+from ._konvert import _kore_to_kast, kore_to_kast
 from ._module_to_kore import module_to_kore
 from ._utils import munge, unmunge
