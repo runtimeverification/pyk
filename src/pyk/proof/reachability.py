@@ -1198,6 +1198,8 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
     iterations: int
     fail_fast: bool
 
+    _checked_nodes: list[int]
+
     def __init__(
         self,
         proof: APRProof,
@@ -1254,6 +1256,7 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         self.max_iterations = max_iterations
         self.iterations = 0
         self.fail_fast = fail_fast
+        self._checked_nodes = []
 
     def __del__(self) -> None:
         self.client.close()
@@ -1321,6 +1324,34 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         if self.max_iterations is not None and self.iterations >= self.max_iterations:
             return
 
+        if isinstance(proof, APRBMCProof):
+            if type(update) is APRProofExtendResult:
+                node = proof.kcfg.node(update.node_id)
+                if node.id not in self._checked_nodes:
+                    _LOGGER.info(f'Checking bmc depth for node {proof.id}: {node.id}')
+                    self._checked_nodes.append(node.id)
+                    _prior_loops = [
+                        succ.source.id
+                        for succ in proof.shortest_path_to(node.id)
+                        if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
+                    ]
+                    prior_loops: list[NodeIdLike] = []
+                    for _pl in _prior_loops:
+                        if not (
+                            proof.kcfg.zero_depth_between(_pl, node.id)
+                            or any(proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+                        ):
+                            prior_loops.append(_pl)
+                    _LOGGER.info(f'Prior loop heads for node {proof.id}: {(node.id, prior_loops)}')
+                    if len(prior_loops) > proof.bmc_depth:
+                        proof.add_bounded(node.id)
+
+                        self.iterations += 1
+                        if self.max_iterations is not None and self.iterations >= self.max_iterations:
+                            _LOGGER.warning(f'Reached iteration bound {proof.id}: {self.max_iterations}')
+
+                        return
+
         self.prover._check_all_terminals()
 
         self.total_cterm_extend_time += update.extend_cterm_time
@@ -1347,112 +1378,6 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         self.iterations += 1
         if self.max_iterations is not None and self.iterations >= self.max_iterations:
             _LOGGER.warning(f'Reached iteration bound {proof.id}: {self.max_iterations}')
-
-
-class ParallelAPRBMCProver(ParallelAPRProver):
-    proof: APRBMCProof
-    _checked_nodes: list[int]
-
-    def __init__(
-        self,
-        proof: APRBMCProof,
-        module_name: str,
-        definition_dir: str | Path,
-        execute_depth: int | None,
-        kprint: KPrint,
-        kcfg_semantics: KCFGSemantics | None,
-        port: int,
-        id: str | None,
-        trace_rewrites: bool,
-        cut_point_rules: Iterable[str],
-        terminal_rules: Iterable[str],
-        bug_report_id: str | None,
-        llvm_definition_dir: Path | None = None,
-        command: str | Iterable[str] | None = None,
-        bug_report: BugReport | None = None,
-        smt_timeout: int | None = None,
-        smt_retry_limit: int | None = None,
-        smt_tactic: str | None = None,
-        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-        haskell_log_entries: Iterable[str] = (),
-        log_axioms_file: Path | None = None,
-        max_iterations: int | None = None,
-        fail_fast: bool = False,
-    ) -> None:
-        self.execute_depth = execute_depth
-        self.cut_point_rules = cut_point_rules
-        self.terminal_rules = terminal_rules
-        self.kprint = kprint
-        self.kcfg_semantics = kcfg_semantics
-        self.id = id
-        self.trace_rewrites = trace_rewrites
-        self.port = port
-        self.bug_report = bug_report
-        self.bug_report_id = bug_report_id
-        self.total_cterm_extend_time = 0
-        self.total_cterm_implies_time = 0
-        self.client = KoreClient(
-            host='localhost',
-            port=self.port,
-            bug_report=self.bug_report,
-            bug_report_id=self.bug_report_id,
-        )
-        self.kcfg_explore = KCFGExplore(
-            kprint=self.kprint,
-            kore_client=self.client,
-            kcfg_semantics=self.kcfg_semantics,
-            id=self.id,
-            trace_rewrites=self.trace_rewrites,
-        )
-        self.prover = APRBMCProver(proof=proof, kcfg_explore=self.kcfg_explore)
-        self.prover._check_all_terminals()
-        self.max_iterations = max_iterations
-        self.iterations = 0
-        self.fail_fast = fail_fast
-        self._checked_nodes = []
-
-    def commit(self, proof: APRProof, update: APRProofResult) -> None:
-        """
-        Should update `proof` according to `update`.
-        If `steps()` or `commit()` has been called on a proof `proof`, `commit()` may never again be called on `proof`.
-        Must only be called with an `update` that was returned by `step.execute()` where `step` was returned by `self.steps(proof)`.
-        Steps for a proof `proof` can have their results submitted any time after they are made available by `self.steps(proof)`, including in any order and multiple times, and the Prover must be able to handle this.
-        """
-
-        if not isinstance(proof, APRBMCProof):
-            raise ValueError(f'Proof {proof.id} cannot be used with ParallelAPRBMCProver.')
-
-        if self.max_iterations is not None and self.iterations >= self.max_iterations:
-            return
-
-        if type(update) is APRProofExtendResult:
-            node = proof.kcfg.node(update.node_id)
-            if node.id not in self._checked_nodes:
-                _LOGGER.info(f'Checking bmc depth for node {proof.id}: {node.id}')
-                self._checked_nodes.append(node.id)
-                _prior_loops = [
-                    succ.source.id
-                    for succ in proof.shortest_path_to(node.id)
-                    if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
-                ]
-                prior_loops: list[NodeIdLike] = []
-                for _pl in _prior_loops:
-                    if not (
-                        proof.kcfg.zero_depth_between(_pl, node.id)
-                        or any(proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
-                    ):
-                        prior_loops.append(_pl)
-                _LOGGER.info(f'Prior loop heads for node {proof.id}: {(node.id, prior_loops)}')
-                if len(prior_loops) > proof.bmc_depth:
-                    proof.add_bounded(node.id)
-
-                    self.iterations += 1
-                    if self.max_iterations is not None and self.iterations >= self.max_iterations:
-                        _LOGGER.warning(f'Reached iteration bound {proof.id}: {self.max_iterations}')
-
-                    return
-
-        super().commit(proof, update)
 
 
 @dataclass(frozen=True, eq=True)

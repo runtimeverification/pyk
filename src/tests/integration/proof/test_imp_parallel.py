@@ -7,7 +7,7 @@ import pytest
 
 from pyk.proof.parallel import prove_parallel
 from pyk.proof.proof import ProofStatus
-from pyk.proof.reachability import APRBMCProof, APRProof, APRProofProcessData, ParallelAPRBMCProver, ParallelAPRProver
+from pyk.proof.reachability import APRBMCProof, APRProof, APRProofProcessData, ParallelAPRProver
 from pyk.testing import KCFGExploreTest, KPrintTest, KProveTest
 from pyk.utils import single
 
@@ -60,7 +60,6 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         proof_dir: Path,
         _kore_server: KoreServer,
     ) -> None:
-
         spec_file = K_FILES / 'imp-simple-spec.k'
         spec_module = 'IMP-SIMPLE-SPEC'
 
@@ -121,7 +120,6 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         proof_dir: Path,
         _kore_server: KoreServer,
     ) -> None:
-
         claim_id = 'bmc-infinite-loop'
         expected_status = ProofStatus.PASSED
 
@@ -134,7 +132,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, 5)
 
         semantics = self.semantics(kprove.definition)
-        parallel_prover = ParallelAPRBMCProver(
+        parallel_prover = ParallelAPRProver(
             proof=proof,
             module_name=kprove.main_module,
             definition_dir=kprove.definition_dir,

@@ -193,7 +193,7 @@ class KoreClientTest(KompiledTest):
         llvm_dir: Path | None,
         bug_report: BugReport | None,
     ) -> Iterator[KoreServer]:
-        os.environ["GHCRTS"] = '-N2'
+        os.environ['GHCRTS'] = '-N2'
         match server_type:
             case ServerType.LEGACY:
                 assert not llvm_dir
