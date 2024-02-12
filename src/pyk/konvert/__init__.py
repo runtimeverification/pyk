@@ -6,6 +6,5 @@ from ._konvert import (
     kore_to_kast,
     krule_to_kore,
     module_to_kore,
-    munge,
-    unmunge,
 )
+from ._utils import munge, unmunge
