@@ -17,6 +17,7 @@ Subpackages
    pyk.kcfg
    pyk.kdist
    pyk.kllvm
+   pyk.konvert
    pyk.kore
    pyk.kore_exec_covr
    pyk.krepl
@@ -35,5 +36,4 @@ Submodules
    pyk.cterm
    pyk.dequote
    pyk.kcovr
-   pyk.konvert
    pyk.utils

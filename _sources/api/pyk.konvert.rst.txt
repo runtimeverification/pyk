@@ -1,5 +1,5 @@
-pyk.konvert module
-==================
+pyk.konvert package
+===================
 
 .. automodule:: pyk.konvert
    :members:
