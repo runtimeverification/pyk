@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import ClassVar  # noqa: TC003
@@ -192,6 +193,7 @@ class KoreClientTest(KompiledTest):
         llvm_dir: Path | None,
         bug_report: BugReport | None,
     ) -> Iterator[KoreServer]:
+        os.environ['GHCRTS'] = '-N2'
         match server_type:
             case ServerType.LEGACY:
                 assert not llvm_dir
