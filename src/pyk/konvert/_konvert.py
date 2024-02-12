@@ -4,15 +4,15 @@ import logging
 from functools import reduce
 from typing import TYPE_CHECKING
 
-from .cterm import CTerm
-from .kast import EMPTY_ATT, KAtt, KInner
-from .kast.inner import KApply, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
-from .kast.manip import bool_to_ml_pred, extract_lhs, extract_rhs
-from .kast.outer import KDefinition, KProduction, KRule, KSyntaxSort
-from .kore.prelude import BYTES as KORE_BYTES
-from .kore.prelude import DOTK, SORT_K
-from .kore.prelude import STRING as KORE_STRING
-from .kore.syntax import (
+from ..cterm import CTerm
+from ..kast import EMPTY_ATT, KAtt, KInner
+from ..kast.inner import KApply, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
+from ..kast.manip import bool_to_ml_pred, extract_lhs, extract_rhs
+from ..kast.outer import KDefinition, KProduction, KRule, KSyntaxSort
+from ..kore.prelude import BYTES as KORE_BYTES
+from ..kore.prelude import DOTK, SORT_K
+from ..kore.prelude import STRING as KORE_STRING
+from ..kore.syntax import (
     DV,
     And,
     App,
@@ -38,19 +38,19 @@ from .kore.syntax import (
     SymbolDecl,
     Top,
 )
-from .prelude.bytes import BYTES, bytesToken_from_str, pretty_bytes_str
-from .prelude.k import K_ITEM, K
-from .prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
-from .prelude.string import STRING, pretty_string, stringToken
-from .utils import FrozenDict
+from ..prelude.bytes import BYTES, bytesToken_from_str, pretty_bytes_str
+from ..prelude.k import K_ITEM, K
+from ..prelude.ml import mlAnd, mlBottom, mlCeil, mlEquals, mlExists, mlImplies, mlNot, mlTop
+from ..prelude.string import STRING, pretty_string, stringToken
+from ..utils import FrozenDict
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator, Mapping
     from typing import Any, Final
 
-    from .kast.outer import KFlatModule, KImport, KSentence
-    from .kore.kompiled import KompiledKore
-    from .kore.syntax import Pattern, Sentence, Sort
+    from ..kast.outer import KFlatModule, KImport, KSentence
+    from ..kore.kompiled import KompiledKore
+    from ..kore.syntax import Pattern, Sentence, Sort
 
 _LOGGER: Final = logging.getLogger(__name__)
 
