@@ -294,7 +294,7 @@ class Prover:
 
     def advance_proof(self, max_iterations: int | None = None, fail_fast: bool = False) -> None:
         iterations = 0
-        while True:
+        while not self.proof.passed:
             if fail_fast and self.proof.failed:
                 _LOGGER.warning(f'Terminating proof early because fail_fast is set: {self.proof.id}')
                 return
