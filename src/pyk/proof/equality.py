@@ -284,9 +284,6 @@ class EqualitySummary(ProofSummary):
 
 
 class RefutationProof(ImpliesProof):
-    pre_constraints: Iterable[KInner]
-    last_constraint: KInner
-
     def __init__(
         self,
         id: str,
@@ -312,8 +309,6 @@ class RefutationProof(ImpliesProof):
             proof_dir=proof_dir,
             admitted=admitted,
         )
-        self.pre_constraints = tuple(pre_constraints)
-        self.last_constraint = last_constraint
         _LOGGER.warning(
             'Building a RefutationProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
         )
@@ -326,6 +321,15 @@ class RefutationProof(ImpliesProof):
             return RefutationProof.from_dict(proof_dict, proof_dir)
 
         raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
+
+    @property
+    def pre_constraints(self) -> list[KInner]:
+        return flatten_label('#And', self.antecedent)
+
+    @property
+    def last_constraint(self) -> KInner:
+        assert type(self.consequent) is KApply
+        return self.consequent.args[1]
 
     @property
     def simplified_constraints(self) -> KInner | None:
