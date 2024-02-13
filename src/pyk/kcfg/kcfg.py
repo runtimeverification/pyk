@@ -20,12 +20,13 @@ from ..kast.manip import (
     rename_generated_vars,
     sort_ac_collections,
 )
+from ..kast.optimizer import KInnerOptimizer
 from ..kast.outer import KFlatModule
 from ..prelude.kbool import andBool
 from ..utils import ensure_dir_path
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from pathlib import Path
     from types import TracebackType
     from typing import Any
@@ -214,9 +215,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _stuck: set[int]
     _aliases: dict[str, int]
     _lock: RLock
+    _optimizer: KInnerOptimizer
+    _optimize_cterm: Callable[[CTerm], CTerm]
     cfg_dir: Path | None
 
-    def __init__(self, cfg_dir: Path | None = None) -> None:
+    def __init__(self, cfg_dir: Path | None = None, optimize_memory: bool = True) -> None:
         self._node_id = 1
         self._nodes = {}
         self._created_nodes = set()
@@ -230,6 +233,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._aliases = {}
         self._lock = RLock()
         self.cfg_dir = cfg_dir
+        self._optimizer = KInnerOptimizer()
+        if optimize_memory:
+
+            def optimize_cterm(cterm: CTerm) -> CTerm:
+                new_config = self._optimizer.optimize(cterm.config)
+                return CTerm(new_config, cterm.constraints)
+
+            self._optimize_cterm = optimize_cterm
+        else:
+            self._optimize_cterm = lambda x: x
         if self.cfg_dir is not None:
             ensure_dir_path(self.cfg_dir)
 
@@ -291,9 +304,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     @staticmethod
     def from_claim(
-        defn: KDefinition, claim: KClaim, cfg_dir: Path | None = None
+        defn: KDefinition, claim: KClaim, cfg_dir: Path | None = None, optimize_memory: bool = True
     ) -> tuple[KCFG, NodeIdLike, NodeIdLike]:
-        cfg = KCFG(cfg_dir=cfg_dir)
+        cfg = KCFG(cfg_dir=cfg_dir, optimize_memory=optimize_memory)
         claim_body = claim.body
         claim_body = defn.instantiate_cell_vars(claim_body)
         claim_body = rename_generated_vars(claim_body)
@@ -346,8 +359,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return {k: v for k, v in res.items() if v}
 
     @staticmethod
-    def from_dict(dct: Mapping[str, Any]) -> KCFG:
-        cfg = KCFG()
+    def from_dict(dct: Mapping[str, Any], optimize_memory: bool = True) -> KCFG:
+        cfg = KCFG(optimize_memory=optimize_memory)
 
         max_id = 0
         for node_dict in dct.get('nodes') or []:
@@ -404,8 +417,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return json.dumps(self.to_dict(), sort_keys=True)
 
     @staticmethod
-    def from_json(s: str) -> KCFG:
-        return KCFG.from_dict(json.loads(s))
+    def from_json(s: str, optimize_memory: bool = True) -> KCFG:
+        return KCFG.from_dict(json.loads(s), optimize_memory=optimize_memory)
 
     def to_rules(self, priority: int = 20) -> list[KRuleLike]:
         return [e.to_rule('BASIC-BLOCK', priority=priority) for e in self.edges()]
@@ -459,6 +472,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def add_node(self, node: Node) -> None:
         if node.id in self._nodes:
             raise ValueError(f'Node with id already exists: {node.id}')
+        node = KCFG.Node(node.id, self._optimize_cterm(node.cterm))
         self._nodes[node.id] = node
         self._created_nodes.add(node.id)
 
@@ -466,6 +480,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         term = cterm.kast
         term = remove_source_attributes(term)
         cterm = CTerm.from_kast(term)
+        cterm = self._optimize_cterm(cterm)
         node = KCFG.Node(self._node_id, cterm)
         self._node_id += 1
         self._nodes[node.id] = node
@@ -504,6 +519,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         term = cterm.kast
         term = remove_source_attributes(term)
         cterm = CTerm.from_kast(term)
+        cterm = self._optimize_cterm(cterm)
         node_id = self._resolve(node_id)
         node = KCFG.Node(node_id, cterm)
         self._nodes[node_id] = node
