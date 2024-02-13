@@ -482,6 +482,10 @@ class APRProof(Proof, KCFGExploration):
         _LOGGER.info(f'Disabled refutation of node {node.id}.')
 
     def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:  # TODO put into prover class
+        if len(self.kcfg.successors(node.id)) > 0:
+            _LOGGER.error(f'Cannot refute node {node.id} that already has successors')
+            return None
+
         path = single(self.kcfg.paths_between(source_id=self.init, target_id=node.id))
         branches_on_path = list(filter(lambda x: type(x) is KCFG.Split or type(x) is KCFG.NDBranch, reversed(path)))
         if len(branches_on_path) == 0:
