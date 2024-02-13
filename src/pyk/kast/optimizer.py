@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Generic, TypeVar, final
@@ -64,6 +65,7 @@ class OptimizedKSequence(OptimizedKInner):
 
 class KInnerOptimizer:
     def __init__(self) -> None:
+        self.__lock: threading.Lock = threading.Lock()
         self.__optimized_terms: CachedValues[OptimizedKInner] = CachedValues()
         self.__klabels: CachedValues[KLabel] = CachedValues()
 
@@ -82,7 +84,8 @@ class KInnerOptimizer:
                 raise ValueError('Unknown term type: ' + str(type(to_optimize)))
             return (self.__terms[optimized_id], optimized_id)
 
-        optimized, _ = bottom_up_with_summary(optimizer, term)
+        with self.__lock:
+            optimized, _ = bottom_up_with_summary(optimizer, term)
         return optimized
 
     def cache(self, term: OptimizedKInner) -> int:
