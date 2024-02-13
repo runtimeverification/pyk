@@ -388,4 +388,3 @@ class ImpliesProver(Prover):
                 self.proof.csubst = result
 
         _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
-        self.proof.write_proof_data()
