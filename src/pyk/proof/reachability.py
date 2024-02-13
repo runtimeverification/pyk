@@ -718,12 +718,9 @@ class APRProver(Prover):
                 self._check_subsume(node)
 
         if self.proof.failed:
-            self.save_failure_info()
+            self.proof.failure_info = self.failure_info()
 
         self.proof.write_proof_data()
-
-    def save_failure_info(self) -> None:
-        self.proof.failure_info = self.failure_info()
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
