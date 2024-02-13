@@ -7,7 +7,7 @@ import pytest
 
 from pyk.proof.parallel import prove_parallel
 from pyk.proof.proof import ProofStatus
-from pyk.proof.reachability import APRBMCProof, APRProof, APRProofProcessData, ParallelAPRProver
+from pyk.proof.reachability import APRProof, APRProofProcessData, ParallelAPRProver
 from pyk.testing import KCFGExploreTest, KPrintTest, KProveTest
 from pyk.utils import single
 
@@ -129,7 +129,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
         spec_label = f'{spec_module}.{claim_id}'
 
         claim = single(kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[spec_label]))
-        proof = APRBMCProof.from_claim_with_bmc_depth(kprove.definition, claim, 5)
+        proof = APRProof.from_claim(kprove.definition, claim, logs={}, bmc_depth=5)
 
         semantics = self.semantics(kprove.definition)
         parallel_prover = ParallelAPRProver(
