@@ -286,3 +286,7 @@ class Prover:
 
     def __init__(self, kcfg_explore: KCFGExplore):
         self.kcfg_explore = kcfg_explore
+
+    @abstractmethod
+    def advance_proof(self, max_iterations: int | None = None) -> None:
+        ...

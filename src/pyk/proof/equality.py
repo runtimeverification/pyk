@@ -352,7 +352,7 @@ class ImpliesProver(Prover):
         super().__init__(kcfg_explore)
         self.proof = proof
 
-    def advance_proof(self) -> None:
+    def advance_proof(self, max_iterations: int | None = None) -> None:
         proof_type = type(self.proof).__name__
         _LOGGER.info(f'Attempting {proof_type} {self.proof.id}')
 
