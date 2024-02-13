@@ -96,7 +96,7 @@ class ReadWriteLock:
         if self.__thread_storage.state == ReadWriteLock.WRITE_LOCK:
             return
         if self.__thread_storage.state != ReadWriteLock.READ_LOCK:
-            raise ValueError(f"Invalid lock state, perhaps read lock not acquired before write lock: {self.__thread_storage.state}")
+            raise ValueError(f'Invalid lock state, perhaps read lock not acquired before write lock: {self.__thread_storage.state}')
         with self.__lock:
             self.__readers -= 1
             self.__writers_waiting += 1
@@ -121,7 +121,7 @@ class ReadWriteLock:
                 self.__readers -= 1
                 self.__lock.notify_all()
         else:
-            raise ValueError(f"Invalid lock state, perhaps you did not start by acquiring the read lock. {self.__thread_storage.state}")
+            raise ValueError(f'Invalid lock state, perhaps you did not start by acquiring the read lock. {self.__thread_storage.state}')
         self.__thread_storage.state = ReadWriteLock.NO_LOCK
 
     def has_write_lock(self) -> bool:
