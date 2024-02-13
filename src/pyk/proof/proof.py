@@ -283,10 +283,19 @@ class CompositeSummary(ProofSummary):
 
 class Prover:
     kcfg_explore: KCFGExplore
+    proof: Proof
 
     def __init__(self, kcfg_explore: KCFGExplore):
         self.kcfg_explore = kcfg_explore
 
     @abstractmethod
-    def advance_proof(self, max_iterations: int | None = None) -> None:
+    def step_proof(self) -> None:
         ...
+
+    def advance_proof(self, max_iterations: int | None = None) -> None:
+        iterations = 0
+        while self.proof.status == ProofStatus.PENDING:
+            if max_iterations is not None and max_iterations <= iterations:
+                return
+            iterations += 1
+            self.step_proof()

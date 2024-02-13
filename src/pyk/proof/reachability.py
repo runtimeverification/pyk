@@ -684,42 +684,38 @@ class APRProver(Prover):
             module_name=module_name,
         )
 
-    def advance_proof(self, max_iterations: int | None = None) -> None:
-        iterations = 0
+    def step_proof(self) -> None:
+        self._check_all_terminals()
+
+        if not self.proof.pending:
+            return
+
+        self.proof.write_proof_data()
+        if self.fail_fast and self.proof.failed:
+            _LOGGER.warning(
+                f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
+            )
+            return
+
+        curr_node = self.proof.pending[0]
+
+        self.advance_pending_node(
+            node=curr_node,
+            execute_depth=self.execute_depth,
+            cut_point_rules=self.cut_point_rules,
+            terminal_rules=self.terminal_rules,
+        )
 
         self._check_all_terminals()
 
-        while self.proof.pending:
-            self.proof.write_proof_data()
-            if self.fail_fast and self.proof.failed:
-                _LOGGER.warning(
-                    f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
-                )
-                break
-
-            if max_iterations is not None and max_iterations <= iterations:
-                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
-                break
-            iterations += 1
-            curr_node = self.proof.pending[0]
-
-            self.advance_pending_node(
-                node=curr_node,
-                execute_depth=self.execute_depth,
-                cut_point_rules=self.cut_point_rules,
-                terminal_rules=self.terminal_rules,
-            )
-
-            self._check_all_terminals()
-
-            for node in self.proof.terminal:
-                if (
-                    not node.id in self._checked_for_subsumption
-                    and self.proof.kcfg.is_leaf(node.id)
-                    and not self.proof.is_target(node.id)
-                ):
-                    self._checked_for_subsumption.add(node.id)
-                    self._check_subsume(node)
+        for node in self.proof.terminal:
+            if (
+                not node.id in self._checked_for_subsumption
+                and self.proof.kcfg.is_leaf(node.id)
+                and not self.proof.is_target(node.id)
+            ):
+                self._checked_for_subsumption.add(node.id)
+                self._check_subsume(node)
 
         if self.proof.failed:
             self.save_failure_info()
