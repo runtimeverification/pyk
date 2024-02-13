@@ -689,8 +689,6 @@ class APRProver(Prover):
 
         if not self.proof.pending:
             return
-
-        self.proof.write_proof_data()
         curr_node = self.proof.pending[0]
 
         self.advance_pending_node(
@@ -713,8 +711,6 @@ class APRProver(Prover):
 
         if self.proof.failed:
             self.proof.failure_info = self.failure_info()
-
-        self.proof.write_proof_data()
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)

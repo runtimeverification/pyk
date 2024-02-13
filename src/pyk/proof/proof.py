@@ -302,3 +302,4 @@ class Prover:
                 return
             iterations += 1
             self.step_proof()
+            self.proof.write_proof_data()
