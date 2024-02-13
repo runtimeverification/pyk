@@ -87,17 +87,15 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
     def proof_dir(self, tmp_path_factory: TempPathFactory) -> Path:
         return tmp_path_factory.mktemp('proofs')
 
-    def test_apr_proof_unrefute_node(
+    def build_prover(
         self,
         kprove: KProve,
         proof_dir: Path,
         kcfg_explore: KCFGExplore,
-    ) -> None:
-        # Given
-        spec_file = K_FILES / 'refute-node-spec.k'
-        spec_module = 'REFUTE-NODE-SPEC'
-        claim_id = 'split-int-succeed'
-
+        spec_file: Path,
+        spec_module: str,
+        claim_id: str,
+    ) -> APRProver:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
@@ -111,7 +109,20 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
             logs={},
             proof_dir=proof_dir,
         )
-        prover = APRProver(proof, kcfg_explore)
+        return APRProver(proof, kcfg_explore)
+
+    def test_apr_proof_unrefute_node(
+        self,
+        kprove: KProve,
+        proof_dir: Path,
+        kcfg_explore: KCFGExplore,
+    ) -> None:
+        # Given
+        spec_file = K_FILES / 'refute-node-spec.k'
+        spec_module = 'REFUTE-NODE-SPEC'
+        claim_id = 'split-int-succeed'
+
+        prover = self.build_prover(kprove, proof_dir, kcfg_explore, spec_file, spec_module, claim_id)
 
         # When
         prover.advance_proof(max_iterations=1)
@@ -147,23 +158,7 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         spec_module = 'REFUTE-NODE-SPEC'
         claim_id = 'split-int-fail'
 
-        claim = single(
-            kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
-        )
-        kcfg_pre, init_node, target_node = KCFG.from_claim(kprove.definition, claim, proof_dir)
-        proof = APRProof(
-            f'{spec_module}.{claim_id}',
-            kcfg_pre,
-            [],
-            init=init_node,
-            target=target_node,
-            logs={},
-            proof_dir=proof_dir,
-        )
-        prover = APRProver(
-            proof,
-            kcfg_explore,
-        )
+        prover = self.build_prover(kprove, proof_dir, kcfg_explore, spec_file, spec_module, claim_id)
 
         # When
         prover.advance_proof()
