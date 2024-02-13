@@ -903,8 +903,8 @@ class TestImpProof(KCFGExploreTest, KProveTest):
                     subproof.admit()
                     subproof.write_proof_data()
 
-            prover = APRProver(proof, kcfg_explore=kcfg_explore)
-            prover.advance_proof(max_iterations=max_iterations, execute_depth=max_depth, cut_point_rules=cut_rules)
+            prover = APRProver(proof, kcfg_explore=kcfg_explore, execute_depth=max_depth, cut_point_rules=cut_rules)
+            prover.advance_proof(max_iterations=max_iterations)
 
             kcfg_show = KCFGShow(
                 kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
@@ -944,13 +944,14 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         )
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
-        prover = APRProver(proof, kcfg_explore=kcfg_explore)
-        prover.advance_proof(
-            max_iterations=max_iterations,
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,
             cut_point_rules=cut_rules,
         )
+        prover.advance_proof(max_iterations=max_iterations)
 
         assert len(proof.failing) == 1
         path_constraint = proof.path_constraints(proof.failing[0].id)
@@ -984,13 +985,14 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, bmc_depth=bmc_depth)
         kcfg_explore.simplify(proof.kcfg, {})
-        prover = APRProver(proof, kcfg_explore=kcfg_explore)
-        prover.advance_proof(
-            max_iterations=max_iterations,
+        prover = APRProver(
+            proof,
+            kcfg_explore=kcfg_explore,
             execute_depth=max_depth,
             terminal_rules=terminal_rules,
             cut_point_rules=cut_rules,
         )
+        prover.advance_proof(max_iterations=max_iterations)
 
         kcfg_show = KCFGShow(
             kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
@@ -1057,8 +1059,8 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proofs_dir)
         kcfg_explore.simplify(proof.kcfg, {})
-        prover = APRProver(proof, kcfg_explore=kcfg_explore)
-        prover.advance_proof(execute_depth=1)
+        prover = APRProver(proof, kcfg_explore=kcfg_explore, execute_depth=1)
+        prover.advance_proof()
 
         proof_from_disk = APRProof.read_proof_data(proof_dir=proofs_dir, id=proof.id)
 
@@ -1082,8 +1084,8 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proofs_dir, bmc_depth=3)
         kcfg_explore.simplify(proof.kcfg, {})
-        prover = APRProver(proof, kcfg_explore=kcfg_explore)
-        prover.advance_proof(execute_depth=1)
+        prover = APRProver(proof, kcfg_explore=kcfg_explore, execute_depth=1)
+        prover.advance_proof()
 
         proof_from_disk = APRProof.read_proof_data(proof_dir=proofs_dir, id=proof.id)
 
@@ -1105,8 +1107,8 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         )
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
-        prover = APRProver(proof, kcfg_explore=kcfg_explore)
-        prover.advance_proof(fail_fast=False)
+        prover = APRProver(proof, kcfg_explore=kcfg_explore, fail_fast=False)
+        prover.advance_proof()
 
         # Both branches will be checked and fail (fail_fast=False)
         assert len(proof.kcfg.leaves) == 3
@@ -1115,9 +1117,9 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert len(proof.failing) == 2
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
-        prover = APRProver(proof, kcfg_explore=kcfg_explore)
+        prover = APRProver(proof, kcfg_explore=kcfg_explore, fail_fast=True)
 
-        prover.advance_proof(fail_fast=True)
+        prover.advance_proof()
 
         # First branch will be reached first and terminate the proof, leaving the second long branch pending (fail_fast=True)
         assert len(proof.kcfg.leaves) == 3
