@@ -54,6 +54,17 @@ class ImpliesProof(Proof):
     def set_csubst(self, csubst: CSubst) -> None:
         self.csubst = csubst
 
+    @property
+    def status(self) -> ProofStatus:
+        if self.admitted:
+            return ProofStatus.PASSED
+        if self.simplified_antecedent is None or self.simplified_consequent is None:
+            return ProofStatus.PENDING
+        elif self.csubst is None:
+            return ProofStatus.FAILED
+        else:
+            return ProofStatus.PASSED
+
     def write_proof_data(self, subproofs: bool = False) -> None:
         super().write_proof_data()
         if not self.proof_dir:
@@ -145,17 +156,6 @@ class EqualityProof(ImpliesProof):
     @property
     def simplified_equality(self) -> KInner | None:
         return self.simplified_consequent
-
-    @property
-    def status(self) -> ProofStatus:
-        if self.admitted:
-            return ProofStatus.PASSED
-        if self.simplified_constraints is None or self.simplified_equality is None:
-            return ProofStatus.PENDING
-        elif self.csubst is None:
-            return ProofStatus.FAILED
-        else:
-            return ProofStatus.PASSED
 
     @classmethod
     def from_dict(cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> EqualityProof:
@@ -283,15 +283,6 @@ class RefutationProof(ImpliesProof):
     @property
     def simplified_constraints(self) -> KInner | None:
         return self.simplified_antecedent
-
-    @property
-    def status(self) -> ProofStatus:
-        if self.simplified_constraints is None:
-            return ProofStatus.PENDING
-        elif self.csubst is None:
-            return ProofStatus.FAILED
-        else:
-            return ProofStatus.PASSED
 
     @property
     def dict(self) -> dict[str, Any]:
