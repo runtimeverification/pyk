@@ -533,6 +533,10 @@ class APRProver(Prover):
     main_module_name: str
     dependencies_module_name: str
     circularities_module_name: str
+    execute_depth: int | None
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
+    fail_fast: bool
     counterexample_info: bool
     always_check_subsumption: bool
     fast_check_subsumption: bool
@@ -545,6 +549,10 @@ class APRProver(Prover):
         self,
         proof: APRProof,
         kcfg_explore: KCFGExplore,
+        execute_depth: int | None = None,
+        cut_point_rules: Iterable[str] = (),
+        terminal_rules: Iterable[str] = (),
+        fail_fast: bool = False,
         counterexample_info: bool = False,
         always_check_subsumption: bool = True,
         fast_check_subsumption: bool = False,
@@ -559,6 +567,10 @@ class APRProver(Prover):
         super().__init__(kcfg_explore)
         self.proof = proof
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
+        self.execute_depth = execute_depth
+        self.cut_point_rules = cut_point_rules
+        self.terminal_rules = terminal_rules
+        self.fail_fast = fail_fast
         self.counterexample_info = counterexample_info
         self.always_check_subsumption = always_check_subsumption
         self.fast_check_subsumption = fast_check_subsumption
@@ -672,21 +684,14 @@ class APRProver(Prover):
             module_name=module_name,
         )
 
-    def advance_proof(
-        self,
-        max_iterations: int | None = None,
-        execute_depth: int | None = None,
-        cut_point_rules: Iterable[str] = (),
-        terminal_rules: Iterable[str] = (),
-        fail_fast: bool = False,
-    ) -> None:
+    def advance_proof(self, max_iterations: int | None = None) -> None:
         iterations = 0
 
         self._check_all_terminals()
 
         while self.proof.pending:
             self.proof.write_proof_data()
-            if fail_fast and self.proof.failed:
+            if self.fail_fast and self.proof.failed:
                 _LOGGER.warning(
                     f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
                 )
@@ -700,9 +705,9 @@ class APRProver(Prover):
 
             self.advance_pending_node(
                 node=curr_node,
-                execute_depth=execute_depth,
-                cut_point_rules=cut_point_rules,
-                terminal_rules=terminal_rules,
+                execute_depth=self.execute_depth,
+                cut_point_rules=self.cut_point_rules,
+                terminal_rules=self.terminal_rules,
             )
 
             self._check_all_terminals()
