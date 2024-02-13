@@ -1107,8 +1107,8 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         )
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
-        prover = APRProver(proof, kcfg_explore=kcfg_explore, fail_fast=False)
-        prover.advance_proof()
+        prover = APRProver(proof, kcfg_explore=kcfg_explore)
+        prover.advance_proof(fail_fast=False)
 
         # Both branches will be checked and fail (fail_fast=False)
         assert len(proof.kcfg.leaves) == 3
@@ -1117,9 +1117,8 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert len(proof.failing) == 2
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
-        prover = APRProver(proof, kcfg_explore=kcfg_explore, fail_fast=True)
-
-        prover.advance_proof()
+        prover = APRProver(proof, kcfg_explore=kcfg_explore)
+        prover.advance_proof(fail_fast=True)
 
         # First branch will be reached first and terminate the proof, leaving the second long branch pending (fail_fast=True)
         assert len(proof.kcfg.leaves) == 3

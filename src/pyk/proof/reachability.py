@@ -536,7 +536,6 @@ class APRProver(Prover):
     execute_depth: int | None
     cut_point_rules: Iterable[str]
     terminal_rules: Iterable[str]
-    fail_fast: bool
     counterexample_info: bool
     always_check_subsumption: bool
     fast_check_subsumption: bool
@@ -552,7 +551,6 @@ class APRProver(Prover):
         execute_depth: int | None = None,
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
-        fail_fast: bool = False,
         counterexample_info: bool = False,
         always_check_subsumption: bool = True,
         fast_check_subsumption: bool = False,
@@ -570,7 +568,6 @@ class APRProver(Prover):
         self.execute_depth = execute_depth
         self.cut_point_rules = cut_point_rules
         self.terminal_rules = terminal_rules
-        self.fail_fast = fail_fast
         self.counterexample_info = counterexample_info
         self.always_check_subsumption = always_check_subsumption
         self.fast_check_subsumption = fast_check_subsumption
