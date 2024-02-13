@@ -62,6 +62,10 @@ class ImpliesProof(Proof):
         else:
             return ProofStatus.PASSED
 
+    @property
+    def can_progress(self) -> bool:
+        return self.simplified_antecedent is None or self.simplified_consequent is None
+
     def write_proof_data(self, subproofs: bool = False) -> None:
         super().write_proof_data()
         if not self.proof_dir:

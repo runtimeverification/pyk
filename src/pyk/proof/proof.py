@@ -175,6 +175,11 @@ class Proof(ABC):
         ...
 
     @property
+    @abstractmethod
+    def can_progress(self) -> bool:
+        ...
+
+    @property
     def failed(self) -> bool:
         return self.status == ProofStatus.FAILED
 
@@ -294,7 +299,7 @@ class Prover:
 
     def advance_proof(self, max_iterations: int | None = None, fail_fast: bool = False) -> None:
         iterations = 0
-        while not self.proof.passed:
+        while self.proof.can_progress:
             if fail_fast and self.proof.failed:
                 _LOGGER.warning(f'Terminating proof early because fail_fast is set: {self.proof.id}')
                 return

@@ -186,6 +186,10 @@ class APRProof(Proof, KCFGExploration):
         else:
             return ProofStatus.PASSED
 
+    @property
+    def can_progress(self) -> bool:
+        return len(self.pending) > 0
+
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         kcfg = KCFG.from_dict(dct['kcfg'])
