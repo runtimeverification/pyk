@@ -127,15 +127,6 @@ class EqualityProof(ImpliesProof):
     def add_constraint(self, new_constraint: KInner) -> None:
         self.constraints = (*self.constraints, new_constraint)
 
-    def set_satisfiable(self, satisfiable: bool) -> None:
-        self.satisfiable = satisfiable
-
-    def set_simplified_constraints(self, simplified: KInner) -> None:
-        self.simplified_constraints = simplified
-
-    def set_simplified_equality(self, simplified: KInner) -> None:
-        self.simplified_equality = simplified
-
     @property
     def status(self) -> ProofStatus:
         if self.admitted:
@@ -254,9 +245,6 @@ class RefutationProof(ImpliesProof):
             'Building a RefutationProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
         )
 
-    def set_simplified_constraints(self, simplified: KInner) -> None:
-        self.simplified_constraints = simplified
-
     @staticmethod
     def read_proof_data(proof_dir: Path, id: str) -> RefutationProof:
         proof_path = proof_dir / id / 'proof.json'
@@ -362,11 +350,11 @@ class ImpliesProver(Prover):
 
         if is_bottom(antecedent_simplified_kast):
             _LOGGER.warning(f'Antecedent of implication (proof constraints) simplifies to #Bottom {self.proof.id}')
-            self.proof.set_csubst(CSubst(Subst({}), ()))
+            self.proof.csubst = CSubst(Subst({}), ())
 
         elif is_top(consequent_simplified_kast):
             _LOGGER.warning(f'Consequent of implication (proof equality) simplifies to #Top {self.proof.id}')
-            self.proof.set_csubst(CSubst(Subst({}), ()))
+            self.proof.csubst = CSubst(Subst({}), ())
 
         else:
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
@@ -376,7 +364,7 @@ class ImpliesProver(Prover):
                 consequent=CTerm(config=dummy_config, constraints=[self.proof.simplified_consequent]),
             )
             if result is not None:
-                self.proof.set_csubst(result)
+                self.proof.csubst = result
 
         _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
         self.proof.write_proof_data()
@@ -391,8 +379,8 @@ class EqualityProver(ImpliesProver):
         assert type(self.proof) is EqualityProof
         assert self.proof.simplified_antecedent is not None
         assert self.proof.simplified_consequent is not None
-        self.proof.set_simplified_constraints(self.proof.simplified_antecedent)
-        self.proof.set_simplified_equality(self.proof.simplified_consequent)
+        self.proof.simplified_constraints = self.proof.simplified_antecedent
+        self.proof.simplified_equality = self.proof.simplified_consequent
 
 
 class RefutationProver(ImpliesProver):
@@ -403,4 +391,4 @@ class RefutationProver(ImpliesProver):
         super().advance_proof()
         assert type(self.proof) is RefutationProof
         assert self.proof.simplified_consequent is not None
-        self.proof.set_simplified_constraints(self.proof.simplified_consequent)
+        self.proof.simplified_constraints = self.proof.simplified_antecedent
