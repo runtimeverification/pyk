@@ -78,6 +78,46 @@ class ImpliesProof(Proof):
             proof_path.write_text(proof_json)
             _LOGGER.info(f'Updated proof file {self.id}: {proof_path}')
 
+    @classmethod
+    def from_dict(cls: type[ImpliesProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> ImpliesProof:
+        id = dct['id']
+        antecedent = KInner.from_dict(dct['antecedent'])
+        consequent = KInner.from_dict(dct['consequent'])
+        simplified_antecedent = (
+            KInner.from_dict(dct['simplified_antecedent']) if 'simplified_antecedent' in dct else None
+        )
+        simplified_consequent = (
+            KInner.from_dict(dct['simplified_consequent']) if 'simplified_consequent' in dct else None
+        )
+        csubst = CSubst.from_dict(dct['csubst']) if 'csubst' in dct else None
+        subproof_ids = dct['subproof_ids']
+        admitted = dct.get('admitted', False)
+        return ImpliesProof(
+            id,
+            antecedent,
+            consequent,
+            simplified_antecedent=simplified_antecedent,
+            simplified_consequent=simplified_consequent,
+            csubst=csubst,
+            admitted=admitted,
+            subproof_ids=subproof_ids,
+            proof_dir=proof_dir,
+        )
+
+    @property
+    def dict(self) -> dict[str, Any]:
+        dct = super().dict
+        dct['type'] = 'ImpliesProof'
+        dct['antecedent'] = self.antecedent.to_dict()
+        dct['consequent'] = self.consequent.to_dict()
+        if self.simplified_antecedent is not None:
+            dct['simplified_antecedent'] = self.simplified_antecedent
+        if self.simplified_consequent is not None:
+            dct['simplified_consequent'] = self.simplified_consequent
+        if self.csubst is not None:
+            dct['csubst'] = self.csubst
+        return dct
+
 
 class EqualityProof(ImpliesProof):
     def __init__(
