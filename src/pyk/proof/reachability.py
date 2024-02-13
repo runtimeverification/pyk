@@ -691,12 +691,6 @@ class APRProver(Prover):
             return
 
         self.proof.write_proof_data()
-        if self.fail_fast and self.proof.failed:
-            _LOGGER.warning(
-                f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
-            )
-            return
-
         curr_node = self.proof.pending[0]
 
         self.advance_pending_node(

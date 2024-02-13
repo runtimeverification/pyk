@@ -292,9 +292,12 @@ class Prover:
     def step_proof(self) -> None:
         ...
 
-    def advance_proof(self, max_iterations: int | None = None) -> None:
+    def advance_proof(self, max_iterations: int | None = None, fail_fast: bool = False) -> None:
         iterations = 0
-        while self.proof.status == ProofStatus.PENDING:
+        while True:
+            if fail_fast and self.proof.failed:
+                _LOGGER.warning(f'Terminating proof early because fail_fast is set: {self.proof.id}')
+                return
             if max_iterations is not None and max_iterations <= iterations:
                 return
             iterations += 1
