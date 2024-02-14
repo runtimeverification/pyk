@@ -317,35 +317,27 @@ class RefutationProof(ImpliesProof):
     def simplified_constraints(self) -> KInner | None:
         return self.simplified_antecedent
 
+    @classmethod
+    def from_dict(cls: type[RefutationProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> RefutationProof:
+        implies_proof = ImpliesProof.from_dict(dct, proof_dir=proof_dir)
+        assert type(implies_proof.consequent) is KApply
+        return RefutationProof(
+            id=implies_proof.id,
+            pre_constraints=flatten_label('#And', implies_proof.antecedent),
+            last_constraint=implies_proof.consequent.args[1],
+            simplified_antecedent=implies_proof.simplified_antecedent,
+            simplified_consequent=implies_proof.simplified_consequent,
+            csubst=implies_proof.csubst,
+            proof_dir=implies_proof.proof_dir,
+            subproof_ids=implies_proof.subproof_ids,
+            admitted=implies_proof.admitted,
+        )
+
     @property
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'RefutationProof'
-        dct['pre_constraints'] = [c.to_dict() for c in self.pre_constraints]
-        dct['last_constraint'] = self.last_constraint.to_dict()
-        if self.simplified_constraints is not None:
-            dct['simplified_constraints'] = self.simplified_constraints.to_dict()
-        if self.csubst is not None:
-            dct['csubst'] = self.csubst.to_dict()
         return dct
-
-    @classmethod
-    def from_dict(cls: type[RefutationProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> RefutationProof:
-        id = dct['id']
-        pre_constraints = [KInner.from_dict(c) for c in dct['pre_constraints']]
-        last_constraint = KInner.from_dict(dct['last_constraint'])
-        simplified_constraints = (
-            KInner.from_dict(dct['simplified_constraints']) if 'simplified_constraints' in dct else None
-        )
-        csubst = CSubst.from_dict(dct['csubst']) if 'csubst' in dct else None
-        return RefutationProof(
-            id=id,
-            pre_constraints=pre_constraints,
-            last_constraint=last_constraint,
-            csubst=csubst,
-            simplified_antecedent=simplified_constraints,
-            proof_dir=proof_dir,
-        )
 
     @property
     def summary(self) -> RefutationSummary:
