@@ -37,6 +37,9 @@ class ImpliesProof(Proof):
         id: str,
         antecedent: KInner,
         consequent: KInner,
+        simplified_antecedent: KInner | None = None,
+        simplified_consequent: KInner | None = None,
+        csubst: CSubst | None = None,
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
         admitted: bool = False,
@@ -44,8 +47,9 @@ class ImpliesProof(Proof):
         super().__init__(id=id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         self.antecedent = antecedent
         self.consequent = consequent
-        self.simplified_antecedent = None
-        self.simplified_consequent = None
+        self.simplified_antecedent = simplified_antecedent
+        self.simplified_consequent = simplified_consequent
+        self.csubst = csubst
 
     def set_csubst(self, csubst: CSubst) -> None:
         self.csubst = csubst
@@ -67,7 +71,6 @@ class EqualityProof(ImpliesProof):
     lhs_body: KInner
     rhs_body: KInner
     sort: KSort
-    constraints: tuple[KInner, ...]
 
     def __init__(
         self,
@@ -76,22 +79,29 @@ class EqualityProof(ImpliesProof):
         rhs_body: KInner,
         sort: KSort,
         constraints: Iterable[KInner] = (),
-        csubst: CSubst | None = None,
         simplified_constraints: KInner | None = None,
         simplified_equality: KInner | None = None,
+        csubst: CSubst | None = None,
         proof_dir: Path | None = None,
+        subproof_ids: Iterable[str] = (),
         admitted: bool = False,
     ):
         antecedent = mlAnd(constraints)
         consequent = mlEquals(lhs_body, rhs_body, arg_sort=sort, sort=GENERATED_TOP_CELL)
-        super().__init__(id, antecedent, consequent, proof_dir=proof_dir, admitted=admitted)
+        super().__init__(
+            id,
+            antecedent,
+            consequent,
+            simplified_antecedent=simplified_constraints,
+            simplified_consequent=simplified_equality,
+            csubst=csubst,
+            proof_dir=proof_dir,
+            subproof_ids=subproof_ids,
+            admitted=admitted,
+        )
         self.lhs_body = lhs_body
         self.rhs_body = rhs_body
         self.sort = sort
-        self.constraints = tuple(constraints)
-        self.csubst = csubst
-        self.simplified_constraints = simplified_constraints
-        self.simplified_equality = simplified_equality
         _LOGGER.warning(
             'Building an EqualityProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
         )
@@ -118,14 +128,23 @@ class EqualityProof(ImpliesProof):
 
     @property
     def equality(self) -> KInner:
-        return mlEquals(self.lhs_body, self.rhs_body, arg_sort=self.sort, sort=GENERATED_TOP_CELL)
+        return self.consequent
 
     @property
     def constraint(self) -> KInner:
-        return mlAnd(self.constraints)
+        return self.antecedent
 
-    def add_constraint(self, new_constraint: KInner) -> None:
-        self.constraints = (*self.constraints, new_constraint)
+    @property
+    def constraints(self) -> list[KInner]:
+        return flatten_label('#And', self.constraint)
+
+    @property
+    def simplified_constraints(self) -> KInner | None:
+        return self.simplified_antecedent
+
+    @property
+    def simplified_equality(self) -> KInner | None:
+        return self.simplified_consequent
 
     @property
     def status(self) -> ProofStatus:
@@ -376,11 +395,6 @@ class EqualityProver(ImpliesProver):
 
     def advance_proof(self) -> None:
         super().advance_proof()
-        assert type(self.proof) is EqualityProof
-        assert self.proof.simplified_antecedent is not None
-        assert self.proof.simplified_consequent is not None
-        self.proof.simplified_constraints = self.proof.simplified_antecedent
-        self.proof.simplified_equality = self.proof.simplified_consequent
 
 
 class RefutationProver(ImpliesProver):
