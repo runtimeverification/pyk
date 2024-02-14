@@ -240,7 +240,6 @@ class RefutationProof(ImpliesProof):
     sort: KSort
     pre_constraints: Iterable[KInner]
     last_constraint: KInner
-    simplified_constraints: KInner | None
 
     def __init__(
         self,
@@ -248,18 +247,29 @@ class RefutationProof(ImpliesProof):
         sort: KSort,
         pre_constraints: Iterable[KInner],
         last_constraint: KInner,
+        simplified_antecedent: KInner | None = None,
+        simplified_consequent: KInner | None = None,
         csubst: CSubst | None = None,
-        simplified_constraints: KInner | None = None,
         proof_dir: Path | None = None,
+        subproof_ids: Iterable[str] = (),
+        admitted: bool = False,
     ):
         antecedent = mlAnd(pre_constraints)
         consequent = mlEqualsFalse(last_constraint)
-        super().__init__(id, antecedent, consequent, proof_dir=proof_dir)
+        super().__init__(
+            id,
+            antecedent,
+            consequent,
+            simplified_antecedent=simplified_antecedent,
+            simplified_consequent=simplified_consequent,
+            csubst=csubst,
+            subproof_ids=subproof_ids,
+            proof_dir=proof_dir,
+            admitted=admitted,
+        )
         self.sort = sort
         self.pre_constraints = tuple(pre_constraints)
         self.last_constraint = last_constraint
-        self.csubst = csubst
-        self.simplified_constraints = simplified_constraints
         _LOGGER.warning(
             'Building a RefutationProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
         )
@@ -272,6 +282,10 @@ class RefutationProof(ImpliesProof):
             return RefutationProof.from_dict(proof_dict, proof_dir)
 
         raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
+
+    @property
+    def simplified_constraints(self) -> KInner | None:
+        return self.simplified_antecedent
 
     @property
     def status(self) -> ProofStatus:
@@ -311,7 +325,7 @@ class RefutationProof(ImpliesProof):
             pre_constraints=pre_constraints,
             last_constraint=last_constraint,
             csubst=csubst,
-            simplified_constraints=simplified_constraints,
+            simplified_antecedent=simplified_constraints,
             proof_dir=proof_dir,
         )
 
@@ -403,6 +417,3 @@ class RefutationProver(ImpliesProver):
 
     def advance_proof(self) -> None:
         super().advance_proof()
-        assert type(self.proof) is RefutationProof
-        assert self.proof.simplified_consequent is not None
-        self.proof.simplified_constraints = self.proof.simplified_antecedent
