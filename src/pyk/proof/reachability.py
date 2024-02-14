@@ -71,7 +71,7 @@ class APRProof(Proof, KCFGExploration):
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
         admitted: bool = False,
-        execution_time: float = 0
+        execution_time: float = 0,
     ):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
@@ -163,7 +163,7 @@ class APRProof(Proof, KCFGExploration):
         for nid in pruned_nodes:
             self._bounded.discard(nid)
         return pruned_nodes
-    
+
     def update_execution_time(self, execution_time: float) -> None:
         self.execution_time += execution_time
 
@@ -413,7 +413,7 @@ class APRProof(Proof, KCFGExploration):
         bmc_depth = int(proof_dict['bmc_depth']) if 'bmc_depth' in proof_dict else None
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
-        execution_time=float(proof_dict['execution_time'])
+        execution_time = float(proof_dict['execution_time'])
         terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
@@ -445,7 +445,9 @@ class APRProof(Proof, KCFGExploration):
         ensure_dir_path(self.proof_dir)
         ensure_dir_path(self.proof_subdir)
         proof_json = self.proof_subdir / 'proof.json'
-        dct: dict[str, list[int] | list[str] | bool | float | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
+        dct: dict[
+            str, list[int] | list[str] | bool | float | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]
+        ] = {}
 
         dct['id'] = self.id
         dct['subproof_ids'] = self.subproof_ids
