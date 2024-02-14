@@ -220,3 +220,30 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         assert len(proof_from_file.node_refutations) == 1
         assert frontier_node.id in proof_from_file.node_refutations
         assert proof_from_file.node_refutations[frontier_node.id].id == refutation_id
+
+    def test_apr_proof_refute_node_no_successors(
+        self,
+        kprove: KProve,
+        proof_dir: Path,
+        kcfg_explore: KCFGExplore,
+    ) -> None:
+        # Given
+        spec_file = K_FILES / 'refute-node-spec.k'
+        spec_module = 'REFUTE-NODE-SPEC'
+        claim_id = 'split-int-fail'
+
+        prover = self.build_prover(kprove, proof_dir, kcfg_explore, spec_file, spec_module, claim_id)
+
+        # When
+        prover.advance_proof()
+        failing_node = single(prover.proof.failing)
+        predecessors = prover.proof.kcfg.predecessors(failing_node.id)
+        assert len(predecessors) == 1
+        predecessor_node = predecessors[0].source
+
+        result_predecessor = prover.proof.refute_node(predecessor_node)
+        result_successor = prover.proof.refute_node(failing_node)
+
+        # Then
+        assert result_predecessor is None  # fails because the node has successors
+        assert result_successor is not None  # succeeds because the node has no successors
