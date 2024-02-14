@@ -401,19 +401,3 @@ class ImpliesProver(Prover):
 
         _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
         self.proof.write_proof_data()
-
-
-class EqualityProver(ImpliesProver):
-    def __init__(self, proof: EqualityProof, kcfg_explore: KCFGExplore) -> None:
-        super().__init__(proof=proof, kcfg_explore=kcfg_explore)
-
-    def advance_proof(self) -> None:
-        super().advance_proof()
-
-
-class RefutationProver(ImpliesProver):
-    def __init__(self, proof: RefutationProof, kcfg_explore: KCFGExplore) -> None:
-        super().__init__(proof=proof, kcfg_explore=kcfg_explore)
-
-    def advance_proof(self) -> None:
-        super().advance_proof()
