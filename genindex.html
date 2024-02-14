@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; pyk 0.1.625 documentation</title>
+    <title>Index &#8212; pyk 0.1.626 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
-    <script src="_static/documentation_options.js?v=42904dd7"></script>
+    <script src="_static/documentation_options.js?v=7568c7bd"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="#" />
@@ -98,8 +98,6 @@
       <ul>
         <li><a href="api/pyk.cterm.html#pyk.cterm.CTerm.add_constraint">(CTerm method)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.add_constraint">(EqualityProof method)</a>
-</li>
       </ul></li>
       <li><a href="api/pyk.utils.html#pyk.utils.BugReport.add_file">add_file() (BugReport method)</a>
 </li>
@@ -140,11 +138,7 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProver.advance_proof">advance_proof() (APRProver method)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProver.advance_proof">(EqualityProver method)</a>
-</li>
         <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProver.advance_proof">(ImpliesProver method)</a>
-</li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProver.advance_proof">(RefutationProver method)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.kbuild.utils.html#pyk.kbuild.utils.KVersion.Git.ahead">ahead (KVersion.Git attribute)</a>
@@ -189,6 +183,8 @@
 </li>
       <li><a href="api/pyk.kore.parser.html#pyk.kore.parser.KoreParser.andd">andd() (KoreParser method)</a>
 </li>
+      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.antecedent">antecedent (ImpliesProof attribute)</a>
+</li>
       <li><a href="api/pyk.cterm.html#pyk.cterm.CTerm.anti_unify">anti_unify() (CTerm method)</a>
 
       <ul>
@@ -229,10 +225,10 @@
 </li>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRFailureInfo">APRFailureInfo (class in pyk.proof.reachability)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof">APRProof (class in pyk.proof.reachability)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/pyk.proof.tui.html#pyk.proof.tui.APRProofBehaviorView">APRProofBehaviorView (class in pyk.proof.tui)</a>
 </li>
       <li><a href="api/pyk.proof.show.html#pyk.proof.show.APRProofNodePrinter">APRProofNodePrinter (class in pyk.proof.show)</a>
@@ -745,6 +741,8 @@
 </li>
       <li><a href="api/pyk.cterm.html#pyk.cterm.CTerm.config">config (CTerm attribute)</a>
 </li>
+      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.consequent">consequent (ImpliesProof attribute)</a>
+</li>
       <li><a href="api/pyk.kcfg.tui.html#pyk.kcfg.tui.Constraint">Constraint (class in pyk.kcfg.tui)</a>
 </li>
       <li><a href="api/pyk.cterm.html#pyk.cterm.CSubst.constraint">constraint (CSubst property)</a>
@@ -760,7 +758,7 @@
 </li>
         <li><a href="api/pyk.cterm.html#pyk.cterm.CTerm.constraints">(CTerm attribute)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.constraints">(EqualityProof attribute)</a>
+        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.constraints">(EqualityProof property)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.construct_node_refutation">construct_node_refutation() (APRProof method)</a>
@@ -1122,8 +1120,6 @@
       <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.equality">equality (EqualityProof property)</a>
 </li>
       <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof">EqualityProof (class in pyk.proof.equality)</a>
-</li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProver">EqualityProver (class in pyk.proof.equality)</a>
 </li>
       <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualitySummary">EqualitySummary (class in pyk.proof.equality)</a>
 </li>
@@ -2485,7 +2481,7 @@
 </li>
       <li><a href="api/pyk.kast.inner.html#pyk.kast.inner.KRewrite.lhs">lhs (KRewrite attribute)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.lhs_body">lhs_body (EqualityProof attribute)</a>
+      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.lhs_body">lhs_body (EqualityProof property)</a>
 </li>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRSummary.lines">lines (APRSummary property)</a>
 
@@ -4278,8 +4274,6 @@
       </ul></li>
       <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof">RefutationProof (class in pyk.proof.equality)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProver">RefutationProver (class in pyk.proof.equality)</a>
-</li>
       <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationSummary">RefutationSummary (class in pyk.proof.equality)</a>
 </li>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.refute_node">refute_node() (APRProof method)</a>
@@ -4432,7 +4426,7 @@
 </li>
       <li><a href="api/pyk.kast.inner.html#pyk.kast.inner.KRewrite.rhs">rhs (KRewrite attribute)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.rhs_body">rhs_body (EqualityProof attribute)</a>
+      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.rhs_body">rhs_body (EqualityProof property)</a>
 </li>
       <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.AliasDecl.right">right (AliasDecl attribute)</a>
 </li>
@@ -4598,8 +4592,6 @@
 </li>
       <li><a href="api/pyk.kast.manip.html#pyk.kast.manip.set_cell">set_cell() (in module pyk.kast.manip)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.set_csubst">set_csubst() (ImpliesProof method)</a>
-</li>
       <li><a href="api/pyk.prelude.collections.html#pyk.prelude.collections.set_empty">set_empty() (in module pyk.prelude.collections)</a>
 </li>
       <li><a href="api/pyk.prelude.collections.html#pyk.prelude.collections.set_item">set_item() (in module pyk.prelude.collections)</a>
@@ -4607,16 +4599,6 @@
       <li><a href="api/pyk.prelude.collections.html#pyk.prelude.collections.set_of">set_of() (in module pyk.prelude.collections)</a>
 </li>
       <li><a href="api/pyk.kore.prelude.html#pyk.kore.prelude.set_pattern">set_pattern() (in module pyk.kore.prelude)</a>
-</li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.set_satisfiable">set_satisfiable() (EqualityProof method)</a>
-</li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.set_simplified_constraints">set_simplified_constraints() (EqualityProof method)</a>
-
-      <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.set_simplified_constraints">(RefutationProof method)</a>
-</li>
-      </ul></li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.set_simplified_equality">set_simplified_equality() (EqualityProof method)</a>
 </li>
       <li><a href="api/pyk.kore.parser.html#pyk.kore.parser.KoreParser.set_var">set_var() (KoreParser method)</a>
 </li>
@@ -4646,7 +4628,13 @@
 </li>
       <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.simplified_consequent">simplified_consequent (ImpliesProof attribute)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.simplified_constraints">simplified_constraints (RefutationProof attribute)</a>
+      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.simplified_constraints">simplified_constraints (EqualityProof property)</a>
+
+      <ul>
+        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.simplified_constraints">(RefutationProof property)</a>
+</li>
+      </ul></li>
+      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.simplified_equality">simplified_equality (EqualityProof property)</a>
 </li>
       <li><a href="api/pyk.kcfg.explore.html#pyk.kcfg.explore.KCFGExplore.simplify">simplify() (KCFGExplore method)</a>
 
@@ -4715,7 +4703,7 @@
       <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.DV.sort">sort (DV attribute)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.sort">(EqualityProof attribute)</a>
+        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.sort">(EqualityProof property)</a>
 </li>
         <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Equals.sort">(Equals attribute)</a>
 </li>
@@ -4756,8 +4744,6 @@
         <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Not.sort">(Not attribute)</a>
 </li>
         <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Or.sort">(Or attribute)</a>
-</li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.sort">(RefutationProof attribute)</a>
 </li>
         <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Rewrites.sort">(Rewrites attribute)</a>
 </li>
@@ -4834,8 +4820,6 @@
 </li>
       <li><a href="api/pyk.kast.kast.html#pyk.kast.kast.KAtt.SOURCE">SOURCE (KAtt attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/pyk.kcfg.kcfg.html#pyk.kcfg.kcfg.KCFG.Cover.source">source (KCFG.Cover attribute)</a>
 
       <ul>
@@ -4854,6 +4838,8 @@
         <li><a href="api/pyk.kast.outer.html#pyk.kast.outer.KSentence.source">(KSentence property)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/pyk.kdist.api.html#pyk.kdist.api.Target.source">source() (Target method)</a>
 </li>
       <li><a href="api/pyk.kbuild.project.html#pyk.kbuild.project.Project.source_dir">source_dir (Project attribute)</a>
@@ -4913,15 +4899,13 @@
       <ul>
         <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRSummary.status">(APRSummary attribute)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.status">(EqualityProof property)</a>
-</li>
         <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualitySummary.status">(EqualitySummary attribute)</a>
+</li>
+        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.status">(ImpliesProof property)</a>
 </li>
         <li><a href="api/pyk.proof.parallel.html#pyk.proof.parallel.Proof.status">(Proof property)</a>, <a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.status">[1]</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.ProofSummary.status">(ProofSummary attribute)</a>
-</li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.status">(RefutationProof property)</a>
 </li>
         <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationSummary.status">(RefutationSummary attribute)</a>
 </li>

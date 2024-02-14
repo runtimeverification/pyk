@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyk.proof package &#8212; pyk 0.1.625 documentation</title>
+    <title>pyk.proof package &#8212; pyk 0.1.626 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <script src="../_static/documentation_options.js?v=42904dd7"></script>
+    <script src="../_static/documentation_options.js?v=7568c7bd"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -40,7 +40,6 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="pyk.proof.equality.html">pyk.proof.equality module</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof"><code class="docutils literal notranslate"><span class="pre">EqualityProof</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.add_constraint"><code class="docutils literal notranslate"><span class="pre">EqualityProof.add_constraint()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.constraint"><code class="docutils literal notranslate"><span class="pre">EqualityProof.constraint</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.constraints"><code class="docutils literal notranslate"><span class="pre">EqualityProof.constraints</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.dict"><code class="docutils literal notranslate"><span class="pre">EqualityProof.dict</span></code></a></li>
@@ -51,16 +50,10 @@
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.pretty"><code class="docutils literal notranslate"><span class="pre">EqualityProof.pretty()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.read_proof_data"><code class="docutils literal notranslate"><span class="pre">EqualityProof.read_proof_data()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.rhs_body"><code class="docutils literal notranslate"><span class="pre">EqualityProof.rhs_body</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.set_satisfiable"><code class="docutils literal notranslate"><span class="pre">EqualityProof.set_satisfiable()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.set_simplified_constraints"><code class="docutils literal notranslate"><span class="pre">EqualityProof.set_simplified_constraints()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.set_simplified_equality"><code class="docutils literal notranslate"><span class="pre">EqualityProof.set_simplified_equality()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.simplified_constraints"><code class="docutils literal notranslate"><span class="pre">EqualityProof.simplified_constraints</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.simplified_equality"><code class="docutils literal notranslate"><span class="pre">EqualityProof.simplified_equality</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.sort"><code class="docutils literal notranslate"><span class="pre">EqualityProof.sort</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.status"><code class="docutils literal notranslate"><span class="pre">EqualityProof.status</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProof.summary"><code class="docutils literal notranslate"><span class="pre">EqualityProof.summary</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProver"><code class="docutils literal notranslate"><span class="pre">EqualityProver</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualityProver.advance_proof"><code class="docutils literal notranslate"><span class="pre">EqualityProver.advance_proof()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.EqualitySummary"><code class="docutils literal notranslate"><span class="pre">EqualitySummary</span></code></a><ul>
@@ -71,10 +64,12 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof"><code class="docutils literal notranslate"><span class="pre">ImpliesProof</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.antecedent"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.antecedent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.consequent"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.consequent</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.csubst"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.csubst</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.set_csubst"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.set_csubst()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.simplified_antecedent"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.simplified_antecedent</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.simplified_consequent"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.simplified_consequent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.status"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.status</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.write_proof_data"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.write_proof_data()</span></code></a></li>
 </ul>
 </li>
@@ -90,15 +85,8 @@
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof.pre_constraints"><code class="docutils literal notranslate"><span class="pre">RefutationProof.pre_constraints</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof.pretty"><code class="docutils literal notranslate"><span class="pre">RefutationProof.pretty()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof.read_proof_data"><code class="docutils literal notranslate"><span class="pre">RefutationProof.read_proof_data()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof.set_simplified_constraints"><code class="docutils literal notranslate"><span class="pre">RefutationProof.set_simplified_constraints()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof.simplified_constraints"><code class="docutils literal notranslate"><span class="pre">RefutationProof.simplified_constraints</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof.sort"><code class="docutils literal notranslate"><span class="pre">RefutationProof.sort</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof.status"><code class="docutils literal notranslate"><span class="pre">RefutationProof.status</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof.summary"><code class="docutils literal notranslate"><span class="pre">RefutationProof.summary</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProver"><code class="docutils literal notranslate"><span class="pre">RefutationProver</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProver.advance_proof"><code class="docutils literal notranslate"><span class="pre">RefutationProver.advance_proof()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationSummary"><code class="docutils literal notranslate"><span class="pre">RefutationSummary</span></code></a><ul>
