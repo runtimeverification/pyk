@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
 from ..cterm import CSubst, CTerm
-from ..kast.inner import KInner, KSort, Subst
+from ..kast.inner import KApply, KInner, KSort, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
@@ -76,10 +76,6 @@ class ImpliesProof(Proof):
 
 
 class EqualityProof(ImpliesProof):
-    lhs_body: KInner
-    rhs_body: KInner
-    sort: KSort
-
     def __init__(
         self,
         id: str,
@@ -107,9 +103,6 @@ class EqualityProof(ImpliesProof):
             subproof_ids=subproof_ids,
             admitted=admitted,
         )
-        self.lhs_body = lhs_body
-        self.rhs_body = rhs_body
-        self.sort = sort
         _LOGGER.warning(
             'Building an EqualityProof that has known soundness issues: See https://github.com/runtimeverification/haskell-backend/issues/3605.'
         )
@@ -135,8 +128,21 @@ class EqualityProof(ImpliesProof):
         return EqualityProof(claim.label, lhs_body, rhs_body, sort, constraints=constraints, proof_dir=proof_dir)
 
     @property
-    def equality(self) -> KInner:
+    def equality(self) -> KApply:
+        assert type(self.consequent) is KApply
         return self.consequent
+
+    @property
+    def lhs_body(self) -> KInner:
+        return self.equality.args[0]
+
+    @property
+    def rhs_body(self) -> KInner:
+        return self.equality.args[1]
+
+    @property
+    def sort(self) -> KSort:
+        return self.equality.label.params[0]
 
     @property
     def constraint(self) -> KInner:
