@@ -190,3 +190,33 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
 
         # Then
         assert prover.proof.status == expected_status
+
+    def test_apr_proof_read_node_refutations(
+        self,
+        kprove: KProve,
+        proof_dir: Path,
+        kcfg_explore: KCFGExplore,
+    ) -> None:
+        # Given
+        spec_file = K_FILES / 'refute-node-spec.k'
+        spec_module = 'REFUTE-NODE-SPEC'
+        claim_id = 'split-int-succeed'
+
+        prover = self.build_prover(kprove, proof_dir, kcfg_explore, spec_file, spec_module, claim_id)
+
+        # When
+        prover.advance_proof(max_iterations=1)
+        frontier_nodes = prover.proof.pending
+        assert prover.proof.status == ProofStatus.PENDING
+
+        assert len(frontier_nodes)
+        frontier_node = frontier_nodes[0]
+        prover.proof.refute_node(frontier_node)
+
+        proof_from_file = APRProof.read_proof_data(proof_dir, prover.proof.id)
+        refutation_id = prover.proof.get_refutation_id(frontier_node.id)
+
+        # Then
+        assert len(proof_from_file.node_refutations) == 1
+        assert frontier_node.id in proof_from_file.node_refutations
+        assert proof_from_file.node_refutations[frontier_node.id].id == refutation_id
