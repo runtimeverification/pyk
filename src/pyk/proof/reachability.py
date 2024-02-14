@@ -959,6 +959,10 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
     iterations: int
     fail_fast: bool
 
+    counterexample_info: bool
+    always_check_subsumption: bool
+    fast_check_subsumption: bool
+
     _checked_nodes: list[int]
 
     def __init__(
@@ -986,6 +990,9 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
         log_axioms_file: Path | None = None,
         max_iterations: int | None = None,
         fail_fast: bool = False,
+        counterexample_info: bool = False,
+        always_check_subsumption: bool = False,
+        fast_check_subsumption: bool = False,
     ) -> None:
         self.execute_depth = execute_depth
         self.cut_point_rules = cut_point_rules
@@ -1012,7 +1019,13 @@ class ParallelAPRProver(parallel.Prover[APRProof, APRProofResult, APRProofProces
             id=self.id,
             trace_rewrites=self.trace_rewrites,
         )
-        self.prover = APRProver(proof=proof, kcfg_explore=self.kcfg_explore)
+        self.prover = APRProver(
+            proof=proof,
+            kcfg_explore=self.kcfg_explore,
+            counterexample_info=counterexample_info,
+            always_check_subsumption=always_check_subsumption,
+            fast_check_subsumption=fast_check_subsumption,
+        )
         self.prover._check_all_terminals()
         self.max_iterations = max_iterations
         self.iterations = 0

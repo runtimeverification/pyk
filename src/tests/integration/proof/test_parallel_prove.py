@@ -93,7 +93,7 @@ SIMPLE_TREE: dict[int, set[int]] = {
 def test_parallel_prove() -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof(0, 9, SIMPLE_TREE, set())
-    results, _ = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, process_data=None)
+    results, _ = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, process_data={})
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.PASSED
@@ -102,7 +102,7 @@ def test_parallel_prove() -> None:
 def test_parallel_fail() -> None:
     prover = TreeExploreProver()
     proof = TreeExploreProof(0, 9, SIMPLE_TREE, {6})
-    results, _ = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, process_data=None)
+    results, _ = prove_parallel({'proof1': proof}, {'proof1': prover}, max_workers=2, process_data={})
     assert len(list(results)) == 1
     assert len(list(prover.steps(proof))) == 0
     assert list(results)[0].status == ProofStatus.FAILED
@@ -116,7 +116,7 @@ def test_parallel_multiple_proofs() -> None:
         proofs,
         provers_map,
         max_workers=4,
-        process_data=None,
+        process_data={},
     )
     assert len(list(results)) == 3
     for proof in proofs.values():

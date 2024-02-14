@@ -107,7 +107,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             proofs={'proof1': proof},
             provers={'proof1': parallel_prover},
             max_workers=2,
-            process_data=process_data,
+            process_data={'proof1': process_data},
         )
 
         assert len(list(results)) == 1
@@ -159,7 +159,7 @@ class TestImpParallelProve(KCFGExploreTest, KProveTest, KPrintTest):
             proofs={'proof1': proof},
             provers={'proof1': parallel_prover},
             max_workers=2,
-            process_data=process_data,
+            process_data={'proof1': process_data},
         )
 
         assert len(list(results)) == 1
