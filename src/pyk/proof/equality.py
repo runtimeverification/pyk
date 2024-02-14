@@ -237,14 +237,12 @@ class EqualitySummary(ProofSummary):
 
 
 class RefutationProof(ImpliesProof):
-    sort: KSort
     pre_constraints: Iterable[KInner]
     last_constraint: KInner
 
     def __init__(
         self,
         id: str,
-        sort: KSort,
         pre_constraints: Iterable[KInner],
         last_constraint: KInner,
         simplified_antecedent: KInner | None = None,
@@ -267,7 +265,6 @@ class RefutationProof(ImpliesProof):
             proof_dir=proof_dir,
             admitted=admitted,
         )
-        self.sort = sort
         self.pre_constraints = tuple(pre_constraints)
         self.last_constraint = last_constraint
         _LOGGER.warning(
@@ -300,7 +297,6 @@ class RefutationProof(ImpliesProof):
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'RefutationProof'
-        dct['sort'] = self.sort.to_dict()
         dct['pre_constraints'] = [c.to_dict() for c in self.pre_constraints]
         dct['last_constraint'] = self.last_constraint.to_dict()
         if self.simplified_constraints is not None:
@@ -312,7 +308,6 @@ class RefutationProof(ImpliesProof):
     @classmethod
     def from_dict(cls: type[RefutationProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> RefutationProof:
         id = dct['id']
-        sort = KSort.from_dict(dct['sort'])
         pre_constraints = [KInner.from_dict(c) for c in dct['pre_constraints']]
         last_constraint = KInner.from_dict(dct['last_constraint'])
         simplified_constraints = (
@@ -321,7 +316,6 @@ class RefutationProof(ImpliesProof):
         csubst = CSubst.from_dict(dct['csubst']) if 'csubst' in dct else None
         return RefutationProof(
             id=id,
-            sort=sort,
             pre_constraints=pre_constraints,
             last_constraint=last_constraint,
             csubst=csubst,
