@@ -13,8 +13,8 @@ module IMP-SYNTAX
                  | AExp "-" AExp              [klabel(_-_), symbol, left, seqstrict, color(pink)]
                  | "(" AExp ")"               [bracket]
   syntax BExp  ::= Bool
-                 | AExp "<" AExp              [klabel(_<_), symbol, seqstrict, latex({#1}<{#2}), color(pink)]
-                 | AExp "<=" AExp             [klabel(_<=_), symbol, seqstrict, latex({#1}\leq{#2}), color(pink)]
+                 | AExp "<" AExp              [klabel(_<_), symbol, seqstrict, color(pink)]
+                 | AExp "<=" AExp             [klabel(_<=_), symbol, seqstrict, color(pink)]
                  | "!" BExp                   [klabel(!_), symbol, strict, color(pink)]
                  > BExp "&&" BExp             [klabel(_&&_), symbol, left, strict(1), color(pink)]
                  | "(" BExp ")"               [bracket]
