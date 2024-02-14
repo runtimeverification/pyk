@@ -26,20 +26,26 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class ImpliesProof(Proof):
-    _antecedent_kast: KInner
-    _consequent_kast: KInner
-    simplified_antecedent: KInner
-    simplified_consequent: KInner
+    antecedent: KInner
+    consequent: KInner
+    simplified_antecedent: KInner | None
+    simplified_consequent: KInner | None
     csubst: CSubst | None
 
     def __init__(
         self,
         id: str,
+        antecedent: KInner,
+        consequent: KInner,
         proof_dir: Path | None = None,
         subproof_ids: Iterable[str] = (),
         admitted: bool = False,
     ):
         super().__init__(id=id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
+        self.antecedent = antecedent
+        self.consequent = consequent
+        self.simplified_antecedent = None
+        self.simplified_consequent = None
 
     def set_csubst(self, csubst: CSubst) -> None:
         self.csubst = csubst
@@ -76,7 +82,9 @@ class EqualityProof(ImpliesProof):
         proof_dir: Path | None = None,
         admitted: bool = False,
     ):
-        super().__init__(id, proof_dir=proof_dir, admitted=admitted)
+        antecedent = mlAnd(constraints)
+        consequent = mlEquals(lhs_body, rhs_body, arg_sort=sort, sort=GENERATED_TOP_CELL)
+        super().__init__(id, antecedent, consequent, proof_dir=proof_dir, admitted=admitted)
         self.lhs_body = lhs_body
         self.rhs_body = rhs_body
         self.sort = sort
@@ -234,7 +242,9 @@ class RefutationProof(ImpliesProof):
         simplified_constraints: KInner | None = None,
         proof_dir: Path | None = None,
     ):
-        super().__init__(id, proof_dir=proof_dir)
+        antecedent = mlAnd(pre_constraints)
+        consequent = mlEqualsFalse(last_constraint)
+        super().__init__(id, antecedent, consequent, proof_dir=proof_dir)
         self.sort = sort
         self.pre_constraints = tuple(pre_constraints)
         self.last_constraint = last_constraint
@@ -329,13 +339,9 @@ class RefutationSummary(ProofSummary):
 class ImpliesProver(Prover):
     proof: ImpliesProof
 
-    def __init__(
-        self, kcfg_explore: KCFGExplore, proof: ImpliesProof, antecedent_kast: KInner, consequent_kast: KInner
-    ):
+    def __init__(self, proof: ImpliesProof, kcfg_explore: KCFGExplore):
         super().__init__(kcfg_explore)
         self.proof = proof
-        self.proof._antecedent_kast = antecedent_kast
-        self.proof._consequent_kast = consequent_kast
 
     def advance_proof(self) -> None:
         proof_type = type(self.proof).__name__
@@ -347,8 +353,8 @@ class ImpliesProver(Prover):
 
         # to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.
         # "LHS equals RHS under these constraints"
-        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._antecedent_kast)
-        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof._consequent_kast)
+        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof.antecedent)
+        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof.consequent)
         self.proof.simplified_antecedent = antecedent_simplified_kast
         self.proof.simplified_consequent = consequent_simplified_kast
         _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
@@ -378,27 +384,23 @@ class ImpliesProver(Prover):
 
 class EqualityProver(ImpliesProver):
     def __init__(self, proof: EqualityProof, kcfg_explore: KCFGExplore) -> None:
-        super().__init__(
-            kcfg_explore=kcfg_explore, proof=proof, antecedent_kast=proof.constraint, consequent_kast=proof.equality
-        )
+        super().__init__(proof=proof, kcfg_explore=kcfg_explore)
 
     def advance_proof(self) -> None:
         super().advance_proof()
         assert type(self.proof) is EqualityProof
+        assert self.proof.simplified_antecedent is not None
+        assert self.proof.simplified_consequent is not None
         self.proof.set_simplified_constraints(self.proof.simplified_antecedent)
         self.proof.set_simplified_equality(self.proof.simplified_consequent)
 
 
 class RefutationProver(ImpliesProver):
     def __init__(self, proof: RefutationProof, kcfg_explore: KCFGExplore) -> None:
-        super().__init__(
-            kcfg_explore,
-            proof=proof,
-            antecedent_kast=mlAnd(proof.pre_constraints),
-            consequent_kast=mlEqualsFalse(proof.last_constraint),
-        )
+        super().__init__(proof=proof, kcfg_explore=kcfg_explore)
 
     def advance_proof(self) -> None:
         super().advance_proof()
         assert type(self.proof) is RefutationProof
+        assert self.proof.simplified_consequent is not None
         self.proof.set_simplified_constraints(self.proof.simplified_consequent)
