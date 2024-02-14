@@ -10,7 +10,7 @@ from ..kast.inner import KApply, KInner, KSort, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsTrue
 from ..utils import ensure_dir_path
 from .proof import Proof, ProofStatus, ProofSummary, Prover
 
@@ -299,8 +299,8 @@ class RefutationProof(ImpliesProof):
         subproof_ids: Iterable[str] = (),
         admitted: bool = False,
     ):
-        antecedent = mlAnd(pre_constraints)
-        consequent = mlEqualsFalse(last_constraint)
+        antecedent = mlAnd(mlEqualsTrue(c) for c in pre_constraints)
+        consequent = mlEqualsTrue(last_constraint)
         super().__init__(
             id,
             antecedent,
