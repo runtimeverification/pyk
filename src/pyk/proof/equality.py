@@ -51,9 +51,6 @@ class ImpliesProof(Proof):
         self.simplified_consequent = simplified_consequent
         self.csubst = csubst
 
-    def set_csubst(self, csubst: CSubst) -> None:
-        self.csubst = csubst
-
     @property
     def status(self) -> ProofStatus:
         if self.admitted:
