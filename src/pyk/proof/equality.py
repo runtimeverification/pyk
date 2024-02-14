@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
 from ..cterm import CSubst, CTerm
-from ..kast.inner import KApply, KInner, KSort, Subst
+from ..kast.inner import KApply, KInner, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from pathlib import Path
 
+    from ..kast.inner import KSort
     from ..kast.outer import KClaim, KDefinition
     from ..kcfg import KCFGExplore
     from ..ktool.kprint import KPrint
@@ -206,45 +207,26 @@ class EqualityProof(ImpliesProof):
 
     @classmethod
     def from_dict(cls: type[EqualityProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> EqualityProof:
-        id = dct['id']
-        lhs_body = KInner.from_dict(dct['lhs_body'])
-        rhs_body = KInner.from_dict(dct['rhs_body'])
-        sort = KSort.from_dict(dct['sort'])
-        constraints = [KInner.from_dict(c) for c in dct['constraints']]
-        admitted = dct.get('admitted', False)
-        simplified_constraints = (
-            KInner.from_dict(dct['simplified_constraints']) if 'simplified_constraints' in dct else None
-        )
-        simplified_equality = KInner.from_dict(dct['simplified_equality']) if 'simplified_equality' in dct else None
-        csubst = CSubst.from_dict(dct['csubst']) if 'csubst' in dct else None
+        implies_proof = ImpliesProof.from_dict(dct, proof_dir=proof_dir)
+        assert type(implies_proof.consequent) is KApply
         return EqualityProof(
-            id,
-            lhs_body,
-            rhs_body,
-            sort,
-            constraints=constraints,
-            csubst=csubst,
-            simplified_constraints=simplified_constraints,
-            simplified_equality=simplified_equality,
-            proof_dir=proof_dir,
-            admitted=admitted,
+            id=implies_proof.id,
+            lhs_body=implies_proof.consequent.args[0],
+            rhs_body=implies_proof.consequent.args[1],
+            sort=implies_proof.consequent.label.params[0],
+            constraints=flatten_label('#And', implies_proof.antecedent),
+            simplified_constraints=implies_proof.simplified_antecedent,
+            simplified_equality=implies_proof.simplified_consequent,
+            csubst=implies_proof.csubst,
+            proof_dir=implies_proof.proof_dir,
+            subproof_ids=implies_proof.subproof_ids,
+            admitted=implies_proof.admitted,
         )
 
     @property
     def dict(self) -> dict[str, Any]:
         dct = super().dict
         dct['type'] = 'EqualityProof'
-        dct['lhs_body'] = self.lhs_body.to_dict()
-        dct['rhs_body'] = self.rhs_body.to_dict()
-        dct['sort'] = self.sort.to_dict()
-        dct['constraints'] = [c.to_dict() for c in self.constraints]
-
-        if self.simplified_constraints is not None:
-            dct['simplified_constraints'] = self.simplified_constraints.to_dict()
-        if self.simplified_equality is not None:
-            dct['simplified_equality'] = self.simplified_equality.to_dict()
-        if self.csubst is not None:
-            dct['csubst'] = self.csubst.to_dict()
         return dct
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
