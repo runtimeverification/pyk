@@ -81,7 +81,7 @@ def build_rule_dict(
     rule_dict: dict[str, KRule] = {}
 
     for rule in definition.rules:
-        if skip_projections and 'projection' in rule.att.atts:
+        if skip_projections and KAtt.PROJECTION in rule.att:
             continue
         if skip_initializers and KAtt.INITIALIZER in rule.att:
             continue
