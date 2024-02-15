@@ -808,7 +808,7 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
             is_builtin_data_constructor = label in {'_Set_', '_List_', '_Map_', 'SetItem', 'ListItem', '_|->_'}
             return is_cell_map_constructor or is_builtin_data_constructor
 
-        return ('function' in prod.att or 'functional' in prod.att) and not (
+        return (KAtt.FUNCTION in prod.att or KAtt.FUNCTIONAL in prod.att) and not (
             prod.klabel and is_not_actually_function(prod.klabel.name)
         )
 
@@ -1060,12 +1060,12 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
     @cached_property
     def alias_rules(self) -> tuple[KRule, ...]:
         """Returns the `KRule` sentences which are `alias` transitively imported by the main module of this definition."""
-        return tuple(rule for rule in self.rules if 'alias' in rule.att)
+        return tuple(rule for rule in self.rules if KAtt.ALIAS in rule.att)
 
     @cached_property
     def macro_rules(self) -> tuple[KRule, ...]:
         """Returns the `KRule` sentences which are `alias` or `macro` transitively imported by the main module of this definition."""
-        return tuple(rule for rule in self.rules if 'macro' in rule.att) + self.alias_rules
+        return tuple(rule for rule in self.rules if KAtt.MACRO in rule.att) + self.alias_rules
 
     @cached_property
     def semantic_rules(self) -> tuple[KRule, ...]:
@@ -1353,8 +1353,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         cell_wrappers = {}
         for ccp in self.cell_collection_productions:
-            if 'element' in ccp.att and KAtt.WRAP_ELEMENT in ccp.att:
-                cell_wrappers[ccp.att[KAtt.WRAP_ELEMENT]] = ccp.att['element']
+            if KAtt.ELEMENT in ccp.att and KAtt.WRAP_ELEMENT in ccp.att:
+                cell_wrappers[ccp.att[KAtt.WRAP_ELEMENT]] = ccp.att[KAtt.ELEMENT]
 
         def _wrap_elements(_k: KInner) -> KInner:
             if type(_k) is KApply and _k.label.name in cell_wrappers:
@@ -1374,8 +1374,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         cell_wrappers = {}
         for ccp in self.cell_collection_productions:
-            if 'element' in ccp.att and KAtt.WRAP_ELEMENT in ccp.att:
-                cell_wrappers[ccp.att['element']] = ccp.att[KAtt.WRAP_ELEMENT]
+            if KAtt.ELEMENT in ccp.att and KAtt.WRAP_ELEMENT in ccp.att:
+                cell_wrappers[ccp.att[KAtt.ELEMENT]] = ccp.att[KAtt.WRAP_ELEMENT]
 
         def _wrap_elements(_k: KInner) -> KInner:
             if (

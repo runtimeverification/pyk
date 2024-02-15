@@ -213,7 +213,7 @@ class PrettyPrinter:
         return self.print(knonterminal.sort)
 
     def _print_kproduction(self, kproduction: KProduction) -> str:
-        if 'klabel' not in kproduction.att and kproduction.klabel:
+        if KAtt.KLABEL not in kproduction.att and kproduction.klabel:
             kproduction = kproduction.update_atts({KAtt.KLABEL: kproduction.klabel.name})
         syntax_str = 'syntax ' + self.print(kproduction.sort)
         if kproduction.items:
