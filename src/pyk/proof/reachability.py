@@ -4,7 +4,6 @@ import graphlib
 import json
 import logging
 import re
-import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -54,7 +53,7 @@ class APRProof(Proof, KCFGExploration):
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
     failure_info: APRFailureInfo | None
-    execution_time: float
+    _exec_time: float
 
     def __init__(
         self,
@@ -71,7 +70,7 @@ class APRProof(Proof, KCFGExploration):
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
         admitted: bool = False,
-        execution_time: float = 0,
+        _exec_time: float = 0,
     ):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
@@ -85,7 +84,7 @@ class APRProof(Proof, KCFGExploration):
         self.circularity = circularity
         self.node_refutations = {}
         self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
-        self.execution_time = execution_time
+        self._exec_time = _exec_time
 
         if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)
@@ -163,12 +162,15 @@ class APRProof(Proof, KCFGExploration):
         for nid in pruned_nodes:
             self._bounded.discard(nid)
         return pruned_nodes
+    
+    def exec_time(self) -> float:
+        return self._exec_time
 
-    def update_execution_time(self, execution_time: float) -> None:
-        self.execution_time += execution_time
+    def add_exec_time(self, exec_time: float) -> None:
+        self._exec_time += exec_time
 
-    def reset_execution_time(self) -> None:
-        self.execution_time = 0
+    def set_exec_time(self, exec_time: float) -> None:
+        self.execution_time = exec_time
 
     @staticmethod
     def _make_module_name(proof_id: str) -> str:
@@ -445,9 +447,7 @@ class APRProof(Proof, KCFGExploration):
         ensure_dir_path(self.proof_dir)
         ensure_dir_path(self.proof_subdir)
         proof_json = self.proof_subdir / 'proof.json'
-        dct: dict[
-            str, list[int] | list[str] | bool | float | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]
-        ] = {}
+        dct: dict[str, Any] = {}
 
         dct['id'] = self.id
         dct['subproof_ids'] = self.subproof_ids
@@ -696,7 +696,6 @@ class APRProver(Prover):
         fail_fast: bool = False,
     ) -> None:
         iterations = 0
-        start_time = time.time()
 
         self._check_all_terminals()
 
@@ -735,7 +734,6 @@ class APRProver(Prover):
         if self.proof.failed:
             self.save_failure_info()
 
-        end_time = time.time()
         self.proof.update_execution_time(end_time - start_time)
         self.proof.write_proof_data()
 
