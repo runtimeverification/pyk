@@ -145,150 +145,150 @@ class SemanticsProcessPool:
             self.out_queue.put((proof_id, update))
 
 
-#  def prove_parallel(
-#      proofs: Mapping[str, Proof],
-#      provers: Mapping[str, Prover],
-#      process_data: Mapping[str, Any],
-#      max_workers: int,
-#  ) -> tuple[Iterable[Proof], ProfilingInfo]:
-#      explored: set[tuple[str, ProofStep]] = set()
-#
-#      in_queue: Queue = Queue()
-#      out_queue: Queue = Queue()
-#
-#      pending_jobs: int = 0
-#
-#      profile = ProfilingInfo()
-#
-#      total_init_time = time.time_ns()
-#
-#      def run_process(data: Any) -> None:
-#          while True:
-#              dequeued = in_queue.get()
-#              if dequeued == 0:
-#                  break
-#              proof_id, proof_step = dequeued
-#              data = process_data.get(proof_id)
-#              update = proof_step.exec(data)
-#              out_queue.put((proof_id, update))
-#
-#      def submit(proof_id: str) -> None:
-#          proof = proofs[proof_id]
-#          prover = provers[proof_id]
-#          steps_init_time = time.time_ns()
-#          steps = prover.steps(proof)
-#          profile.total_steps_time += time.time_ns() - steps_init_time
-#          for step in steps:  # <-- get next steps (represented by e.g. pending nodes, ...)
-#              if (proof_id, step) in explored:
-#                  continue
-#              explored.add((proof_id, step))
-#              in_queue.put((proof_id, step))
-#              nonlocal pending_jobs
-#              pending_jobs += 1
-#
-#      processes = [Process(target=run_process, args=(process_data,)) for _ in range(max_workers)]
-#      for process in processes:
-#          process.start()
-#
-#      for proof_id in proofs.keys():
-#          submit(proof_id)
-#
-#      while pending_jobs > 0:
-#          wait_init_time = time.time_ns()
-#          proof_id, update = out_queue.get()
-#          profile.total_wait_time += time.time_ns() - wait_init_time
-#          pending_jobs -= 1
-#
-#          proof = proofs[proof_id]
-#          prover = provers[proof_id]
-#
-#          commit_init_time = time.time_ns()
-#          prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
-#          profile.total_commit_time += time.time_ns() - commit_init_time
-#
-#          match proof.status:
-#              # terminate on first failure, yield partial results, etc.
-#              case ProofStatus.FAILED:
-#                  ...
-#              case ProofStatus.PENDING:
-#                  steps_init_time = time.time_ns()
-#                  if not list(prover.steps(proof)):
-#                      raise ValueError('Prover violated expectation. status is pending with no further steps.')
-#                  profile.total_steps_time += time.time_ns() - steps_init_time
-#              case ProofStatus.PASSED:
-#                  steps_init_time = time.time_ns()
-#                  if list(prover.steps(proof)):
-#                      raise ValueError('Prover violated expectation. status is passed with further steps.')
-#                  profile.total_steps_time += time.time_ns() - steps_init_time
-#
-#          submit(proof_id)
-#
-#      for _ in range(max_workers):
-#          in_queue.put(0)
-#
-#      for process in processes:
-#          process.join()
-#
-#      profile.total_time = time.time_ns() - total_init_time
-#
-#      return proofs.values(), profile
-
-
 def prove_parallel(
     proofs: Mapping[str, Proof],
     provers: Mapping[str, Prover],
     process_data: Mapping[str, Any],
     max_workers: int,
-) -> Iterable[Proof]:
-    pending: dict[Future[Any], str] = {}
+) -> tuple[Iterable[Proof], ProfilingInfo]:
     explored: set[tuple[str, ProofStep]] = set()
 
-    def submit(proof_id: str, pool: SemanticsProcessPool) -> None:
+    in_queue: Queue = Queue()
+    out_queue: Queue = Queue()
+
+    pending_jobs: int = 0
+
+    profile = ProfilingInfo()
+
+    total_init_time = time.time_ns()
+
+    def run_process(data: Any) -> None:
+        while True:
+            dequeued = in_queue.get()
+            if dequeued == 0:
+                break
+            proof_id, proof_step = dequeued
+            data = process_data.get(proof_id)
+            update = proof_step.exec(data)
+            out_queue.put((proof_id, update))
+
+    def submit(proof_id: str) -> None:
         proof = proofs[proof_id]
         prover = provers[proof_id]
-        for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
+        steps_init_time = time.time_ns()
+        steps = prover.steps(proof)
+        profile.total_steps_time += time.time_ns() - steps_init_time
+        for step in steps:  # <-- get next steps (represented by e.g. pending nodes, ...)
             if (proof_id, step) in explored:
                 continue
             explored.add((proof_id, step))
-            future = pool.submit((proof_id, step))  # <-- schedule steps for execution
-            pending[future] = proof_id
+            in_queue.put((proof_id, step))
+            nonlocal pending_jobs
+            pending_jobs += 1
 
-    pool = SemanticsProcessPool(max_workers=max_workers)
-    #      with ProcessPoolExecutor(max_workers=max_workers) as pool:
-    for proof_id in proofs:
-        submit(proof_id, pool)
+    processes = [Process(target=run_process, args=(process_data,)) for _ in range(max_workers)]
+    for process in processes:
+        process.start()
 
-    while pending:
-        done, _ = wait(pending, return_when='FIRST_COMPLETED')
-        future = done.pop()
+    for proof_id in proofs.keys():
+        submit(proof_id)
 
-        proof_id = pending[future]
+    while pending_jobs > 0:
+        wait_init_time = time.time_ns()
+        proof_id, update = out_queue.get()
+        profile.total_wait_time += time.time_ns() - wait_init_time
+        pending_jobs -= 1
+
         proof = proofs[proof_id]
         prover = provers[proof_id]
-        try:
-            update = future.result()
-        except CancelledError as err:
-            raise RuntimeError(f'Task was cancelled for proof {proof_id}') from err
-        except TimeoutError as err:
-            raise RuntimeError(
-                f"Future for proof {proof_id} was not finished executing and timed out. This shouldn't happen since this future was already waited on."
-            ) from err
-        except Exception as err:
-            raise RuntimeError('Exception was raised in ProofStep.exec() for proof {proof_id}.') from err
 
+        commit_init_time = time.time_ns()
         prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+        profile.total_commit_time += time.time_ns() - commit_init_time
 
         match proof.status:
             # terminate on first failure, yield partial results, etc.
             case ProofStatus.FAILED:
                 ...
             case ProofStatus.PENDING:
+                steps_init_time = time.time_ns()
                 if not list(prover.steps(proof)):
                     raise ValueError('Prover violated expectation. status is pending with no further steps.')
+                profile.total_steps_time += time.time_ns() - steps_init_time
             case ProofStatus.PASSED:
+                steps_init_time = time.time_ns()
                 if list(prover.steps(proof)):
                     raise ValueError('Prover violated expectation. status is passed with further steps.')
+                profile.total_steps_time += time.time_ns() - steps_init_time
 
-        submit(proof_id, pool)
-        pending.pop(future)
-    return proofs.values()
+        submit(proof_id)
+
+    for _ in range(max_workers):
+        in_queue.put(0)
+
+    for process in processes:
+        process.join()
+
+    profile.total_time = time.time_ns() - total_init_time
+
+    return proofs.values(), profile
+
+
+#  def prove_parallel(
+#      proofs: Mapping[str, Proof],
+#      provers: Mapping[str, Prover],
+#      process_data: Mapping[str, Any],
+#      max_workers: int,
+#  ) -> Iterable[Proof]:
+#      pending: dict[Future[Any], str] = {}
+#      explored: set[tuple[str, ProofStep]] = set()
+#  
+#      def submit(proof_id: str, pool: SemanticsProcessPool) -> None:
+#          proof = proofs[proof_id]
+#          prover = provers[proof_id]
+#          for step in prover.steps(proof):  # <-- get next steps (represented by e.g. pending nodes, ...)
+#              if (proof_id, step) in explored:
+#                  continue
+#              explored.add((proof_id, step))
+#              future = pool.submit((proof_id, step))  # <-- schedule steps for execution
+#              pending[future] = proof_id
+#  
+#      pool = SemanticsProcessPool(max_workers=max_workers)
+#      #      with ProcessPoolExecutor(max_workers=max_workers) as pool:
+#      for proof_id in proofs:
+#          submit(proof_id, pool)
+#  
+#      while pending:
+#          done, _ = wait(pending, return_when='FIRST_COMPLETED')
+#          future = done.pop()
+#  
+#          proof_id = pending[future]
+#          proof = proofs[proof_id]
+#          prover = provers[proof_id]
+#          try:
+#              update = future.result()
+#          except CancelledError as err:
+#              raise RuntimeError(f'Task was cancelled for proof {proof_id}') from err
+#          except TimeoutError as err:
+#              raise RuntimeError(
+#                  f"Future for proof {proof_id} was not finished executing and timed out. This shouldn't happen since this future was already waited on."
+#              ) from err
+#          except Exception as err:
+#              raise RuntimeError('Exception was raised in ProofStep.exec() for proof {proof_id}.') from err
+#  
+#          prover.commit(proof, update)  # <-- update the proof (can be in-memory, access disk with locking, ...)
+#  
+#          match proof.status:
+#              # terminate on first failure, yield partial results, etc.
+#              case ProofStatus.FAILED:
+#                  ...
+#              case ProofStatus.PENDING:
+#                  if not list(prover.steps(proof)):
+#                      raise ValueError('Prover violated expectation. status is pending with no further steps.')
+#              case ProofStatus.PASSED:
+#                  if list(prover.steps(proof)):
+#                      raise ValueError('Prover violated expectation. status is passed with further steps.')
+#  
+#          submit(proof_id, pool)
+#          pending.pop(future)
+#      return proofs.values()
