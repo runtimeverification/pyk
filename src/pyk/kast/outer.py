@@ -1353,8 +1353,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         cell_wrappers = {}
         for ccp in self.cell_collection_productions:
-            if 'element' in ccp.att and 'wrapElement' in ccp.att:
-                cell_wrappers[ccp.att['wrapElement']] = ccp.att['element']
+            if 'element' in ccp.att and KAtt.WRAP_ELEMENT in ccp.att:
+                cell_wrappers[ccp.att[KAtt.WRAP_ELEMENT]] = ccp.att['element']
 
         def _wrap_elements(_k: KInner) -> KInner:
             if type(_k) is KApply and _k.label.name in cell_wrappers:
@@ -1374,8 +1374,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         cell_wrappers = {}
         for ccp in self.cell_collection_productions:
-            if 'element' in ccp.att and 'wrapElement' in ccp.att:
-                cell_wrappers[ccp.att['element']] = ccp.att['wrapElement']
+            if 'element' in ccp.att and KAtt.WRAP_ELEMENT in ccp.att:
+                cell_wrappers[ccp.att['element']] = ccp.att[KAtt.WRAP_ELEMENT]
 
         def _wrap_elements(_k: KInner) -> KInner:
             if (
