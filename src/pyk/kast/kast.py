@@ -89,6 +89,7 @@ class KAtt(KAst, Mapping[str, Any]):
     PRODUCTION: ClassVar[str] = 'org.kframework.definition.Production'
     PROJECTION: ClassVar[str] = 'projection'
     RIGHT: ClassVar[str] = 'right'
+    SIMPLIFICATION: ClassVar[str] = 'simplification'
     SORT: ClassVar[str] = 'org.kframework.kore.Sort'
     SOURCE: ClassVar[str] = 'org.kframework.attributes.Source'
     TOKEN: ClassVar[str] = 'token'

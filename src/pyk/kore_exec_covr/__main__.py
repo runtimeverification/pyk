@@ -35,10 +35,10 @@ def do_analyze(definition_dir: Path, input_file: Path) -> None:
     rule_dict = build_rule_dict(definition)
 
     defined_rewrites: dict[str, int] = {
-        key: 0 for key, rule in rule_dict.items() if not 'simplification' in rule.att.atts
+        key: 0 for key, rule in rule_dict.items() if not KAtt.SIMPLIFICATION in rule.att
     }
     defined_simplifications: dict[str, int] = {
-        key: 0 for key, rule in rule_dict.items() if 'simplification' in rule.att.atts
+        key: 0 for key, rule in rule_dict.items() if KAtt.SIMPLIFICATION in rule.att
     }
     print(f'    Found {len(defined_rewrites)} rewrite rules availible for {definition.main_module_name}')
     print(f'    Found {len(defined_simplifications)} simplification rules availible for {definition.main_module_name}')
