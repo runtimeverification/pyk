@@ -6,7 +6,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.proof import EqualityProof, ImpliesProver, ProofStatus
+from pyk.kast.inner import KToken
+from pyk.prelude.kbool import BOOL
+from pyk.prelude.ml import mlAnd, mlEqualsTrue
+from pyk.proof import EqualityProof, ImpliesProof, ImpliesProver, ProofStatus
 from pyk.testing import KCFGExploreTest, KProveTest
 from pyk.utils import single
 
@@ -22,6 +25,28 @@ if TYPE_CHECKING:
 
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+IMPLIES_PROOF_TEST_DATA: Iterable[tuple[str, tuple[str, ...], tuple[str, ...], ProofStatus]] = (
+    (
+        'antecedent-bottom',
+        ('X <=Int 0', '0 <Int X'),
+        ('X <Int 3',),
+        ProofStatus.PASSED,
+    ),
+    (
+        'consequent-top',
+        ('X <Int 3',),
+        ('X <Int X +Int 1',),
+        ProofStatus.PASSED,
+    ),
+    (
+        'satisfiable-not-valid',
+        ('X <Int 3',),
+        ('X <Int 2',),
+        ProofStatus.FAILED,
+    ),
+)
+
 
 FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
     (
@@ -111,12 +136,41 @@ FUNC_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
 )
 
 
-class TestImpEqualityProof(KCFGExploreTest, KProveTest):
+class TestImpImpliesProof(KCFGExploreTest, KProveTest):
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
 
     @staticmethod
     def _update_symbol_table(symbol_table: SymbolTable) -> None:
         symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
+
+    @pytest.mark.parametrize(
+        'test_id,antecedents,consequents,expected_proof_status',
+        IMPLIES_PROOF_TEST_DATA,
+        ids=[test_id for test_id, *_ in IMPLIES_PROOF_TEST_DATA],
+    )
+    def test_implies_proof(
+        self,
+        kcfg_explore: KCFGExplore,
+        test_id: str,
+        antecedents: Iterable[str],
+        consequents: Iterable[str],
+        expected_proof_status: ProofStatus,
+    ) -> None:
+        parsed_antecedents = [
+            kcfg_explore.kprint.parse_token(KToken(antecedent, BOOL), as_rule=True) for antecedent in antecedents
+        ]
+        parsed_consequents = [
+            kcfg_explore.kprint.parse_token(KToken(consequent, BOOL), as_rule=True) for consequent in consequents
+        ]
+        antecedent = mlAnd(mlEqualsTrue(pa) for pa in parsed_antecedents)
+        consequent = mlAnd(mlEqualsTrue(pc) for pc in parsed_consequents)
+
+        proof = ImpliesProof(test_id, antecedent, consequent)
+        prover = ImpliesProver(proof, kcfg_explore)
+
+        prover.advance_proof()
+
+        assert proof.status == expected_proof_status
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id, proof_status',
