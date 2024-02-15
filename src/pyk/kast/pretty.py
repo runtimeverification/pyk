@@ -368,7 +368,7 @@ def build_symbol_table(
             unparser = unparser_for_production(prod)
 
             symbol_table[label] = unparser
-            if 'symbol' in prod.att and KAtt.KLABEL in prod.att:
+            if KAtt.SYMBOL in prod.att and KAtt.KLABEL in prod.att:
                 symbol_table[prod.att[KAtt.KLABEL]] = unparser
 
     if opinionated:
