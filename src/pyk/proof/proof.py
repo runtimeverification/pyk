@@ -322,6 +322,11 @@ class Prover:
             iterations += 1
             steps = self.get_steps()
             for step in steps:
+                print(f'b: {self.proof.can_progress}')
                 result = step.exec()
+                print(f'c: {self.proof.can_progress}')
                 self.commit(result)
+                print(f'd: {self.proof.can_progress}')
+            print(f'a: {self.proof.can_progress}')
             self.proof.write_proof_data()
+            print(f'abc: {self.proof.can_progress}')

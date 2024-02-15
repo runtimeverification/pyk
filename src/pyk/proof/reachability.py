@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
+from .show import KCFGShow, NodePrinter
 from ..kast.inner import KInner, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
@@ -688,13 +689,32 @@ class APRProver(Prover):
         )
 
     def get_steps(self) -> Iterable[APRProofStep]:
-        self._check_all_terminals()
 
         if not self.proof.pending:
             return []
         steps = []
         target_node = self.proof.kcfg.node(self.proof.target)
         for curr_node in self.proof.pending:
+            if self.proof.bmc_depth is not None and curr_node.id not in self._checked_for_bounded:
+                _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {curr_node.id}')
+                self._checked_for_bounded.add(curr_node.id)
+                _prior_loops = [
+                    succ.source.id
+                    for succ in self.proof.shortest_path_to(curr_node.id)
+                    if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, curr_node.cterm)
+                ]
+                prior_loops: list[NodeIdLike] = []
+                for _pl in _prior_loops:
+                    if not (
+                        self.proof.kcfg.zero_depth_between(_pl, curr_node.id)
+                        or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+                    ):
+                        prior_loops.append(_pl)
+                _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(curr_node.id, prior_loops)}')
+                if len(prior_loops) > self.proof.bmc_depth:
+                    _LOGGER.warning(f'Bounded node {self.proof.id}: {curr_node.id} at bmc depth {self.proof.bmc_depth}')
+                    self.proof.add_bounded(curr_node.id)
+                    continue
             steps.append(
                 APRProofStep(
                     always_check_subsumption=self.always_check_subsumption,
@@ -719,6 +739,7 @@ class APRProver(Prover):
                     terminal_rules=self.terminal_rules,
                 )
             )
+        print(steps)
         return steps
 
     def commit(self, result: StepResult) -> None:
@@ -739,6 +760,23 @@ class APRProver(Prover):
 
         if self.proof.failed:
             self.proof.failure_info = self.failure_info()
+
+        self._check_all_terminals()
+
+        for node in self.proof.terminal:
+            if (
+                not node.id in self._checked_for_subsumption
+                and self.proof.kcfg.is_leaf(node.id)
+                and not self.proof.is_target(node.id)
+            ):
+                self._checked_for_subsumption.add(node.id)
+                self._check_subsume(node)
+
+        print(f'pending: {self.proof.pending}')
+        print(f'can_progress: {self.proof.can_progress}')
+
+        show = KCFGShow(self.kcfg_explore.kprint, node_printer=NodePrinter(self.kcfg_explore.kprint, full_printer=True))
+        print('\n'.join(show.pretty(self.proof.kcfg)))
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
@@ -797,8 +835,12 @@ class APRProofStep(ProofStep):
         return self.kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
 
     def exec(self) -> APRProofResult:
+        print(f'is_terminal: {self.is_terminal}')
+        print(f'target_is_terminal: {self.target_is_terminal}')
         if self.is_terminal or not self.target_is_terminal:
+            print(f'always_check_subsumption: {self.always_check_subsumption}')
             if self.always_check_subsumption:
+                print(f'checking subsumption {self.node_id}')
                 csubst = self._check_subsume()
                 if csubst is not None or self.is_terminal:
                     return APRProofSubsumeResult(csubst=csubst, node_id=self.node_id)
