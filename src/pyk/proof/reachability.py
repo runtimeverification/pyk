@@ -19,15 +19,17 @@ from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import mlAnd, mlEquals, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
 from .equality import ProofSummary, Prover, RefutationProof
-from .proof import CompositeSummary, Proof, ProofStatus
+from .proof import CompositeSummary, Proof, ProofStatus, ProofStep, StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from pathlib import Path
     from typing import Any, Final, TypeVar
 
+    from ..cterm import CSubst, CTerm
     from ..kast.outer import KClaim, KDefinition, KFlatModuleList, KRuleLike
     from ..kcfg import KCFGExplore
+    from ..kcfg.explore import ExtendResult
     from ..kcfg.kcfg import NodeIdLike
 
     T = TypeVar('T', bound='Proof')
@@ -685,36 +687,130 @@ class APRProver(Prover):
             module_name=module_name,
         )
 
-    def step_proof(self) -> None:
+    def get_steps(self) -> Iterable[APRProofStep]:
         self._check_all_terminals()
 
         if not self.proof.pending:
-            return
-        curr_node = self.proof.pending[0]
+            return []
+        steps = []
+        target_node = self.proof.kcfg.node(self.proof.target)
+        for curr_node in self.proof.pending:
+            steps.append(
+                APRProofStep(
+                    always_check_subsumption=self.always_check_subsumption,
+                    bmc_depth=self.proof.bmc_depth,
+                    checked_for_bounded=self._checked_for_bounded,
+                    cterm=curr_node.cterm,
+                    cut_point_rules=self.cut_point_rules,
+                    execute_depth=self.execute_depth,
+                    fast_check_subsumption=self.fast_check_subsumption,
+                    is_terminal=self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm),
+                    kcfg_explore=self.kcfg_explore,
+                    module_name=(
+                        self.circularities_module_name
+                        if self.nonzero_depth(curr_node)
+                        else self.dependencies_module_name
+                    ),
+                    node_id=curr_node.id,
+                    proof_id=self.proof.id,
+                    target_cterm=target_node.cterm,
+                    target_is_terminal=self.proof.target in self.proof._terminal,
+                    target_node_id=target_node.id,
+                    terminal_rules=self.terminal_rules,
+                )
+            )
+        return steps
 
-        self.advance_pending_node(
-            node=curr_node,
-            execute_depth=self.execute_depth,
-            cut_point_rules=self.cut_point_rules,
-            terminal_rules=self.terminal_rules,
-        )
-
-        self._check_all_terminals()
-
-        for node in self.proof.terminal:
-            if (
-                not node.id in self._checked_for_subsumption
-                and self.proof.kcfg.is_leaf(node.id)
-                and not self.proof.is_target(node.id)
-            ):
-                self._checked_for_subsumption.add(node.id)
-                self._check_subsume(node)
+    def commit(self, result: StepResult) -> None:
+        if isinstance(result, APRProofExtendResult):
+            self.kcfg_explore.extend_kcfg(
+                result.extend_result, self.proof.kcfg, self.proof.kcfg.node(result.node_id), self.proof.logs
+            )
+        elif isinstance(result, APRProofSubsumeResult):
+            if result.csubst is None:
+                self.proof._terminal.add(result.node_id)
+            else:
+                self.proof.kcfg.create_cover(result.node_id, self.proof.target, csubst=result.csubst)
+                _LOGGER.info(
+                    f'Subsumed into target node {self.proof.id}: {shorten_hashes((result.node_id, self.proof.target))}'
+                )
+        else:
+            raise ValueError('Incorrect result type')
 
         if self.proof.failed:
             self.proof.failure_info = self.failure_info()
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
+
+
+@dataclass
+class APRProofResult(StepResult):
+    node_id: int
+
+
+@dataclass
+class APRProofExtendResult(APRProofResult):
+    extend_result: ExtendResult
+
+
+@dataclass
+class APRProofSubsumeResult(APRProofResult):
+    csubst: CSubst | None
+
+
+@dataclass(frozen=True, eq=True)
+class APRProofStep(ProofStep):
+    bmc_depth: int | None
+    node_id: int
+    target_node_id: int
+    proof_id: str
+    fast_check_subsumption: bool
+    cterm: CTerm
+    target_cterm: CTerm
+    kcfg_explore: KCFGExplore
+    checked_for_bounded: Iterable[int]
+    target_is_terminal: bool
+    always_check_subsumption: bool
+    module_name: str
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
+    execute_depth: int | None
+    is_terminal: bool
+
+    def _may_subsume(self) -> bool:
+        node_k_cell = self.cterm.try_cell('K_CELL')
+        target_k_cell = self.target_cterm.try_cell('K_CELL')
+        if node_k_cell and target_k_cell and not target_k_cell.match(node_k_cell):
+            return False
+        return True
+
+    def _check_subsume(self) -> CSubst | None:
+        _LOGGER.info(
+            f'Checking subsumption into target state {self.proof_id}: {shorten_hashes((self.node_id, self.target_node_id))}'
+        )
+        if self.fast_check_subsumption and not self._may_subsume():
+            _LOGGER.info(
+                f'Skipping full subsumption check because of fast may subsume check {self.proof_id}: {self.node_id}'
+            )
+            return None
+        return self.kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
+
+    def exec(self) -> APRProofResult:
+        if self.is_terminal or not self.target_is_terminal:
+            if self.always_check_subsumption:
+                csubst = self._check_subsume()
+                if csubst is not None or self.is_terminal:
+                    return APRProofSubsumeResult(csubst=csubst, node_id=self.node_id)
+
+        extend_result = self.kcfg_explore.extend_cterm(
+            self.cterm,
+            execute_depth=self.execute_depth,
+            cut_point_rules=self.cut_point_rules,
+            terminal_rules=self.terminal_rules,
+            module_name=self.module_name,
+        )
+        return APRProofExtendResult(node_id=self.node_id, extend_result=extend_result)
 
 
 @dataclass(frozen=True)

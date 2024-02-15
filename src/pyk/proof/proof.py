@@ -286,6 +286,16 @@ class CompositeSummary(ProofSummary):
         return [line for lines in (summary.lines for summary in self.summaries) for line in lines]
 
 
+class StepResult:
+    ...
+
+
+class ProofStep:
+    @abstractmethod
+    def exec(self) -> StepResult:
+        ...
+
+
 class Prover:
     kcfg_explore: KCFGExplore
     proof: Proof
@@ -294,7 +304,11 @@ class Prover:
         self.kcfg_explore = kcfg_explore
 
     @abstractmethod
-    def step_proof(self) -> None:
+    def get_steps(self) -> Iterable[ProofStep]:
+        ...
+
+    @abstractmethod
+    def commit(self, result: StepResult) -> None:
         ...
 
     def advance_proof(self, max_iterations: int | None = None, fail_fast: bool = False) -> None:
@@ -306,5 +320,8 @@ class Prover:
             if max_iterations is not None and max_iterations <= iterations:
                 return
             iterations += 1
-            self.step_proof()
+            steps = self.get_steps()
+            for step in steps:
+                result = step.exec()
+                self.commit(result)
             self.proof.write_proof_data()

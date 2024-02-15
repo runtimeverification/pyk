@@ -12,7 +12,7 @@ from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse
 from ..utils import ensure_dir_path
-from .proof import Proof, ProofStatus, ProofSummary, Prover
+from .proof import Proof, ProofStatus, ProofStep, ProofSummary, Prover, StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -349,6 +349,52 @@ class RefutationSummary(ProofSummary):
         ]
 
 
+@dataclass
+class ImpliesProofResult(StepResult):
+    csubst: CSubst | None
+    simplified_antecedent: KInner | None
+    simplified_consequent: KInner | None
+
+
+@dataclass
+class ImpliesProofStep(ProofStep):
+    kcfg_explore: KCFGExplore
+    antecedent: KInner
+    consequent: KInner
+    proof_id: str
+
+    def exec(self) -> StepResult:
+        # to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.
+        # "LHS equals RHS under these constraints"
+        simplified_antecedent, _ = self.kcfg_explore.kast_simplify(self.antecedent)
+        simplified_consequent, _ = self.kcfg_explore.kast_simplify(self.consequent)
+        _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(simplified_antecedent)}')
+        _LOGGER.info(f'Simplified consequent: {self.kcfg_explore.kprint.pretty_print(simplified_consequent)}')
+
+        csubst: CSubst
+
+        if is_bottom(simplified_antecedent):
+            _LOGGER.warning(f'Antecedent of implication (proof constraints) simplifies to #Bottom {self.proof_id}')
+            csubst = CSubst(Subst({}), ())
+
+        elif is_top(simplified_consequent):
+            _LOGGER.warning(f'Consequent of implication (proof equality) simplifies to #Top {self.proof_id}')
+            csubst = CSubst(Subst({}), ())
+
+        else:
+            dummy_config = self.kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
+            implies_result = self.kcfg_explore.cterm_implies(
+                antecedent=CTerm(config=dummy_config, constraints=[simplified_antecedent]),
+                consequent=CTerm(config=dummy_config, constraints=[simplified_consequent]),
+            )
+            if implies_result is not None:
+                csubst = implies_result
+
+        return ImpliesProofResult(
+            csubst=csubst, simplified_antecedent=simplified_antecedent, simplified_consequent=simplified_consequent
+        )
+
+
 class ImpliesProver(Prover):
     proof: ImpliesProof
 
@@ -356,39 +402,28 @@ class ImpliesProver(Prover):
         super().__init__(kcfg_explore)
         self.proof = proof
 
-    def step_proof(self) -> None:
+    def get_steps(self) -> Iterable[ProofStep]:
         proof_type = type(self.proof).__name__
         _LOGGER.info(f'Attempting {proof_type} {self.proof.id}')
 
         if self.proof.status is not ProofStatus.PENDING:
             _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
-            return
-
-        # to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.
-        # "LHS equals RHS under these constraints"
-        antecedent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof.antecedent)
-        consequent_simplified_kast, _ = self.kcfg_explore.kast_simplify(self.proof.consequent)
-        self.proof.simplified_antecedent = antecedent_simplified_kast
-        self.proof.simplified_consequent = consequent_simplified_kast
-        _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(antecedent_simplified_kast)}')
-        _LOGGER.info(f'Simplified consequent: {self.kcfg_explore.kprint.pretty_print(consequent_simplified_kast)}')
-
-        if is_bottom(antecedent_simplified_kast):
-            _LOGGER.warning(f'Antecedent of implication (proof constraints) simplifies to #Bottom {self.proof.id}')
-            self.proof.csubst = CSubst(Subst({}), ())
-
-        elif is_top(consequent_simplified_kast):
-            _LOGGER.warning(f'Consequent of implication (proof equality) simplifies to #Top {self.proof.id}')
-            self.proof.csubst = CSubst(Subst({}), ())
-
-        else:
-            # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
-            dummy_config = self.kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-            result = self.kcfg_explore.cterm_implies(
-                antecedent=CTerm(config=dummy_config, constraints=[self.proof.simplified_antecedent]),
-                consequent=CTerm(config=dummy_config, constraints=[self.proof.simplified_consequent]),
+            return []
+        return [
+            ImpliesProofStep(
+                antecedent=self.proof.antecedent,
+                consequent=self.proof.consequent,
+                kcfg_explore=self.kcfg_explore,
+                proof_id=self.proof.id,
             )
-            if result is not None:
-                self.proof.csubst = result
+        ]
 
-        _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
+    def commit(self, result: StepResult) -> None:
+        proof_type = type(self.proof).__name__
+        if isinstance(result, ImpliesProofResult):
+            self.proof.csubst = result.csubst
+            self.proof.simplified_antecedent = result.simplified_antecedent
+            self.proof.simplified_consequent = result.simplified_consequent
+            _LOGGER.info(f'{proof_type} finished {self.proof.id}: {self.proof.status}')
+        else:
+            raise ValueError('Incorrect result type')
