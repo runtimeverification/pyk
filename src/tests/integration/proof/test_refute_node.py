@@ -171,15 +171,13 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         assert prover.proof.status == ProofStatus.FAILED
 
         failing_node = single(prover.proof.failing)
-        refutation = prover.proof.refute_node(failing_node)
-        assert refutation is not None
-        refutation_prover = ImpliesProver(refutation, kcfg_explore)
-        refutation_prover.advance_proof()
-
+        prover.proof.refute_node(failing_node)
         assert len(prover.proof.subproof_ids) == 1
-        subproof = single(prover.proof.subproofs)
 
+        subproof = single(prover.proof.subproofs)
         assert type(subproof) is RefutationProof
+        refutation_prover = ImpliesProver(subproof, kcfg_explore)
+        refutation_prover.advance_proof()
 
         expected_subproof_constraints = tuple(
             [kprove.definition.sort_vars(constraint) for constraint in expected_subproof_constraints]
