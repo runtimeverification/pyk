@@ -1,7 +1,7 @@
 module REFUTE-NODE-SYNTAX
     imports INT
 
-    syntax A ::= a(Int) | b(Int) | c(Int) | d(Int) | e(Int) | f(Int)
+    syntax A ::= a(Int) | b(Int) | c(Int) | d(Int) | e(Int) | f(Int) | nd(Int)
 endmodule
 
 module REFUTE-NODE
@@ -15,4 +15,7 @@ module REFUTE-NODE
     rule <k> b(N) => f(N) ... </k>
     rule <k> c(N) => f(N) ... </k>
 
+    // Non-determinism
+    rule <k> nd(N) => b(N) ... </k>
+    rule <k> nd(N) => c(N) ... </k>
 endmodule
