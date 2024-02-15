@@ -45,6 +45,12 @@ IMPLIES_PROOF_TEST_DATA: Iterable[tuple[str, tuple[str, ...], tuple[str, ...], P
         ('X <Int 2',),
         ProofStatus.FAILED,
     ),
+    (
+        'satisfiable-not-valid-true-antecedent',
+        (),
+        ('X <=Int 0',),
+        ProofStatus.FAILED,
+    ),
 )
 
 
