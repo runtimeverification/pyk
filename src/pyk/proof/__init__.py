@@ -1,3 +1,3 @@
-from .equality import EqualityProof, ImpliesProver, RefutationProof
+from .equality import EqualityProof, ImpliesProof, ImpliesProver, RefutationProof
 from .proof import ProofStatus
 from .reachability import APRProof, APRProver
