@@ -97,6 +97,7 @@ class KAtt(KAst, Mapping[str, Any]):
     TOTAL: ClassVar[str] = 'total'
     TRUSTED: ClassVar[str] = 'trusted'
     UNIT: ClassVar[str] = 'unit'
+    UNIQUE_ID: ClassVar[str] = 'UNIQUE_ID'
 
     def __init__(self, atts: Mapping[str, Any] = EMPTY_FROZEN_DICT):
         def _freeze(m: Any) -> Any:

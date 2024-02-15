@@ -180,9 +180,7 @@ class KSentence(KOuter, WithKAtt):
     @property
     def unique_id(self) -> str | None:
         """Return the unique ID assigned to this sentence, or None."""
-        if 'UNIQUE_ID' in self.att:
-            return self.att['UNIQUE_ID']
-        return None
+        return self.att.get(KAtt.UNIQUE_ID)
 
     @property
     def source(self) -> str | None:
