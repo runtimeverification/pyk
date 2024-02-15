@@ -162,7 +162,7 @@ class APRProof(Proof, KCFGExploration):
         for nid in pruned_nodes:
             self._bounded.discard(nid)
         return pruned_nodes
-    
+
     def exec_time(self) -> float:
         return self._exec_time
 
