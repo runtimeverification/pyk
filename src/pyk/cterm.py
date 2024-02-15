@@ -434,6 +434,6 @@ def build_rule(
     rule_att = KAtt(atts=att_dict)
 
     rule = KRule(rule_body, requires=rule_requires, ensures=rule_ensures, att=rule_att)
-    rule = rule.update_atts({'label': rule_id})
+    rule = rule.update_atts({KAtt.LABEL: rule_id})
 
     return (rule, Subst(vremap_subst))

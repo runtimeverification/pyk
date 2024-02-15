@@ -200,8 +200,8 @@ class KSentence(KOuter, WithKAtt):
           - Unique identifier computed and inserted by the frontend, or
           - Source location for the sentence.
         """
-        if 'label' in self.att:
-            return self.att['label']
+        if KAtt.LABEL in self.att:
+            return self.att[KAtt.LABEL]
         elif self.unique_id is not None:
             return self.unique_id
         elif self.source is not None:

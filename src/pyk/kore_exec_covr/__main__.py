@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import coloredlogs
 
 from ..cli.utils import dir_path, file_path
+from ..kast import KAtt
 from ..kast.outer import read_kast_definition
 from .kore_exec_covr import HaskellLogEntry, build_rule_dict, parse_rule_applications
 
@@ -51,8 +52,8 @@ def do_analyze(definition_dir: Path, input_file: Path) -> None:
     print('=================================')
     for location_str, hits in applied_rewrites.items():
         rule_label_str = ''
-        if location_str in rule_dict and 'label' in rule_dict[location_str].att.atts:
-            rule_label_str = f'[{rule_dict[location_str].att.atts["label"]}]'
+        if location_str in rule_dict and KAtt.LABEL in rule_dict[location_str].att:
+            rule_label_str = f'[{rule_dict[location_str].att[KAtt.LABEL]}]'
         if hits > 0:
             print(f'    {hits} applications of rule {rule_label_str} defined at {location_str}')
     total_rewrites = sum([v for v in applied_rewrites.values() if v > 0])
@@ -63,8 +64,8 @@ def do_analyze(definition_dir: Path, input_file: Path) -> None:
     print('=================================')
     for location_str, hits in applied_simplifications.items():
         rule_label_str = ''
-        if location_str in rule_dict and 'label' in rule_dict[location_str].att.atts:
-            rule_label_str = f'[{rule_dict[location_str].att.atts["label"]}]'
+        if location_str in rule_dict and KAtt.KLABEL in rule_dict[location_str].att:
+            rule_label_str = f'[{rule_dict[location_str].att[KAtt.LABEL]}]'
         if hits > 0:
             print(f'    {hits} applications of rule {rule_label_str} defined at {location_str}')
     total_simplifications = sum([v for v in applied_simplifications.values() if v > 0])

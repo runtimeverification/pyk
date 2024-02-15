@@ -79,6 +79,7 @@ class KAtt(KAst, Mapping[str, Any]):
     INITIALIZER: ClassVar[str] = 'initializer'
     INJECTIVE: ClassVar[str] = 'injective'
     KLABEL: ClassVar[str] = 'klabel'
+    LABEL: ClassVar[str] = 'label'
     LEFT: ClassVar[str] = 'left'
     LOCATION: ClassVar[str] = 'org.kframework.attributes.Location'
     MACRO: ClassVar[str] = 'macro'
