@@ -62,6 +62,7 @@ class KAtt(KAst, Mapping[str, Any]):
     ASSOC: ClassVar[str] = 'assoc'
     CELL: ClassVar[str] = 'cell'
     CELL_COLLECTION: ClassVar[str] = 'cellCollection'
+    CIRCULARITY: ClassVar[str] = 'circularity'
     COLORS: ClassVar[str] = 'colors'
     COMM: ClassVar[str] = 'comm'
     CONCAT: ClassVar[str] = 'concat'

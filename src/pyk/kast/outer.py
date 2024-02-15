@@ -676,7 +676,7 @@ class KClaim(KRuleLike):
     @property
     def is_circularity(self) -> bool:
         """Return whether this claim is a circularity (must be used coinductively to prove itself)."""
-        return 'circularity' in self.att.atts
+        return KAtt.CIRCULARITY in self.att
 
     @property
     def is_trusted(self) -> bool:
