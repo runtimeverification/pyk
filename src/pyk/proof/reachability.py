@@ -525,15 +525,14 @@ class APRProof(Proof, KCFGExploration):
             )
             return None
 
-        pre_split_constraints = [ml_pred_to_bool(c) for c in closest_branch.source.cterm.constraints]
-        last_constraint = ml_pred_to_bool(csubst.constraints[0])
+        # extract the path conditions at the current node
+        refuted_constraints = [ml_pred_to_bool(c) for c in node.cterm.constraints]
 
         refutation_id = self.get_refutation_id(node.id)
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
         refutation = RefutationProof(
             id=refutation_id,
-            pre_constraints=pre_split_constraints,
-            last_constraint=last_constraint,
+            refuted_constraints=refuted_constraints,
             proof_dir=self.proof_dir,
         )
 

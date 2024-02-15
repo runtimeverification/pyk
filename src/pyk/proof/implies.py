@@ -10,7 +10,7 @@ from ..kast.inner import KApply, KInner, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
-from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue
+from ..prelude.ml import is_bottom, is_top, mlAnd, mlBottom, mlEquals, mlEqualsTrue
 from ..utils import ensure_dir_path
 from .proof import Proof, ProofStatus, ProofSummary, Prover
 
@@ -273,8 +273,7 @@ class RefutationProof(ImpliesProof):
     def __init__(
         self,
         id: str,
-        pre_constraints: Iterable[KInner],
-        last_constraint: KInner,
+        refuted_constraints: Iterable[KInner],
         simplified_antecedent: KInner | None = None,
         simplified_consequent: KInner | None = None,
         csubst: CSubst | None = None,
@@ -282,8 +281,8 @@ class RefutationProof(ImpliesProof):
         subproof_ids: Iterable[str] = (),
         admitted: bool = False,
     ):
-        antecedent = mlAnd(mlEqualsTrue(c) for c in pre_constraints)
-        consequent = mlEqualsFalse(last_constraint)
+        antecedent = mlAnd(mlEqualsTrue(c) for c in refuted_constraints)
+        consequent = mlBottom()
         super().__init__(
             id,
             antecedent,
@@ -310,13 +309,8 @@ class RefutationProof(ImpliesProof):
         raise ValueError(f'Could not load Proof from file {id}: {proof_path}')
 
     @property
-    def pre_constraints(self) -> list[KInner]:
+    def refuted_constraints(self) -> list[KInner]:
         return flatten_label('#And', self.antecedent)
-
-    @property
-    def last_constraint(self) -> KInner:
-        assert type(self.consequent) is KApply
-        return self.consequent.args[1]
 
     @property
     def simplified_constraints(self) -> KInner | None:
@@ -328,8 +322,7 @@ class RefutationProof(ImpliesProof):
         assert type(implies_proof.consequent) is KApply
         return RefutationProof(
             id=implies_proof.id,
-            pre_constraints=flatten_label('#And', implies_proof.antecedent),
-            last_constraint=implies_proof.consequent.args[1],
+            refuted_constraints=flatten_label('#And', implies_proof.antecedent),
             simplified_antecedent=implies_proof.simplified_antecedent,
             simplified_consequent=implies_proof.simplified_consequent,
             csubst=implies_proof.csubst,
@@ -349,10 +342,7 @@ class RefutationProof(ImpliesProof):
         return RefutationSummary(self.id, self.status)
 
     def pretty(self, kprint: KPrint) -> Iterable[str]:
-        lines = [
-            f'Constraints: {kprint.pretty_print(mlAnd(self.pre_constraints))}',
-            f'Last constraint: {kprint.pretty_print(self.last_constraint)}',
-        ]
+        lines = [f'Constraints: {kprint.pretty_print(mlAnd(self.refuted_constraints))}']
         if self.csubst is not None:
             lines.append(f'Implication csubst: {self.csubst}')
         lines.append(f'Status: {self.status}')

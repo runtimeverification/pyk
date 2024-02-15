@@ -182,7 +182,7 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         actual_subproof_constraints = tuple(
             [
                 kprove.definition.sort_vars(constraint)
-                for constraint in (list(subproof.pre_constraints) + [subproof.last_constraint])
+                for constraint in subproof.refuted_constraints
                 if not is_top(constraint)
             ]
         )
