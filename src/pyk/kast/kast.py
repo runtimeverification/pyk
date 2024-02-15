@@ -84,6 +84,7 @@ class KAtt(KAst, Mapping[str, Any]):
     LOCATION: ClassVar[str] = 'org.kframework.attributes.Location'
     MACRO: ClassVar[str] = 'macro'
     MACRO_REC: ClassVar[str] = 'macro-rec'
+    OWISE: ClassVar[str] = 'owise'
     PRODUCTION: ClassVar[str] = 'org.kframework.definition.Production'
     RIGHT: ClassVar[str] = 'right'
     SORT: ClassVar[str] = 'org.kframework.kore.Sort'
