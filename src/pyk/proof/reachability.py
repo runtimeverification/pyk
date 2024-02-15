@@ -507,23 +507,8 @@ class APRProof(Proof, KCFGExploration):
             _LOGGER.error(f'Cannot refute node {node.id} in linear KCFG')
             return None
         closest_branch = branches_on_path[0]
-        if type(closest_branch) is KCFG.NDBranch:
-            _LOGGER.error(f'Cannot refute node {node.id} following a non-deterministic branch: not yet implemented')
-            return None
 
-        assert type(closest_branch) is KCFG.Split
-        refuted_branch_root = closest_branch.targets[0]
-        csubst = closest_branch.splits[refuted_branch_root.id]
-        if len(csubst.subst) > 0:
-            _LOGGER.error(
-                f'Cannot refute node {node.id}: unexpected non-empty substitution {csubst.subst} in Split from {closest_branch.source.id}'
-            )
-            return None
-        if len(csubst.constraints) > 1:
-            _LOGGER.error(
-                f'Cannot refute node {node.id}: unexpected non-singleton constraints {csubst.constraints} in Split from {closest_branch.source.id}'
-            )
-            return None
+        assert type(closest_branch) is KCFG.Split or type(closest_branch) is KCFG.NDBranch
 
         # extract the path conditions at the current node
         refuted_constraints = [ml_pred_to_bool(c) for c in node.cterm.constraints]
