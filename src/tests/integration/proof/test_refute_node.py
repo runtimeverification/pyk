@@ -129,7 +129,7 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         frontier_nodes = prover.proof.pending
         assert prover.proof.status == ProofStatus.PENDING
 
-        assert len(frontier_nodes)
+        assert len(frontier_nodes) == 2
         frontier_node = frontier_nodes[0]
         prover.proof.refute_node(frontier_node)
         prover.proof.unrefute_node(frontier_node)
@@ -209,7 +209,7 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         frontier_nodes = prover.proof.pending
         assert prover.proof.status == ProofStatus.PENDING
 
-        assert len(frontier_nodes)
+        assert len(frontier_nodes) == 2
         frontier_node = frontier_nodes[0]
         prover.proof.refute_node(frontier_node)
 
