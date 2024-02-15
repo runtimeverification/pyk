@@ -170,7 +170,7 @@ class APRProof(Proof, KCFGExploration):
         self._exec_time += exec_time
 
     def set_exec_time(self, exec_time: float) -> None:
-        self.execution_time = exec_time
+        self._exec_time = exec_time
 
     @staticmethod
     def _make_module_name(proof_id: str) -> str:
@@ -419,7 +419,7 @@ class APRProof(Proof, KCFGExploration):
         bmc_depth = int(proof_dict['bmc_depth']) if 'bmc_depth' in proof_dict else None
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
-        execution_time = float(proof_dict['execution_time'])
+        exec_time = float(proof_dict['execution_time']) if 'execution_time' in proof_dict else 0.0
         terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
@@ -441,7 +441,7 @@ class APRProof(Proof, KCFGExploration):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
-            execution_time=execution_time,
+            _exec_time=exec_time,
         )
 
     def write_proof_data(self) -> None:
@@ -456,7 +456,7 @@ class APRProof(Proof, KCFGExploration):
         dct['id'] = self.id
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
-        dct['execution_time'] = self.execution_time
+        dct['execution_time'] = self._exec_time
         dct['type'] = 'APRProof'
         dct['init'] = self.kcfg._resolve(self.init)
         dct['target'] = self.kcfg._resolve(self.target)
