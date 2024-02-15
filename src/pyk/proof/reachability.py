@@ -17,7 +17,7 @@ from ..kcfg.exploration import KCFGExploration
 from ..konvert import kflatmodule_to_kore
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
-from .equality import ProofSummary, Prover, RefutationProof
+from .implies import ProofSummary, Prover, RefutationProof
 from .proof import CompositeSummary, Proof, ProofStatus
 
 if TYPE_CHECKING:
