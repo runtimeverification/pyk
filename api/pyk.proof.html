@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyk.proof package &#8212; pyk 0.1.626 documentation</title>
+    <title>pyk.proof package &#8212; pyk 0.1.627 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <script src="../_static/documentation_options.js?v=7568c7bd"></script>
+    <script src="../_static/documentation_options.js?v=d11043a4"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -65,6 +65,7 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof"><code class="docutils literal notranslate"><span class="pre">ImpliesProof</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.antecedent"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.antecedent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.can_progress"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.can_progress</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.consequent"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.consequent</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.csubst"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.csubst</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.simplified_antecedent"><code class="docutils literal notranslate"><span class="pre">ImpliesProof.simplified_antecedent</span></code></a></li>
@@ -74,8 +75,8 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProver"><code class="docutils literal notranslate"><span class="pre">ImpliesProver</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProver.advance_proof"><code class="docutils literal notranslate"><span class="pre">ImpliesProver.advance_proof()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProver.proof"><code class="docutils literal notranslate"><span class="pre">ImpliesProver.proof</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.ImpliesProver.step_proof"><code class="docutils literal notranslate"><span class="pre">ImpliesProver.step_proof()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.equality.html#pyk.proof.equality.RefutationProof"><code class="docutils literal notranslate"><span class="pre">RefutationProof</span></code></a><ul>
@@ -124,6 +125,7 @@
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Proof.add_subproof"><code class="docutils literal notranslate"><span class="pre">Proof.add_subproof()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Proof.admit"><code class="docutils literal notranslate"><span class="pre">Proof.admit()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Proof.admitted"><code class="docutils literal notranslate"><span class="pre">Proof.admitted</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Proof.can_progress"><code class="docutils literal notranslate"><span class="pre">Proof.can_progress</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Proof.dict"><code class="docutils literal notranslate"><span class="pre">Proof.dict</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Proof.digest"><code class="docutils literal notranslate"><span class="pre">Proof.digest</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Proof.failed"><code class="docutils literal notranslate"><span class="pre">Proof.failed</span></code></a></li>
@@ -165,7 +167,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Prover"><code class="docutils literal notranslate"><span class="pre">Prover</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Prover.advance_proof"><code class="docutils literal notranslate"><span class="pre">Prover.advance_proof()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Prover.kcfg_explore"><code class="docutils literal notranslate"><span class="pre">Prover.kcfg_explore</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Prover.proof"><code class="docutils literal notranslate"><span class="pre">Prover.proof</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.proof.html#pyk.proof.proof.Prover.step_proof"><code class="docutils literal notranslate"><span class="pre">Prover.step_proof()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -186,6 +191,7 @@
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProof.as_rule"><code class="docutils literal notranslate"><span class="pre">APRProof.as_rule()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProof.bmc_depth"><code class="docutils literal notranslate"><span class="pre">APRProof.bmc_depth</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProof.bounded"><code class="docutils literal notranslate"><span class="pre">APRProof.bounded</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProof.can_progress"><code class="docutils literal notranslate"><span class="pre">APRProof.can_progress</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProof.circularity"><code class="docutils literal notranslate"><span class="pre">APRProof.circularity</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProof.construct_node_refutation"><code class="docutils literal notranslate"><span class="pre">APRProof.construct_node_refutation()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProof.dict"><code class="docutils literal notranslate"><span class="pre">APRProof.dict</span></code></a></li>
@@ -221,17 +227,19 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver"><code class="docutils literal notranslate"><span class="pre">APRProver</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.advance_pending_node"><code class="docutils literal notranslate"><span class="pre">APRProver.advance_pending_node()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.advance_proof"><code class="docutils literal notranslate"><span class="pre">APRProver.advance_proof()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.always_check_subsumption"><code class="docutils literal notranslate"><span class="pre">APRProver.always_check_subsumption</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.circularities_module_name"><code class="docutils literal notranslate"><span class="pre">APRProver.circularities_module_name</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.counterexample_info"><code class="docutils literal notranslate"><span class="pre">APRProver.counterexample_info</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.cut_point_rules"><code class="docutils literal notranslate"><span class="pre">APRProver.cut_point_rules</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.dependencies_module_name"><code class="docutils literal notranslate"><span class="pre">APRProver.dependencies_module_name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.execute_depth"><code class="docutils literal notranslate"><span class="pre">APRProver.execute_depth</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.failure_info"><code class="docutils literal notranslate"><span class="pre">APRProver.failure_info()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.fast_check_subsumption"><code class="docutils literal notranslate"><span class="pre">APRProver.fast_check_subsumption</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.main_module_name"><code class="docutils literal notranslate"><span class="pre">APRProver.main_module_name</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.nonzero_depth"><code class="docutils literal notranslate"><span class="pre">APRProver.nonzero_depth()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.proof"><code class="docutils literal notranslate"><span class="pre">APRProver.proof</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.save_failure_info"><code class="docutils literal notranslate"><span class="pre">APRProver.save_failure_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.step_proof"><code class="docutils literal notranslate"><span class="pre">APRProver.step_proof()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRProver.terminal_rules"><code class="docutils literal notranslate"><span class="pre">APRProver.terminal_rules</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="pyk.proof.reachability.html#pyk.proof.reachability.APRSummary"><code class="docutils literal notranslate"><span class="pre">APRSummary</span></code></a><ul>
