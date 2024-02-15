@@ -686,7 +686,7 @@ class KClaim(KRuleLike):
     @property
     def dependencies(self) -> list[str]:
         """Return the dependencies of this claim (list of other claims needed to help prove this one or speed up this ones proof)."""
-        deps = self.att.atts.get('depends', default=None)
+        deps = self.att.get(KAtt.DEPENDS)
         if deps is None:
             return []
         return [x.strip() for x in deps.split(',')]
