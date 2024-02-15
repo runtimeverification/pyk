@@ -76,6 +76,7 @@ class KAtt(KAst, Mapping[str, Any]):
     HAS_DOMAIN_VALUES: ClassVar[str] = 'hasDomainValues'
     HOOK: ClassVar[str] = 'hook'
     IDEM: ClassVar[str] = 'idem'
+    INITIALIZER: ClassVar[str] = 'initializer'
     INJECTIVE: ClassVar[str] = 'injective'
     KLABEL: ClassVar[str] = 'klabel'
     LEFT: ClassVar[str] = 'left'

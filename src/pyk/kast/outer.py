@@ -1459,7 +1459,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                         return KVariable(_token_var.token)
             return _kast
 
-        init_prods = (prod for prod in self.syntax_productions if 'initializer' in prod.att)
+        init_prods = (prod for prod in self.syntax_productions if KAtt.INITIALIZER in prod.att)
         try:
             init_prod = single(prod for prod in init_prods if prod.sort == sort)
         except ValueError as err:
@@ -1476,7 +1476,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         else:
             raise ValueError(f'Cannot handle initializer for label: {prod_klabel}')
 
-        init_rewrites = [rule.body for rule in self.rules if 'initializer' in rule.att]
+        init_rewrites = [rule.body for rule in self.rules if KAtt.INITIALIZER in rule.att]
         old_init_config: KInner | None = None
         while init_config != old_init_config:
             old_init_config = init_config
