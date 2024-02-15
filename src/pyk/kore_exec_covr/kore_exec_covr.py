@@ -86,8 +86,8 @@ def build_rule_dict(
         if skip_initializers and KAtt.INITIALIZER in rule.att:
             continue
         try:
-            rule_source = rule.att.atts[KAtt.SOURCE]
-            rule_location = rule.att.atts[KAtt.LOCATION]
+            rule_source = rule.att[KAtt.SOURCE]
+            rule_location = rule.att[KAtt.LOCATION]
         except KeyError:
             _LOGGER.warning(f'Skipping rule with no location information {str(rule.body):.100}...<truncated>')
             rule_source = None

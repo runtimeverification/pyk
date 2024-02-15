@@ -558,7 +558,7 @@ def remove_source_attributes(term: KInner) -> KInner:
     def _remove_source_attr(term: KInner) -> KInner:
         if not isinstance(term, WithKAtt):
             return term
-        return term.let_att(KAtt(dict(filter(_is_not_source_att, term.att.atts.items()))))
+        return term.let_att(KAtt(dict(filter(_is_not_source_att, term.att.items()))))
 
     return top_down(_remove_source_attr, term)
 

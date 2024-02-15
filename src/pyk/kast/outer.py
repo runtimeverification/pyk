@@ -808,7 +808,7 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
             is_builtin_data_constructor = label in {'_Set_', '_List_', '_Map_', 'SetItem', 'ListItem', '_|->_'}
             return is_cell_map_constructor or is_builtin_data_constructor
 
-        return ('function' in prod.att.atts or 'functional' in prod.att.atts) and not (
+        return ('function' in prod.att or 'functional' in prod.att) and not (
             prod.klabel and is_not_actually_function(prod.klabel.name)
         )
 
