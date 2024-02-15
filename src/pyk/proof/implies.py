@@ -112,11 +112,11 @@ class ImpliesProof(Proof):
         dct['antecedent'] = self.antecedent.to_dict()
         dct['consequent'] = self.consequent.to_dict()
         if self.simplified_antecedent is not None:
-            dct['simplified_antecedent'] = self.simplified_antecedent
+            dct['simplified_antecedent'] = self.simplified_antecedent.to_dict()
         if self.simplified_consequent is not None:
-            dct['simplified_consequent'] = self.simplified_consequent
+            dct['simplified_consequent'] = self.simplified_consequent.to_dict()
         if self.csubst is not None:
-            dct['csubst'] = self.csubst
+            dct['csubst'] = self.csubst.to_dict()
         return dct
 
 
