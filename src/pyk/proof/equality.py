@@ -371,7 +371,7 @@ class ImpliesProofStep(ProofStep):
         _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(simplified_antecedent)}')
         _LOGGER.info(f'Simplified consequent: {self.kcfg_explore.kprint.pretty_print(simplified_consequent)}')
 
-        csubst: CSubst
+        csubst: CSubst | None = None
 
         if is_bottom(simplified_antecedent):
             _LOGGER.warning(f'Antecedent of implication (proof constraints) simplifies to #Bottom {self.proof_id}')
