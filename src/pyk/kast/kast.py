@@ -95,6 +95,7 @@ class KAtt(KAst, Mapping[str, Any]):
     SOURCE: ClassVar[str] = 'org.kframework.attributes.Source'
     TOKEN: ClassVar[str] = 'token'
     TOTAL: ClassVar[str] = 'total'
+    TRUSTED: ClassVar[str] = 'trusted'
     UNIT: ClassVar[str] = 'unit'
 
     def __init__(self, atts: Mapping[str, Any] = EMPTY_FROZEN_DICT):

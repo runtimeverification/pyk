@@ -681,7 +681,7 @@ class KClaim(KRuleLike):
     @property
     def is_trusted(self) -> bool:
         """Return whether this claim is trusted (does not need to be proven to be considered true)."""
-        return 'trusted' in self.att.atts
+        return KAtt.TRUSTED in self.att
 
     @property
     def dependencies(self) -> list[str]:
