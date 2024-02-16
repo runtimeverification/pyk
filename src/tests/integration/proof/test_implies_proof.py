@@ -26,30 +26,41 @@ if TYPE_CHECKING:
 
 _LOGGER: Final = logging.getLogger(__name__)
 
-IMPLIES_PROOF_TEST_DATA: Iterable[tuple[str, tuple[str, ...], tuple[str, ...], ProofStatus]] = (
+IMPLIES_PROOF_TEST_DATA: Iterable[tuple[str, tuple[str, ...], tuple[str, ...], bool, ProofStatus]] = (
     (
         'antecedent-bottom',
         ('X <=Int 0', '0 <Int X'),
         ('X <Int 3',),
+        True,
         ProofStatus.PASSED,
     ),
     (
         'consequent-top',
         ('X <Int 3',),
         ('X <Int X +Int 1',),
+        True,
         ProofStatus.PASSED,
     ),
     (
         'satisfiable-not-valid',
         ('X <Int 3',),
         ('X <Int 2',),
+        True,
         ProofStatus.FAILED,
     ),
     (
         'satisfiable-not-valid-true-antecedent',
         (),
         ('X <=Int 0',),
+        True,
         ProofStatus.FAILED,
+    ),
+    (
+        'satisfiable-not-valid-existential',
+        (),
+        ('X <=Int 0',),
+        False,
+        ProofStatus.PASSED,
     ),
 )
 
@@ -150,7 +161,7 @@ class TestImpImpliesProof(KCFGExploreTest, KProveTest):
         symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
 
     @pytest.mark.parametrize(
-        'test_id,antecedents,consequents,expected_proof_status',
+        'test_id,antecedents,consequents,bind_universally,expected_proof_status',
         IMPLIES_PROOF_TEST_DATA,
         ids=[test_id for test_id, *_ in IMPLIES_PROOF_TEST_DATA],
     )
@@ -160,6 +171,7 @@ class TestImpImpliesProof(KCFGExploreTest, KProveTest):
         test_id: str,
         antecedents: Iterable[str],
         consequents: Iterable[str],
+        bind_universally: bool,
         expected_proof_status: ProofStatus,
     ) -> None:
         parsed_antecedents = [
@@ -171,7 +183,7 @@ class TestImpImpliesProof(KCFGExploreTest, KProveTest):
         antecedent = mlAnd(mlEqualsTrue(pa) for pa in parsed_antecedents)
         consequent = mlAnd(mlEqualsTrue(pc) for pc in parsed_consequents)
 
-        proof = ImpliesProof(test_id, antecedent, consequent)
+        proof = ImpliesProof(test_id, antecedent, consequent, bind_universally=bind_universally)
         prover = ImpliesProver(proof, kcfg_explore)
 
         prover.advance_proof()
