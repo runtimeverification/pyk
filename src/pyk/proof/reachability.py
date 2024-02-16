@@ -739,7 +739,6 @@ class APRProver(Prover):
                     terminal_rules=self.terminal_rules,
                 )
             )
-        print(steps)
         return steps
 
     def commit(self, result: StepResult) -> None:
@@ -761,9 +760,6 @@ class APRProver(Prover):
         if self.proof.failed:
             self.proof.failure_info = self.failure_info()
 
-        show = KCFGShow(self.kcfg_explore.kprint, node_printer=APRProofNodePrinter(self.proof, self.kcfg_explore.kprint, full_printer=True))
-        print('\n+'.join(show.pretty(self.proof.kcfg)))
-
         self._check_all_terminals()
 
         for node in self.proof.terminal:
@@ -774,12 +770,6 @@ class APRProver(Prover):
             ):
                 self._checked_for_subsumption.add(node.id)
                 self._check_subsume(node)
-
-        print(f'pending: {self.proof.pending}')
-        print(f'can_progress: {self.proof.can_progress}')
-
-        show = KCFGShow(self.kcfg_explore.kprint, node_printer=APRProofNodePrinter(self.proof, self.kcfg_explore.kprint, full_printer=True))
-        print('\n-'.join(show.pretty(self.proof.kcfg)))
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
@@ -838,12 +828,8 @@ class APRProofStep(ProofStep):
         return self.kcfg_explore.cterm_implies(self.cterm, self.target_cterm)
 
     def exec(self) -> APRProofResult:
-        print(f'is_terminal: {self.is_terminal}')
-        print(f'target_is_terminal: {self.target_is_terminal}')
         if self.is_terminal or not self.target_is_terminal:
-            print(f'always_check_subsumption: {self.always_check_subsumption}')
             if self.always_check_subsumption:
-                print(f'checking subsumption {self.node_id}')
                 csubst = self._check_subsume()
                 if csubst is not None or self.is_terminal:
                     return APRProofSubsumeResult(csubst=csubst, node_id=self.node_id)
