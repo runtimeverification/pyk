@@ -29,6 +29,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 class ImpliesProof(Proof):
     antecedent: KInner
     consequent: KInner
+    bind_universally: bool
     simplified_antecedent: KInner | None
     simplified_consequent: KInner | None
     csubst: CSubst | None
@@ -38,6 +39,7 @@ class ImpliesProof(Proof):
         id: str,
         antecedent: KInner,
         consequent: KInner,
+        bind_universally: bool = False,
         simplified_antecedent: KInner | None = None,
         simplified_consequent: KInner | None = None,
         csubst: CSubst | None = None,
@@ -48,6 +50,7 @@ class ImpliesProof(Proof):
         super().__init__(id=id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         self.antecedent = antecedent
         self.consequent = consequent
+        self.bind_universally = bind_universally
         self.simplified_antecedent = simplified_antecedent
         self.simplified_consequent = simplified_consequent
         self.csubst = csubst
@@ -141,6 +144,7 @@ class EqualityProof(ImpliesProof):
             id,
             antecedent,
             consequent,
+            bind_universally=True,
             simplified_antecedent=simplified_constraints,
             simplified_consequent=simplified_equality,
             csubst=csubst,
@@ -284,6 +288,7 @@ class RefutationProof(ImpliesProof):
             id,
             antecedent,
             consequent,
+            bind_universally=True,
             simplified_antecedent=simplified_antecedent,
             simplified_consequent=simplified_consequent,
             csubst=csubst,
@@ -405,6 +410,7 @@ class ImpliesProver(Prover):
             result = self.kcfg_explore.cterm_implies(
                 antecedent=CTerm(config=dummy_config, constraints=[self.proof.simplified_antecedent]),
                 consequent=CTerm(config=dummy_config, constraints=[self.proof.simplified_consequent]),
+                bind_universally=self.proof.bind_universally,
             )
             if result is not None:
                 self.proof.csubst = result
