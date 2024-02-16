@@ -1120,12 +1120,6 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         prover = APRProver(proof, kcfg_explore=kcfg_explore)
         prover.advance_proof(fail_fast=True)
 
-#          kcfg_show = KCFGShow(
-#              kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
-#          )
-#          cfg_lines = kcfg_show.show(proof.kcfg)
-#          _LOGGER.info('\n'.join(cfg_lines))
-
         # First branch will be reached first and terminate the proof, leaving the second long branch pending (fail_fast=True)
         assert len(proof.kcfg.leaves) == 3
         assert len(proof.pending) == 1
