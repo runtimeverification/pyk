@@ -319,9 +319,9 @@ class Prover:
                 iterations += 1
                 result = step.exec()
                 self.commit(result)
+                self.proof.write_proof_data()
                 if fail_fast and self.proof.failed:
                     _LOGGER.warning(f'Terminating proof early because fail_fast is set: {self.proof.id}')
                     return
                 if max_iterations is not None and max_iterations <= iterations:
                     return
-                self.proof.write_proof_data()
