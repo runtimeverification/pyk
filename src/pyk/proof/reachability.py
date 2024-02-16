@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
-from .show import KCFGShow, NodePrinter
+from .show import KCFGShow, NodePrinter, APRProofNodePrinter
 from ..kast.inner import KInner, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
@@ -761,6 +761,9 @@ class APRProver(Prover):
         if self.proof.failed:
             self.proof.failure_info = self.failure_info()
 
+        show = KCFGShow(self.kcfg_explore.kprint, node_printer=APRProofNodePrinter(self.proof, self.kcfg_explore.kprint, full_printer=True))
+        print('\n+'.join(show.pretty(self.proof.kcfg)))
+
         self._check_all_terminals()
 
         for node in self.proof.terminal:
@@ -775,8 +778,8 @@ class APRProver(Prover):
         print(f'pending: {self.proof.pending}')
         print(f'can_progress: {self.proof.can_progress}')
 
-        show = KCFGShow(self.kcfg_explore.kprint, node_printer=NodePrinter(self.kcfg_explore.kprint, full_printer=True))
-        print('\n'.join(show.pretty(self.proof.kcfg)))
+        show = KCFGShow(self.kcfg_explore.kprint, node_printer=APRProofNodePrinter(self.proof, self.kcfg_explore.kprint, full_printer=True))
+        print('\n-'.join(show.pretty(self.proof.kcfg)))
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
