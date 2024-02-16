@@ -324,4 +324,4 @@ class Prover:
                     return
                 if max_iterations is not None and max_iterations <= iterations:
                     return
-            self.proof.write_proof_data()
+                self.proof.write_proof_data()

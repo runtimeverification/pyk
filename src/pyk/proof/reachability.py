@@ -755,9 +755,6 @@ class APRProver(Prover):
         else:
             raise ValueError('Incorrect result type')
 
-        if self.proof.failed:
-            self.proof.failure_info = self.failure_info()
-
         self._check_all_terminals()
 
         for node in self.proof.terminal:
@@ -768,6 +765,9 @@ class APRProver(Prover):
             ):
                 self._checked_for_subsumption.add(node.id)
                 self._check_subsume(node)
+
+        if self.proof.failed:
+            self.proof.failure_info = self.failure_info()
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
