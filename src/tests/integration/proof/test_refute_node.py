@@ -179,6 +179,8 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         refutation_prover = ImpliesProver(subproof, kcfg_explore)
         refutation_prover.advance_proof()
 
+        assert subproof.status == ProofStatus.FAILED
+
         expected_subproof_constraints = tuple(
             [kprove.definition.sort_vars(constraint) for constraint in expected_subproof_constraints]
         )
