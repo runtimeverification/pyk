@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 from pyk.kore.rpc import LogEntry
 
-from .show import KCFGShow, NodePrinter, APRProofNodePrinter
 from ..kast.inner import KInner, Subst
 from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
@@ -689,7 +688,6 @@ class APRProver(Prover):
         )
 
     def get_steps(self) -> Iterable[APRProofStep]:
-
         if not self.proof.pending:
             return []
         steps = []
