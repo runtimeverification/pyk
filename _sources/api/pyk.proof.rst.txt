@@ -12,7 +12,7 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
-   pyk.proof.equality
+   pyk.proof.implies
    pyk.proof.parallel
    pyk.proof.proof
    pyk.proof.reachability

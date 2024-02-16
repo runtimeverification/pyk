@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; pyk 0.1.629 documentation</title>
+    <title>Index &#8212; pyk 0.1.630 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
-    <script src="_static/documentation_options.js?v=9d72647f"></script>
+    <script src="_static/documentation_options.js?v=7e56032d"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="#" />
@@ -128,7 +128,7 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRSummary.admitted">admitted (APRSummary attribute)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualitySummary.admitted">(EqualitySummary attribute)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualitySummary.admitted">(EqualitySummary attribute)</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.admitted">(Proof attribute)</a>
 </li>
@@ -179,7 +179,7 @@
 </li>
       <li><a href="api/pyk.kore.parser.html#pyk.kore.parser.KoreParser.andd">andd() (KoreParser method)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.antecedent">antecedent (ImpliesProof attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.antecedent">antecedent (ImpliesProof attribute)</a>
 </li>
       <li><a href="api/pyk.cterm.html#pyk.cterm.CTerm.anti_unify">anti_unify() (CTerm method)</a>
 
@@ -415,6 +415,8 @@
 </li>
       <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.BinaryPred">BinaryPred (class in pyk.kore.syntax)</a>
 </li>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.bind_universally">bind_universally (ImpliesProof attribute)</a>
+</li>
       <li><a href="api/pyk.kcfg.tui.html#pyk.kcfg.tui.KCFGViewer.BINDINGS">BINDINGS (KCFGViewer attribute)</a>
 
       <ul>
@@ -592,7 +594,7 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.can_progress">can_progress (APRProof property)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.can_progress">(ImpliesProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.can_progress">(ImpliesProof property)</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.can_progress">(Proof property)</a>
 </li>
@@ -745,14 +747,14 @@
 </li>
       <li><a href="api/pyk.cterm.html#pyk.cterm.CTerm.config">config (CTerm attribute)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.consequent">consequent (ImpliesProof attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.consequent">consequent (ImpliesProof attribute)</a>
 </li>
       <li><a href="api/pyk.kcfg.tui.html#pyk.kcfg.tui.Constraint">Constraint (class in pyk.kcfg.tui)</a>
 </li>
       <li><a href="api/pyk.cterm.html#pyk.cterm.CSubst.constraint">constraint (CSubst property)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.constraint">(EqualityProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.constraint">(EqualityProof property)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.kcfg.explore.html#pyk.kcfg.explore.Branch.constraints">constraints (Branch attribute)</a>
@@ -762,7 +764,7 @@
 </li>
         <li><a href="api/pyk.cterm.html#pyk.cterm.CTerm.constraints">(CTerm attribute)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.constraints">(EqualityProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.constraints">(EqualityProof property)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.construct_node_refutation">construct_node_refutation() (APRProof method)</a>
@@ -845,7 +847,7 @@
 </li>
       <li><a href="api/pyk.cterm.html#pyk.cterm.CSubst">CSubst (class in pyk.cterm)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.csubst">csubst (ImpliesProof attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.csubst">csubst (ImpliesProof attribute)</a>
 
       <ul>
         <li><a href="api/pyk.kcfg.kcfg.html#pyk.kcfg.kcfg.KCFG.Cover.csubst">(KCFG.Cover attribute)</a>
@@ -1018,13 +1020,15 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.dict">dict (APRProof property)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.dict">(EqualityProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.dict">(EqualityProof property)</a>
+</li>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.dict">(ImpliesProof property)</a>
 </li>
         <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Pattern.dict">(Pattern property)</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.dict">(Proof property)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.dict">(RefutationProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.dict">(RefutationProof property)</a>
 </li>
         <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Sort.dict">(Sort property)</a>
 </li>
@@ -1123,11 +1127,11 @@
 </li>
       <li><a href="api/pyk.prelude.kint.html#pyk.prelude.kint.eqInt">eqInt() (in module pyk.prelude.kint)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.equality">equality (EqualityProof property)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.equality">equality (EqualityProof property)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof">EqualityProof (class in pyk.proof.equality)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof">EqualityProof (class in pyk.proof.implies)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualitySummary">EqualitySummary (class in pyk.proof.equality)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualitySummary">EqualitySummary (class in pyk.proof.implies)</a>
 </li>
       <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Equals">Equals (class in pyk.kore.syntax)</a>
 </li>
@@ -1266,7 +1270,7 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.from_claim">from_claim() (APRProof static method)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.from_claim">(EqualityProof static method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.from_claim">(EqualityProof static method)</a>
 </li>
         <li><a href="api/pyk.kcfg.kcfg.html#pyk.kcfg.kcfg.KCFG.from_claim">(KCFG static method)</a>
 </li>
@@ -1286,11 +1290,13 @@
 </li>
         <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.DepthBoundResult.from_dict">(DepthBoundResult class method)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.from_dict">(EqualityProof class method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.from_dict">(EqualityProof class method)</a>
 </li>
         <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.ExecuteResult.from_dict">(ExecuteResult class method)</a>
 </li>
         <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.GetModelResult.from_dict">(GetModelResult static method)</a>
+</li>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.from_dict">(ImpliesProof class method)</a>
 </li>
         <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.ImpliesResult.from_dict">(ImpliesResult static method)</a>
 </li>
@@ -1332,7 +1338,7 @@
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.from_dict">(Proof class method)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.from_dict">(RefutationProof class method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.from_dict">(RefutationProof class method)</a>
 </li>
         <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.RewriteFailure.from_dict">(RewriteFailure class method)</a>
 </li>
@@ -1527,7 +1533,7 @@
 </li>
       <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Id">Id (class in pyk.kore.syntax)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualitySummary.id">id (EqualitySummary attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualitySummary.id">id (EqualitySummary attribute)</a>
 
       <ul>
         <li><a href="api/pyk.kcfg.kcfg.html#pyk.kcfg.kcfg.KCFG.Node.id">(KCFG.Node attribute)</a>
@@ -1538,7 +1544,7 @@
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.ProofSummary.id">(ProofSummary attribute)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationSummary.id">(RefutationSummary attribute)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationSummary.id">(RefutationSummary attribute)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.kore.lexer.html#pyk.kore.lexer.TokenType.ID">ID (TokenType attribute)</a>
@@ -1575,9 +1581,9 @@
 </li>
       <li><a href="api/pyk.prelude.kbool.html#pyk.prelude.kbool.impliesBool">impliesBool() (in module pyk.prelude.kbool)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof">ImpliesProof (class in pyk.proof.equality)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof">ImpliesProof (class in pyk.proof.implies)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProver">ImpliesProver (class in pyk.proof.equality)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProver">ImpliesProver (class in pyk.proof.implies)</a>
 </li>
       <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.ImpliesResult">ImpliesResult (class in pyk.kore.rpc)</a>
 </li>
@@ -2143,7 +2149,7 @@
       </ul></li>
       <li><a href="api/pyk.kast.manip.html#pyk.kast.manip.labels_to_dots">labels_to_dots() (in module pyk.kast.manip)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.last_constraint">last_constraint (RefutationProof attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.last_constraint">last_constraint (RefutationProof property)</a>
 </li>
       <li><a href="api/pyk.ktool.kprint.html#pyk.ktool.kprint.KAstOutput.LATEX">LATEX (KAstOutput attribute)</a>
 
@@ -2489,18 +2495,18 @@
 </li>
       <li><a href="api/pyk.kast.inner.html#pyk.kast.inner.KRewrite.lhs">lhs (KRewrite attribute)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.lhs_body">lhs_body (EqualityProof property)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.lhs_body">lhs_body (EqualityProof property)</a>
 </li>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRSummary.lines">lines (APRSummary property)</a>
 
       <ul>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.CompositeSummary.lines">(CompositeSummary property)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualitySummary.lines">(EqualitySummary property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualitySummary.lines">(EqualitySummary property)</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.ProofSummary.lines">(ProofSummary property)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationSummary.lines">(RefutationSummary property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationSummary.lines">(RefutationSummary property)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.prelude.collections.html#pyk.prelude.collections.list_empty">list_empty() (in module pyk.prelude.collections)</a>
@@ -2923,7 +2929,7 @@
 </li>
         <li><a href="api/pyk.proof.html#module-pyk.proof">pyk.proof</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#module-pyk.proof.equality">pyk.proof.equality</a>
+        <li><a href="api/pyk.proof.implies.html#module-pyk.proof.implies">pyk.proof.implies</a>
 </li>
         <li><a href="api/pyk.proof.parallel.html#module-pyk.proof.parallel">pyk.proof.parallel</a>
 </li>
@@ -3512,7 +3518,7 @@
         <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.KoreServerInfo.port">(KoreServerInfo attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.pre_constraints">pre_constraints (RefutationProof attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.pre_constraints">pre_constraints (RefutationProof property)</a>
 </li>
       <li><a href="api/pyk.kast.outer.html#pyk.kast.outer.KRegexTerminal.precede_regex">precede_regex (KRegexTerminal attribute)</a>
 </li>
@@ -3543,11 +3549,11 @@
       <li><a href="api/pyk.proof.show.html#pyk.proof.show.APRProofShow.pretty">pretty() (APRProofShow method)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.pretty">(EqualityProof method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.pretty">(EqualityProof method)</a>
 </li>
         <li><a href="api/pyk.kcfg.show.html#pyk.kcfg.show.KCFGShow.pretty">(KCFGShow method)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.pretty">(RefutationProof method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.pretty">(RefutationProof method)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.prelude.bytes.html#pyk.prelude.bytes.pretty_bytes">pretty_bytes() (in module pyk.prelude.bytes)</a>
@@ -3638,7 +3644,7 @@
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof">(class in pyk.proof.proof)</a>
 </li>
       </ul></li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProver.proof">proof (ImpliesProver attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProver.proof">proof (ImpliesProver attribute)</a>
 
       <ul>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Prover.proof">(Prover attribute)</a>
@@ -4152,10 +4158,10 @@
 </li>
       </ul></li>
       <li>
-    pyk.proof.equality
+    pyk.proof.implies
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#module-pyk.proof.equality">module</a>
+        <li><a href="api/pyk.proof.implies.html#module-pyk.proof.implies">module</a>
 </li>
       </ul></li>
       <li>
@@ -4251,11 +4257,11 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.read_proof_data">read_proof_data() (APRProof static method)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.read_proof_data">(EqualityProof static method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.read_proof_data">(EqualityProof static method)</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.read_proof_data">(Proof static method)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.read_proof_data">(RefutationProof static method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.read_proof_data">(RefutationProof static method)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.read_subproof">read_subproof() (Proof method)</a>
@@ -4284,9 +4290,9 @@
         <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.VacuousResult.reason">(VacuousResult attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof">RefutationProof (class in pyk.proof.equality)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof">RefutationProof (class in pyk.proof.implies)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationSummary">RefutationSummary (class in pyk.proof.equality)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationSummary">RefutationSummary (class in pyk.proof.implies)</a>
 </li>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.refute_node">refute_node() (APRProof method)</a>
 </li>
@@ -4438,7 +4444,7 @@
 </li>
       <li><a href="api/pyk.kast.inner.html#pyk.kast.inner.KRewrite.rhs">rhs (KRewrite attribute)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.rhs_body">rhs_body (EqualityProof property)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.rhs_body">rhs_body (EqualityProof property)</a>
 </li>
       <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.AliasDecl.right">right (AliasDecl attribute)</a>
 </li>
@@ -4634,17 +4640,17 @@
         <li><a href="api/pyk.kcfg.show.html#pyk.kcfg.show.KCFGShow.show">(KCFGShow method)</a>
 </li>
       </ul></li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.simplified_antecedent">simplified_antecedent (ImpliesProof attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.simplified_antecedent">simplified_antecedent (ImpliesProof attribute)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.simplified_consequent">simplified_consequent (ImpliesProof attribute)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.simplified_consequent">simplified_consequent (ImpliesProof attribute)</a>
 </li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.simplified_constraints">simplified_constraints (EqualityProof property)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.simplified_constraints">simplified_constraints (EqualityProof property)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.simplified_constraints">(RefutationProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.simplified_constraints">(RefutationProof property)</a>
 </li>
       </ul></li>
-      <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.simplified_equality">simplified_equality (EqualityProof property)</a>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.simplified_equality">simplified_equality (EqualityProof property)</a>
 </li>
       <li><a href="api/pyk.kcfg.explore.html#pyk.kcfg.explore.KCFGExplore.simplify">simplify() (KCFGExplore method)</a>
 
@@ -4713,7 +4719,7 @@
       <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.DV.sort">sort (DV attribute)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.sort">(EqualityProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.sort">(EqualityProof property)</a>
 </li>
         <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.Equals.sort">(Equals attribute)</a>
 </li>
@@ -4909,15 +4915,15 @@
       <ul>
         <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRSummary.status">(APRSummary attribute)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualitySummary.status">(EqualitySummary attribute)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualitySummary.status">(EqualitySummary attribute)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.status">(ImpliesProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.status">(ImpliesProof property)</a>
 </li>
         <li><a href="api/pyk.proof.parallel.html#pyk.proof.parallel.Proof.status">(Proof property)</a>, <a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.status">[1]</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.ProofSummary.status">(ProofSummary attribute)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationSummary.status">(RefutationSummary attribute)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationSummary.status">(RefutationSummary attribute)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.kcfg.explore.html#pyk.kcfg.explore.Step">Step (class in pyk.kcfg.explore)</a>
@@ -4933,7 +4939,7 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProver.step_proof">step_proof() (APRProver method)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProver.step_proof">(ImpliesProver method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProver.step_proof">(ImpliesProver method)</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Prover.step_proof">(Prover method)</a>
 </li>
@@ -5005,11 +5011,11 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.summary">summary (APRProof property)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.EqualityProof.summary">(EqualityProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.summary">(EqualityProof property)</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.summary">(Proof property)</a>
 </li>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.RefutationProof.summary">(RefutationProof property)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.summary">(RefutationProof property)</a>
 </li>
       </ul></li>
       <li><a href="api/pyk.kore.syntax.html#pyk.kore.syntax.SVar">SVar (class in pyk.kore.syntax)</a>
@@ -5597,7 +5603,7 @@
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.write_proof_data">write_proof_data() (APRProof method)</a>
 
       <ul>
-        <li><a href="api/pyk.proof.equality.html#pyk.proof.equality.ImpliesProof.write_proof_data">(ImpliesProof method)</a>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.write_proof_data">(ImpliesProof method)</a>
 </li>
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.write_proof_data">(Proof method)</a>
 </li>
