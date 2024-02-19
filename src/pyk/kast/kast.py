@@ -108,16 +108,7 @@ class KAtt(KAst, Mapping[AttKey, Any]):
     WRAP_ELEMENT: ClassVar[AttKey] = AttKey('wrapElement')
 
     def __init__(self, atts: Mapping[AttKey, Any] = EMPTY_FROZEN_DICT):
-        def _freeze(m: Any) -> Any:
-            if isinstance(m, (int, str, tuple, FrozenDict, frozenset)):
-                return m
-            elif isinstance(m, list):
-                return tuple(_freeze(v) for v in m)
-            elif isinstance(m, dict):
-                return FrozenDict((k, _freeze(v)) for (k, v) in m.items())
-            raise ValueError(f"Don't know how to freeze attribute value {m} of type {type(m)}.")
-
-        frozen = _freeze(atts)
+        frozen = self._freeze(atts)
         assert isinstance(frozen, FrozenDict)
         object.__setattr__(self, 'atts', frozen)
 
@@ -140,6 +131,16 @@ class KAtt(KAst, Mapping[AttKey, Any]):
 
     def to_dict(self) -> dict[str, Any]:
         return {'node': 'KAtt', 'att': KAtt._unfreeze({key.name: value for key, value in self.atts.items()})}
+
+    @staticmethod
+    def _freeze(m: Any) -> Any:
+        if isinstance(m, (int, str, tuple, FrozenDict, frozenset)):
+            return m
+        elif isinstance(m, list):
+            return tuple(KAtt._freeze(v) for v in m)
+        elif isinstance(m, dict):
+            return FrozenDict((k, KAtt._freeze(v)) for (k, v) in m.items())
+        raise ValueError(f"Don't know how to freeze attribute value {m} of type {type(m)}.")
 
     @staticmethod
     def _unfreeze(x: Any) -> Any:
