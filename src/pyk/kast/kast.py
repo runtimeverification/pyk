@@ -4,20 +4,22 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from dataclasses import dataclass, fields
-from functools import cached_property
+from dataclasses import dataclass, field, fields
+from functools import cache, cached_property
 from itertools import chain
-from typing import TYPE_CHECKING, Any, final
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, final, overload
 
 from ..utils import FrozenDict, hash_str
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-    from typing import Final, TypeVar
+    from typing import Final
 
-    T = TypeVar('T', bound='KAst')
+    U = TypeVar('U')
     W = TypeVar('W', bound='WithKAtt')
 
+
+T = TypeVar('T')
 _LOGGER: Final = logging.getLogger(__name__)
 
 
@@ -51,67 +53,92 @@ class KAst(ABC):
         return tuple(self.__dict__[field.name] for field in fields(type(self)))  # type: ignore
 
 
+class AttType(Generic[T], ABC):
+    ...
+
+
+class NullaryType(AttType[Literal['']]):
+    ...
+
+
+class AnyType(AttType[Any]):
+    ...
+
+
+_NULLARY: Final = NullaryType()
+_ANY: Final = AnyType()
+
+
 @final
 @dataclass(frozen=True)
-class AttKey:
+class AttKey(Generic[T]):
     name: str
+    type: AttType[T] = field(compare=False, repr=False, kw_only=True)
 
-    def __call__(self, value: Any) -> AttEntry:
+    def __call__(self, value: T) -> AttEntry[T]:
         return AttEntry(self, value)
 
 
 @final
 @dataclass(frozen=True)
-class AttEntry:
-    key: AttKey
-    value: Any
+class AttEntry(Generic[T]):
+    key: AttKey[T]
+    value: T
 
 
 class Atts:
-    ALIAS: Final = AttKey('alias')
-    ALIAS_REC: Final = AttKey('alias-rec')
-    ANYWHERE: Final = AttKey('anywhere')
-    ASSOC: Final = AttKey('assoc')
-    CIRCULARITY: Final = AttKey('circularity')
-    CELL: Final = AttKey('cell')
-    CELL_COLLECTION: Final = AttKey('cellCollection')
-    COLORS: Final = AttKey('colors')
-    COMM: Final = AttKey('comm')
-    CONCAT: Final = AttKey('concat')
-    CONSTRUCTOR: Final = AttKey('constructor')
-    DEPENDS: Final = AttKey('depends')
-    DIGEST: Final = AttKey('digest')
-    ELEMENT: Final = AttKey('element')
-    FORMAT: Final = AttKey('format')
-    FUNCTION: Final = AttKey('function')
-    FUNCTIONAL: Final = AttKey('functional')
-    HAS_DOMAIN_VALUES: Final = AttKey('hasDomainValues')
-    HOOK: Final = AttKey('hook')
-    IDEM: Final = AttKey('idem')
-    INITIALIZER: Final = AttKey('initializer')
-    INJECTIVE: Final = AttKey('injective')
-    KLABEL: Final = AttKey('klabel')
-    LABEL: Final = AttKey('label')
-    LEFT: Final = AttKey('left')
-    LOCATION: Final = AttKey('org.kframework.attributes.Location')
-    MACRO: Final = AttKey('macro')
-    MACRO_REC: Final = AttKey('macro-rec')
-    OWISE: Final = AttKey('owise')
-    PRIORITY: Final = AttKey('priority')
-    PRODUCTION: Final = AttKey('org.kframework.definition.Production')
-    PROJECTION: Final = AttKey('projection')
-    RIGHT: Final = AttKey('right')
-    SIMPLIFICATION: Final = AttKey('simplification')
-    SYMBOL: Final = AttKey('symbol')
-    SORT: Final = AttKey('org.kframework.kore.Sort')
-    SOURCE: Final = AttKey('org.kframework.attributes.Source')
-    TOKEN: Final = AttKey('token')
-    TOTAL: Final = AttKey('total')
-    TRUSTED: Final = AttKey('trusted')
-    UNIT: Final = AttKey('unit')
-    UNIQUE_ID: Final = AttKey('UNIQUE_ID')
-    UNPARSE_AVOID: Final = AttKey('unparseAvoid')
-    WRAP_ELEMENT: Final = AttKey('wrapElement')
+    ALIAS: Final = AttKey('alias', type=_NULLARY)
+    ALIAS_REC: Final = AttKey('alias-rec', type=_NULLARY)
+    ANYWHERE: Final = AttKey('anywhere', type=_NULLARY)
+    ASSOC: Final = AttKey('assoc', type=_NULLARY)
+    CIRCULARITY: Final = AttKey('circularity', type=_NULLARY)
+    CELL: Final = AttKey('cell', type=_NULLARY)
+    CELL_COLLECTION: Final = AttKey('cellCollection', type=_NULLARY)
+    COLORS: Final = AttKey('colors', type=_ANY)
+    COMM: Final = AttKey('comm', type=_NULLARY)
+    CONCAT: Final = AttKey('concat', type=_ANY)
+    CONSTRUCTOR: Final = AttKey('constructor', type=_NULLARY)
+    DEPENDS: Final = AttKey('depends', type=_ANY)
+    DIGEST: Final = AttKey('digest', type=_ANY)
+    ELEMENT: Final = AttKey('element', type=_ANY)
+    FORMAT: Final = AttKey('format', type=_ANY)
+    FUNCTION: Final = AttKey('function', type=_NULLARY)
+    FUNCTIONAL: Final = AttKey('functional', type=_NULLARY)
+    HAS_DOMAIN_VALUES: Final = AttKey('hasDomainValues', type=_NULLARY)
+    HOOK: Final = AttKey('hook', type=_ANY)
+    IDEM: Final = AttKey('idem', type=_NULLARY)
+    INITIALIZER: Final = AttKey('initializer', type=_NULLARY)
+    INJECTIVE: Final = AttKey('injective', type=_NULLARY)
+    KLABEL: Final = AttKey('klabel', type=_ANY)
+    LABEL: Final = AttKey('label', type=_ANY)
+    LEFT: Final = AttKey('left', type=_NULLARY)
+    LOCATION: Final = AttKey('org.kframework.attributes.Location', type=_ANY)
+    MACRO: Final = AttKey('macro', type=_NULLARY)
+    MACRO_REC: Final = AttKey('macro-rec', type=_NULLARY)
+    OWISE: Final = AttKey('owise', type=_NULLARY)
+    PRIORITY: Final = AttKey('priority', type=_ANY)
+    PRODUCTION: Final = AttKey('org.kframework.definition.Production', type=_ANY)
+    PROJECTION: Final = AttKey('projection', type=_NULLARY)
+    RIGHT: Final = AttKey('right', type=_NULLARY)
+    SIMPLIFICATION: Final = AttKey('simplification', type=_ANY)
+    SYMBOL: Final = AttKey('symbol', type=_ANY)
+    SORT: Final = AttKey('org.kframework.kore.Sort', type=_ANY)
+    SOURCE: Final = AttKey('org.kframework.attributes.Source', type=_ANY)
+    TOKEN: Final = AttKey('token', type=_NULLARY)
+    TOTAL: Final = AttKey('total', type=_NULLARY)
+    TRUSTED: Final = AttKey('trusted', type=_NULLARY)
+    UNIT: Final = AttKey('unit', type=_ANY)
+    UNIQUE_ID: Final = AttKey('UNIQUE_ID', type=_ANY)
+    UNPARSE_AVOID: Final = AttKey('unparseAvoid', type=_NULLARY)
+    WRAP_ELEMENT: Final = AttKey('wrapElement', type=_ANY)
+
+    @classmethod
+    @cache
+    def keys(cls) -> FrozenDict[str, AttKey]:
+        keys = [value for value in vars(cls).values() if isinstance(value, AttKey)]
+        res: FrozenDict[str, AttKey] = FrozenDict({key.name: key for key in keys})
+        assert len(res) == len(keys)  # Fails on duplicate key name
+        return res
 
 
 @final
@@ -129,15 +156,26 @@ class KAtt(KAst, Mapping[AttKey, Any]):
     def __len__(self) -> int:
         return len(self.atts)
 
-    def __getitem__(self, key: AttKey) -> Any:
+    def __getitem__(self, key: AttKey[T]) -> T:
         return self.atts[key]
+
+    @overload
+    def get(self, key: AttKey[T], /) -> T | None:
+        ...
+
+    @overload
+    def get(self, key: AttKey[T], /, default: U) -> T | U:
+        ...
+
+    def get(self, *args: Any, **kwargs: Any) -> Any:
+        return self.atts.get(*args, **kwargs)
 
     def entries(self) -> Iterator[AttEntry]:
         return (key(value) for key, value in self.atts.items())
 
     @classmethod
     def from_dict(cls: type[KAtt], d: Mapping[str, Any]) -> KAtt:
-        return KAtt(entries=(AttEntry(AttKey(key), value) for key, value in d['att'].items()))
+        return KAtt(entries=(Atts.keys().get(key, AttKey(key, type=_ANY))(value) for key, value in d['att'].items()))
 
     def to_dict(self) -> dict[str, Any]:
         return {'node': 'KAtt', 'att': KAtt._unfreeze({key.name: value for key, value in self.atts.items()})}
