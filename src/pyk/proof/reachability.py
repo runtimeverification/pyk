@@ -430,7 +430,6 @@ class APRProof(Proof, KCFGExploration):
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
         exec_time = float(proof_dict['execution_time']) if 'execution_time' in proof_dict else 0.0
-        error_info = Exception(proof_dict['error_info']) if 'error_info' in proof_dict else None
         terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
@@ -453,7 +452,6 @@ class APRProof(Proof, KCFGExploration):
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
             _exec_time=exec_time,
-            _error_info=error_info,
         )
 
     def write_proof_data(self) -> None:
@@ -469,7 +467,6 @@ class APRProof(Proof, KCFGExploration):
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
         dct['execution_time'] = self._exec_time
-        dct['error_info'] = self._error_info
         dct['type'] = 'APRProof'
         dct['init'] = self.kcfg._resolve(self.init)
         dct['target'] = self.kcfg._resolve(self.target)
