@@ -60,7 +60,7 @@ def module_to_kore(definition: KDefinition) -> Module:
     module = simplified_module(definition)
 
     name = name_to_kore(module.name)
-    attrs = atts_to_kore({key: value for key, value in module.att.items() if key != 'digest'})  # filter digest
+    attrs = atts_to_kore({key: value for key, value in module.att.items() if key != KAtt.DIGEST})  # filter digest
 
     imports = [Import('K')]
     sort_decls = [
