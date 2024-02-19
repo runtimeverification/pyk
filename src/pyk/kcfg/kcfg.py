@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import threading
 from abc import ABC, abstractmethod
-from collections.abc import Container
+from collections.abc import Container, MutableMapping
 from dataclasses import dataclass
 from threading import RLock
-from typing import TYPE_CHECKING, Iterator, List, MutableMapping, Union, cast, final
+from typing import TYPE_CHECKING, List, Union, cast, final
 
 from ..cterm import CSubst, CTerm, build_claim, build_rule
 from ..kast.inner import KApply, KSequence, KToken, KVariable, bottom_up_with_summary
@@ -27,7 +27,7 @@ from ..prelude.kbool import andBool
 from ..utils import ensure_dir_path
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping
+    from collections.abc import Iterable, Iterator, Mapping
     from pathlib import Path
     from types import TracebackType
     from typing import Any
