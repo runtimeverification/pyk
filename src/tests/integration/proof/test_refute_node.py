@@ -182,7 +182,7 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         actual_subproof_constraints = tuple(
             [
                 kprove.definition.sort_vars(constraint)
-                for constraint in (list(subproof.pre_constraints) + [subproof.last_constraint])
+                for constraint in subproof.refuted_constraints
                 if not is_top(constraint)
             ]
         )
@@ -248,3 +248,35 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         # Then
         assert result_predecessor is None  # fails because the node has successors
         assert result_successor is not None  # succeeds because the node has no successors
+
+    def test_apr_proof_refute_ndbranch(
+        self,
+        kprove: KProve,
+        proof_dir: Path,
+        kcfg_explore: KCFGExplore,
+    ) -> None:
+        # Given
+        spec_file = K_FILES / 'refute-node-spec.k'
+        spec_module = 'REFUTE-NODE-SPEC'
+        claim_id = 'non-det-int-succeed'
+
+        prover = self.build_prover(kprove, proof_dir, kcfg_explore, spec_file, spec_module, claim_id)
+
+        # When
+        prover.advance_proof(max_iterations=1)
+
+        frontier_nodes = prover.proof.pending
+
+        assert prover.proof.status == ProofStatus.PENDING
+        assert len(frontier_nodes) == 2
+
+        frontier_node = frontier_nodes[0]
+        predecessors = prover.proof.kcfg.predecessors(frontier_node.id)
+
+        assert len(predecessors) == 1
+        assert type(predecessors[0]) is KCFG.NDBranch
+
+        refutation = prover.proof.refute_node(frontier_node)
+
+        # Then
+        assert refutation is not None

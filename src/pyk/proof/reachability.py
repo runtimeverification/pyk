@@ -507,33 +507,17 @@ class APRProof(Proof, KCFGExploration):
             _LOGGER.error(f'Cannot refute node {node.id} in linear KCFG')
             return None
         closest_branch = branches_on_path[0]
-        if type(closest_branch) is KCFG.NDBranch:
-            _LOGGER.error(f'Cannot refute node {node.id} following a non-deterministic branch: not yet implemented')
-            return None
 
-        assert type(closest_branch) is KCFG.Split
-        refuted_branch_root = closest_branch.targets[0]
-        csubst = closest_branch.splits[refuted_branch_root.id]
-        if len(csubst.subst) > 0:
-            _LOGGER.error(
-                f'Cannot refute node {node.id}: unexpected non-empty substitution {csubst.subst} in Split from {closest_branch.source.id}'
-            )
-            return None
-        if len(csubst.constraints) > 1:
-            _LOGGER.error(
-                f'Cannot refute node {node.id}: unexpected non-singleton constraints {csubst.constraints} in Split from {closest_branch.source.id}'
-            )
-            return None
+        assert type(closest_branch) is KCFG.Split or type(closest_branch) is KCFG.NDBranch
 
-        pre_split_constraints = [ml_pred_to_bool(c) for c in closest_branch.source.cterm.constraints]
-        last_constraint = ml_pred_to_bool(csubst.constraints[0])
+        # extract the path conditions at the current node
+        refuted_constraints = [ml_pred_to_bool(c) for c in node.cterm.constraints]
 
         refutation_id = self.get_refutation_id(node.id)
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
         refutation = RefutationProof(
             id=refutation_id,
-            pre_constraints=pre_split_constraints,
-            last_constraint=last_constraint,
+            refuted_constraints=refuted_constraints,
             proof_dir=self.proof_dir,
         )
 
