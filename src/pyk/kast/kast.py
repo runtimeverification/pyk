@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from functools import cached_property
-from typing import ClassVar  # noqa: TC003
 from typing import TYPE_CHECKING, Any, final
 
 from ..utils import EMPTY_FROZEN_DICT, FrozenDict, hash_str
@@ -57,55 +56,57 @@ class AttKey:
     name: str
 
 
+class Atts:
+    ALIAS: Final = AttKey('alias')
+    ALIAS_REC: Final = AttKey('alias-rec')
+    ANYWHERE: Final = AttKey('anywhere')
+    ASSOC: Final = AttKey('assoc')
+    CIRCULARITY: Final = AttKey('circularity')
+    CELL: Final = AttKey('cell')
+    CELL_COLLECTION: Final = AttKey('cellCollection')
+    COLORS: Final = AttKey('colors')
+    COMM: Final = AttKey('comm')
+    CONCAT: Final = AttKey('concat')
+    CONSTRUCTOR: Final = AttKey('constructor')
+    DEPENDS: Final = AttKey('depends')
+    DIGEST: Final = AttKey('digest')
+    ELEMENT: Final = AttKey('element')
+    FORMAT: Final = AttKey('format')
+    FUNCTION: Final = AttKey('function')
+    FUNCTIONAL: Final = AttKey('functional')
+    HAS_DOMAIN_VALUES: Final = AttKey('hasDomainValues')
+    HOOK: Final = AttKey('hook')
+    IDEM: Final = AttKey('idem')
+    INITIALIZER: Final = AttKey('initializer')
+    INJECTIVE: Final = AttKey('injective')
+    KLABEL: Final = AttKey('klabel')
+    LABEL: Final = AttKey('label')
+    LEFT: Final = AttKey('left')
+    LOCATION: Final = AttKey('org.kframework.attributes.Location')
+    MACRO: Final = AttKey('macro')
+    MACRO_REC: Final = AttKey('macro-rec')
+    OWISE: Final = AttKey('owise')
+    PRIORITY: Final = AttKey('priority')
+    PRODUCTION: Final = AttKey('org.kframework.definition.Production')
+    PROJECTION: Final = AttKey('projection')
+    RIGHT: Final = AttKey('right')
+    SIMPLIFICATION: Final = AttKey('simplification')
+    SYMBOL: Final = AttKey('symbol')
+    SORT: Final = AttKey('org.kframework.kore.Sort')
+    SOURCE: Final = AttKey('org.kframework.attributes.Source')
+    TOKEN: Final = AttKey('token')
+    TOTAL: Final = AttKey('total')
+    TRUSTED: Final = AttKey('trusted')
+    UNIT: Final = AttKey('unit')
+    UNIQUE_ID: Final = AttKey('UNIQUE_ID')
+    UNPARSE_AVOID: Final = AttKey('unparseAvoid')
+    WRAP_ELEMENT: Final = AttKey('wrapElement')
+
+
 @final
 @dataclass(frozen=True)
 class KAtt(KAst, Mapping[AttKey, Any]):
     atts: FrozenDict[AttKey, Any]
-
-    ALIAS: ClassVar[AttKey] = AttKey('alias')
-    ALIAS_REC: ClassVar[AttKey] = AttKey('alias-rec')
-    ANYWHERE: ClassVar[AttKey] = AttKey('anywhere')
-    ASSOC: ClassVar[AttKey] = AttKey('assoc')
-    CIRCULARITY: ClassVar[AttKey] = AttKey('circularity')
-    CELL: ClassVar[AttKey] = AttKey('cell')
-    CELL_COLLECTION: ClassVar[AttKey] = AttKey('cellCollection')
-    COLORS: ClassVar[AttKey] = AttKey('colors')
-    COMM: ClassVar[AttKey] = AttKey('comm')
-    CONCAT: ClassVar[AttKey] = AttKey('concat')
-    CONSTRUCTOR: ClassVar[AttKey] = AttKey('constructor')
-    DEPENDS: ClassVar[AttKey] = AttKey('depends')
-    DIGEST: ClassVar[AttKey] = AttKey('digest')
-    ELEMENT: ClassVar[AttKey] = AttKey('element')
-    FORMAT: ClassVar[AttKey] = AttKey('format')
-    FUNCTION: ClassVar[AttKey] = AttKey('function')
-    FUNCTIONAL: ClassVar[AttKey] = AttKey('functional')
-    HAS_DOMAIN_VALUES: ClassVar[AttKey] = AttKey('hasDomainValues')
-    HOOK: ClassVar[AttKey] = AttKey('hook')
-    IDEM: ClassVar[AttKey] = AttKey('idem')
-    INITIALIZER: ClassVar[AttKey] = AttKey('initializer')
-    INJECTIVE: ClassVar[AttKey] = AttKey('injective')
-    KLABEL: ClassVar[AttKey] = AttKey('klabel')
-    LABEL: ClassVar[AttKey] = AttKey('label')
-    LEFT: ClassVar[AttKey] = AttKey('left')
-    LOCATION: ClassVar[AttKey] = AttKey('org.kframework.attributes.Location')
-    MACRO: ClassVar[AttKey] = AttKey('macro')
-    MACRO_REC: ClassVar[AttKey] = AttKey('macro-rec')
-    OWISE: ClassVar[AttKey] = AttKey('owise')
-    PRIORITY: ClassVar[AttKey] = AttKey('priority')
-    PRODUCTION: ClassVar[AttKey] = AttKey('org.kframework.definition.Production')
-    PROJECTION: ClassVar[AttKey] = AttKey('projection')
-    RIGHT: ClassVar[AttKey] = AttKey('right')
-    SIMPLIFICATION: ClassVar[AttKey] = AttKey('simplification')
-    SYMBOL: ClassVar[AttKey] = AttKey('symbol')
-    SORT: ClassVar[AttKey] = AttKey('org.kframework.kore.Sort')
-    SOURCE: ClassVar[AttKey] = AttKey('org.kframework.attributes.Source')
-    TOKEN: ClassVar[AttKey] = AttKey('token')
-    TOTAL: ClassVar[AttKey] = AttKey('total')
-    TRUSTED: ClassVar[AttKey] = AttKey('trusted')
-    UNIT: ClassVar[AttKey] = AttKey('unit')
-    UNIQUE_ID: ClassVar[AttKey] = AttKey('UNIQUE_ID')
-    UNPARSE_AVOID: ClassVar[AttKey] = AttKey('unparseAvoid')
-    WRAP_ELEMENT: ClassVar[AttKey] = AttKey('wrapElement')
 
     def __init__(self, atts: Mapping[AttKey, Any] = EMPTY_FROZEN_DICT):
         frozen = self._freeze(atts)
@@ -151,7 +152,7 @@ class KAtt(KAst, Mapping[AttKey, Any]):
         return KAtt({k: v for k, v in self.atts.items() if k not in atts})
 
     def drop_source(self) -> KAtt:
-        new_atts = {key: value for key, value in self.atts.items() if key != self.SOURCE and key != self.LOCATION}
+        new_atts = {key: value for key, value in self.atts.items() if key != Atts.SOURCE and key != Atts.LOCATION}
         return KAtt(atts=new_atts)
 
     @property
@@ -160,11 +161,11 @@ class KAtt(KAst, Mapping[AttKey, Any]):
             return ''
         att_strs = []
         for k, v in self.items():
-            if k == self.LOCATION:
+            if k == Atts.LOCATION:
                 loc_ids = str(v).replace(' ', '')
-                att_strs.append(f'{self.LOCATION.name}{loc_ids}')
-            elif k == self.SOURCE:
-                att_strs.append(self.SOURCE.name + '("' + v + '")')
+                att_strs.append(f'{k.name}{loc_ids}')
+            elif k == Atts.SOURCE:
+                att_strs.append(k.name + '("' + v + '")')
             else:
                 att_strs.append(f'{k.name}({v})')
         return f'[{", ".join(att_strs)}]'

@@ -21,7 +21,7 @@ from .inner import (
     top_down,
     var_occurrences,
 )
-from .kast import EMPTY_ATT, KAtt, WithKAtt
+from .kast import EMPTY_ATT, Atts, KAtt, WithKAtt
 from .outer import KDefinition, KFlatModule, KRuleLike
 
 if TYPE_CHECKING:
@@ -554,7 +554,7 @@ def remove_attrs(term: KInner) -> KInner:
 
 def remove_source_attributes(term: KInner) -> KInner:
     def _is_not_source_att(att: tuple[AttKey, Any]) -> bool:
-        return att[0] not in (KAtt.SOURCE, KAtt.LOCATION)
+        return att[0] not in (Atts.SOURCE, Atts.LOCATION)
 
     def _remove_source_attr(term: KInner) -> KInner:
         if not isinstance(term, WithKAtt):
