@@ -801,7 +801,7 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
     @cached_property
     def cell_collection_productions(self) -> tuple[KProduction, ...]:
         """Return all the `KProduction` sentences from this module that are cell collection declarations."""
-        return tuple(prod for prod in self.syntax_productions if 'cellCollection' in prod.att)
+        return tuple(prod for prod in self.syntax_productions if KAtt.CELL_COLLECTION in prod.att)
 
     @staticmethod
     def _is_function(prod: KProduction) -> bool:
