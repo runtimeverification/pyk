@@ -110,7 +110,7 @@ def att_to_kore(key: AttKey, value: Any) -> App:
     if isinstance(value, str):
         return App(symbol, (), (String(value),))
 
-    if isinstance(value, FrozenDict) and 'node' in value:
+    if isinstance(value, (dict, FrozenDict)) and 'node' in value:
         if value['node'] == 'KSort':
             sort_name = name_to_kore(KSort.from_dict(value).name)  # 'Sort' is not prepended by ModuleToKORE
             return App(symbol, (), (String(sort_name),))

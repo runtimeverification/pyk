@@ -54,15 +54,45 @@ class KAst(ABC):
 
 
 class AttType(Generic[T], ABC):
-    ...
+    @abstractmethod
+    def from_dict(self, obj: Any) -> T:
+        ...
+
+    @abstractmethod
+    def to_dict(self, value: T) -> Any:
+        ...
 
 
 class NullaryType(AttType[Literal['']]):
-    ...
+    def from_dict(self, obj: Any) -> Literal['']:
+        assert obj == ''
+        return obj
+
+    def to_dict(self, value: Literal['']) -> Any:
+        assert value == ''
+        return value
 
 
 class AnyType(AttType[Any]):
-    ...
+    def from_dict(self, obj: Any) -> Any:
+        return self._freeze(obj)
+
+    def to_dict(self, value: Any) -> Any:
+        return self._unfreeze(value)
+
+    @staticmethod
+    def _freeze(obj: Any) -> Any:
+        if isinstance(obj, list):
+            return tuple(AnyType._freeze(v) for v in obj)
+        if isinstance(obj, dict):
+            return FrozenDict((k, AnyType._freeze(v)) for (k, v) in obj.items())
+        return obj
+
+    @staticmethod
+    def _unfreeze(value: Any) -> Any:
+        if isinstance(value, FrozenDict):
+            return {k: AnyType._unfreeze(v) for (k, v) in value.items()}
+        return value
 
 
 _NULLARY: Final = NullaryType()
@@ -147,7 +177,7 @@ class KAtt(KAst, Mapping[AttKey, Any]):
     atts: FrozenDict[AttKey, Any]
 
     def __init__(self, entries: Iterable[AttEntry] = ()):
-        atts: FrozenDict[AttKey, Any] = FrozenDict((e.key, self._freeze(e.value)) for e in entries)
+        atts: FrozenDict[AttKey, Any] = FrozenDict((e.key, e.value) for e in entries)
         object.__setattr__(self, 'atts', atts)
 
     def __iter__(self) -> Iterator[AttKey]:
@@ -175,26 +205,15 @@ class KAtt(KAst, Mapping[AttKey, Any]):
 
     @classmethod
     def from_dict(cls: type[KAtt], d: Mapping[str, Any]) -> KAtt:
-        return KAtt(entries=(Atts.keys().get(key, AttKey(key, type=_ANY))(value) for key, value in d['att'].items()))
+        entries: list[AttEntry] = []
+        for k, v in d['att'].items():
+            key = Atts.keys().get(k, AttKey(k, type=_ANY))
+            value = key.type.from_dict(v)
+            entries.append(key(value))
+        return KAtt(entries=entries)
 
     def to_dict(self) -> dict[str, Any]:
-        return {'node': 'KAtt', 'att': KAtt._unfreeze({key.name: value for key, value in self.atts.items()})}
-
-    @staticmethod
-    def _freeze(m: Any) -> Any:
-        if isinstance(m, (int, str, tuple, FrozenDict, frozenset)):
-            return m
-        elif isinstance(m, list):
-            return tuple(KAtt._freeze(v) for v in m)
-        elif isinstance(m, dict):
-            return FrozenDict((k, KAtt._freeze(v)) for (k, v) in m.items())
-        raise ValueError(f"Don't know how to freeze attribute value {m} of type {type(m)}.")
-
-    @staticmethod
-    def _unfreeze(x: Any) -> Any:
-        if isinstance(x, FrozenDict):
-            return {k: KAtt._unfreeze(v) for (k, v) in x.items()}
-        return x
+        return {'node': 'KAtt', 'att': {key.name: key.type.to_dict(value) for key, value in self.atts.items()}}
 
     def update(self, entries: Iterable[AttEntry]) -> KAtt:
         entries = chain((AttEntry(key, value) for key, value in self.atts.items()), entries)
