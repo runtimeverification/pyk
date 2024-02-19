@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.inner import KSequence
-from pyk.kast.optimizer import CachedValues, KInnerOptimizer
+from pyk.kast.optimizer import CachedValues
 from pyk.prelude.utils import token
 
 from ..utils import a, b, c, f
@@ -60,20 +60,3 @@ def test_not_use_cached(term1: KInner, term2: KInner) -> None:
     # Then
     assert term1 != term2
     assert id1 != id2
-
-
-OPTIMIZE_TEST_DATA: Final[tuple[KInner, ...]] = (
-    token(1),
-    token('a'),
-    a,
-    f(a),
-    KSequence([a, token(3)]),
-)
-
-
-def test_optimize() -> None:
-    kinner_optimizer = KInnerOptimizer()
-
-    for item in OPTIMIZE_TEST_DATA:
-        optimized = kinner_optimizer.optimize(item)
-        assert item == optimized
