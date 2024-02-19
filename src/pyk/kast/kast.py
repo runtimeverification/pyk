@@ -121,10 +121,6 @@ class KAtt(KAst, Mapping[AttKey, Any]):
     def __getitem__(self, key: AttKey) -> Any:
         return self.atts[key]
 
-    @staticmethod
-    def of(**atts: Any) -> KAtt:
-        return KAtt(atts={AttKey(key): value for key, value in atts.items()})
-
     @classmethod
     def from_dict(cls: type[KAtt], d: Mapping[str, Any]) -> KAtt:
         return KAtt(atts={AttKey(key): value for key, value in d['att'].items()})
@@ -148,12 +144,8 @@ class KAtt(KAst, Mapping[AttKey, Any]):
             return {k: KAtt._unfreeze(v) for (k, v) in x.items()}
         return x
 
-    def let(self, *, atts: Mapping[AttKey, Any] | None = None) -> KAtt:
-        atts = atts if atts is not None else self.atts
-        return KAtt(atts=atts)
-
     def update(self, atts: Mapping[AttKey, Any]) -> KAtt:
-        return self.let(atts={k: v for k, v in {**self.atts, **atts}.items() if v is not None})
+        return KAtt(atts={k: v for k, v in {**self.atts, **atts}.items() if v is not None})
 
     def remove(self, atts: Iterable[AttKey]) -> KAtt:
         return KAtt({k: v for k, v in self.atts.items() if k not in atts})
