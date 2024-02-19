@@ -1097,7 +1097,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         """Returns the original production for a given `KLabel` (failing if 0 or >1 are returned)."""
         if klabel not in self._production_for_klabel:
             prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
-            _prods = [prod for prod in prods if 'unparseAvoid' not in prod.att]
+            _prods = [prod for prod in prods if KAtt.UNPARSE_AVOID not in prod.att]
             if len(_prods) < len(prods):
                 _LOGGER.warning(
                     f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}'
