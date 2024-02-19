@@ -15,10 +15,9 @@ from ..kast.outer import KFlatModule, KImport, KRule
 from ..kcfg import KCFG
 from ..kcfg.exploration import KCFGExploration
 from ..konvert import kflatmodule_to_kore
-from ..prelude.kbool import BOOL, TRUE
-from ..prelude.ml import mlAnd, mlEquals, mlTop
+from ..prelude.ml import mlAnd, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
-from .equality import ProofSummary, Prover, RefutationProof
+from .implies import ProofSummary, Prover, RefutationProof
 from .proof import CompositeSummary, Proof, ProofStatus
 
 if TYPE_CHECKING:
@@ -53,6 +52,7 @@ class APRProof(Proof, KCFGExploration):
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
     failure_info: APRFailureInfo | None
+    _exec_time: float
 
     def __init__(
         self,
@@ -69,6 +69,7 @@ class APRProof(Proof, KCFGExploration):
         subproof_ids: Iterable[str] = (),
         circularity: bool = False,
         admitted: bool = False,
+        _exec_time: float = 0,
     ):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
@@ -82,6 +83,7 @@ class APRProof(Proof, KCFGExploration):
         self.circularity = circularity
         self.node_refutations = {}
         self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
+        self._exec_time = _exec_time
 
         if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)
@@ -160,6 +162,16 @@ class APRProof(Proof, KCFGExploration):
             self._bounded.discard(nid)
         return pruned_nodes
 
+    @property
+    def exec_time(self) -> float:
+        return self._exec_time
+
+    def add_exec_time(self, exec_time: float) -> None:
+        self._exec_time += exec_time
+
+    def set_exec_time(self, exec_time: float) -> None:
+        self._exec_time = exec_time
+
     @staticmethod
     def _make_module_name(proof_id: str) -> str:
         return 'M-' + re.sub(
@@ -186,6 +198,10 @@ class APRProof(Proof, KCFGExploration):
         else:
             return ProofStatus.PASSED
 
+    @property
+    def can_progress(self) -> bool:
+        return len(self.pending) > 0
+
     @classmethod
     def from_dict(cls: type[APRProof], dct: Mapping[str, Any], proof_dir: Path | None = None) -> APRProof:
         kcfg = KCFG.from_dict(dct['kcfg'])
@@ -198,7 +214,9 @@ class APRProof(Proof, KCFGExploration):
         subproof_ids = dct['subproof_ids'] if 'subproof_ids' in dct else []
         node_refutations: dict[int, str] = {}
         if 'node_refutation' in dct:
-            node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in dct['node_refutations']}
+            node_refutations = {
+                kcfg._resolve(int(node_id)): proof_id for node_id, proof_id in dct['node_refutations'].items()
+            }
         if 'logs' in dct:
             logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in dct['logs'].items()}
         else:
@@ -401,10 +419,13 @@ class APRProof(Proof, KCFGExploration):
         bmc_depth = int(proof_dict['bmc_depth']) if 'bmc_depth' in proof_dict else None
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
+        exec_time = float(proof_dict['execution_time']) if 'execution_time' in proof_dict else 0.0
         terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
-        node_refutations = {kcfg._resolve(node_id): proof_id for (node_id, proof_id) in proof_dict['node_refutations']}
+        node_refutations = {
+            kcfg._resolve(int(node_id)): proof_id for node_id, proof_id in proof_dict['node_refutations'].items()
+        }
 
         return APRProof(
             id=id,
@@ -420,6 +441,7 @@ class APRProof(Proof, KCFGExploration):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            _exec_time=exec_time,
         )
 
     def write_proof_data(self) -> None:
@@ -429,11 +451,12 @@ class APRProof(Proof, KCFGExploration):
         ensure_dir_path(self.proof_dir)
         ensure_dir_path(self.proof_subdir)
         proof_json = self.proof_subdir / 'proof.json'
-        dct: dict[str, list[int] | list[str] | bool | str | int | dict[int, str] | dict[int, list[dict[str, Any]]]] = {}
+        dct: dict[str, Any] = {}
 
         dct['id'] = self.id
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
+        dct['execution_time'] = self._exec_time
         dct['type'] = 'APRProof'
         dct['init'] = self.kcfg._resolve(self.init)
         dct['target'] = self.kcfg._resolve(self.target)
@@ -474,6 +497,10 @@ class APRProof(Proof, KCFGExploration):
         _LOGGER.info(f'Disabled refutation of node {node.id}.')
 
     def construct_node_refutation(self, node: KCFG.Node) -> RefutationProof | None:  # TODO put into prover class
+        if len(self.kcfg.successors(node.id)) > 0:
+            _LOGGER.error(f'Cannot refute node {node.id} that already has successors')
+            return None
+
         path = single(self.kcfg.paths_between(source_id=self.init, target_id=node.id))
         branches_on_path = list(filter(lambda x: type(x) is KCFG.Split or type(x) is KCFG.NDBranch, reversed(path)))
         if len(branches_on_path) == 0:
@@ -498,19 +525,13 @@ class APRProof(Proof, KCFGExploration):
             )
             return None
 
-        # extract the path condition prior to the Split that leads to the node-to-refute
-        pre_split_constraints = [
-            mlEquals(TRUE, ml_pred_to_bool(c), arg_sort=BOOL) for c in closest_branch.source.cterm.constraints
-        ]
-
-        # extract the constriant added by the Split that leads to the node-to-refute
-        last_constraint = mlEquals(TRUE, ml_pred_to_bool(csubst.constraints[0]), arg_sort=BOOL)
+        pre_split_constraints = [ml_pred_to_bool(c) for c in closest_branch.source.cterm.constraints]
+        last_constraint = ml_pred_to_bool(csubst.constraints[0])
 
         refutation_id = self.get_refutation_id(node.id)
         _LOGGER.info(f'Adding refutation proof {refutation_id} as subproof of {self.id}')
         refutation = RefutationProof(
             id=refutation_id,
-            sort=BOOL,
             pre_constraints=pre_split_constraints,
             last_constraint=last_constraint,
             proof_dir=self.proof_dir,
@@ -526,6 +547,9 @@ class APRProver(Prover):
     main_module_name: str
     dependencies_module_name: str
     circularities_module_name: str
+    execute_depth: int | None
+    cut_point_rules: Iterable[str]
+    terminal_rules: Iterable[str]
     counterexample_info: bool
     always_check_subsumption: bool
     fast_check_subsumption: bool
@@ -538,6 +562,9 @@ class APRProver(Prover):
         self,
         proof: APRProof,
         kcfg_explore: KCFGExplore,
+        execute_depth: int | None = None,
+        cut_point_rules: Iterable[str] = (),
+        terminal_rules: Iterable[str] = (),
         counterexample_info: bool = False,
         always_check_subsumption: bool = True,
         fast_check_subsumption: bool = False,
@@ -552,6 +579,9 @@ class APRProver(Prover):
         super().__init__(kcfg_explore)
         self.proof = proof
         self.main_module_name = self.kcfg_explore.kprint.definition.main_module_name
+        self.execute_depth = execute_depth
+        self.cut_point_rules = cut_point_rules
+        self.terminal_rules = terminal_rules
         self.counterexample_info = counterexample_info
         self.always_check_subsumption = always_check_subsumption
         self.fast_check_subsumption = fast_check_subsumption
@@ -646,6 +676,7 @@ class APRProver(Prover):
                     prior_loops.append(_pl)
             _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
             if len(prior_loops) > self.proof.bmc_depth:
+                _LOGGER.warning(f'Bounded node {self.proof.id}: {node.id} at bmc depth {self.proof.bmc_depth}')
                 self.proof.add_bounded(node.id)
                 return
 
@@ -664,57 +695,33 @@ class APRProver(Prover):
             module_name=module_name,
         )
 
-    def advance_proof(
-        self,
-        max_iterations: int | None = None,
-        execute_depth: int | None = None,
-        cut_point_rules: Iterable[str] = (),
-        terminal_rules: Iterable[str] = (),
-        fail_fast: bool = False,
-    ) -> None:
-        iterations = 0
+    def step_proof(self) -> None:
+        self._check_all_terminals()
+
+        if not self.proof.pending:
+            return
+        curr_node = self.proof.pending[0]
+
+        self.advance_pending_node(
+            node=curr_node,
+            execute_depth=self.execute_depth,
+            cut_point_rules=self.cut_point_rules,
+            terminal_rules=self.terminal_rules,
+        )
 
         self._check_all_terminals()
 
-        while self.proof.pending:
-            self.proof.write_proof_data()
-            if fail_fast and self.proof.failed:
-                _LOGGER.warning(
-                    f'Terminating proof early because fail_fast is set {self.proof.id}, failing nodes: {[nd.id for nd in self.proof.failing]}'
-                )
-                break
-
-            if max_iterations is not None and max_iterations <= iterations:
-                _LOGGER.warning(f'Reached iteration bound {self.proof.id}: {max_iterations}')
-                break
-            iterations += 1
-            curr_node = self.proof.pending[0]
-
-            self.advance_pending_node(
-                node=curr_node,
-                execute_depth=execute_depth,
-                cut_point_rules=cut_point_rules,
-                terminal_rules=terminal_rules,
-            )
-
-            self._check_all_terminals()
-
-            for node in self.proof.terminal:
-                if (
-                    not node.id in self._checked_for_subsumption
-                    and self.proof.kcfg.is_leaf(node.id)
-                    and not self.proof.is_target(node.id)
-                ):
-                    self._checked_for_subsumption.add(node.id)
-                    self._check_subsume(node)
+        for node in self.proof.terminal:
+            if (
+                not node.id in self._checked_for_subsumption
+                and self.proof.kcfg.is_leaf(node.id)
+                and not self.proof.is_target(node.id)
+            ):
+                self._checked_for_subsumption.add(node.id)
+                self._check_subsume(node)
 
         if self.proof.failed:
-            self.save_failure_info()
-
-        self.proof.write_proof_data()
-
-    def save_failure_info(self) -> None:
-        self.proof.failure_info = self.failure_info()
+            self.proof.failure_info = self.failure_info()
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
