@@ -6,9 +6,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from functools import cached_property
+from itertools import chain
 from typing import TYPE_CHECKING, Any, final
 
-from ..utils import EMPTY_FROZEN_DICT, FrozenDict, hash_str
+from ..utils import FrozenDict, hash_str
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
@@ -54,6 +55,16 @@ class KAst(ABC):
 @dataclass(frozen=True)
 class AttKey:
     name: str
+
+    def __call__(self, value: Any) -> AttEntry:
+        return AttEntry(self, value)
+
+
+@final
+@dataclass(frozen=True)
+class AttEntry:
+    key: AttKey
+    value: Any
 
 
 class Atts:
@@ -108,10 +119,9 @@ class Atts:
 class KAtt(KAst, Mapping[AttKey, Any]):
     atts: FrozenDict[AttKey, Any]
 
-    def __init__(self, atts: Mapping[AttKey, Any] = EMPTY_FROZEN_DICT):
-        frozen = self._freeze(atts)
-        assert isinstance(frozen, FrozenDict)
-        object.__setattr__(self, 'atts', frozen)
+    def __init__(self, entries: Iterable[AttEntry] = ()):
+        atts: FrozenDict[AttKey, Any] = FrozenDict((e.key, self._freeze(e.value)) for e in entries)
+        object.__setattr__(self, 'atts', atts)
 
     def __iter__(self) -> Iterator[AttKey]:
         return iter(self.atts)
@@ -122,9 +132,12 @@ class KAtt(KAst, Mapping[AttKey, Any]):
     def __getitem__(self, key: AttKey) -> Any:
         return self.atts[key]
 
+    def entries(self) -> Iterator[AttEntry]:
+        return (key(value) for key, value in self.atts.items())
+
     @classmethod
     def from_dict(cls: type[KAtt], d: Mapping[str, Any]) -> KAtt:
-        return KAtt(atts={AttKey(key): value for key, value in d['att'].items()})
+        return KAtt(entries=(AttEntry(AttKey(key), value) for key, value in d['att'].items()))
 
     def to_dict(self) -> dict[str, Any]:
         return {'node': 'KAtt', 'att': KAtt._unfreeze({key.name: value for key, value in self.atts.items()})}
@@ -145,15 +158,16 @@ class KAtt(KAst, Mapping[AttKey, Any]):
             return {k: KAtt._unfreeze(v) for (k, v) in x.items()}
         return x
 
-    def update(self, atts: Mapping[AttKey, Any]) -> KAtt:
-        return KAtt(atts={k: v for k, v in {**self.atts, **atts}.items() if v is not None})
+    def update(self, entries: Iterable[AttEntry]) -> KAtt:
+        entries = chain((AttEntry(key, value) for key, value in self.atts.items()), entries)
+        return KAtt(entries=entries)
 
-    def remove(self, atts: Iterable[AttKey]) -> KAtt:
-        return KAtt({k: v for k, v in self.atts.items() if k not in atts})
+    def remove(self, keys: Iterable[AttKey]) -> KAtt:
+        entries = (AttEntry(key, value) for key, value in self.atts.items() if key not in keys)
+        return KAtt(entries=entries)
 
     def drop_source(self) -> KAtt:
-        new_atts = {key: value for key, value in self.atts.items() if key != Atts.SOURCE and key != Atts.LOCATION}
-        return KAtt(atts=new_atts)
+        return self.remove([Atts.SOURCE, Atts.LOCATION])
 
     @property
     def pretty(self) -> str:
@@ -184,8 +198,8 @@ class WithKAtt(ABC):
     def map_att(self: W, f: Callable[[KAtt], KAtt]) -> W:
         return self.let_att(att=f(self.att))
 
-    def update_atts(self: W, atts: Mapping[AttKey, Any]) -> W:
-        return self.let_att(att=self.att.update(atts))
+    def update_atts(self: W, entries: Iterable[AttEntry]) -> W:
+        return self.let_att(att=self.att.update(entries))
 
 
 def kast_term(dct: Mapping[str, Any]) -> Mapping[str, Any]:

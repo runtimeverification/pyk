@@ -390,7 +390,7 @@ class KProve(KPrint):
                 _updated_dependencies.append(_dependency_label)
             if len(_updated_dependencies) > 0:
                 claim_labels.extend(_updated_dependencies)
-                _claim = _claim.let(att=_claim.att.update({Atts.DEPENDS: ','.join(_updated_dependencies)}))
+                _claim = _claim.let(att=_claim.att.update([Atts.DEPENDS(','.join(_updated_dependencies))]))
 
             final_claims[claim_label] = _claim
 

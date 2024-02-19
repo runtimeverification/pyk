@@ -214,7 +214,7 @@ class PrettyPrinter:
 
     def _print_kproduction(self, kproduction: KProduction) -> str:
         if Atts.KLABEL not in kproduction.att and kproduction.klabel:
-            kproduction = kproduction.update_atts({Atts.KLABEL: kproduction.klabel.name})
+            kproduction = kproduction.update_atts([Atts.KLABEL(kproduction.klabel.name)])
         syntax_str = 'syntax ' + self.print(kproduction.sort)
         if kproduction.items:
             syntax_str += ' ::= ' + ' '.join([self._print_kouter(pi) for pi in kproduction.items])

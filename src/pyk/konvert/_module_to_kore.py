@@ -311,7 +311,7 @@ def _syntax_sorts(module: KFlatModule) -> list[KSyntaxSort]:
             declarations[sort] = syntax_sort.att
         else:
             assert declarations[sort].keys().isdisjoint(syntax_sort.att)
-            declarations[sort] = declarations[sort].update(syntax_sort.att)
+            declarations[sort] = declarations[sort].update(syntax_sort.att.entries())
 
     # Also consider production sorts
     for production in module.productions:
@@ -348,13 +348,13 @@ def _add_collection_atts(module: KFlatModule) -> KFlatModule:
 
         return syntax_sort.let(
             att=syntax_sort.att.update(
-                {
+                [
                     # TODO Here, the attriubte is stored as dict, but ultimately we should parse known attributes in KAtt.from_dict
-                    Atts.CONCAT: KApply(prod_att[Atts.KLABEL]).to_dict(),
+                    Atts.CONCAT(KApply(prod_att[Atts.KLABEL]).to_dict()),
                     # TODO Here, we keep the format from the frontend so that the attributes on SyntaxSort and Production are of the same type.
-                    Atts.ELEMENT: prod_att[Atts.ELEMENT],
-                    Atts.UNIT: prod_att[Atts.UNIT],
-                }
+                    Atts.ELEMENT(prod_att[Atts.ELEMENT]),
+                    Atts.UNIT(prod_att[Atts.UNIT]),
+                ]
             )
         )
 
@@ -380,7 +380,7 @@ def _add_domain_value_atts(module: KFlatModule) -> KFlatModule:
         if syntax_sort.sort not in token_sorts:
             return syntax_sort
 
-        return syntax_sort.let(att=syntax_sort.att.update({Atts.HAS_DOMAIN_VALUES: ''}))
+        return syntax_sort.let(att=syntax_sort.att.update([Atts.HAS_DOMAIN_VALUES('')]))
 
     sentences = tuple(update_att(sent) for sent in module)
     return module.let(sentences=sentences)
@@ -435,14 +435,14 @@ def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
 
         klabel = sentence.klabel
         if any(Atts.ANYWHERE in rule.att for rule in rules.get(klabel, [])):
-            return sentence.let(att=sentence.att.update({Atts.ANYWHERE: ''}))
+            return sentence.let(att=sentence.att.update([Atts.ANYWHERE('')]))
 
         if Atts.KLABEL not in sentence.att:
             return sentence
 
         productions = productions_by_klabel_att.get(sentence.att[Atts.KLABEL], [])
         if any(_is_overloaded_by(defn, production, sentence) for production in productions):
-            return sentence.let(att=sentence.att.update({Atts.ANYWHERE: ''}))
+            return sentence.let(att=sentence.att.update([Atts.ANYWHERE('')]))
 
         return sentence
 
@@ -477,7 +477,7 @@ def _add_symbol_atts(module: KFlatModule, att: AttKey, pred: Callable[[KAtt], bo
             return sentence
 
         if pred(sentence.att):
-            return sentence.let(att=sentence.att.update({att: ''}))
+            return sentence.let(att=sentence.att.update([att('')]))
 
         return sentence
 
