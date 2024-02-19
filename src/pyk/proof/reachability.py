@@ -53,6 +53,7 @@ class APRProof(Proof, KCFGExploration):
     circularity: bool
     failure_info: APRFailureInfo | None
     _exec_time: float
+    _error_info: Exception | None
 
     def __init__(
         self,
@@ -70,6 +71,7 @@ class APRProof(Proof, KCFGExploration):
         circularity: bool = False,
         admitted: bool = False,
         _exec_time: float = 0,
+        _error_info: Exception | None = None,
     ):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
@@ -84,6 +86,7 @@ class APRProof(Proof, KCFGExploration):
         self.node_refutations = {}
         self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
         self._exec_time = _exec_time
+        self._error_info = _error_info
 
         if self.proof_dir is not None and self.proof_subdir is not None:
             ensure_dir_path(self.proof_dir)
@@ -171,6 +174,13 @@ class APRProof(Proof, KCFGExploration):
 
     def set_exec_time(self, exec_time: float) -> None:
         self._exec_time = exec_time
+
+    @property
+    def error_info(self) -> Exception | None:
+        return self._error_info
+
+    def set_error_info(self, error_info: Exception) -> None:
+        self._error_info = error_info
 
     @staticmethod
     def _make_module_name(proof_id: str) -> str:
@@ -420,6 +430,7 @@ class APRProof(Proof, KCFGExploration):
         circularity = bool(proof_dict['circularity'])
         admitted = bool(proof_dict['admitted'])
         exec_time = float(proof_dict['execution_time']) if 'execution_time' in proof_dict else 0.0
+        error_info = Exception(proof_dict['error_info']) if 'error_info' in proof_dict else None
         terminal = proof_dict['terminal']
         logs = {int(k): tuple(LogEntry.from_dict(l) for l in ls) for k, ls in proof_dict['logs'].items()}
         subproof_ids = proof_dict['subproof_ids']
@@ -442,6 +453,7 @@ class APRProof(Proof, KCFGExploration):
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
             _exec_time=exec_time,
+            _error_info=error_info,
         )
 
     def write_proof_data(self) -> None:
@@ -457,6 +469,7 @@ class APRProof(Proof, KCFGExploration):
         dct['subproof_ids'] = self.subproof_ids
         dct['admitted'] = self.admitted
         dct['execution_time'] = self._exec_time
+        dct['error_info'] = self._error_info
         dct['type'] = 'APRProof'
         dct['init'] = self.kcfg._resolve(self.init)
         dct['target'] = self.kcfg._resolve(self.target)
