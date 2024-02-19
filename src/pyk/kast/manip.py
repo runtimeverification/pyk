@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from typing import Any, Final, TypeVar
 
     from .inner import KInner, KSort
+    from .kast import AttKey
 
     KI = TypeVar('KI', bound=KInner)
     W = TypeVar('W', bound=WithKAtt)
@@ -552,7 +553,7 @@ def remove_attrs(term: KInner) -> KInner:
 
 
 def remove_source_attributes(term: KInner) -> KInner:
-    def _is_not_source_att(att: tuple[str, Any]) -> bool:
+    def _is_not_source_att(att: tuple[AttKey, Any]) -> bool:
         return att[0] not in (KAtt.SOURCE, KAtt.LOCATION)
 
     def _remove_source_attr(term: KInner) -> KInner:
