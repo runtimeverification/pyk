@@ -1131,7 +1131,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 f'Method production_for_cell_sort only intended to be called on sorts ending in "Cell", not: {sort}'
             )
         try:
-            return single(prod for prod in self.productions if prod.sort == sort and 'cell' in prod.att)
+            return single(prod for prod in self.productions if prod.sort == sort and KAtt.CELL in prod.att)
         except ValueError as err:
             raise ValueError(f'Expected a single cell production for sort {sort}') from err
 

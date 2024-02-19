@@ -60,6 +60,7 @@ class KAtt(KAst, Mapping[str, Any]):
     ALIAS_REC: ClassVar[str] = 'alias-rec'
     ANYWHERE: ClassVar[str] = 'anywhere'
     ASSOC: ClassVar[str] = 'assoc'
+    CELL: ClassVar[str] = 'cell'
     COLORS: ClassVar[str] = 'colors'
     COMM: ClassVar[str] = 'comm'
     CONCAT: ClassVar[str] = 'concat'
