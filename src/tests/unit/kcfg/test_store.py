@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.cterm import CTerm
-from pyk.kast.inner import KSequence
+from pyk.kast.inner import KApply, KSequence
 from pyk.kcfg.kcfg import KCFG
 from pyk.kcfg.store import CachedValues, OptimizedNodeStore
 from pyk.prelude.utils import token
@@ -77,7 +77,7 @@ def test_optimized_store() -> None:
     store = OptimizedNodeStore()
 
     for idx, item in zip(range(0, len(OPTIMIZE_TEST_DATA)), OPTIMIZE_TEST_DATA, strict=True):
-        store[idx] = KCFG.Node(idx, CTerm(item, ()))
+        store[idx] = KCFG.Node(idx, CTerm(KApply('<cell>', item), ()))
 
     for idx, item in zip(range(0, len(OPTIMIZE_TEST_DATA)), OPTIMIZE_TEST_DATA, strict=True):
-        assert KCFG.Node(idx, CTerm(item, ())) == store[idx]
+        assert KCFG.Node(idx, CTerm(KApply('<cell>', item), ())) == store[idx]
