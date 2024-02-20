@@ -36,6 +36,14 @@ class Proof(ABC):
     _subproofs: dict[str, Proof]
     admitted: bool
 
+    @abstractmethod
+    def get_steps(self) -> Iterable[ProofStep]:
+        ...
+
+    @abstractmethod
+    def commit(self, result: StepResult) -> None:
+        ...
+
     @property
     def proof_subdir(self) -> Path | None:
         if self.proof_dir is None:
@@ -291,34 +299,28 @@ class StepResult:
 
 
 class ProofStep:
-    @abstractmethod
-    def exec(self) -> StepResult:
-        ...
+    ...
 
 
 class Prover:
     kcfg_explore: KCFGExplore
     proof: Proof
 
+    @abstractmethod
+    def step_proof(self, step: ProofStep) -> StepResult:
+        ...
+
     def __init__(self, kcfg_explore: KCFGExplore):
         self.kcfg_explore = kcfg_explore
-
-    @abstractmethod
-    def get_steps(self) -> Iterable[ProofStep]:
-        ...
-
-    @abstractmethod
-    def commit(self, result: StepResult) -> None:
-        ...
 
     def advance_proof(self, max_iterations: int | None = None, fail_fast: bool = False) -> None:
         iterations = 0
         while self.proof.can_progress:
-            steps = self.get_steps()
+            steps = self.proof.get_steps()
             for step in steps:
                 iterations += 1
-                result = step.exec()
-                self.commit(result)
+                result = self.step_proof(step)
+                self.proof.commit(result)
                 self.proof.write_proof_data()
                 if fail_fast and self.proof.failed:
                     _LOGGER.warning(f'Terminating proof early because fail_fast is set: {self.proof.id}')
