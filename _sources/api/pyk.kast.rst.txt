@@ -12,6 +12,7 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
+   pyk.kast.att
    pyk.kast.inner
    pyk.kast.kast
    pyk.kast.manip
