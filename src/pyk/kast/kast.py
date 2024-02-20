@@ -95,8 +95,23 @@ class AnyType(AttType[Any]):
         return value
 
 
+class LocationType(AttType[tuple[int, int, int, int]]):
+    def from_dict(self, obj: Any) -> tuple[int, int, int, int]:
+        assert isinstance(obj, list)
+        a, b, c, d = obj
+        assert isinstance(a, int)
+        assert isinstance(b, int)
+        assert isinstance(c, int)
+        assert isinstance(d, int)
+        return a, b, c, d
+
+    def to_dict(self, value: tuple[int, int, int, int]) -> Any:
+        return list(value)
+
+
 _NULLARY: Final = NullaryType()
 _ANY: Final = AnyType()
+_LOCATION: Final = LocationType()
 
 
 @final
@@ -142,7 +157,7 @@ class Atts:
     KLABEL: Final = AttKey('klabel', type=_ANY)
     LABEL: Final = AttKey('label', type=_ANY)
     LEFT: Final = AttKey('left', type=_NULLARY)
-    LOCATION: Final = AttKey('org.kframework.attributes.Location', type=_ANY)
+    LOCATION: Final = AttKey('org.kframework.attributes.Location', type=_LOCATION)
     MACRO: Final = AttKey('macro', type=_NULLARY)
     MACRO_REC: Final = AttKey('macro-rec', type=_NULLARY)
     OWISE: Final = AttKey('owise', type=_NULLARY)
