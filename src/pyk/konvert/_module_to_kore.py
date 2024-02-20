@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..kast import EMPTY_ATT, Atts, KInner
@@ -132,7 +133,7 @@ def _parse_special_att_value(key: AttKey, value: Any) -> tuple[tuple[Sort, ...],
         loc_str = ','.join(str(loc) for loc in value)
         return (), (String(f'Location({loc_str})'),)
     if key == Atts.SOURCE:
-        assert isinstance(value, str)
+        assert isinstance(value, Path)
         return (), (String(f'Source({value})'),)
     if key == Atts.ELEMENT:
         # TODO avoid special casing by pre-processing the attribute into a KApply

@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from functools import cache, cached_property
 from itertools import chain
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, final, overload
 
 from ..utils import FrozenDict, hash_str
@@ -109,9 +110,19 @@ class LocationType(AttType[tuple[int, int, int, int]]):
         return list(value)
 
 
+class PathType(AttType[Path]):
+    def from_dict(self, obj: Any) -> Path:
+        assert isinstance(obj, str)
+        return Path(obj)
+
+    def to_dict(self, value: Path) -> Any:
+        return str(value)
+
+
 _NULLARY: Final = NullaryType()
 _ANY: Final = AnyType()
 _LOCATION: Final = LocationType()
+_PATH: Final = PathType()
 
 
 @final
@@ -168,7 +179,7 @@ class Atts:
     SIMPLIFICATION: Final = AttKey('simplification', type=_ANY)
     SYMBOL: Final = AttKey('symbol', type=_ANY)
     SORT: Final = AttKey('org.kframework.kore.Sort', type=_ANY)
-    SOURCE: Final = AttKey('org.kframework.attributes.Source', type=_ANY)
+    SOURCE: Final = AttKey('org.kframework.attributes.Source', type=_PATH)
     TOKEN: Final = AttKey('token', type=_NULLARY)
     TOTAL: Final = AttKey('total', type=_NULLARY)
     TRUSTED: Final = AttKey('trusted', type=_NULLARY)
@@ -251,7 +262,7 @@ class KAtt(KAst, Mapping[AttKey, Any]):
                 loc_ids = str(v).replace(' ', '')
                 att_strs.append(f'{k.name}{loc_ids}')
             elif k == Atts.SOURCE:
-                att_strs.append(k.name + '("' + v + '")')
+                att_strs.append(f'{k.name}("{v}")')
             else:
                 att_strs.append(f'{k.name}({v})')
         return f'[{", ".join(att_strs)}]'
