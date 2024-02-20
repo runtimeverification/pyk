@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar, final
 
 from ..cterm import CTerm
 from ..kast.inner import KApply, KSequence, KToken, KVariable, bottom_up_with_summary
+from .kcfg import KCFG
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -16,17 +17,6 @@ if TYPE_CHECKING:
 
 
 A = TypeVar('A')
-N = TypeVar('N', bound='Node')
-
-
-class Node(Generic[N]):
-    @abstractmethod
-    def get_cterm(self) -> CTerm:
-        ...
-
-    @abstractmethod
-    def with_cterm(self, cterm: CTerm) -> N:
-        ...
 
 
 @dataclass
@@ -79,8 +69,8 @@ class OptimizedKSequence(OptimizedKInner):
         return KSequence(tuple(terms[child] for child in self.children))
 
 
-class OptimizedNodeStore(MutableMapping[int, N], Generic[N]):
-    __nodes: dict[int, N]
+class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
+    __nodes: dict[int, KCFG.Node]
     __optimized_terms: CachedValues[OptimizedKInner]
     __klabels: CachedValues[KLabel]
     __terms: list[KInner]
@@ -96,14 +86,14 @@ class OptimizedNodeStore(MutableMapping[int, N], Generic[N]):
 
         self.__lock = threading.Lock()
 
-    def __getitem__(self, key: int) -> N:
+    def __getitem__(self, key: int) -> KCFG.Node:
         return self.__nodes[key]
 
-    def __setitem__(self, key: int, node: Node[N]) -> None:
-        old_cterm = node.get_cterm()
+    def __setitem__(self, key: int, node: KCFG.Node) -> None:
+        old_cterm = node.cterm
         new_config = self.__optimize(old_cterm.config)
         new_constraints = tuple(self.__optimize(c) for c in old_cterm.constraints)
-        new_node = node.with_cterm(CTerm(new_config, new_constraints))
+        new_node = KCFG.Node(node.id, CTerm(new_config, new_constraints))
         self.__nodes[key] = new_node
 
     def __delitem__(self, key: int) -> None:

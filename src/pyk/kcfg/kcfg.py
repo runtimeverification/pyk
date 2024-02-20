@@ -23,7 +23,6 @@ from ..kast.manip import (
 from ..kast.outer import KFlatModule
 from ..prelude.kbool import andBool
 from ..utils import ensure_dir_path
-from . import store
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
@@ -41,15 +40,9 @@ NodeIdLike = int | str
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @final
     @dataclass(frozen=True, order=True)
-    class Node(store.Node):
+    class Node:
         id: int
         cterm: CTerm
-
-        def get_cterm(self) -> CTerm:
-            return self.cterm
-
-        def with_cterm(self, cterm: CTerm) -> KCFG.Node:
-            return KCFG.Node(self.id, cterm)
 
         def to_dict(self) -> dict[str, Any]:
             return {'id': self.id, 'cterm': self.cterm.to_dict()}
@@ -226,7 +219,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def __init__(self, cfg_dir: Path | None = None, optimize_memory: bool = True) -> None:
         self._node_id = 1
         if optimize_memory:
-            self._nodes = store.OptimizedNodeStore()
+            from .store import OptimizedNodeStore
+
+            self._nodes = OptimizedNodeStore()
         else:
             self._nodes = {}
         self._created_nodes = set()

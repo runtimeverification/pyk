@@ -5,8 +5,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from pyk.cterm import CTerm
 from pyk.kast.inner import KSequence
-from pyk.kcfg.store import CachedValues
+from pyk.kcfg.kcfg import KCFG
+from pyk.kcfg.store import CachedValues, OptimizedNodeStore
 from pyk.prelude.utils import token
 
 from ..utils import a, b, c, f
@@ -60,3 +62,22 @@ def test_not_use_cached(term1: KInner, term2: KInner) -> None:
     # Then
     assert term1 != term2
     assert id1 != id2
+
+
+OPTIMIZE_TEST_DATA: Final[tuple[KInner, ...]] = (
+    token(1),
+    token('a'),
+    a,
+    f(a),
+    KSequence([a, token(3)]),
+)
+
+
+def test_optimized_store() -> None:
+    store = OptimizedNodeStore()
+
+    for idx, item in zip(range(0, len(OPTIMIZE_TEST_DATA)), OPTIMIZE_TEST_DATA, strict=True):
+        store[idx] = KCFG.Node(idx, CTerm(item, ()))
+
+    for idx, item in zip(range(0, len(OPTIMIZE_TEST_DATA)), OPTIMIZE_TEST_DATA, strict=True):
+        assert KCFG.Node(idx, CTerm(item, ())) == store[idx]
