@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast.inner import KSequence
-from pyk.kast.optimizer import CachedValues
+from pyk.kcfg.store import CachedValues
 from pyk.prelude.utils import token
 
 from ..utils import a, b, c, f
