@@ -241,17 +241,6 @@ class KAtt(KAst, Mapping[AttKey, Any]):
     def to_dict(self) -> dict[str, Any]:
         return {'node': 'KAtt', 'att': {key.name: key.type.to_dict(value) for key, value in self.atts.items()}}
 
-    def update(self, entries: Iterable[AttEntry]) -> KAtt:
-        entries = chain((AttEntry(key, value) for key, value in self.atts.items()), entries)
-        return KAtt(entries=entries)
-
-    def remove(self, keys: Iterable[AttKey]) -> KAtt:
-        entries = (AttEntry(key, value) for key, value in self.atts.items() if key not in keys)
-        return KAtt(entries=entries)
-
-    def drop_source(self) -> KAtt:
-        return self.remove([Atts.SOURCE, Atts.LOCATION])
-
     @property
     def pretty(self) -> str:
         if len(self) == 0:
@@ -266,6 +255,17 @@ class KAtt(KAst, Mapping[AttKey, Any]):
             else:
                 att_strs.append(f'{k.name}({v})')
         return f'[{", ".join(att_strs)}]'
+
+    def update(self, entries: Iterable[AttEntry]) -> KAtt:
+        entries = chain((AttEntry(key, value) for key, value in self.atts.items()), entries)
+        return KAtt(entries=entries)
+
+    def remove(self, keys: Iterable[AttKey]) -> KAtt:
+        entries = (AttEntry(key, value) for key, value in self.atts.items() if key not in keys)
+        return KAtt(entries=entries)
+
+    def drop_source(self) -> KAtt:
+        return self.remove([Atts.SOURCE, Atts.LOCATION])
 
 
 EMPTY_ATT: Final = KAtt()
