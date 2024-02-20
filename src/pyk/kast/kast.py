@@ -63,6 +63,10 @@ class AttType(Generic[T], ABC):
     def to_dict(self, value: T) -> Any:
         ...
 
+    @abstractmethod
+    def pretty(self, value: T) -> str | None:
+        ...
+
 
 class NullaryType(AttType[Literal['']]):
     def from_dict(self, obj: Any) -> Literal['']:
@@ -73,6 +77,9 @@ class NullaryType(AttType[Literal['']]):
         assert value == ''
         return value
 
+    def pretty(self, value: Literal['']) -> None:
+        return None
+
 
 class AnyType(AttType[Any]):
     def from_dict(self, obj: Any) -> Any:
@@ -80,6 +87,9 @@ class AnyType(AttType[Any]):
 
     def to_dict(self, value: Any) -> Any:
         return self._unfreeze(value)
+
+    def pretty(self, value: Any) -> str:
+        return str(value)
 
     @staticmethod
     def _freeze(obj: Any) -> Any:
@@ -109,6 +119,9 @@ class LocationType(AttType[tuple[int, int, int, int]]):
     def to_dict(self, value: tuple[int, int, int, int]) -> Any:
         return list(value)
 
+    def pretty(self, value: tuple[int, int, int, int]) -> str:
+        return ','.join(str(e) for e in value)
+
 
 class PathType(AttType[Path]):
     def from_dict(self, obj: Any) -> Path:
@@ -117,6 +130,9 @@ class PathType(AttType[Path]):
 
     def to_dict(self, value: Path) -> Any:
         return str(value)
+
+    def pretty(self, value: Path) -> str:
+        return f'"{value}"'
 
 
 _NULLARY: Final = NullaryType()
@@ -243,17 +259,15 @@ class KAtt(KAst, Mapping[AttKey, Any]):
 
     @property
     def pretty(self) -> str:
-        if len(self) == 0:
+        if not self:
             return ''
-        att_strs = []
-        for k, v in self.items():
-            if k == Atts.LOCATION:
-                loc_ids = str(v).replace(' ', '')
-                att_strs.append(f'{k.name}{loc_ids}')
-            elif k == Atts.SOURCE:
-                att_strs.append(f'{k.name}("{v}")')
+        att_strs: list[str] = []
+        for key, value in self.items():
+            value_str = key.type.pretty(value)
+            if value_str is None:
+                att_strs.append(key.name)
             else:
-                att_strs.append(f'{k.name}({v})')
+                att_strs.append(f'{key.name}({value_str})')
         return f'[{", ".join(att_strs)}]'
 
     def update(self, entries: Iterable[AttEntry]) -> KAtt:
