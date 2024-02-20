@@ -274,12 +274,12 @@ class KAtt(KAst, Mapping[AttKey, Any]):
         entries = chain((AttEntry(key, value) for key, value in self.atts.items()), entries)
         return KAtt(entries=entries)
 
-    def remove(self, keys: Iterable[AttKey]) -> KAtt:
+    def discard(self, keys: Iterable[AttKey]) -> KAtt:
         entries = (AttEntry(key, value) for key, value in self.atts.items() if key not in keys)
         return KAtt(entries=entries)
 
     def drop_source(self) -> KAtt:
-        return self.remove([Atts.SOURCE, Atts.LOCATION])
+        return self.discard([Atts.SOURCE, Atts.LOCATION])
 
 
 EMPTY_ATT: Final = KAtt()

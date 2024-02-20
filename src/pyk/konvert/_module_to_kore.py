@@ -540,7 +540,7 @@ def _discard_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = 
 
         hook = sentence.att[Atts.HOOK]
         if not is_active(hook):
-            return sentence.let(att=sentence.att.remove([Atts.HOOK]))
+            return sentence.let(att=sentence.att.discard([Atts.HOOK]))
 
         return sentence
 
@@ -558,7 +558,7 @@ def _discard_symbol_atts(module: KFlatModule, atts: Iterable[AttKey]) -> KFlatMo
         if not sentence.klabel:
             return sentence
 
-        return sentence.let(att=sentence.att.remove(atts))
+        return sentence.let(att=sentence.att.discard(atts))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
