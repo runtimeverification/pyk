@@ -51,6 +51,37 @@ class CTermExecute(NamedTuple):
     logs: tuple[LogEntry, ...]
 
 
+def extend_kcfg(
+    extend_result: ExtendResult,
+    kcfg: KCFG,
+    node: KCFG.Node,
+) -> None:
+    match extend_result:
+        case Vacuous():
+            kcfg.add_vacuous(node.id)
+
+        case Stuck():
+            kcfg.add_stuck(node.id)
+
+        case Abstract(cterm):
+            new_node = kcfg.create_node(cterm)
+            kcfg.create_cover(node.id, new_node.id)
+
+        case Step(cterm, depth, _, _):
+            next_node = kcfg.create_node(cterm)
+            kcfg.create_edge(node.id, next_node.id, depth, rules=[])
+
+        case Branch(constraints, _):
+            kcfg.split_on_constraints(node.id, constraints)
+
+        case NDBranch(cterms, _):
+            next_ids = [kcfg.create_node(cterm).id for cterm in cterms]
+            kcfg.create_ndbranch(node.id, next_ids, rules=[])
+
+        case _:
+            raise AssertionError()
+
+
 class KCFGExplore:
     kprint: KPrint
     _kore_client: KoreClient
