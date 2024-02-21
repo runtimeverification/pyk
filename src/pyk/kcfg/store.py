@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 A = TypeVar('A')
 
 
-@dataclass
 class CachedValues(Generic[A]):
     value_to_id: dict[A, int] = field(default_factory=dict)
     values: list[A] = field(default_factory=list)
@@ -34,7 +33,7 @@ class CachedValues(Generic[A]):
         return id
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(frozen=True)
 class OptimizedKInner:
     @abstractmethod
     def build(self, klabels: list[KLabel], terms: list[KInner]) -> KInner:
