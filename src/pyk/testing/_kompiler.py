@@ -239,7 +239,7 @@ class KCFGExploreTest(KoreClientTest, KPrintTest):
         bug_report: BugReport | None,
     ) -> Iterator[KCFGExplore]:
         semantics = self.semantics(kprint.definition)
-        yield KCFGExplore(kprint, kore_client, kcfg_semantics=semantics)
+        yield KCFGExplore(kore_client, kprint.definition, kprint.kompiled_kore, kcfg_semantics=semantics)
 
 
 class KoreServerPoolTest(KompiledTest, ABC):

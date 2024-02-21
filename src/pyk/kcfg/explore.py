@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from abc import ABC
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import TYPE_CHECKING, NamedTuple, final
 
 from ..cterm import CSubst, CTerm
@@ -18,6 +19,8 @@ from ..kast.manip import (
     ml_pred_to_bool,
     push_down_rewrites,
 )
+from ..kast.pretty import PrettyPrinter
+from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.rpc import AbortedResult, RewriteSuccess, SatResult, StopReason, UnknownResult, UnsatResult
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
@@ -33,9 +36,11 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast import KInner
+    from ..kast.outer import KDefinition
     from ..kcfg.exploration import KCFGExploration
+    from ..kore.kompiled import KompiledKore
     from ..kore.rpc import KoreClient, LogEntry
-    from ..ktool.kprint import KPrint
+    from ..kore.syntax import Pattern
     from .kcfg import NodeIdLike
     from .semantics import KCFGSemantics
 
@@ -52,8 +57,9 @@ class CTermExecute(NamedTuple):
 
 
 class KCFGExplore:
-    kprint: KPrint
     _kore_client: KoreClient
+    _definition: KDefinition
+    _kompiled_kore: KompiledKore
 
     kcfg_semantics: KCFGSemantics
     id: str
@@ -61,18 +67,33 @@ class KCFGExplore:
 
     def __init__(
         self,
-        kprint: KPrint,
         kore_client: KoreClient,
+        definition: KDefinition,
+        kompiled_kore: KompiledKore,
         *,
         kcfg_semantics: KCFGSemantics | None = None,
         id: str | None = None,
         trace_rewrites: bool = False,
     ):
-        self.kprint = kprint
         self._kore_client = kore_client
         self.kcfg_semantics = kcfg_semantics if kcfg_semantics is not None else DefaultSemantics()
         self.id = id if id is not None else 'NO ID'
         self._trace_rewrites = trace_rewrites
+        self._definition = definition
+        self._kompiled_kore = kompiled_kore
+
+    def _kast_to_kore(self, kinner: KInner) -> Pattern:
+        return kast_to_kore(self._definition, self._kompiled_kore, kinner, sort=GENERATED_TOP_CELL)
+
+    def _kore_to_kast(self, pattern: Pattern) -> KInner:
+        return kore_to_kast(self._definition, pattern)
+
+    def pretty_print(self, kinner: KInner) -> str:
+        return self._pretty_printer.print(kinner)
+
+    @cached_property
+    def _pretty_printer(self) -> PrettyPrinter:
+        return PrettyPrinter(self._definition)
 
     def cterm_execute(
         self,
@@ -83,7 +104,7 @@ class KCFGExplore:
         module_name: str | None = None,
     ) -> CTermExecute:
         _LOGGER.debug(f'Executing: {cterm}')
-        kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
+        kore = self._kast_to_kore(cterm.kast)
         response = self._kore_client.execute(
             kore,
             max_depth=depth,
@@ -100,9 +121,9 @@ class KCFGExplore:
             unknown_predicate = response.unknown_predicate.text if response.unknown_predicate else None
             raise ValueError(f'Backend responded with aborted state. Unknown predicate: {unknown_predicate}')
 
-        state = CTerm.from_kast(self.kprint.kore_to_kast(response.state.kore))
+        state = CTerm.from_kast(self._kore_to_kast(response.state.kore))
         resp_next_states = response.next_states or ()
-        next_states = tuple(CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in resp_next_states)
+        next_states = tuple(CTerm.from_kast(self._kore_to_kast(ns.kore)) for ns in resp_next_states)
 
         assert all(not cterm.is_bottom for cterm in next_states)
         assert len(next_states) != 1 or response.reason is StopReason.CUT_POINT_RULE
@@ -117,21 +138,21 @@ class KCFGExplore:
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
-        kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
+        kore = self._kast_to_kore(cterm.kast)
         kore_simplified, logs = self._kore_client.simplify(kore)
-        kast_simplified = self.kprint.kore_to_kast(kore_simplified)
+        kast_simplified = self._kore_to_kast(kore_simplified)
         return CTerm.from_kast(kast_simplified), logs
 
     def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
-        kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
+        kore = self._kast_to_kore(kast)
         kore_simplified, logs = self._kore_client.simplify(kore)
-        kast_simplified = self.kprint.kore_to_kast(kore_simplified)
+        kast_simplified = self._kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
     def cterm_get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
         _LOGGER.info(f'Getting model: {cterm}')
-        kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
+        kore = self._kast_to_kore(cterm.kast)
         result = self._kore_client.get_model(kore, module_name=module_name)
         if type(result) is UnknownResult:
             _LOGGER.debug('Result is Unknown')
@@ -143,7 +164,7 @@ class KCFGExplore:
             _LOGGER.debug('Result is SAT')
             if not result.model:
                 return Subst({})
-            model_subst = self.kprint.kore_to_kast(result.model)
+            model_subst = self._kore_to_kast(result.model)
             try:
                 return Subst.from_pred(model_subst)
             except ValueError as err:
@@ -169,8 +190,8 @@ class KCFGExplore:
             _LOGGER.debug(f'Binding variables in consequent {bind_text}: {unbound_consequent}')
             for uc in unbound_consequent:
                 _consequent = KApply(KLabel(bind_label, [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
-        antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
-        consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
+        antecedent_kore = self._kast_to_kore(antecedent.kast)
+        consequent_kore = self._kast_to_kore(_consequent)
         result = self._kore_client.implies(antecedent_kore, consequent_kore)
         if not result.satisfiable:
             if result.substitution is not None:
@@ -182,8 +203,8 @@ class KCFGExplore:
             raise ValueError('Received empty substutition for satisfiable implication.')
         if result.predicate is None:
             raise ValueError('Received empty predicate for satisfiable implication.')
-        ml_subst = self.kprint.kore_to_kast(result.substitution)
-        ml_pred = self.kprint.kore_to_kast(result.predicate) if result.predicate is not None else mlTop()
+        ml_subst = self._kore_to_kast(result.substitution)
+        ml_pred = self._kore_to_kast(result.predicate) if result.predicate is not None else mlTop()
         ml_preds = flatten_label('#And', ml_pred)
         if is_top(ml_subst):
             return CSubst(subst=Subst({}), constraints=ml_preds)
@@ -253,7 +274,7 @@ class KCFGExplore:
                 failing_cell = replace_rewrites_with_implies(failing_cell)
                 failing_cells.append((cell, failing_cell))
             failing_cells_str = '\n'.join(
-                f'{cell}: {self.kprint.pretty_print(minimize_term(rew))}' for cell, rew in failing_cells
+                f'{cell}: {self.pretty_print(minimize_term(rew))}' for cell, rew in failing_cells
             )
             return (
                 False,
@@ -265,12 +286,12 @@ class KCFGExplore:
             )
             impl = CTerm._ml_impl(antecedent.constraints, consequent_constraints)
             if impl != mlTop(k.GENERATED_TOP_CELL):
-                fail_str = self.kprint.pretty_print(impl)
+                fail_str = self.pretty_print(impl)
                 negative_cell_constraints = list(filter(_is_negative_cell_subst, antecedent.constraints))
                 if len(negative_cell_constraints) > 0:
                     fail_str = (
                         f'{fail_str}\n\nNegated cell substitutions found (consider using _ => ?_):\n'
-                        + '\n'.join([self.kprint.pretty_print(cc) for cc in negative_cell_constraints])
+                        + '\n'.join([self.pretty_print(cc) for cc in negative_cell_constraints])
                     )
                 return (False, f'Implication check failed, the following is the remaining implication:\n{fail_str}')
         return (True, '')
@@ -278,9 +299,9 @@ class KCFGExplore:
     def cterm_assume_defined(self, cterm: CTerm) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
-        kore = self.kprint.kast_to_kore(kast, GENERATED_TOP_CELL)
+        kore = self._kast_to_kore(kast)
         kore_simplified, _logs = self._kore_client.simplify(kore)
-        kast_simplified = self.kprint.kore_to_kast(kore_simplified)
+        kast_simplified = self._kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
 
@@ -479,8 +500,8 @@ class KCFGExplore:
             _rule_lines = []
             for node_log in _logs:
                 if type(node_log.result) is RewriteSuccess:
-                    if node_log.result.rule_id in self.kprint.definition.sentence_by_unique_id:
-                        sent = self.kprint.definition.sentence_by_unique_id[node_log.result.rule_id]
+                    if node_log.result.rule_id in self._definition.sentence_by_unique_id:
+                        sent = self._definition.sentence_by_unique_id[node_log.result.rule_id]
                         _rule_lines.append(f'{sent.label}:{sent.source}')
                     else:
                         _LOGGER.warning(f'Unknown unique id attached to rule log entry: {node_log}')
@@ -511,7 +532,7 @@ class KCFGExplore:
             case Branch(constraints, heuristic):
                 kcfg.split_on_constraints(node.id, constraints)
                 heur_str = ' using heuristics' if heuristic else ''
-                constraint_strs = [self.kprint.pretty_print(bc) for bc in constraints]
+                constraint_strs = [self.pretty_print(bc) for bc in constraints]
                 log(f'{len(constraints)} branches{heur_str}: {node.id} -> {constraint_strs}')
 
             case NDBranch(cterms, next_node_logs):
