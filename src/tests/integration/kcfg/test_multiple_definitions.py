@@ -7,7 +7,7 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KVariable
 from pyk.prelude.ml import mlTop
-from pyk.testing import KCFGExploreTest
+from pyk.testing import KCFGExploreTest, KProveTest
 
 from ..utils import K_FILES
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 EXECUTE_TEST_DATA: Iterable[tuple[str]] = (('branch',),)
 
 
-class TestMultipleDefinitionsProof(KCFGExploreTest):
+class TestMultipleDefinitionsProof(KCFGExploreTest, KProveTest):
     KOMPILE_MAIN_FILE = K_FILES / 'multiple-definitions.k'
 
     @staticmethod
