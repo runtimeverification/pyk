@@ -306,7 +306,6 @@ class Prover:
         ...
 
     def advance_proof(self, max_iterations: int | None = None, fail_fast: bool = False) -> None:
-        from .show import APRProofShow, APRProofNodePrinter
         iterations = 0
         while self.proof.can_progress:
             if fail_fast and self.proof.failed:
@@ -319,5 +318,3 @@ class Prover:
             for result in results:
                 self.proof.commit(result)
             self.proof.write_proof_data()
-            show = APRProofShow(kprint=self.kcfg_explore.kprint, node_printer=APRProofNodePrinter(full_printer=True, kprint=self.kcfg_explore.kprint, proof=self.proof))
-            print('\n'.join(show.pretty(self.proof)))

@@ -134,10 +134,9 @@ class APRProof(Proof, KCFGExploration):
                 self.kcfg.create_cover(result.node_id, self.target, csubst=result.csubst)
                 _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((result.node_id, self.target))}')
         elif isinstance(result, APRProofBoundedResult):
-            raise ValueError('Unimplemented')
+            self.add_bounded(result.node_id)
         else:
             raise ValueError('Incorrect result type')
-
 
     @property
     def module_name(self) -> str:
@@ -685,13 +684,9 @@ class APRProver(Prover):
         return self.kcfg_explore.cterm_implies(node.cterm, target_cterm)
 
     def step_proof(self) -> Iterable[StepResult]:
-#          print('step_proof')
-
         if not self.proof.pending:
             return []
         curr_node = self.proof.pending[0]
-
-#          self._check_all_terminals()
 
         if self.proof.bmc_depth is not None and curr_node.id not in self._checked_for_bounded:
             _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {curr_node.id}')
@@ -716,14 +711,10 @@ class APRProver(Prover):
         is_terminal = self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm)
         target_is_terminal = (self.proof.target in self.proof._terminal,)
 
-        print(f'curr_node: {curr_node}')
-        print(f'is_terminal: {is_terminal}')
-        if is_terminal or not target_is_terminal:
-            if self.always_check_subsumption:
-                print('check subsume')
-                csubst = self._check_subsume(curr_node)
-                if csubst is not None or is_terminal:
-                    return [APRProofSubsumeResult(csubst=csubst, node_id=curr_node.id)]
+        if target_is_terminal and self.always_check_subsumption:
+            csubst = self._check_subsume(curr_node)
+            if csubst is not None or is_terminal:
+                return [APRProofSubsumeResult(csubst=csubst, node_id=curr_node.id)]
 
         module_name = self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
 
