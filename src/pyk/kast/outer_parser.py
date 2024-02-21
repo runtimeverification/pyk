@@ -49,7 +49,6 @@ _STRING_SENTENCE: Final = {
     TokenType.KW_RULE.value: Rule,
 }
 
-_REQUIRES_TOKENS: Final = (TokenType.KW_REQUIRE, TokenType.KW_REQUIRES)
 _IMPORTS_TOKENS: Final = (TokenType.KW_IMPORT, TokenType.KW_IMPORTS)
 _ASSOC_TOKENS: Final = (TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC)
 _PRODUCTION_TOKENS: Final = (TokenType.ID_LOWER, TokenType.ID_UPPER, TokenType.STRING, TokenType.REGEX)
@@ -94,7 +93,7 @@ class OuterParser:
 
     def definition(self) -> Definition:
         requires: list[Require] = []
-        while self._la.type in _REQUIRES_TOKENS:
+        while self._la.type is TokenType.KW_REQUIRES:
             requires.append(self.require())
 
         modules: list[Module] = []
@@ -104,7 +103,7 @@ class OuterParser:
         return Definition(modules, requires)
 
     def require(self) -> Require:
-        self._match_any(_REQUIRES_TOKENS)
+        self._match(TokenType.KW_REQUIRES)
         path = _dequote_string(self._match(TokenType.STRING))
         return Require(path)
 

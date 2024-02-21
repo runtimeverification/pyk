@@ -401,16 +401,11 @@ def test_module(k_text: str, expected: AST) -> None:
     assert actual == expected
 
 
-REQUIRE_TEST_DATA: Final = (
-    ('require "foo.k"', Require('foo.k')),
-    ('requires "foo.k"', Require('foo.k')),
-)
-
-
-@pytest.mark.parametrize('k_text,expected', REQUIRE_TEST_DATA, ids=[k_text for k_text, _ in REQUIRE_TEST_DATA])
-def test_require(k_text: str, expected: AST) -> None:
+def test_require() -> None:
     # Given
+    k_text = 'requires "foo.k"'
     parser = OuterParser(k_text)
+    expected = Require('foo.k')
 
     # When
     actual = parser.require()
@@ -421,7 +416,6 @@ def test_require(k_text: str, expected: AST) -> None:
 
 DEFINITION_TEST_DATA: Final = (
     ('', Definition()),
-    ('require "foo.k"', Definition(requires=(Require('foo.k'),))),
     ('requires "foo.k"', Definition(requires=(Require('foo.k'),))),
     ('requires "foo.k" requires "bar.k"', Definition(requires=(Require('foo.k'), Require('bar.k')))),
     ('module FOO endmodule', Definition(modules=(Module('FOO'),))),

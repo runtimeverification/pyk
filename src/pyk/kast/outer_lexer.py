@@ -41,7 +41,6 @@ class TokenType(Enum):
     KW_PRIORITY = auto()
     KW_PRIVATE = auto()
     KW_PUBLIC = auto()
-    KW_REQUIRE = auto()
     KW_REQUIRES = auto()
     KW_RIGHT = auto()
     KW_RULE = auto()
@@ -106,7 +105,6 @@ _KEYWORDS: Final = {
     'priority': Token('priority', TokenType.KW_PRIORITY),
     'private': Token('private', TokenType.KW_PRIVATE),
     'public': Token('public', TokenType.KW_PUBLIC),
-    'require': Token('require', TokenType.KW_REQUIRE),
     'requires': Token('requires', TokenType.KW_REQUIRES),
     'right': Token('right', TokenType.KW_RIGHT),
     'rule': Token('rule', TokenType.KW_RULE),
