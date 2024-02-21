@@ -353,9 +353,6 @@ def test_sentence(k_text: str, expected: AST) -> None:
 
 
 IMPORT_TEST_DATA: Final = (
-    ('import TEST', Import('TEST', public=True)),
-    ('import public TEST', Import('TEST', public=True)),
-    ('import private TEST', Import('TEST', public=False)),
     ('imports TEST', Import('TEST', public=True)),
     ('imports public TEST', Import('TEST', public=True)),
     ('imports private TEST', Import('TEST', public=False)),
@@ -377,7 +374,6 @@ def test_import(k_text: str, expected: AST) -> None:
 MODULE_TEST_DATA: Final = (
     ('module FOO endmodule', Module('FOO')),
     ('module FOO [foo] endmodule', Module('FOO', att=Att((('foo', ''),)))),
-    ('module FOO import BAR endmodule', Module('FOO', imports=(Import('BAR'),))),
     ('module FOO imports BAR endmodule', Module('FOO', imports=(Import('BAR'),))),
     ('module FOO imports BAR imports BAZ endmodule', Module('FOO', imports=(Import('BAR'), Import('BAZ')))),
     ('module FOO rule x endmodule', Module('FOO', sentences=(Rule('x'),))),

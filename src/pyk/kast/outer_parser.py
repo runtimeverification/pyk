@@ -49,7 +49,6 @@ _STRING_SENTENCE: Final = {
     TokenType.KW_RULE.value: Rule,
 }
 
-_IMPORTS_TOKENS: Final = (TokenType.KW_IMPORT, TokenType.KW_IMPORTS)
 _ASSOC_TOKENS: Final = (TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC)
 _PRODUCTION_TOKENS: Final = (TokenType.ID_LOWER, TokenType.ID_UPPER, TokenType.STRING, TokenType.REGEX)
 _PRODUCTION_ITEM_TOKENS: Final = (TokenType.STRING, TokenType.ID_LOWER, TokenType.ID_UPPER)
@@ -114,7 +113,7 @@ class OuterParser:
         att = self._maybe_att()
 
         imports: list[Import] = []
-        while self._la.type in _IMPORTS_TOKENS:
+        while self._la.type is TokenType.KW_IMPORTS:
             imports.append(self.importt())
 
         sentences: list[Sentence] = []
@@ -126,7 +125,7 @@ class OuterParser:
         return Module(name, sentences, imports, att)
 
     def importt(self) -> Import:
-        self._match_any(_IMPORTS_TOKENS)
+        self._match(TokenType.KW_IMPORTS)
 
         public = True
         if self._la.type is TokenType.KW_PRIVATE:

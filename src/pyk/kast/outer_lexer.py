@@ -32,7 +32,6 @@ class TokenType(Enum):
     KW_CONFIG = auto()
     KW_CONTEXT = auto()
     KW_ENDMODULE = auto()
-    KW_IMPORT = auto()
     KW_IMPORTS = auto()
     KW_LEFT = auto()
     KW_LEXICAL = auto()
@@ -96,7 +95,6 @@ _KEYWORDS: Final = {
     'configuration': Token('configuration', TokenType.KW_CONFIG),
     'context': Token('context', TokenType.KW_CONTEXT),
     'endmodule': Token('endmodule', TokenType.KW_ENDMODULE),
-    'import': Token('import', TokenType.KW_IMPORT),
     'imports': Token('imports', TokenType.KW_IMPORTS),
     'left': Token('left', TokenType.KW_LEFT),
     'lexical': Token('lexical', TokenType.KW_LEXICAL),
@@ -148,7 +146,6 @@ _NEXT_STATE: Final = {
     (State.DEFAULT, TokenType.KW_CONFIG): State.BUBBLE,
     (State.DEFAULT, TokenType.KW_CONTEXT): State.CONTEXT,
     (State.DEFAULT, TokenType.KW_IMPORTS): State.MODNAME,
-    (State.DEFAULT, TokenType.KW_IMPORT): State.MODNAME,
     (State.DEFAULT, TokenType.KW_MODULE): State.MODNAME,
     (State.DEFAULT, TokenType.KW_RULE): State.BUBBLE,
     (State.DEFAULT, TokenType.KW_SYNTAX): State.SYNTAX,
