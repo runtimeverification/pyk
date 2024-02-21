@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from pyk.kcfg import KCFGExplore
     from pyk.ktool.kprint import KPrint
+    from pyk.ktool.kprove import KProve
 
     STATE = Union[tuple[str, str], tuple[str, str, str]]
 
@@ -66,6 +67,7 @@ class TestSimpleProof(KCFGExploreTest):
     )
     def test_execute(
         self,
+        kprove: KProve,
         kcfg_explore: KCFGExplore,
         test_id: str,
         depth: int,
@@ -78,14 +80,14 @@ class TestSimpleProof(KCFGExploreTest):
         expected_k, expected_state, *_ = expected_post
 
         # When
-        exec_res = kcfg_explore.cterm_execute(self.config(kcfg_explore.kprint, *pre), depth=depth)
-        actual_k = kcfg_explore.kprint.pretty_print(exec_res.state.cell('K_CELL'))
-        actual_state = kcfg_explore.kprint.pretty_print(exec_res.state.cell('STATE_CELL'))
+        exec_res = kcfg_explore.cterm_execute(self.config(kprove, *pre), depth=depth)
+        actual_k = kcfg_explore.pretty_print(exec_res.state.cell('K_CELL'))
+        actual_state = kcfg_explore.pretty_print(exec_res.state.cell('STATE_CELL'))
         actual_depth = exec_res.depth
         actual_next_states = [
             (
-                kcfg_explore.kprint.pretty_print(s.cell('K_CELL')),
-                kcfg_explore.kprint.pretty_print(s.cell('STATE_CELL')),
+                kcfg_explore.pretty_print(s.cell('K_CELL')),
+                kcfg_explore.pretty_print(s.cell('STATE_CELL')),
             )
             for s in exec_res.next_states
         ]
@@ -103,6 +105,7 @@ class TestSimpleProof(KCFGExploreTest):
     )
     def test_simplify(
         self,
+        kprove: KProve,
         kcfg_explore: KCFGExplore,
         test_id: str,
         pre: tuple[str, str],
@@ -113,9 +116,9 @@ class TestSimpleProof(KCFGExploreTest):
         expected_k, expected_state, *_ = expected_post
 
         # When
-        actual_post, _logs = kcfg_explore.cterm_simplify(self.config(kcfg_explore.kprint, *pre))
-        actual_k = kcfg_explore.kprint.pretty_print(get_cell(actual_post.kast, 'K_CELL'))
-        actual_state = kcfg_explore.kprint.pretty_print(get_cell(actual_post.kast, 'STATE_CELL'))
+        actual_post, _logs = kcfg_explore.cterm_simplify(self.config(kprove, *pre))
+        actual_k = kcfg_explore.pretty_print(get_cell(actual_post.kast, 'K_CELL'))
+        actual_state = kcfg_explore.pretty_print(get_cell(actual_post.kast, 'STATE_CELL'))
 
         # Then
         assert actual_k == expected_k
