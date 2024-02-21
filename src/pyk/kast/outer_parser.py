@@ -51,7 +51,6 @@ _STRING_SENTENCE: Final = {
 
 _REQUIRES_TOKENS: Final = (TokenType.KW_REQUIRE, TokenType.KW_REQUIRES)
 _IMPORTS_TOKENS: Final = (TokenType.KW_IMPORT, TokenType.KW_IMPORTS)
-_PRIORITIES_TOKENS: Final = (TokenType.KW_PRIORITY, TokenType.KW_PRIORITIES)
 _ASSOC_TOKENS: Final = (TokenType.KW_LEFT, TokenType.KW_RIGHT, TokenType.KW_NONASSOC)
 _PRODUCTION_TOKENS: Final = (TokenType.ID_LOWER, TokenType.ID_UPPER, TokenType.STRING, TokenType.REGEX)
 _PRODUCTION_ITEM_TOKENS: Final = (TokenType.STRING, TokenType.ID_LOWER, TokenType.ID_UPPER)
@@ -171,7 +170,7 @@ class OuterParser:
             att = self._maybe_att()
             return SyntaxDecl(decl, att)
 
-        if self._la.type in _PRIORITIES_TOKENS:
+        if self._la.type is TokenType.KW_PRIORITY:
             self._consume()
             groups: list[list[str]] = []
             group: list[str] = []

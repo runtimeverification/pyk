@@ -6,7 +6,7 @@ module K-EQUAL-SYNTAX
                   K "==K" K           [function, total, comm, smt-hook(=), hook(KEQUAL.eq), klabel(_==K_), symbol, latex({#1}\mathrel{=_K}{#2}), group(equalEqualK)]
                 | K "=/=K" K          [function, total, comm, smt-hook(distinct), hook(KEQUAL.ne), klabel(_=/=K_), symbol, latex({#1}\mathrel{\neq_K}{#2}), group(notEqualEqualK)]
 
-  syntax priorities equalEqualK notEqualEqualK > boolOperation mlOp
+  syntax priority equalEqualK notEqualEqualK > boolOperation mlOp
 
   syntax {Sort} Sort ::= "#if" Bool "#then" Sort "#else" Sort "#fi"   [function, total, smt-hook(ite), hook(KEQUAL.ite)]
 
@@ -334,8 +334,8 @@ RBRACK
 KW_SYNTAX
 syntax
 
-KW_PRIORITIES
-priorities
+KW_PRIORITY
+priority
 
 KLABEL
 equalEqualK

@@ -38,7 +38,6 @@ class TokenType(Enum):
     KW_LEXICAL = auto()
     KW_MODULE = auto()
     KW_NONASSOC = auto()
-    KW_PRIORITIES = auto()
     KW_PRIORITY = auto()
     KW_PRIVATE = auto()
     KW_PUBLIC = auto()
@@ -104,7 +103,6 @@ _KEYWORDS: Final = {
     'lexical': Token('lexical', TokenType.KW_LEXICAL),
     'module': Token('module', TokenType.KW_MODULE),
     'non-assoc': Token('non-assoc', TokenType.KW_NONASSOC),
-    'priorities': Token('priorities', TokenType.KW_PRIORITIES),
     'priority': Token('priority', TokenType.KW_PRIORITY),
     'private': Token('private', TokenType.KW_PRIVATE),
     'public': Token('public', TokenType.KW_PUBLIC),
@@ -168,7 +166,6 @@ _NEXT_STATE: Final = {
     (State.SYNTAX, TokenType.KW_LEFT): State.KLABEL,
     (State.SYNTAX, TokenType.KW_LEXICAL): State.DEFAULT,
     (State.SYNTAX, TokenType.KW_NONASSOC): State.KLABEL,
-    (State.SYNTAX, TokenType.KW_PRIORITIES): State.KLABEL,
     (State.SYNTAX, TokenType.KW_PRIORITY): State.KLABEL,
     (State.SYNTAX, TokenType.KW_RIGHT): State.KLABEL,
     (State.SYNTAX, TokenType.LBRACE): State.DEFAULT,
