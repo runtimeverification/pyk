@@ -46,8 +46,8 @@ class TestMultipleDefinitionsProof(KCFGExploreTest):
     ) -> None:
         exec_res = kcfg_explore.cterm_execute(self.config(), depth=1)
         split_next_terms = exec_res.next_states
-        split_k = kcfg_explore.kprint.pretty_print(exec_res.state.cell('K_CELL'))
-        split_next_k = [kcfg_explore.kprint.pretty_print(exec_res.state.cell('K_CELL')) for _ in split_next_terms]
+        split_k = kcfg_explore.pretty_print(exec_res.state.cell('K_CELL'))
+        split_next_k = [kcfg_explore.pretty_print(exec_res.state.cell('K_CELL')) for _ in split_next_terms]
 
         assert exec_res.depth == 0
         assert len(split_next_terms) == 2
@@ -58,9 +58,9 @@ class TestMultipleDefinitionsProof(KCFGExploreTest):
         ] == split_next_k
 
         step_1_res = kcfg_explore.cterm_execute(split_next_terms[0], depth=1)
-        step_1_k = kcfg_explore.kprint.pretty_print(step_1_res.state.cell('K_CELL'))
+        step_1_k = kcfg_explore.pretty_print(step_1_res.state.cell('K_CELL'))
         assert 'c' == step_1_k
 
         step_2_res = kcfg_explore.cterm_execute(split_next_terms[1], depth=1)
-        step_2_k = kcfg_explore.kprint.pretty_print(step_2_res.state.cell('K_CELL'))
+        step_2_k = kcfg_explore.pretty_print(step_2_res.state.cell('K_CELL'))
         assert 'c' == step_2_k
