@@ -14,7 +14,6 @@ from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
 from ..kcfg import KCFG
 from ..kcfg.exploration import KCFGExploration
-from ..kcfg.explore import extend_kcfg
 from ..konvert import kflatmodule_to_kore
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
@@ -129,7 +128,7 @@ class APRProof(Proof, KCFGExploration):
 
     def commit(self, result: StepResult) -> None:
         if isinstance(result, APRProofExtendResult):
-            extend_kcfg(result.extend_result, self.kcfg, self.kcfg.node(result.node_id))
+            self.kcfg.extend(result.extend_result, self.kcfg.node(result.node_id), logs=self.logs)
         elif isinstance(result, APRProofSubsumeResult):
             if result.csubst is None:
                 self._terminal.add(result.node_id)
@@ -727,6 +726,7 @@ class APRProver(Prover):
             cut_point_rules=self.cut_point_rules,
             terminal_rules=self.terminal_rules,
             module_name=module_name,
+            node_id=curr_node.id,
         )
         return [APRProofExtendResult(node_id=curr_node.id, extend_result=extend_result)]
 
