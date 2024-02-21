@@ -14,11 +14,12 @@ from ..kast.manip import flatten_label, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
 from ..kcfg import KCFG
 from ..kcfg.exploration import KCFGExploration
+from ..kcfg.explore import extend_kcfg
 from ..konvert import kflatmodule_to_kore
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
 from .implies import ProofSummary, Prover, RefutationProof
-from .proof import CompositeSummary, Proof, ProofStatus
+from .proof import CompositeSummary, Proof, ProofStatus, StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -27,11 +28,32 @@ if TYPE_CHECKING:
 
     from ..kast.outer import KClaim, KDefinition, KFlatModuleList, KRuleLike
     from ..kcfg import KCFGExplore
-    from ..kcfg.kcfg import NodeIdLike
+    from ..kcfg.explore import ExtendResult
+    from ..kcfg.kcfg import CSubst, NodeIdLike
 
     T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+@dataclass
+class APRProofResult(StepResult):
+    node_id: int
+
+
+@dataclass
+class APRProofExtendResult(APRProofResult):
+    extend_result: ExtendResult
+
+
+@dataclass
+class APRProofSubsumeResult(APRProofResult):
+    csubst: CSubst | None
+
+
+@dataclass
+class APRProofBoundedResult(APRProofResult):
+    ...
 
 
 class APRProof(Proof, KCFGExploration):
@@ -104,6 +126,20 @@ class APRProof(Proof, KCFGExploration):
                 subproof = self._subproofs[proof_id]
                 assert type(subproof) is RefutationProof
                 self.node_refutations[node_id] = subproof
+
+    def commit(self, result: StepResult) -> None:
+        if isinstance(result, APRProofExtendResult):
+            extend_kcfg(result.extend_result, self.kcfg, self.kcfg.node(result.node_id))
+        elif isinstance(result, APRProofSubsumeResult):
+            if result.csubst is None:
+                self._terminal.add(result.node_id)
+            else:
+                self.kcfg.create_cover(result.node_id, self.target, csubst=result.csubst)
+                _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((result.node_id, self.target))}')
+        elif isinstance(result, APRProofBoundedResult):
+            self.add_bounded(result.node_id)
+        else:
+            raise ValueError('Incorrect result type')
 
     @property
     def module_name(self) -> str:
@@ -638,93 +674,61 @@ class APRProver(Prover):
             return False
         return True
 
-    def _check_subsume(self, node: KCFG.Node) -> bool:
+    def _check_subsume(self, node: KCFG.Node) -> CSubst | None:
+        target_cterm = self.proof.kcfg.node(self.proof.target).cterm
         _LOGGER.info(
-            f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}'
+            f'Checking subsumption into target state {self.proof.id}: {shorten_hashes((node.id, target_cterm))}'
         )
         if self.fast_check_subsumption and not self._may_subsume(node):
             _LOGGER.info(
                 f'Skipping full subsumption check because of fast may subsume check {self.proof.id}: {node.id}'
             )
-            return False
-        csubst = self.kcfg_explore.cterm_implies(node.cterm, self.proof.kcfg.node(self.proof.target).cterm)
-        if csubst is not None:
-            self.proof.kcfg.create_cover(node.id, self.proof.target, csubst=csubst)
-            _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}')
-            return True
-        else:
-            return False
+            return None
+        return self.kcfg_explore.cterm_implies(node.cterm, target_cterm)
 
-    def advance_pending_node(
-        self,
-        node: KCFG.Node,
-        execute_depth: int | None = None,
-        cut_point_rules: Iterable[str] = (),
-        terminal_rules: Iterable[str] = (),
-    ) -> None:
-        if self.proof.bmc_depth is not None and node.id not in self._checked_for_bounded:
-            _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {node.id}')
-            self._checked_for_bounded.add(node.id)
+    def step_proof(self) -> Iterable[StepResult]:
+        if not self.proof.pending:
+            return []
+        curr_node = self.proof.pending[0]
+
+        if self.proof.bmc_depth is not None and curr_node.id not in self._checked_for_bounded:
+            _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {curr_node.id}')
+            self._checked_for_bounded.add(curr_node.id)
             _prior_loops = [
                 succ.source.id
-                for succ in self.proof.shortest_path_to(node.id)
-                if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
+                for succ in self.proof.shortest_path_to(curr_node.id)
+                if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, curr_node.cterm)
             ]
             prior_loops: list[NodeIdLike] = []
             for _pl in _prior_loops:
                 if not (
-                    self.proof.kcfg.zero_depth_between(_pl, node.id)
+                    self.proof.kcfg.zero_depth_between(_pl, curr_node.id)
                     or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
                 ):
                     prior_loops.append(_pl)
-            _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
+            _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(curr_node.id, prior_loops)}')
             if len(prior_loops) > self.proof.bmc_depth:
-                _LOGGER.warning(f'Bounded node {self.proof.id}: {node.id} at bmc depth {self.proof.bmc_depth}')
-                self.proof.add_bounded(node.id)
-                return
+                _LOGGER.warning(f'Bounded node {self.proof.id}: {curr_node.id} at bmc depth {self.proof.bmc_depth}')
+                return [APRProofBoundedResult(curr_node.id)]
 
-        if self.proof.target not in self.proof._terminal:
-            if self.always_check_subsumption and self._check_subsume(node):
-                return
+        is_terminal = self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm)
+        target_is_terminal = (self.proof.target in self.proof._terminal,)
 
-        module_name = self.circularities_module_name if self.nonzero_depth(node) else self.dependencies_module_name
-        self.kcfg_explore.extend(
-            self.proof,
-            node,
-            self.proof.logs,
-            execute_depth=execute_depth,
-            cut_point_rules=cut_point_rules,
-            terminal_rules=terminal_rules,
-            module_name=module_name,
-        )
+        if target_is_terminal and self.always_check_subsumption:
+            csubst = self._check_subsume(curr_node)
+            if csubst is not None or is_terminal:
+                return [APRProofSubsumeResult(csubst=csubst, node_id=curr_node.id)]
 
-    def step_proof(self) -> None:
-        self._check_all_terminals()
+        module_name = self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
 
-        if not self.proof.pending:
-            return
-        curr_node = self.proof.pending[0]
-
-        self.advance_pending_node(
-            node=curr_node,
+        extend_result = self.kcfg_explore.extend_cterm(
+            curr_node.cterm,
             execute_depth=self.execute_depth,
             cut_point_rules=self.cut_point_rules,
             terminal_rules=self.terminal_rules,
+            module_name=module_name,
         )
-
-        self._check_all_terminals()
-
-        for node in self.proof.terminal:
-            if (
-                not node.id in self._checked_for_subsumption
-                and self.proof.kcfg.is_leaf(node.id)
-                and not self.proof.is_target(node.id)
-            ):
-                self._checked_for_subsumption.add(node.id)
-                self._check_subsume(node)
-
-        if self.proof.failed:
-            self.proof.failure_info = self.failure_info()
+        return [APRProofExtendResult(node_id=curr_node.id, extend_result=extend_result)]
 
     def failure_info(self) -> APRFailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
