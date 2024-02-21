@@ -8,7 +8,7 @@ import pytest
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence
 from pyk.kcfg.kcfg import KCFG
-from pyk.kcfg.store import CachedValues, OptimizedNodeStore
+from pyk.kcfg.store import OptimizedNodeStore, _Cache
 from pyk.prelude.utils import token
 
 from ..utils import a, b, c, f
@@ -32,7 +32,7 @@ EQUAL_TEST_DATA: Final[tuple[tuple[KInner, KInner], ...]] = (
 def test_use_cached(term1: KInner, term2: KInner) -> None:
     # When
 
-    cached_values: CachedValues[KInner] = CachedValues()
+    cached_values: _Cache[KInner] = _Cache()
 
     id1 = cached_values.cache(term1)
     id2 = cached_values.cache(term2)
@@ -54,7 +54,7 @@ NOT_EQUAL_TEST_DATA: Final[tuple[tuple[KInner, KInner], ...]] = (
 def test_not_use_cached(term1: KInner, term2: KInner) -> None:
     # When
 
-    cached_values: CachedValues[KInner] = CachedValues()
+    cached_values: _Cache[KInner] = _Cache()
 
     id1 = cached_values.cache(term1)
     id2 = cached_values.cache(term2)

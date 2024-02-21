@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import threading
 from abc import abstractmethod
-from collections.abc import MutableMapping
-from dataclasses import dataclass, field
+from collections.abc import Hashable, MutableMapping
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar, final
 
 from ..cterm import CTerm
@@ -16,62 +16,13 @@ if TYPE_CHECKING:
     from ..kast.inner import KInner, KLabel
 
 
-A = TypeVar('A')
-
-
-class CachedValues(Generic[A]):
-    value_to_id: dict[A, int] = field(default_factory=dict)
-    values: list[A] = field(default_factory=list)
-
-    def cache(self, value: A) -> int:
-        id = self.value_to_id.get(value)
-        if id is not None:
-            return id
-        id = len(self.values)
-        self.value_to_id[value] = id
-        self.values.append(value)
-        return id
-
-
-@dataclass(frozen=True)
-class OptimizedKInner:
-    @abstractmethod
-    def build(self, klabels: list[KLabel], terms: list[KInner]) -> KInner:
-        ...
-
-
-@final
-@dataclass(eq=True, frozen=True)
-class SimpleOptimizedKInner(OptimizedKInner):
-    term: KInner
-
-    def build(self, klabels: list[KLabel], terms: list[KInner]) -> KInner:
-        return self.term
-
-
-@final
-@dataclass(eq=True, frozen=True)
-class OptimizedKApply(OptimizedKInner):
-    label: int
-    children: tuple[int, ...]
-
-    def build(self, klabels: list[KLabel], terms: list[KInner]) -> KInner:
-        return KApply(klabels[self.label], tuple(terms[child] for child in self.children))
-
-
-@final
-@dataclass(eq=True, frozen=True)
-class OptimizedKSequence(OptimizedKInner):
-    children: tuple[int, ...]
-
-    def build(self, klabels: list[KLabel], terms: list[KInner]) -> KInner:
-        return KSequence(tuple(terms[child] for child in self.children))
+A = TypeVar('A', bound=Hashable)
 
 
 class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
     __nodes: dict[int, KCFG.Node]
-    __optimized_terms: CachedValues[OptimizedKInner]
-    __klabels: CachedValues[KLabel]
+    __optimized_terms: _Cache[_OptInner]
+    __klabels: _Cache[KLabel]
     __terms: list[KInner]
 
     __lock: threading.Lock
@@ -79,8 +30,8 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
     def __init__(self) -> None:
         super().__init__()
         self.__nodes = {}
-        self.__optimized_terms = CachedValues()
-        self.__klabels = CachedValues()
+        self.__optimized_terms = _Cache()
+        self.__klabels = _Cache()
         self.__terms = []
 
         self.__lock = threading.Lock()
@@ -107,12 +58,12 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
     def __optimize(self, term: KInner) -> KInner:
         def optimizer(to_optimize: KInner, children: list[int]) -> tuple[KInner, int]:
             if isinstance(to_optimize, KToken) or isinstance(to_optimize, KVariable):
-                optimized_id = self.__cache(SimpleOptimizedKInner(to_optimize))
+                optimized_id = self.__cache(_OptBasic(to_optimize))
             elif isinstance(to_optimize, KApply):
                 klabel_id = self.__cache_klabel(to_optimize.label)
-                optimized_id = self.__cache(OptimizedKApply(klabel_id, tuple(children)))
+                optimized_id = self.__cache(_OptApply(klabel_id, tuple(children)))
             elif isinstance(to_optimize, KSequence):
-                optimized_id = self.__cache(OptimizedKSequence(tuple(children)))
+                optimized_id = self.__cache(_OptKSequence(tuple(children)))
             else:
                 raise ValueError('Unknown term type: ' + str(type(to_optimize)))
             return (self.__terms[optimized_id], optimized_id)
@@ -121,12 +72,65 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
             optimized, _ = bottom_up_with_summary(optimizer, term)
         return optimized
 
-    def __cache(self, term: OptimizedKInner) -> int:
+    def __cache(self, term: _OptInner) -> int:
         id = self.__optimized_terms.cache(term)
         assert id <= len(self.__terms)
         if id == len(self.__terms):
-            self.__terms.append(term.build(self.__klabels.values, self.__terms))
+            self.__terms.append(term.build(self.__klabels, self.__terms))
         return id
 
     def __cache_klabel(self, label: KLabel) -> int:
         return self.__klabels.cache(label)
+
+
+class _Cache(Generic[A]):
+    def __init__(self) -> None:
+        self.__value_to_id: dict[A, int] = {}
+        self.__values: list[A] = []
+
+    def cache(self, value: A) -> int:
+        id = self.__value_to_id.get(value)
+        if id is not None:
+            return id
+        id = len(self.__values)
+        self.__value_to_id[value] = id
+        self.__values.append(value)
+        return id
+
+    def get(self, idx: int) -> A:
+        return self.__values[idx]
+
+
+@dataclass(frozen=True)
+class _OptInner:
+    @abstractmethod
+    def build(self, klabels: _Cache[KLabel], terms: list[KInner]) -> KInner:
+        ...
+
+
+@final
+@dataclass(eq=True, frozen=True)
+class _OptBasic(_OptInner):
+    term: KInner
+
+    def build(self, klabels: _Cache[KLabel], terms: list[KInner]) -> KInner:
+        return self.term
+
+
+@final
+@dataclass(eq=True, frozen=True)
+class _OptApply(_OptInner):
+    label: int
+    children: tuple[int, ...]
+
+    def build(self, klabels: _Cache[KLabel], terms: list[KInner]) -> KInner:
+        return KApply(klabels.get(self.label), tuple(terms[child] for child in self.children))
+
+
+@final
+@dataclass(eq=True, frozen=True)
+class _OptKSequence(_OptInner):
+    children: tuple[int, ...]
+
+    def build(self, klabels: _Cache[KLabel], terms: list[KInner]) -> KInner:
+        return KSequence(tuple(terms[child] for child in self.children))
