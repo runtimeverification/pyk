@@ -20,85 +20,85 @@ A = TypeVar('A', bound=Hashable)
 
 
 class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
-    __nodes: dict[int, KCFG.Node]
-    __optimized_terms: _Cache[_OptInner]
-    __klabels: _Cache[KLabel]
-    __terms: list[KInner]
+    _nodes: dict[int, KCFG.Node]
+    _optimized_terms: _Cache[_OptInner]
+    _klabels: _Cache[KLabel]
+    _terms: list[KInner]
 
-    __lock: threading.Lock
+    _lock: threading.Lock
 
     def __init__(self) -> None:
         super().__init__()
-        self.__nodes = {}
-        self.__optimized_terms = _Cache()
-        self.__klabels = _Cache()
-        self.__terms = []
+        self._nodes = {}
+        self._optimized_terms = _Cache()
+        self._klabels = _Cache()
+        self._terms = []
 
-        self.__lock = threading.Lock()
+        self._lock = threading.Lock()
 
     def __getitem__(self, key: int) -> KCFG.Node:
-        return self.__nodes[key]
+        return self._nodes[key]
 
     def __setitem__(self, key: int, node: KCFG.Node) -> None:
         old_cterm = node.cterm
-        new_config = self.__optimize(old_cterm.config)
-        new_constraints = tuple(self.__optimize(c) for c in old_cterm.constraints)
+        new_config = self._optimize(old_cterm.config)
+        new_constraints = tuple(self._optimize(c) for c in old_cterm.constraints)
         new_node = KCFG.Node(node.id, CTerm(new_config, new_constraints))
-        self.__nodes[key] = new_node
+        self._nodes[key] = new_node
 
     def __delitem__(self, key: int) -> None:
-        del self.__nodes[key]
+        del self._nodes[key]
 
     def __iter__(self) -> Iterator[int]:
-        return self.__nodes.__iter__()
+        return self._nodes.__iter__()
 
     def __len__(self) -> int:
-        return len(self.__nodes)
+        return len(self._nodes)
 
-    def __optimize(self, term: KInner) -> KInner:
+    def _optimize(self, term: KInner) -> KInner:
         def optimizer(to_optimize: KInner, children: list[int]) -> tuple[KInner, int]:
             if isinstance(to_optimize, KToken) or isinstance(to_optimize, KVariable):
-                optimized_id = self.__cache(_OptBasic(to_optimize))
+                optimized_id = self._cache(_OptBasic(to_optimize))
             elif isinstance(to_optimize, KApply):
-                klabel_id = self.__cache_klabel(to_optimize.label)
-                optimized_id = self.__cache(_OptApply(klabel_id, tuple(children)))
+                klabel_id = self._cache_klabel(to_optimize.label)
+                optimized_id = self._cache(_OptApply(klabel_id, tuple(children)))
             elif isinstance(to_optimize, KSequence):
-                optimized_id = self.__cache(_OptKSequence(tuple(children)))
+                optimized_id = self._cache(_OptKSequence(tuple(children)))
             else:
                 raise ValueError('Unknown term type: ' + str(type(to_optimize)))
-            return (self.__terms[optimized_id], optimized_id)
+            return (self._terms[optimized_id], optimized_id)
 
-        with self.__lock:
+        with self._lock:
             optimized, _ = bottom_up_with_summary(optimizer, term)
         return optimized
 
-    def __cache(self, term: _OptInner) -> int:
-        id = self.__optimized_terms.cache(term)
-        assert id <= len(self.__terms)
-        if id == len(self.__terms):
-            self.__terms.append(term.build(self.__klabels, self.__terms))
+    def _cache(self, term: _OptInner) -> int:
+        id = self._optimized_terms.cache(term)
+        assert id <= len(self._terms)
+        if id == len(self._terms):
+            self._terms.append(term.build(self._klabels, self._terms))
         return id
 
-    def __cache_klabel(self, label: KLabel) -> int:
-        return self.__klabels.cache(label)
+    def _cache_klabel(self, label: KLabel) -> int:
+        return self._klabels.cache(label)
 
 
 class _Cache(Generic[A]):
     def __init__(self) -> None:
-        self.__value_to_id: dict[A, int] = {}
-        self.__values: list[A] = []
+        self._value_to_id: dict[A, int] = {}
+        self._values: list[A] = []
 
     def cache(self, value: A) -> int:
-        id = self.__value_to_id.get(value)
+        id = self._value_to_id.get(value)
         if id is not None:
             return id
-        id = len(self.__values)
-        self.__value_to_id[value] = id
-        self.__values.append(value)
+        id = len(self._values)
+        self._value_to_id[value] = id
+        self._values.append(value)
         return id
 
     def get(self, idx: int) -> A:
-        return self.__values[idx]
+        return self._values[idx]
 
 
 @dataclass(frozen=True)
