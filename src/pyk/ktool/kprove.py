@@ -190,7 +190,7 @@ class KProve(KPrint):
         self.prover = [command]
         self.prover_args = []
 
-    def prove(
+    def prove_legacy(
         self,
         spec_file: Path,
         spec_module_name: str | None = None,
@@ -276,7 +276,7 @@ class KProve(KPrint):
         depth: int | None = None,
     ) -> list[CTerm]:
         with self._tmp_claim_definition(claim, claim_id, lemmas=lemmas) as (claim_path, claim_module_name):
-            return self.prove(
+            return self.prove_legacy(
                 claim_path,
                 spec_module_name=claim_module_name,
                 args=args,
@@ -329,7 +329,7 @@ class KProve(KPrint):
         md_selector: str | None = None,
     ) -> KFlatModuleList:
         with self._temp_file() as ntf:
-            self.prove(
+            self.prove_legacy(
                 spec_file,
                 spec_module_name=spec_module_name,
                 include_dirs=include_dirs,
