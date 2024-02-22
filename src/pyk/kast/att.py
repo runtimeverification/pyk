@@ -98,6 +98,18 @@ class AnyType(AttType[Any]):
         return value
 
 
+class StrType(AttType[str]):
+    def from_dict(self, obj: Any) -> str:
+        assert isinstance(obj, str)
+        return obj
+
+    def to_dict(self, value: str) -> Any:
+        return value
+
+    def pretty(self, value: str) -> str:
+        return f'"{value}"'
+
+
 class LocationType(AttType[tuple[int, int, int, int]]):
     def from_dict(self, obj: Any) -> tuple[int, int, int, int]:
         assert isinstance(obj, list)
