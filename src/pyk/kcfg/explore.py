@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from ..kcfg.exploration import KCFGExploration
     from ..kore.rpc import KoreClient, LogEntry
     from ..ktool.kprint import KPrint
-    from .kcfg import ExtendResult, NodeIdLike
+    from .kcfg import KCFGExtendResult, NodeIdLike
     from .semantics import KCFGSemantics
 
 
@@ -375,7 +375,7 @@ class KCFGExplore:
         terminal_rules: Iterable[str] = (),
         module_name: str | None = None,
         node_id: int,
-    ) -> ExtendResult:
+    ) -> KCFGExtendResult:
         def log(message: str, *, warning: bool = False) -> None:
             _LOGGER.log(logging.WARNING if warning else logging.INFO, f'Extend result for {self.id}: {message}')
 
