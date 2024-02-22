@@ -325,7 +325,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def extend(
         self,
-        extend_result: ExtendResult,
+        extend_result: KCFGExtendResult,
         node: KCFG.Node,
         logs: dict[int, tuple[LogEntry, ...]],
     ) -> None:
@@ -1069,31 +1069,31 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return cfg
 
 
-class ExtendResult(ABC):
+class KCFGExtendResult(ABC):
     ...
 
 
 @final
 @dataclass(frozen=True)
-class Vacuous(ExtendResult):
+class Vacuous(KCFGExtendResult):
     ...
 
 
 @final
 @dataclass(frozen=True)
-class Stuck(ExtendResult):
+class Stuck(KCFGExtendResult):
     ...
 
 
 @final
 @dataclass(frozen=True)
-class Abstract(ExtendResult):
+class Abstract(KCFGExtendResult):
     cterm: CTerm
 
 
 @final
 @dataclass(frozen=True)
-class Step(ExtendResult):
+class Step(KCFGExtendResult):
     cterm: CTerm
     depth: int
     logs: tuple[LogEntry, ...]
@@ -1103,7 +1103,7 @@ class Step(ExtendResult):
 
 @final
 @dataclass(frozen=True)
-class Branch(ExtendResult):
+class Branch(KCFGExtendResult):
     constraints: tuple[KInner, ...]
     heuristic: bool
 
@@ -1114,7 +1114,7 @@ class Branch(ExtendResult):
 
 @final
 @dataclass(frozen=True)
-class NDBranch(ExtendResult):
+class NDBranch(KCFGExtendResult):
     cterms: tuple[CTerm, ...]
     logs: tuple[LogEntry, ...]
     rule_labels: tuple[str, ...]

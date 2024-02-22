@@ -16,7 +16,6 @@ from ..kast.manip import (
     ml_pred_to_bool,
     push_down_rewrites,
 )
-from ..kcfg.kcfg import Abstract, Branch, NDBranch, Step, Stuck, Vacuous
 from ..kore.rpc import AbortedResult, RewriteSuccess, SatResult, StopReason, UnknownResult, UnsatResult
 from ..prelude import k
 from ..prelude.k import GENERATED_TOP_CELL
@@ -24,7 +23,7 @@ from ..prelude.kbool import notBool
 from ..prelude.kint import leInt, ltInt
 from ..prelude.ml import is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
-from .kcfg import KCFG
+from .kcfg import KCFG, Abstract, Branch, NDBranch, Step, Stuck, Vacuous
 from .semantics import DefaultSemantics
 
 if TYPE_CHECKING:
@@ -33,10 +32,9 @@ if TYPE_CHECKING:
 
     from ..kast import KInner
     from ..kcfg.exploration import KCFGExploration
-    from ..kcfg.kcfg import ExtendResult
     from ..kore.rpc import KoreClient, LogEntry
     from ..ktool.kprint import KPrint
-    from .kcfg import NodeIdLike
+    from .kcfg import KCFGExtendResult, NodeIdLike
     from .semantics import KCFGSemantics
 
 
@@ -377,7 +375,7 @@ class KCFGExplore:
         cut_point_rules: Iterable[str] = (),
         terminal_rules: Iterable[str] = (),
         module_name: str | None = None,
-    ) -> ExtendResult:
+    ) -> KCFGExtendResult:
         def log(message: str, *, warning: bool = False) -> None:
             _LOGGER.log(logging.WARNING if warning else logging.INFO, f'Extend result for {self.id}: {message}')
 

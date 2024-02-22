@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
     from ..kast.outer import KClaim, KDefinition, KFlatModuleList, KRuleLike
     from ..kcfg import KCFGExplore
-    from ..kcfg.explore import ExtendResult
+    from ..kcfg.explore import KCFGExtendResult
     from ..kcfg.kcfg import CSubst, NodeIdLike
 
     T = TypeVar('T', bound='Proof')
@@ -42,7 +42,7 @@ class APRProofResult(StepResult):
 
 @dataclass
 class APRProofExtendResult(APRProofResult):
-    extend_result: ExtendResult
+    extend_result: KCFGExtendResult
 
 
 @dataclass
@@ -721,6 +721,7 @@ class APRProver(Prover):
 
         module_name = self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
 
+        self.kcfg_explore.check_extendable(self.proof, curr_node)
         extend_result = self.kcfg_explore.extend_cterm(
             curr_node.cterm,
             execute_depth=self.execute_depth,
