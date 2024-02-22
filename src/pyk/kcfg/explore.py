@@ -469,4 +469,4 @@ class KCFGExplore:
 
         # NDBranch on successor nodes
         log(f'{len(next_cterms)} non-deterministic branches: {node_id}')
-        return NDBranch(next_cterms, next_node_logs)
+        return NDBranch(next_cterms, next_node_logs, extract_rule_labels(next_node_logs))

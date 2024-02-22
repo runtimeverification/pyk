@@ -1116,9 +1116,10 @@ class Branch(ExtendResult):
 @dataclass(frozen=True)
 class NDBranch(ExtendResult):
     cterms: tuple[CTerm, ...]
-    logs: tuple[LogEntry, ...] = field(default=())
-    rule_labels: list[str] = field(default=[])
+    logs: tuple[LogEntry, ...]
+    rule_labels: tuple[str, ...]
 
-    def __init__(self, cterms: Iterable[CTerm], logs: Iterable[LogEntry,]):
+    def __init__(self, cterms: Iterable[CTerm], logs: Iterable[LogEntry,], rule_labels: Iterable[str]):
         object.__setattr__(self, 'cterms', tuple(cterms))
         object.__setattr__(self, 'logs', tuple(logs))
+        object.__setattr__(self, 'rule_labels', tuple(rule_labels))
