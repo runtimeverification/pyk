@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, NamedTuple, final
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
@@ -19,13 +19,11 @@ from ..kast.manip import (
     sort_ac_collections,
     split_config_from,
 )
-from ..kast.outer import KRule
-from ..konvert import krule_to_kore
-from ..kore.rpc import SatResult, StopReason, UnknownResult, UnsatResult
-from ..kore.syntax import Import, Module
+from ..kore.rpc import AbortedResult, RewriteSuccess, SatResult, StopReason, UnknownResult, UnsatResult
 from ..prelude import k
 from ..prelude.k import DOTS, GENERATED_TOP_CELL
 from ..prelude.kbool import notBool
+from ..prelude.kint import leInt, ltInt
 from ..prelude.ml import is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG
@@ -36,10 +34,8 @@ if TYPE_CHECKING:
     from typing import Final
 
     from ..kast import KInner
-    from ..kast.outer import KClaim
     from ..kcfg.exploration import KCFGExploration
     from ..kore.rpc import KoreClient, LogEntry
-    from ..kore.syntax import Sentence
     from ..ktool.kprint import KPrint
     from .kcfg import NodeIdLike
     from .semantics import KCFGSemantics
@@ -61,6 +57,14 @@ def _no_cell_rewrite_to_dots(term: KInner) -> KInner:
     subst = Subst({cell_name: no_cell_rewrite_to_dots(cell_contents) for cell_name, cell_contents in _subst.items()})
 
     return subst(config)
+
+
+class CTermExecute(NamedTuple):
+    state: CTerm
+    next_states: tuple[CTerm, ...]
+    depth: int
+    vacuous: bool
+    logs: tuple[LogEntry, ...]
 
 
 class KCFGExplore:
@@ -93,34 +97,39 @@ class KCFGExplore:
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
         module_name: str | None = None,
-    ) -> tuple[bool, int, CTerm, list[CTerm], tuple[LogEntry, ...]]:
+    ) -> CTermExecute:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kprint.kast_to_kore(cterm.kast, GENERATED_TOP_CELL)
-        er = self._kore_client.execute(
+        response = self._kore_client.execute(
             kore,
             max_depth=depth,
             cut_point_rules=cut_point_rules,
             terminal_rules=terminal_rules,
             module_name=module_name,
-            log_successful_rewrites=self._trace_rewrites if self._trace_rewrites else None,
-            log_failed_rewrites=self._trace_rewrites if self._trace_rewrites else None,
-            log_successful_simplifications=self._trace_rewrites if self._trace_rewrites else None,
-            log_failed_simplifications=self._trace_rewrites if self._trace_rewrites else None,
+            log_successful_rewrites=True,
+            log_failed_rewrites=self._trace_rewrites,
+            log_successful_simplifications=self._trace_rewrites,
+            log_failed_simplifications=self._trace_rewrites,
         )
-        _is_vacuous = er.reason is StopReason.VACUOUS
-        depth = er.depth
-        next_state = CTerm.from_kast(self.kprint.kore_to_kast(er.state.kore))
-        _next_states = er.next_states if er.next_states is not None else []
-        next_states = [CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in _next_states]
-        next_states = [cterm for cterm in next_states if not cterm.is_bottom]
-        if len(next_states) == 1 and len(next_states) < len(_next_states):
-            return _is_vacuous, depth + 1, next_states[0], [], er.logs
-        elif len(next_states) == 1:
-            if er.reason == StopReason.CUT_POINT_RULE:
-                return _is_vacuous, depth, next_state, next_states, er.logs
-            else:
-                next_states = []
-        return _is_vacuous, depth, next_state, next_states, er.logs
+
+        if isinstance(response, AbortedResult):
+            unknown_predicate = response.unknown_predicate.text if response.unknown_predicate else None
+            raise ValueError(f'Backend responded with aborted state. Unknown predicate: {unknown_predicate}')
+
+        state = CTerm.from_kast(self.kprint.kore_to_kast(response.state.kore))
+        resp_next_states = response.next_states or ()
+        next_states = tuple(CTerm.from_kast(self.kprint.kore_to_kast(ns.kore)) for ns in resp_next_states)
+
+        assert all(not cterm.is_bottom for cterm in next_states)
+        assert len(next_states) != 1 or response.reason is StopReason.CUT_POINT_RULE
+
+        return CTermExecute(
+            state=state,
+            next_states=next_states,
+            depth=response.depth,
+            vacuous=response.reason is StopReason.VACUOUS,
+            logs=response.logs,
+        )
 
     def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
@@ -163,15 +172,19 @@ class KCFGExplore:
         self,
         antecedent: CTerm,
         consequent: CTerm,
+        bind_universally: bool = False,
     ) -> CSubst | None:
         _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
         _consequent = consequent.kast
         fv_antecedent = free_vars(antecedent.kast)
         unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
         if len(unbound_consequent) > 0:
-            _LOGGER.debug(f'Binding variables in consequent: {unbound_consequent}')
+            bind_text, bind_label = ('existentially', '#Exists')
+            if bind_universally:
+                bind_text, bind_label = ('universally', '#Forall')
+            _LOGGER.debug(f'Binding variables in consequent {bind_text}: {unbound_consequent}')
             for uc in unbound_consequent:
-                _consequent = KApply(KLabel('#Exists', [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
+                _consequent = KApply(KLabel(bind_label, [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kprint.kast_to_kore(antecedent.kast, GENERATED_TOP_CELL)
         consequent_kore = self.kprint.kast_to_kore(_consequent, GENERATED_TOP_CELL)
         result = self._kore_client.implies(antecedent_kore, consequent_kore)
@@ -302,16 +315,14 @@ class KCFGExplore:
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        _, actual_depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
-            node.cterm, depth=depth, module_name=module_name
-        )
-        if actual_depth != depth:
-            raise ValueError(f'Unable to take {depth} steps from node, got {actual_depth} steps {self.id}: {node.id}')
-        if len(next_cterms) > 0:
+        exec_res = self.cterm_execute(node.cterm, depth=depth, module_name=module_name)
+        if exec_res.depth != depth:
+            raise ValueError(f'Unable to take {depth} steps from node, got {exec_res.depth} steps {self.id}: {node.id}')
+        if len(exec_res.next_states) > 0:
             raise ValueError(f'Found branch within {depth} steps {self.id}: {node.id}')
-        new_node = cfg.create_node(cterm)
+        new_node = cfg.create_node(exec_res.state)
         _LOGGER.info(f'Found new node at depth {depth} {self.id}: {shorten_hashes((node.id, new_node.id))}')
-        logs[new_node.id] = next_node_logs
+        logs[new_node.id] = exec_res.logs
         out_edges = cfg.edges(source_id=node.id)
         if len(out_edges) == 0:
             cfg.create_edge(node.id, new_node.id, depth=depth)
@@ -405,7 +416,7 @@ class KCFGExplore:
         if len(branches) > 1:
             return Branch(branches, heuristic=True)
 
-        _is_vacuous, depth, cterm, next_cterms, next_node_logs = self.cterm_execute(
+        cterm, next_cterms, depth, vacuous, next_node_logs = self.cterm_execute(
             _cterm,
             depth=execute_depth,
             cut_point_rules=cut_point_rules,
@@ -419,7 +430,7 @@ class KCFGExplore:
 
         # Stuck or vacuous
         if not next_cterms:
-            if _is_vacuous:
+            if vacuous:
                 return Vacuous()
             return Stuck()
 
@@ -438,6 +449,18 @@ class KCFGExplore:
             mlAnd([mlEqualsFalse(KVariable('B')), mlEqualsTrue(KVariable('B'))]),
             mlAnd([mlNot(KVariable('B')), KVariable('B')]),
             mlAnd([KVariable('B'), mlNot(KVariable('B'))]),
+            mlAnd(
+                [
+                    mlEqualsTrue(ltInt(KVariable('I1'), KVariable('I2'))),
+                    mlEqualsTrue(leInt(KVariable('I2'), KVariable('I1'))),
+                ]
+            ),
+            mlAnd(
+                [
+                    mlEqualsTrue(leInt(KVariable('I1'), KVariable('I2'))),
+                    mlEqualsTrue(ltInt(KVariable('I2'), KVariable('I1'))),
+                ]
+            ),
         ]
 
         # Split on branch patterns
@@ -457,6 +480,18 @@ class KCFGExplore:
         def log(message: str, *, warning: bool = False) -> None:
             _LOGGER.log(logging.WARNING if warning else logging.INFO, f'Extend result for {self.id}: {message}')
 
+        def extract_rule_labels(_logs: tuple[LogEntry, ...]) -> list[str]:
+            _rule_lines = []
+            for node_log in _logs:
+                if type(node_log.result) is RewriteSuccess:
+                    if node_log.result.rule_id in self.kprint.definition.sentence_by_unique_id:
+                        sent = self.kprint.definition.sentence_by_unique_id[node_log.result.rule_id]
+                        _rule_lines.append(f'{sent.label}:{sent.source}')
+                    else:
+                        _LOGGER.warning(f'Unknown unique id attached to rule log entry: {node_log}')
+                        _rule_lines.append('UNKNOWN')
+            return _rule_lines
+
         match extend_result:
             case Vacuous():
                 kcfg.add_vacuous(node.id)
@@ -474,7 +509,7 @@ class KCFGExplore:
             case Step(cterm, depth, next_node_logs, cut):
                 next_node = kcfg.create_node(cterm)
                 logs[next_node.id] = next_node_logs
-                kcfg.create_edge(node.id, next_node.id, depth)
+                kcfg.create_edge(node.id, next_node.id, depth, rules=extract_rule_labels(next_node_logs))
                 cut_str = 'cut-rule ' if cut else ''
                 log(f'{cut_str}basic block at depth {depth}: {node.id} -> {next_node.id}')
 
@@ -488,27 +523,11 @@ class KCFGExplore:
                 next_ids = [kcfg.create_node(cterm).id for cterm in cterms]
                 for i in next_ids:
                     logs[i] = next_node_logs
-                kcfg.create_ndbranch(node.id, next_ids)
+                kcfg.create_ndbranch(node.id, next_ids, rules=extract_rule_labels(next_node_logs))
                 log(f'{len(next_ids)} non-deterministic branches: {node.id} -> {next_ids}')
 
             case _:
                 raise AssertionError()
-
-    def add_dependencies_module(
-        self, old_module_name: str, new_module_name: str, dependencies: Iterable[KClaim], priority: int = 1
-    ) -> None:
-        kast_rules = [
-            KRule(body=c.body, requires=c.requires, ensures=c.ensures, att=c.att.update({'priority': priority}))
-            for c in dependencies
-        ]
-        kore_axioms: list[Sentence] = [
-            krule_to_kore(self.kprint.definition, self.kprint.kompiled_kore, r) for r in kast_rules
-        ]
-        sentences: list[Sentence] = [Import(module_name=old_module_name, attrs=())]
-        sentences = sentences + kore_axioms
-        m = Module(name=new_module_name, sentences=sentences)
-        _LOGGER.info(f'Adding dependencies module {self.id}: {new_module_name}')
-        self._kore_client.add_module(m)
 
 
 class ExtendResult(ABC):

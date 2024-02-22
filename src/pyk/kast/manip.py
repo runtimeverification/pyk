@@ -8,6 +8,7 @@ from ..prelude.k import DOTS, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
 from ..prelude.ml import mlAnd, mlEqualsTrue, mlOr
 from ..utils import find_common_items, hash_str
+from .att import EMPTY_ATT, WithKAtt
 from .inner import (
     KApply,
     KLabel,
@@ -21,13 +22,13 @@ from .inner import (
     top_down,
     var_occurrences,
 )
-from .kast import EMPTY_ATT, KAtt, WithKAtt
 from .outer import KDefinition, KFlatModule, KRuleLike
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable
-    from typing import Any, Final, TypeVar
+    from typing import Final, TypeVar
 
+    from .att import KAtt
     from .inner import KInner, KSort
 
     KI = TypeVar('KI', bound=KInner)
@@ -552,13 +553,10 @@ def remove_attrs(term: KInner) -> KInner:
 
 
 def remove_source_attributes(term: KInner) -> KInner:
-    def _is_not_source_att(att: tuple[str, Any]) -> bool:
-        return att[0] not in ('org.kframework.attributes.Source', 'org.kframework.attributes.Location')
-
     def _remove_source_attr(term: KInner) -> KInner:
         if not isinstance(term, WithKAtt):
             return term
-        return term.let_att(KAtt(dict(filter(_is_not_source_att, term.att.atts.items()))))
+        return term.let_att(term.att.drop_source())
 
     return top_down(_remove_source_attr, term)
 

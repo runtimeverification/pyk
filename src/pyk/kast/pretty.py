@@ -6,8 +6,8 @@ from functools import cached_property
 from typing import TYPE_CHECKING
 
 from ..prelude.kbool import TRUE
-from .inner import KApply, KAs, KInner, KRewrite, KSequence, KSort, KToken, KVariable
-from .kast import KAtt
+from .att import Atts, KAtt
+from .inner import KApply, KAs, KInner, KLabel, KRewrite, KSequence, KSort, KToken, KVariable
 from .manip import flatten_label, sort_ac_collections, undo_aliases
 from .outer import (
     KBubble,
@@ -84,6 +84,10 @@ class PrettyPrinter:
         _LOGGER.debug(f'Unparsing: {kast}')
         if type(kast) is KAtt:
             return self._print_katt(kast)
+        if type(kast) is KSort:
+            return self._print_ksort(kast)
+        if type(kast) is KLabel:
+            return self._print_klabel(kast)
         elif isinstance(kast, KOuter):
             return self._print_kouter(kast)
         elif isinstance(kast, KInner):
@@ -137,8 +141,6 @@ class PrettyPrinter:
         match kast:
             case KVariable():
                 return self._print_kvariable(kast)
-            case KSort():
-                return self._print_ksort(kast)
             case KToken():
                 return self._print_ktoken(kast)
             case KApply():
@@ -152,14 +154,17 @@ class PrettyPrinter:
             case _:
                 raise AssertionError(f'Error unparsing: {kast}')
 
+    def _print_ksort(self, ksort: KSort) -> str:
+        return ksort.name
+
+    def _print_klabel(self, klabel: KLabel) -> str:
+        return klabel.name
+
     def _print_kvariable(self, kvariable: KVariable) -> str:
         sort = kvariable.sort
         if not sort:
             return kvariable.name
-        return kvariable.name + ':' + self._print_kinner(sort)
-
-    def _print_ksort(self, ksort: KSort) -> str:
-        return ksort.name
+        return kvariable.name + ':' + sort.name
 
     def _print_ktoken(self, ktoken: KToken) -> str:
         return ktoken.token
@@ -208,8 +213,8 @@ class PrettyPrinter:
         return self.print(knonterminal.sort)
 
     def _print_kproduction(self, kproduction: KProduction) -> str:
-        if 'klabel' not in kproduction.att and kproduction.klabel:
-            kproduction = kproduction.update_atts({'klabel': kproduction.klabel.name})
+        if Atts.KLABEL not in kproduction.att and kproduction.klabel:
+            kproduction = kproduction.update_atts([Atts.KLABEL(kproduction.klabel.name)])
         syntax_str = 'syntax ' + self.print(kproduction.sort)
         if kproduction.items:
             syntax_str += ' ::= ' + ' '.join([self._print_kouter(pi) for pi in kproduction.items])
@@ -255,8 +260,8 @@ class PrettyPrinter:
     def _print_krule(self, kterm: KRule) -> str:
         body = '\n     '.join(self.print(kterm.body).split('\n'))
         rule_str = 'rule '
-        if 'label' in kterm.att:
-            rule_str = rule_str + '[' + kterm.att['label'] + ']:'
+        if Atts.LABEL in kterm.att:
+            rule_str = rule_str + '[' + kterm.att[Atts.LABEL] + ']:'
         rule_str = rule_str + ' ' + body
         atts_str = self.print(kterm.att)
         if kterm.requires != TRUE:
@@ -270,8 +275,8 @@ class PrettyPrinter:
     def _print_kclaim(self, kterm: KClaim) -> str:
         body = '\n     '.join(self.print(kterm.body).split('\n'))
         rule_str = 'claim '
-        if 'label' in kterm.att:
-            rule_str = rule_str + '[' + kterm.att['label'] + ']:'
+        if Atts.LABEL in kterm.att:
+            rule_str = rule_str + '[' + kterm.att[Atts.LABEL] + ']:'
         rule_str = rule_str + ' ' + body
         atts_str = self.print(kterm.att)
         if kterm.requires != TRUE:
@@ -363,8 +368,8 @@ def build_symbol_table(
             unparser = unparser_for_production(prod)
 
             symbol_table[label] = unparser
-            if 'symbol' in prod.att and 'klabel' in prod.att:
-                symbol_table[prod.att['klabel']] = unparser
+            if Atts.SYMBOL in prod.att and Atts.KLABEL in prod.att:
+                symbol_table[prod.att[Atts.KLABEL]] = unparser
 
     if opinionated:
         symbol_table['#And'] = lambda c1, c2: c1 + '\n#And ' + c2

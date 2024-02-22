@@ -7,7 +7,7 @@ default: check test-unit
 all: check cov
 
 .PHONY: clean
-clean:
+clean: docs-clean
 	rm -rf dist .coverage cov-* .mypy_cache .pytest_cache
 	find -type d -name __pycache__ -prune -exec rm -rf {} \;
 
@@ -98,3 +98,21 @@ SRC_FILES := $(shell find src -type f -name '*.py')
 
 pyupgrade: poetry-install
 	$(POETRY_RUN) pyupgrade --py310-plus $(SRC_FILES)
+
+
+# Documentation
+
+DOCS_API_DIR   := docs/api
+DOCS_BUILD_DIR := docs/build
+
+.PHONY: docs-clean
+docs-clean:
+	rm -rf $(DOCS_API_DIR) $(DOCS_BUILD_DIR)
+
+docs-apidoc: poetry-install
+	$(POETRY_RUN) sphinx-apidoc src/pyk --output $(DOCS_API_DIR) --force --separate --module-first
+
+docs-build-%: docs-apidoc
+	$(POETRY_RUN) sphinx-build -b $* docs $(DOCS_BUILD_DIR)/$*
+
+docs: docs-build-html

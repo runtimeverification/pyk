@@ -29,7 +29,7 @@ class ProofStatus(Enum):
 
 
 class Proof(ABC):
-    _PROOF_TYPES: Final = {'APRProof', 'APRBMCProof', 'EqualityProof', 'RefutationProof'}
+    _PROOF_TYPES: Final = {'APRProof', 'EqualityProof', 'RefutationProof'}
 
     id: str
     proof_dir: Path | None
@@ -175,6 +175,11 @@ class Proof(ABC):
         ...
 
     @property
+    @abstractmethod
+    def can_progress(self) -> bool:
+        ...
+
+    @property
     def failed(self) -> bool:
         return self.status == ProofStatus.FAILED
 
@@ -198,8 +203,8 @@ class Proof(ABC):
     @classmethod
     def read_proof(cls: type[Proof], id: str, proof_dir: Path) -> Proof:
         # these local imports allow us to call .to_dict() based on the proof type we read from JSON
-        from .equality import EqualityProof, RefutationProof  # noqa
-        from .reachability import APRBMCProof, APRProof  # noqa
+        from .implies import EqualityProof, RefutationProof  # noqa
+        from .reachability import APRProof  # noqa
 
         proof_path = proof_dir / f'{hash_str(id)}.json'
         if Proof.proof_exists(id, proof_dir):
@@ -215,8 +220,8 @@ class Proof(ABC):
     @staticmethod
     def read_proof_data(proof_dir: Path, id: str) -> Proof:
         # these local imports allow us to call .to_dict() based on the proof type we read from JSON
-        from .equality import EqualityProof, RefutationProof  # noqa
-        from .reachability import APRBMCProof, APRProof  # noqa
+        from .implies import EqualityProof, RefutationProof  # noqa
+        from .reachability import APRProof  # noqa
 
         proof_path = proof_dir / id / 'proof.json'
         if Proof.proof_data_exists(id, proof_dir):
@@ -283,6 +288,23 @@ class CompositeSummary(ProofSummary):
 
 class Prover:
     kcfg_explore: KCFGExplore
+    proof: Proof
 
     def __init__(self, kcfg_explore: KCFGExplore):
         self.kcfg_explore = kcfg_explore
+
+    @abstractmethod
+    def step_proof(self) -> None:
+        ...
+
+    def advance_proof(self, max_iterations: int | None = None, fail_fast: bool = False) -> None:
+        iterations = 0
+        while self.proof.can_progress:
+            if fail_fast and self.proof.failed:
+                _LOGGER.warning(f'Terminating proof early because fail_fast is set: {self.proof.id}')
+                return
+            if max_iterations is not None and max_iterations <= iterations:
+                return
+            iterations += 1
+            self.step_proof()
+            self.proof.write_proof_data()

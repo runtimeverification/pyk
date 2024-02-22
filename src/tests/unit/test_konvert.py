@@ -6,14 +6,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.konvert import munge, unmunge
-from pyk.kore.kompiled import KompiledKore
-from pyk.kore.syntax import SortApp
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from typing import Final
-
-    from pytest import TempPathFactory
 
 
 def munge_test_data_reader() -> Iterator[tuple[str, str]]:
@@ -50,52 +46,6 @@ def test_munge(label: str, expected: str) -> None:
 def test_unmunge(symbol: str, expected: str) -> None:
     # When
     actual = unmunge(symbol)
-
-    # Then
-    assert actual == expected
-
-
-class KoreFactory:
-    _tmp_path_factory: TempPathFactory
-
-    def __init__(self, tmp_path_factory: TempPathFactory):
-        self._tmp_path_factory = tmp_path_factory
-
-    def __call__(self, definition_text: str) -> KompiledKore:
-        path = self._tmp_path_factory.mktemp('kompiled-defn')
-        (path / 'definition.kore').write_text(definition_text)
-        (path / 'timestamp').touch()
-        return KompiledKore(path)
-
-
-@pytest.fixture(scope='session')
-def kore_factory(tmp_path_factory: TempPathFactory) -> KoreFactory:
-    return KoreFactory(tmp_path_factory)
-
-
-def test_subsort_table(kore_factory: KoreFactory) -> None:
-    # When
-    definition_text = r"""
-        []
-        module MODULE-1
-            axiom{R} \top{R}() [subsort{A{}, B{}}()]
-            axiom{R} \top{R}() [subsort{B{}, C{}}()]
-        endmodule []
-        module MODULE-2
-            axiom{R} \top{R}() [subsort{B{}, D{}}()]
-        endmodule []
-    """
-    kompiled_kore = kore_factory(definition_text)
-
-    a, b, c, d = (SortApp(name) for name in ['A', 'B', 'C', 'D'])
-    expected = {
-        b: {a},
-        c: {a, b},
-        d: {a, b},
-    }
-
-    # When
-    actual = kompiled_kore._subsort_table
 
     # Then
     assert actual == expected

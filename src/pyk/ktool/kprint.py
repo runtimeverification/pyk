@@ -227,7 +227,7 @@ class KPrint:
 
     @cached_property
     def kompiled_kore(self) -> KompiledKore:
-        return KompiledKore(self.definition_dir)
+        return KompiledKore.load(self.definition_dir)
 
     @property
     def definition_hash(self) -> str:
@@ -241,7 +241,7 @@ class KPrint:
             output=KAstOutput.JSON,
             sort=ktoken.sort.name,
         )
-        return kast_term(json.loads(proc_res.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
+        return KInner.from_dict(kast_term(json.loads(proc_res.stdout)))
 
     def kore_to_pretty(self, pattern: Pattern) -> str:
         proc_res = self._expression_kast(
@@ -259,7 +259,9 @@ class KPrint:
             _LOGGER.warning(err)
 
         _LOGGER.warning(f'Falling back to using `kore-print` for Kore -> Kast: {kore.text}')
-        return kast_term(json.loads(kore_print(kore, self.definition_dir, PrintOutput.JSON)), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
+        return KInner.from_dict(
+            kast_term(json.loads(kore_print(kore, definition_dir=self.definition_dir, output=PrintOutput.JSON)))
+        )
 
     def kast_to_kore(self, kast: KInner, sort: KSort | None = None, *, force_kast: bool = False) -> Pattern:
         if not force_kast:
@@ -288,9 +290,13 @@ class KPrint:
             )
         return App('inj', [SortApp('Sort' + isort.name), SortApp('Sort' + osort.name)], [pat])
 
-    def pretty_print(self, kast: KAst, *, unalias: bool = True, sort_collections: bool = False) -> str:
+    def pretty_print(
+        self, kast: KAst, *, in_module: str | None = None, unalias: bool = True, sort_collections: bool = False
+    ) -> str:
+        defn = self.definition.let(main_module_name=in_module)
+
         return PrettyPrinter(
-            self.definition,
+            defn,
             extra_unparsing_modules=self._extra_unparsing_modules,
             patch_symbol_table=self._patch_symbol_table,
             unalias=unalias,

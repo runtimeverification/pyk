@@ -24,11 +24,11 @@ from .utils import K_FILES
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from types import ModuleType
     from typing import Final
 
     from pytest import FixtureRequest
 
+    from pyk.kllvm.runtime import Runtime
     from pyk.kore.syntax import Pattern
     from pyk.testing import Kompiler
 
@@ -78,7 +78,7 @@ def definition_dir(request: FixtureRequest, backend: str) -> Path:
 
 
 @pytest.fixture(scope='module')
-def runtime(llvm_dir: Path) -> ModuleType:
+def runtime(llvm_dir: Path) -> Runtime:
     import pyk.kllvm.load  # noqa: F401
 
     compile_runtime(llvm_dir)
@@ -158,7 +158,7 @@ def test_cli_kore_to_kast(llvm_dir: Path, value: bytes) -> None:
         output='json',
     )
     kast_json = proc_res.stdout
-    kast = kast_term(json.loads(kast_json), KInner)  # type: ignore
+    kast = KInner.from_dict(kast_term(json.loads(kast_json)))
 
     # Then
     assert kast == bytesToken(value)
@@ -179,7 +179,7 @@ def test_cli_rule_to_kast(llvm_dir: Path, value: bytes) -> None:
         output='json',
     )
     kast_json = proc_res.stdout
-    output_kast = kast_term(json.loads(kast_json), KInner)  # type: ignore
+    output_kast = KInner.from_dict(kast_term(json.loads(kast_json)))
 
     # Then
     assert input_kast == output_kast
@@ -200,7 +200,7 @@ def test_krun(backend: str, definition_dir: Path, value: bytes) -> None:
 
 
 @pytest.mark.parametrize('value', TEST_DATA)
-def test_bindings(runtime: ModuleType, value: bytes) -> None:
+def test_bindings(runtime: Runtime, value: bytes) -> None:
     from pyk.kllvm.convert import llvm_to_pattern, pattern_to_llvm
 
     # Given
@@ -208,7 +208,7 @@ def test_bindings(runtime: ModuleType, value: bytes) -> None:
     expected = kore_config(None, value)
 
     # When
-    kore_llvm = runtime.interpret(pattern_to_llvm(kore))
+    kore_llvm = runtime.run(pattern_to_llvm(kore))
     actual = llvm_to_pattern(kore_llvm)
 
     # Then
@@ -222,7 +222,7 @@ def test_kore_rpc(haskell_dir: Path, value: bytes) -> None:
     expected = kore_config(None, value)
 
     # When
-    with KoreServer(haskell_dir, KOMPILE_MAIN_MODULE) as server:
+    with KoreServer({'kompiled_dir': haskell_dir, 'module_name': KOMPILE_MAIN_MODULE}) as server:
         with KoreClient('localhost', server.port) as client:
             result = client.execute(kore)
 

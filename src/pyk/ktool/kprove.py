@@ -13,12 +13,13 @@ from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
 from ..cterm import CTerm, build_claim
-from ..kast import kast_term
+from ..kast import Atts, kast_term
 from ..kast.inner import KInner
 from ..kast.manip import extract_subst, flatten_label, free_vars
 from ..kast.outer import KDefinition, KFlatModule, KFlatModuleList, KImport, KRequire
 from ..prelude.ml import is_top, mlAnd
 from ..utils import gen_file_timestamp, run_process, unique
+from . import TypeInferenceMode
 from .kprint import KPrint
 
 if TYPE_CHECKING:
@@ -61,6 +62,7 @@ def _kprove(
     output: KProveOutput | None = None,
     depth: int | None = None,
     claims: Iterable[str] = (),
+    type_inference_mode: str | TypeInferenceMode | None = None,
     temp_dir: Path | None = None,
     haskell_backend_command: str | None = None,
     dry_run: bool = False,
@@ -78,6 +80,9 @@ def _kprove(
     if depth is not None and depth < 0:
         raise ValueError(f'Argument "depth" must be non-negative, got: {depth}')
 
+    if type_inference_mode is not None:
+        type_inference_mode = TypeInferenceMode(type_inference_mode)
+
     typed_args = _build_arg_list(
         kompiled_dir=kompiled_dir,
         spec_module_name=spec_module_name,
@@ -87,6 +92,7 @@ def _kprove(
         output=output,
         depth=depth,
         claims=claims,
+        type_inference_mode=type_inference_mode,
         temp_dir=temp_dir,
         haskell_backend_command=haskell_backend_command,
         dry_run=dry_run,
@@ -111,6 +117,7 @@ def _build_arg_list(
     output: KProveOutput | None,
     depth: int | None,
     claims: Iterable[str],
+    type_inference_mode: TypeInferenceMode | None,
     temp_dir: Path | None,
     haskell_backend_command: str | None,
     dry_run: bool,
@@ -135,9 +142,11 @@ def _build_arg_list(
     if output:
         args += ['--output', output.value]
 
-    claims = list(claims)
     if claims:
         args += ['--claims', ','.join(claims)]
+
+    if type_inference_mode:
+        args += ['--type-inference-mode', type_inference_mode.value]
 
     if temp_dir:
         args += ['--temp-dir', str(temp_dir)]
@@ -248,7 +257,7 @@ class KProve(KPrint):
             return [CTerm.bottom()]
 
         debug_log = _get_rule_log(log_file)
-        final_state = kast_term(json.loads(proc_result.stdout), KInner)  # type: ignore # https://github.com/python/mypy/issues/4717
+        final_state = KInner.from_dict(kast_term(json.loads(proc_result.stdout)))
         if is_top(final_state) and len(debug_log) == 0 and not allow_zero_step:
             raise ValueError(f'Proof took zero steps, likely the LHS is invalid: {spec_file}')
         return [CTerm.from_kast(disjunct) for disjunct in flatten_label('#Or', final_state)]
@@ -328,7 +337,7 @@ class KProve(KPrint):
                 dry_run=True,
                 args=['--emit-json-spec', ntf.name],
             )
-            return kast_term(json.loads(Path(ntf.name).read_text()), KFlatModuleList)
+            return KFlatModuleList.from_dict(kast_term(json.loads(Path(ntf.name).read_text())))
 
     def get_claims(
         self,
@@ -338,6 +347,7 @@ class KProve(KPrint):
         md_selector: str | None = None,
         claim_labels: Iterable[str] | None = None,
         exclude_claim_labels: Iterable[str] | None = None,
+        include_dependencies: bool = True,
     ) -> list[KClaim]:
         flat_module_list = self.get_claim_modules(
             spec_file=spec_file,
@@ -346,16 +356,48 @@ class KProve(KPrint):
             md_selector=md_selector,
         )
 
-        all_claims = {c.label: c for m in flat_module_list.modules for c in m.claims}
-        unfound_labels = []
-        claim_labels = list(all_claims.keys()) if claim_labels is None else claim_labels
-        exclude_claim_labels = [] if exclude_claim_labels is None else exclude_claim_labels
-        unfound_labels.extend([cl for cl in claim_labels if cl not in all_claims])
-        unfound_labels.extend([cl for cl in exclude_claim_labels if cl not in all_claims])
+        _module_names = [module.name for module in flat_module_list.modules]
+
+        def _get_claim_module(_label: str) -> str | None:
+            if _label.find('.') > 0 and _label.split('.')[0] in _module_names:
+                return _label.split('.')[0]
+            return None
+
+        all_claims = {
+            claim.label: (claim, module.name) for module in flat_module_list.modules for claim in module.claims
+        }
+
+        claim_labels = list(all_claims.keys()) if claim_labels is None else list(claim_labels)
+        exclude_claim_labels = [] if exclude_claim_labels is None else list(exclude_claim_labels)
+
+        final_claims: dict[str, KClaim] = {}
+        unfound_labels: list[str] = []
+        while len(claim_labels) > 0:
+            claim_label = claim_labels.pop(0)
+            if claim_label in final_claims or claim_label in exclude_claim_labels:
+                continue
+            if claim_label not in all_claims:
+                claim_label = f'{flat_module_list.main_module}.{claim_label}'
+            if claim_label not in all_claims:
+                unfound_labels.append(claim_label)
+                continue
+
+            _claim, _module_name = all_claims[claim_label]
+            _updated_dependencies: list[str] = []
+            for _dependency_label in _claim.dependencies:
+                if _get_claim_module(_dependency_label) is None:
+                    _dependency_label = f'{_module_name}.{_dependency_label}'
+                _updated_dependencies.append(_dependency_label)
+            if len(_updated_dependencies) > 0:
+                claim_labels.extend(_updated_dependencies)
+                _claim = _claim.let(att=_claim.att.update([Atts.DEPENDS(','.join(_updated_dependencies))]))
+
+            final_claims[claim_label] = _claim
+
         if len(unfound_labels) > 0:
             raise ValueError(f'Claim labels not found: {unfound_labels}')
 
-        return [all_claims[cl] for cl in all_claims if cl in claim_labels and cl not in exclude_claim_labels]
+        return list(final_claims.values())
 
     @contextmanager
     def _tmp_claim_definition(

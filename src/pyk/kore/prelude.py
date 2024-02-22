@@ -22,6 +22,7 @@ BOOL: Final = SortApp('SortBool')
 INT: Final = SortApp('SortInt')
 BYTES: Final = SortApp('SortBytes')
 STRING: Final = SortApp('SortString')
+ID: Final = SortApp('SortId')
 
 TRUE: Final = DV(BOOL, String('true'))
 FALSE: Final = DV(BOOL, String('false'))
@@ -141,6 +142,7 @@ def le_int(left: Pattern, right: Pattern) -> Pattern:
 SORT_K: Final = SortApp('SortK')
 SORT_K_ITEM: Final = SortApp('SortKItem')
 SORT_K_CONFIG_VAR: Final = SortApp('SortKConfigVar')
+SORT_GENERATED_TOP_CELL: Final = SortApp('SortGeneratedTopCell')
 
 LBL_INIT_GENERATED_TOP_CELL: Final = SymbolId('LblinitGeneratedTopCell')
 LBL_GENERATED_TOP: Final = SymbolId("Lbl'-LT-'generatedTop'-GT-'")
@@ -261,7 +263,7 @@ LBL_JSON_OBJECT: Final = SymbolId('LblJSONObject')
 LBL_JSON_ENTRY: Final = SymbolId('LblJSONEntry')
 
 JSON_NULL: Final = App('LblJSONnull')
-STOP_JSONS: Final = App("Lbl'Stop'List'LBraQuot'JSONs'QuotRBraUnds'JSONs")
+STOP_JSONS: Final = App("Lbl'Stop'List'LBraQuot'JSONs'QuotRBra'")
 
 LBL_STRING2JSON: Final = SymbolId("LblString2JSON'LParUndsRParUnds'JSON'Unds'JSON'Unds'String")
 LBL_JSON2STRING: Final = SymbolId("LblJSON2String'LParUndsRParUnds'JSON'Unds'String'Unds'JSON")

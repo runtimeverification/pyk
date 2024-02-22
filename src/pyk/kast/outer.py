@@ -5,6 +5,7 @@ import logging
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import InitVar  # noqa: TC003
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
@@ -13,6 +14,7 @@ from typing import TYPE_CHECKING, final
 from ..prelude.kbool import TRUE
 from ..prelude.ml import ML_QUANTIFIERS
 from ..utils import filter_none, single, unique
+from .att import EMPTY_ATT, Atts, KAst, KAtt, WithKAtt
 from .inner import (
     KApply,
     KInner,
@@ -27,11 +29,10 @@ from .inner import (
     bottom_up_with_summary,
     top_down,
 )
-from .kast import EMPTY_ATT, KAst, KAtt, WithKAtt, kast_term
+from .kast import kast_term
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
-    from dataclasses import InitVar
     from os import PathLike
     from typing import Any, Final, TypeVar
 
@@ -41,111 +42,33 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 
 class KOuter(KAst):
-    _OUTER_NODES: Final = {
-        'KTerminal',
-        'KRegexTerminal',
-        'KNonTerminal',
-        'KProduction',
-        'KSyntaxSort',
-        'KSortSynonym',
-        'KSyntaxLexical',
-        'KSyntaxAssociativity',
-        'KSyntaxPriority',
-        'KBubble',
-        'KRule',
-        'KClaim',
-        'KContext',
-        'KImport',
-        'KFlatModule',
-        'KFlatModuleList',
-        'KRequire',
-        'KDefinition',
-    }
+    """Represents K definitions in KAST format.
 
-    @classmethod
-    @abstractmethod
-    def from_dict(cls: type[KOuter], d: Mapping[str, Any]) -> KOuter:
-        node = d['node']
-        if node in KOuter._OUTER_NODES:
-            return globals()[node].from_dict(d)
+    Outer syntax is K specific datastructures, including modules, definitions, imports, user-syntax declarations, rules, contexts, and claims.
+    """
 
-        raise ValueError(f'Expected "node" value in: {KOuter._OUTER_NODES}, got: {node}')
+    ...
 
 
 class KProductionItem(KOuter):
-    _PRODUCTION_ITEM_NODES: Final = {'KTerminal', 'KRegexTerminal', 'KNonTerminal'}
+    """Represents the elements used to declare components of productions in EBNF style."""
 
-    @classmethod
-    @abstractmethod
-    def from_dict(cls: type[KProductionItem], d: Mapping[str, Any]) -> KProductionItem:
+    _NODES: Final = {'KTerminal', 'KRegexTerminal', 'KNonTerminal'}
+
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KProductionItem:
         node = d['node']
-        if node in KProductionItem._PRODUCTION_ITEM_NODES:
-            return globals()[node].from_dict(d)
-
-        raise ValueError(f'Expected "node" value in: {KProductionItem._PRODUCTION_ITEM_NODES}, got: {node}')
-
-
-class KSentence(KOuter, WithKAtt):
-    _SENTENCE_NODES: Final = {
-        'KProduction',
-        'KSyntaxSort',
-        'KSortSynonym',
-        'KSyntaxLexical',
-        'KSyntaxAssociativity',
-        'KSyntaxPriority',
-        'KBubble',
-        'KRule',
-        'KClaim',
-        'KContext',
-    }
-
-    @classmethod
-    @abstractmethod
-    def from_dict(cls: type[KSentence], d: Mapping[str, Any]) -> KSentence:
-        node = d['node']
-        if node in KSentence._SENTENCE_NODES:
-            return globals()[node].from_dict(d)
-
-        raise ValueError(f'Expected "node" value in: {KSentence._SENTENCE_NODES}, got: {node}')
-
-    @property
-    def label(self) -> str:
-        if 'label' in self.att:
-            return self.att['label']
-        elif 'UNIQUE_ID' in self.att:
-            return self.att['UNIQUE_ID']
-        else:
-            _LOGGER.warning(f'Found a sentence without label or UNIQUE_ID: {self}')
-            if KAtt.SOURCE in self.att and KAtt.LOCATION in self.att:
-                return f'{self.att[KAtt.SOURCE]}:{self.att[KAtt.LOCATION]}'
-            else:
-                raise ValueError(f'Found sentence without label, UNIQUE_ID, or SOURCE:LOCATION: {self}')
-
-
-@final
-@dataclass(frozen=True)
-class KTerminal(KProductionItem):
-    value: str
-
-    def __init__(self, value: str):
-        object.__setattr__(self, 'value', value)
-
-    @classmethod
-    def from_dict(cls: type[KTerminal], d: Mapping[str, Any]) -> KTerminal:
-        cls._check_node(d)
-        return KTerminal(value=d['value'])
-
-    def to_dict(self) -> dict[str, Any]:
-        return {'node': 'KTerminal', 'value': self.value}
-
-    def let(self, *, value: str | None = None) -> KTerminal:
-        value = value if value is not None else self.value
-        return KTerminal(value=value)
+        if node not in KProductionItem._NODES:
+            raise ValueError(f'Invalid KProductionItem node: {node!r}')
+        cls = globals()[node]
+        return cls._from_dict(d)
 
 
 @final
 @dataclass(frozen=True)
 class KRegexTerminal(KProductionItem):
+    """Represents a regular-expression terminal in EBNF production, to be matched against input text."""
+
     regex: str
     precede_regex: str
     follow_regex: str
@@ -156,8 +79,7 @@ class KRegexTerminal(KProductionItem):
         object.__setattr__(self, 'follow_regex', follow_regex)
 
     @classmethod
-    def from_dict(cls: type[KRegexTerminal], d: Mapping[str, Any]) -> KRegexTerminal:
-        cls._check_node(d)
+    def _from_dict(cls: type[KRegexTerminal], d: Mapping[str, Any]) -> KRegexTerminal:
         return KRegexTerminal(
             regex=d['regex'],
             precede_regex=d['precedeRegex'],
@@ -184,6 +106,8 @@ class KRegexTerminal(KProductionItem):
 @final
 @dataclass(frozen=True)
 class KNonTerminal(KProductionItem):
+    """Represents a non-terminal of a given sort in EBNF productions, for defining arguments to to production."""
+
     sort: KSort
     name: str | None
 
@@ -192,8 +116,7 @@ class KNonTerminal(KProductionItem):
         object.__setattr__(self, 'name', name)
 
     @classmethod
-    def from_dict(cls: type[KNonTerminal], d: Mapping[str, Any]) -> KNonTerminal:
-        cls._check_node(d)
+    def _from_dict(cls: type[KNonTerminal], d: Mapping[str, Any]) -> KNonTerminal:
         name = d['name'] if 'name' in d else None
         return KNonTerminal(sort=KSort.from_dict(d['sort']), name=name)
 
@@ -211,7 +134,86 @@ class KNonTerminal(KProductionItem):
 
 @final
 @dataclass(frozen=True)
+class KTerminal(KProductionItem):
+    """Represents a string literal component of a production in EBNF grammar."""
+
+    value: str
+
+    def __init__(self, value: str):
+        object.__setattr__(self, 'value', value)
+
+    @classmethod
+    def _from_dict(cls: type[KTerminal], d: Mapping[str, Any]) -> KTerminal:
+        return KTerminal(value=d['value'])
+
+    def to_dict(self) -> dict[str, Any]:
+        return {'node': 'KTerminal', 'value': self.value}
+
+    def let(self, *, value: str | None = None) -> KTerminal:
+        value = value if value is not None else self.value
+        return KTerminal(value=value)
+
+
+class KSentence(KOuter, WithKAtt):
+    """Represents an individual declaration in a K module."""
+
+    _NODES: Final = {
+        'KProduction',
+        'KSyntaxSort',
+        'KSortSynonym',
+        'KSyntaxLexical',
+        'KSyntaxAssociativity',
+        'KSyntaxPriority',
+        'KBubble',
+        'KRule',
+        'KClaim',
+        'KContext',
+    }
+
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KSentence:
+        node = d['node']
+        if node not in KSentence._NODES:
+            raise ValueError(f'Invalid KSentence node: {node!r}')
+        cls = globals()[node]
+        return cls._from_dict(d)
+
+    @property
+    def unique_id(self) -> str | None:
+        """Return the unique ID assigned to this sentence, or None."""
+        return self.att.get(Atts.UNIQUE_ID)
+
+    @property
+    def source(self) -> str | None:
+        """Return the source assigned to this sentence, or None."""
+        if Atts.SOURCE in self.att and Atts.LOCATION in self.att:
+            return f'{self.att[Atts.SOURCE]}:{self.att[Atts.LOCATION]}'
+        return None
+
+    @property
+    def label(self) -> str:
+        """Return a (hopefully) unique label associated with the given `KSentence`.
+
+        :return: Unique label for the given sentence, either (in order):
+          - User supplied `label` attribute (or supplied in rule label),
+          - Unique identifier computed and inserted by the frontend, or
+          - Source location for the sentence.
+        """
+        if Atts.LABEL in self.att:
+            return self.att[Atts.LABEL]
+        elif self.unique_id is not None:
+            return self.unique_id
+        elif self.source is not None:
+            _LOGGER.warning(f'Found a sentence without label or UNIQUE_ID: {self}')
+            return self.source
+        raise ValueError(f'Found sentence without label, UNIQUE_ID, or SOURCE:LOCATION: {self}')
+
+
+@final
+@dataclass(frozen=True)
 class KProduction(KSentence):
+    """Represents a production in K's EBNF grammar definitions, as a sequence of ProductionItem."""
+
     # TODO Order in Java implementation: klabel, params, sort, items, att
     sort: KSort
     items: tuple[KProductionItem, ...]
@@ -242,15 +244,16 @@ class KProduction(KSentence):
 
     @property
     def arity(self) -> int:
+        """Return the total number of _all_ production items."""
         return len(self.items)
 
     @property
     def argument_sorts(self) -> list[KSort]:
+        """Return the sorts of the non-terminal positions of the productions."""
         return [knt.sort for knt in self.items if type(knt) is KNonTerminal]
 
     @classmethod
-    def from_dict(cls: type[KProduction], d: Mapping[str, Any]) -> KProduction:
-        cls._check_node(d)
+    def _from_dict(cls: type[KProduction], d: Mapping[str, Any]) -> KProduction:
         return KProduction(
             sort=KSort.from_dict(d['sort']),
             items=(KProductionItem.from_dict(item) for item in d['productionItems']),
@@ -294,6 +297,8 @@ class KProduction(KSentence):
 @final
 @dataclass(frozen=True)
 class KSyntaxSort(KSentence):
+    """Represents a sort declaration, potentially parametric."""
+
     sort: KSort
     params: tuple[KSort, ...]
     att: KAtt
@@ -305,8 +310,7 @@ class KSyntaxSort(KSentence):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KSyntaxSort], d: Mapping[str, Any]) -> KSyntaxSort:
-        cls._check_node(d)
+    def _from_dict(cls: type[KSyntaxSort], d: Mapping[str, Any]) -> KSyntaxSort:
         return KSyntaxSort(
             sort=KSort.from_dict(d['sort']),
             params=(KSort.from_dict(param) for param in d['params']),
@@ -340,6 +344,8 @@ class KSyntaxSort(KSentence):
 @final
 @dataclass(frozen=True)
 class KSortSynonym(KSentence):
+    """Represents a sort synonym, allowing declaring a new name for a given sort."""
+
     new_sort: KSort
     old_sort: KSort
     att: KAtt
@@ -350,8 +356,7 @@ class KSortSynonym(KSentence):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KSortSynonym], d: Mapping[str, Any]) -> KSortSynonym:
-        cls._check_node(d)
+    def _from_dict(cls: type[KSortSynonym], d: Mapping[str, Any]) -> KSortSynonym:
         return KSortSynonym(
             new_sort=KSort.from_dict(d['newSort']),
             old_sort=KSort.from_dict(d['oldSort']),
@@ -381,6 +386,8 @@ class KSortSynonym(KSentence):
 @final
 @dataclass(frozen=True)
 class KSyntaxLexical(KSentence):
+    """Represents a named piece of lexical syntax, definable as a regular expression."""
+
     name: str
     regex: str
     att: KAtt
@@ -391,8 +398,7 @@ class KSyntaxLexical(KSentence):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KSyntaxLexical], d: Mapping[str, Any]) -> KSyntaxLexical:
-        cls._check_node(d)
+    def _from_dict(cls: type[KSyntaxLexical], d: Mapping[str, Any]) -> KSyntaxLexical:
         return KSyntaxLexical(
             name=d['name'],
             regex=d['regex'],
@@ -426,6 +432,8 @@ class KAssoc(Enum):
 @final
 @dataclass(frozen=True)
 class KSyntaxAssociativity(KSentence):
+    """Represents a standalone declaration of operator associativity for tagged productions."""
+
     assoc: KAssoc
     tags: frozenset[str]
     att: KAtt
@@ -436,8 +444,7 @@ class KSyntaxAssociativity(KSentence):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KSyntaxAssociativity], d: Mapping[str, Any]) -> KSyntaxAssociativity:
-        cls._check_node(d)
+    def _from_dict(cls: type[KSyntaxAssociativity], d: Mapping[str, Any]) -> KSyntaxAssociativity:
         return KSyntaxAssociativity(
             assoc=KAssoc(d['assoc']),
             tags=d['tags'],
@@ -467,6 +474,8 @@ class KSyntaxAssociativity(KSentence):
 @final
 @dataclass(frozen=True)
 class KSyntaxPriority(KSentence):
+    """Represents a standalone declaration of syntax priorities, using productions tags."""
+
     priorities: tuple[frozenset[str], ...]
     att: KAtt
 
@@ -475,8 +484,7 @@ class KSyntaxPriority(KSentence):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KSyntaxPriority], d: Mapping[str, Any]) -> KSyntaxPriority:
-        cls._check_node(d)
+    def _from_dict(cls: type[KSyntaxPriority], d: Mapping[str, Any]) -> KSyntaxPriority:
         return KSyntaxPriority(
             priorities=d['priorities'],
             att=KAtt.from_dict(d['att']) if d.get('att') else EMPTY_ATT,
@@ -501,6 +509,8 @@ class KSyntaxPriority(KSentence):
 @final
 @dataclass(frozen=True)
 class KBubble(KSentence):
+    """Represents an unparsed chunk of AST in user-defined syntax."""
+
     sentence_type: str
     content: str
     att: KAtt
@@ -511,8 +521,7 @@ class KBubble(KSentence):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KBubble], d: Mapping[str, Any]) -> KBubble:
-        cls._check_node(d)
+    def _from_dict(cls: type[KBubble], d: Mapping[str, Any]) -> KBubble:
         return KBubble(
             sentence_type=d['sentenceType'],
             content=d['content'],
@@ -538,20 +547,11 @@ class KBubble(KSentence):
 
 
 class KRuleLike(KSentence):
+    """Represents something with rule-like structure (with body, requires, and ensures clauses)."""
+
     body: KInner
     requires: KInner
     ensures: KInner
-
-    _RULE_LIKE_NODES: Final = {'KRule', 'KClaim'}
-
-    @classmethod
-    @abstractmethod
-    def from_dict(cls: type[KRuleLike], d: Mapping[str, Any]) -> KRuleLike:
-        node = d['node']
-        if node in KRuleLike._RULE_LIKE_NODES:
-            return globals()[node].from_dict(d)
-
-        raise ValueError(f'Expected "node" value in: {KRuleLike._RULE_LIKE_NODES}, got: {node}')
 
     @abstractmethod
     def let(
@@ -568,6 +568,8 @@ class KRuleLike(KSentence):
 @final
 @dataclass(frozen=True)
 class KRule(KRuleLike):
+    """Represents a K rule definition, typically a conditional rewrite/transition."""
+
     body: KInner
     requires: KInner
     ensures: KInner
@@ -580,8 +582,7 @@ class KRule(KRuleLike):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KRule], d: Mapping[str, Any]) -> KRule:
-        cls._check_node(d)
+    def _from_dict(cls: type[KRule], d: Mapping[str, Any]) -> KRule:
         return KRule(
             body=KInner.from_dict(d['body']),
             requires=KInner.from_dict(d['requires']) if d.get('requires') else TRUE,
@@ -617,12 +618,14 @@ class KRule(KRuleLike):
 
     @property
     def priority(self) -> int:
-        return self.att.get('priority', 200 if 'owise' in self.att else 50)
+        return self.att.get(Atts.PRIORITY, 200 if Atts.OWISE in self.att else 50)
 
 
 @final
 @dataclass(frozen=True)
 class KClaim(KRuleLike):
+    """Represents a K claim, typically a transition with pre/post-conditions."""
+
     body: KInner
     requires: KInner
     ensures: KInner
@@ -635,8 +638,7 @@ class KClaim(KRuleLike):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KClaim], d: Mapping[str, Any]) -> KClaim:
-        cls._check_node(d)
+    def _from_dict(cls: type[KClaim], d: Mapping[str, Any]) -> KClaim:
         return KClaim(
             body=KInner.from_dict(d['body']),
             requires=KInner.from_dict(d['requires']) if d.get('requires') else TRUE,
@@ -672,15 +674,18 @@ class KClaim(KRuleLike):
 
     @property
     def is_circularity(self) -> bool:
-        return 'circularity' in self.att.atts
+        """Return whether this claim is a circularity (must be used coinductively to prove itself)."""
+        return Atts.CIRCULARITY in self.att
 
     @property
     def is_trusted(self) -> bool:
-        return 'trusted' in self.att.atts
+        """Return whether this claim is trusted (does not need to be proven to be considered true)."""
+        return Atts.TRUSTED in self.att
 
     @property
     def dependencies(self) -> list[str]:
-        deps = self.att.atts.get('depends', default=None)
+        """Return the dependencies of this claim (list of other claims needed to help prove this one or speed up this ones proof)."""
+        deps = self.att.get(Atts.DEPENDS)
         if deps is None:
             return []
         return [x.strip() for x in deps.split(',')]
@@ -689,6 +694,8 @@ class KClaim(KRuleLike):
 @final
 @dataclass(frozen=True)
 class KContext(KSentence):
+    """Represents a K evaluation context, used for isolating chunks of computation and focusing on them."""
+
     body: KInner
     requires: KInner
     att: KAtt
@@ -699,8 +706,7 @@ class KContext(KSentence):
         object.__setattr__(self, 'att', att)
 
     @classmethod
-    def from_dict(cls: type[KContext], d: Mapping[str, Any]) -> KContext:
-        cls._check_node(d)
+    def _from_dict(cls: type[KContext], d: Mapping[str, Any]) -> KContext:
         return KContext(
             body=KInner.from_dict(d['body']),
             requires=KInner.from_dict(d['requires']) if d.get('requires') else TRUE,
@@ -728,6 +734,8 @@ class KContext(KSentence):
 @final
 @dataclass(frozen=True)
 class KImport(KOuter):
+    """Represents a K module import, used for inheriting all the sentences of the imported module into this one."""
+
     name: str
     public: bool
 
@@ -735,9 +743,8 @@ class KImport(KOuter):
         object.__setattr__(self, 'name', name)
         object.__setattr__(self, 'public', public)
 
-    @classmethod
-    def from_dict(cls: type[KImport], d: Mapping[str, Any]) -> KImport:
-        cls._check_node(d)
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KImport:
         return KImport(name=d['name'], public=d['isPublic'])
 
     def to_dict(self) -> dict[str, Any]:
@@ -752,6 +759,8 @@ class KImport(KOuter):
 @final
 @dataclass(frozen=True)
 class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
+    """Represents a K module, with a name, list of imports, and list of sentences."""
+
     name: str
     sentences: tuple[KSentence, ...]
     imports: tuple[KImport, ...]
@@ -770,23 +779,28 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
 
     @cached_property
     def productions(self) -> tuple[KProduction, ...]:
+        """Return all the `KProduction` sentences from this module."""
         return tuple(sentence for sentence in self if type(sentence) is KProduction)
 
     @cached_property
     def syntax_productions(self) -> tuple[KProduction, ...]:
+        """Return all the `KProduction` sentences from this module that contain `KLabel` (are EBNF syntax declarations)."""
         return tuple(prod for prod in self.productions if prod.klabel)
 
     @cached_property
     def functions(self) -> tuple[KProduction, ...]:
+        """Return all the `KProduction` sentences from this module that are function declarations."""
         return tuple(prod for prod in self.syntax_productions if self._is_function(prod))
 
     @cached_property
     def constructors(self) -> tuple[KProduction, ...]:
+        """Return all the `KProduction` sentences from this module that are constructor declarations."""
         return tuple(prod for prod in self.syntax_productions if not self._is_function(prod))
 
     @cached_property
     def cell_collection_productions(self) -> tuple[KProduction, ...]:
-        return tuple(prod for prod in self.syntax_productions if 'cellCollection' in prod.att)
+        """Return all the `KProduction` sentences from this module that are cell collection declarations."""
+        return tuple(prod for prod in self.syntax_productions if Atts.CELL_COLLECTION in prod.att)
 
     @staticmethod
     def _is_function(prod: KProduction) -> bool:
@@ -795,21 +809,31 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
             is_builtin_data_constructor = label in {'_Set_', '_List_', '_Map_', 'SetItem', 'ListItem', '_|->_'}
             return is_cell_map_constructor or is_builtin_data_constructor
 
-        return ('function' in prod.att.atts or 'functional' in prod.att.atts) and not (
+        return (Atts.FUNCTION in prod.att or Atts.FUNCTIONAL in prod.att) and not (
             prod.klabel and is_not_actually_function(prod.klabel.name)
         )
 
     @cached_property
+    def syntax_sorts(self) -> tuple[KSyntaxSort, ...]:
+        """Return all the `KSyntaxSort` sentences from this module."""
+        return tuple(sentence for sentence in self if isinstance(sentence, KSyntaxSort))
+
+    @cached_property
     def rules(self) -> tuple[KRule, ...]:
+        """Return all the `KRule` declared in this module."""
         return tuple(sentence for sentence in self if type(sentence) is KRule)
 
     @cached_property
     def claims(self) -> tuple[KClaim, ...]:
+        """Return all the `KClaim` declared in this module."""
         return tuple(sentence for sentence in self if type(sentence) is KClaim)
 
-    @classmethod
-    def from_dict(cls: type[KFlatModule], d: Mapping[str, Any]) -> KFlatModule:
-        cls._check_node(d)
+    @cached_property
+    def sentence_by_unique_id(self) -> dict[str, KSentence]:
+        return {sent.unique_id: sent for sent in self.sentences if sent.unique_id is not None}
+
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KFlatModule:
         return KFlatModule(
             name=d['name'],
             sentences=(KSentence.from_dict(sentence) for sentence in d['localSentences']),
@@ -847,6 +871,8 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
 @final
 @dataclass(frozen=True)
 class KFlatModuleList(KOuter):
+    """Represents a list of K modules, as returned by the prover parser for example, with a given module called out as the main module."""
+
     main_module: str
     modules: tuple[KFlatModule, ...]
 
@@ -854,9 +880,8 @@ class KFlatModuleList(KOuter):
         object.__setattr__(self, 'main_module', main_module)
         object.__setattr__(self, 'modules', tuple(modules))
 
-    @classmethod
-    def from_dict(cls: type[KFlatModuleList], d: Mapping[str, Any]) -> KFlatModuleList:
-        cls._check_node(d)
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KFlatModuleList:
         return KFlatModuleList(main_module=d['mainModule'], modules=(KFlatModule.from_dict(kfm) for kfm in d['term']))
 
     def to_dict(self) -> dict[str, Any]:
@@ -875,14 +900,15 @@ class KFlatModuleList(KOuter):
 @final
 @dataclass(frozen=True)
 class KRequire(KOuter):
+    """Represents a K file import of another file."""
+
     require: str
 
     def __init__(self, require: str):
         object.__setattr__(self, 'require', require)
 
-    @classmethod
-    def from_dict(cls: type[KRequire], d: Mapping[str, Any]) -> KRequire:
-        cls._check_node(d)
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KRequire:
         return KRequire(require=d['require'])
 
     def to_dict(self) -> dict[str, Any]:
@@ -896,6 +922,8 @@ class KRequire(KOuter):
 @final
 @dataclass(frozen=True)
 class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
+    """Represents an entire K definition, with file imports and modules in place, and a given module called out as main module."""
+
     main_module_name: str
     all_modules: tuple[KFlatModule, ...]
     requires: tuple[KRequire, ...]
@@ -938,9 +966,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
     def __iter__(self) -> Iterator[KFlatModule]:
         return iter(self.all_modules)
 
-    @classmethod
-    def from_dict(cls: type[KDefinition], d: Mapping[str, Any]) -> KDefinition:
-        cls._check_node(d)
+    @staticmethod
+    def from_dict(d: Mapping[str, Any]) -> KDefinition:
         return KDefinition(
             main_module_name=d['mainModule'],
             all_modules=(KFlatModule.from_dict(module) for module in d['modules']),
@@ -976,10 +1003,12 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     @cached_property
     def all_module_names(self) -> tuple[str, ...]:
+        """Return the name of all modules in this `KDefinition`."""
         return tuple(module.name for module in self.all_modules)
 
     @cached_property
     def module_names(self) -> tuple[str, ...]:
+        """Return the list of module names transitively imported by the main module of this definition."""
         module_names = [self.main_module_name]
         seen_modules = []
         while len(module_names) > 0:
@@ -991,46 +1020,58 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     @cached_property
     def all_modules_dict(self) -> dict[str, KFlatModule]:
+        """Returns a dictionary of all the modules (with names as keys) defined in this definition."""
         return {m.name: m for m in self.all_modules}
 
     @cached_property
     def modules(self) -> tuple[KFlatModule, ...]:
+        """Returns the list of modules transitively imported by th emain module of this definition."""
         return tuple(self.all_modules_dict[mname] for mname in self.module_names)
 
     @cached_property
     def productions(self) -> tuple[KProduction, ...]:
+        """Returns the `KProduction` transitively imported by the main module of this definition."""
         return tuple(prod for module in self.modules for prod in module.productions)
 
     @cached_property
     def syntax_productions(self) -> tuple[KProduction, ...]:
+        """Returns the `KProduction` which are syntax declarations transitively imported by the main module of this definition."""
         return tuple(prod for module in self.modules for prod in module.syntax_productions)
 
     @cached_property
     def functions(self) -> tuple[KProduction, ...]:
+        """Returns the `KProduction` which are function declarations transitively imported by the main module of this definition."""
         return tuple(func for module in self.modules for func in module.functions)
 
     @cached_property
     def constructors(self) -> tuple[KProduction, ...]:
+        """Returns the `KProduction` which are constructor declarations transitively imported by the main module of this definition."""
         return tuple(ctor for module in self.modules for ctor in module.constructors)
 
     @cached_property
     def cell_collection_productions(self) -> tuple[KProduction, ...]:
+        """Returns the `KProduction` which are cell collection declarations transitively imported by the main module of this definition."""
         return tuple(prod for module in self.modules for prod in module.cell_collection_productions)
 
     @cached_property
     def rules(self) -> tuple[KRule, ...]:
+        """Returns the `KRule` sentences transitively imported by the main module of this definition."""
         return tuple(rule for module in self.modules for rule in module.rules)
 
     @cached_property
     def alias_rules(self) -> tuple[KRule, ...]:
-        return tuple(rule for rule in self.rules if 'alias' in rule.att)
+        """Returns the `KRule` sentences which are `alias` transitively imported by the main module of this definition."""
+        return tuple(rule for rule in self.rules if Atts.ALIAS in rule.att)
 
     @cached_property
     def macro_rules(self) -> tuple[KRule, ...]:
-        return tuple(rule for rule in self.rules if 'macro' in rule.att) + self.alias_rules
+        """Returns the `KRule` sentences which are `alias` or `macro` transitively imported by the main module of this definition."""
+        return tuple(rule for rule in self.rules if Atts.MACRO in rule.att) + self.alias_rules
 
     @cached_property
     def semantic_rules(self) -> tuple[KRule, ...]:
+        """Returns the `KRule` sentences which are topmost transitively imported by the main module of this definition."""
+
         def is_semantic(rule: KRule) -> bool:
             return (type(rule.body) is KApply and rule.body.label.name == '<generatedTop>') or (
                 type(rule.body) is KRewrite
@@ -1040,10 +1081,24 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         return tuple(rule for rule in self.rules if is_semantic(rule))
 
+    @cached_property
+    def sentence_by_unique_id(self) -> dict[str, KSentence]:
+        unique_id_map: dict[str, KSentence] = {}
+        for module in self.all_modules:
+            for unique_id, sent in module.sentence_by_unique_id.items():
+                if unique_id in unique_id_map and sent != unique_id_map[unique_id]:
+                    _LOGGER.debug(
+                        f'Same UNIQUE_ID found for two different sentences: {(sent, unique_id_map[unique_id])}'
+                    )
+                else:
+                    unique_id_map[unique_id] = sent
+        return unique_id_map
+
     def production_for_klabel(self, klabel: KLabel) -> KProduction:
+        """Returns the original production for a given `KLabel` (failing if 0 or >1 are returned)."""
         if klabel not in self._production_for_klabel:
             prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
-            _prods = [prod for prod in prods if 'unparseAvoid' not in prod.att]
+            _prods = [prod for prod in prods if Atts.UNPARSE_AVOID not in prod.att]
             if len(_prods) < len(prods):
                 _LOGGER.warning(
                     f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}'
@@ -1062,6 +1117,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return self._production_for_klabel[klabel]
 
     def production_for_cell_sort(self, sort: KSort) -> KProduction:
+        """Returns the production for a given cell-declaration syntax from the cell's declared sort."""
         # Typical cell production has 3 productions:
         #     syntax KCell ::= "project:KCell" "(" K ")" [function, projection]
         #     syntax KCell ::= "initKCell" "(" Map ")" [function, initializer, noThread]
@@ -1074,20 +1130,24 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 f'Method production_for_cell_sort only intended to be called on sorts ending in "Cell", not: {sort}'
             )
         try:
-            return single(prod for prod in self.productions if prod.sort == sort and 'cell' in prod.att)
+            return single(prod for prod in self.productions if prod.sort == sort and Atts.CELL in prod.att)
         except ValueError as err:
             raise ValueError(f'Expected a single cell production for sort {sort}') from err
 
     def module(self, name: str) -> KFlatModule:
+        """Returns the module associated with a given name."""
         return self.all_modules_dict[name]
 
     def return_sort(self, label: KLabel) -> KSort:
+        """Returns the return sort of a given `KLabel` by looking up the production."""
         return self.production_for_klabel(label).sort
 
     def argument_sorts(self, label: KLabel) -> list[KSort]:
+        """Returns the argument sorts of a given `KLabel` by looking up the production."""
         return self.production_for_klabel(label).argument_sorts
 
     def subsorts(self, sort: KSort) -> list[KSort]:
+        """Returns all subsorts of a given `KSort` by inspecting the definition (table computed lazily and memoized)."""
         if sort not in self._subsorts:
             self._subsorts[sort] = self._compute_subsorts(sort)
         return self._subsorts[sort]
@@ -1101,6 +1161,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return list(set(_subsorts))
 
     def sort(self, kast: KInner) -> KSort | None:
+        """Computes the sort of a given term using best-effort simple sorting algorithm, returns `None` on algorithm failure."""
         match kast:
             case KToken(_, sort) | KVariable(_, sort):
                 return sort
@@ -1130,12 +1191,14 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                 return None
 
     def sort_strict(self, kast: KInner) -> KSort:
+        """Computes the sort of a given term using best-effort simple sorting algorithm, dies on algorithm failure."""
         sort = self.sort(kast)
         if sort is None:
             raise ValueError(f'Could not determine sort of term: {kast}')
         return sort
 
     def least_common_supersort(self, sort1: KSort, sort2: KSort) -> KSort | None:
+        """Computes the lowest-upper-bound of two sorts in the sort lattice using very simple approach, returning `None` on failure (not necessarily meaning there isn't a lub)."""
         if sort1 == sort2:
             return sort1
         if sort1 in self.subsorts(sort2):
@@ -1147,6 +1210,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return None
 
     def greatest_common_subsort(self, sort1: KSort, sort2: KSort) -> KSort | None:
+        """Computes the greatest-lower-bound of two sorts in the sort lattice using very simple approach, returning `None` on failure (not necessarily meaning there isn't a glb)."""
         if sort1 == sort2:
             return sort1
         if sort1 in self.subsorts(sort2):
@@ -1159,22 +1223,26 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     # Sorts like Int cannot be injected directly into sort K so they are embedded in a KSequence.
     def add_ksequence_under_k_productions(self, kast: KInner) -> KInner:
-        def _add_ksequence_under_k_productions(kast: KInner) -> KInner:
-            if type(kast) is not KApply:
-                return kast
+        """Inject a `KSequence` under the given term if it's a subsort of `K` and is being used somewhere that sort `K` is expected (determined by inspecting the definition)."""
 
-            prod = self.production_for_klabel(kast.label)
+        def _add_ksequence_under_k_productions(_kast: KInner) -> KInner:
+            if type(_kast) is not KApply:
+                return _kast
+
+            prod = self.production_for_klabel(_kast.label)
             return KApply(
-                kast.label,
+                _kast.label,
                 [
                     KSequence(arg) if sort.name == 'K' and not self.sort(arg) == KSort('K') else arg
-                    for arg, sort in zip(kast.args, prod.argument_sorts, strict=True)
+                    for arg, sort in zip(_kast.args, prod.argument_sorts, strict=True)
                 ],
             )
 
         return top_down(_add_ksequence_under_k_productions, kast)
 
     def sort_vars(self, kast: KInner, sort: KSort | None = None) -> KInner:
+        """Return the original term with all the variables having there sorts added or specialized, failing if recieving conflicting sorts for a given variable."""
+
         if type(kast) is KVariable and kast.sort is None and sort is not None:
             return kast.let(sort=sort)
 
@@ -1250,6 +1318,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     # Best-effort addition of sort parameters to klabels, context insensitive
     def add_sort_params(self, kast: KInner) -> KInner:
+        """Return a given term with the sort parameters on the `KLabel` filled in (which may be missing because of how the frontend works), best effort."""
+
         def _add_sort_params(_k: KInner) -> KInner:
             if type(_k) is KApply:
                 prod = self.production_for_klabel(_k.label)
@@ -1276,14 +1346,16 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return bottom_up(_add_sort_params, kast)
 
     def add_cell_map_items(self, kast: KInner) -> KInner:
+        """Wrap cell-map items in the syntactical wrapper that the frontend generates for them (see `KDefinition.remove_cell_map_items`)."""
+
         # example:
         # syntax AccountCellMap [cellCollection, hook(MAP.Map)]
         # syntax AccountCellMap ::= AccountCellMap AccountCellMap [assoc, avoid, cellCollection, comm, element(AccountCellMapItem), function, hook(MAP.concat), unit(.AccountCellMap), wrapElement(<account>)]
 
         cell_wrappers = {}
         for ccp in self.cell_collection_productions:
-            if 'element' in ccp.att and 'wrapElement' in ccp.att:
-                cell_wrappers[ccp.att['wrapElement']] = ccp.att['element']
+            if Atts.ELEMENT in ccp.att and Atts.WRAP_ELEMENT in ccp.att:
+                cell_wrappers[ccp.att[Atts.WRAP_ELEMENT]] = ccp.att[Atts.ELEMENT]
 
         def _wrap_elements(_k: KInner) -> KInner:
             if type(_k) is KApply and _k.label.name in cell_wrappers:
@@ -1295,14 +1367,16 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return bottom_up(_wrap_elements, _kast)
 
     def remove_cell_map_items(self, kast: KInner) -> KInner:
+        """Remove cell-map syntactical wrapper items that the frontend generates (see `KDefinition.add_cell_map_items`)."""
+
         # example:
         # syntax AccountCellMap [cellCollection, hook(MAP.Map)]
         # syntax AccountCellMap ::= AccountCellMap AccountCellMap [assoc, avoid, cellCollection, comm, element(AccountCellMapItem), function, hook(MAP.concat), unit(.AccountCellMap), wrapElement(<account>)]
 
         cell_wrappers = {}
         for ccp in self.cell_collection_productions:
-            if 'element' in ccp.att and 'wrapElement' in ccp.att:
-                cell_wrappers[ccp.att['element']] = ccp.att['wrapElement']
+            if Atts.ELEMENT in ccp.att and Atts.WRAP_ELEMENT in ccp.att:
+                cell_wrappers[ccp.att[Atts.ELEMENT]] = ccp.att[Atts.WRAP_ELEMENT]
 
         def _wrap_elements(_k: KInner) -> KInner:
             if (
@@ -1318,6 +1392,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return bottom_up(_wrap_elements, kast)
 
     def empty_config(self, sort: KSort) -> KInner:
+        """Given a cell-sort, compute an "empty" configuration for it (all the constructor structure of the configuration in place, but variables in cell positions)."""
+
         if sort not in self._empty_config:
             self._empty_config[sort] = self._compute_empty_config(sort)
         return self._empty_config[sort]
@@ -1346,6 +1422,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return _kdefinition_empty_config(sort)
 
     def instantiate_cell_vars(self, term: KInner) -> KInner:
+        """Given a partially-complete configuration, find positions where there could be more cell structure but instead there are variables and instantiate more cell structure."""
+
         def _cell_vars_to_labels(_kast: KInner) -> KInner:
             if type(_kast) is KApply and _kast.is_cell:
                 production = self.production_for_klabel(_kast.label)
@@ -1362,6 +1440,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         return bottom_up(_cell_vars_to_labels, term)
 
     def init_config(self, sort: KSort) -> KInner:
+        """Return an initialized configuration as the user declares it in the semantics, complete with configuration variables in place."""
+
         if sort not in self._init_config:
             self._init_config[sort] = self._compute_init_config(sort)
         return self._init_config[sort]
@@ -1378,7 +1458,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                         return KVariable(_token_var.token)
             return _kast
 
-        init_prods = (prod for prod in self.syntax_productions if 'initializer' in prod.att)
+        init_prods = (prod for prod in self.syntax_productions if Atts.INITIALIZER in prod.att)
         try:
             init_prod = single(prod for prod in init_prods if prod.sort == sort)
         except ValueError as err:
@@ -1395,7 +1475,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         else:
             raise ValueError(f'Cannot handle initializer for label: {prod_klabel}')
 
-        init_rewrites = [rule.body for rule in self.rules if 'initializer' in rule.att]
+        init_rewrites = [rule.body for rule in self.rules if Atts.INITIALIZER in rule.att]
         old_init_config: KInner | None = None
         while init_config != old_init_config:
             old_init_config = init_config
@@ -1409,8 +1489,9 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
 
 def read_kast_definition(path: str | PathLike) -> KDefinition:
+    """Read a `KDefinition` from disk, failing if it's not actually a `KDefinition`."""
     with open(path) as f:
         _LOGGER.info(f'Loading JSON definition: {path}')
         json_defn = json.load(f)
         _LOGGER.info(f'Converting JSON definition to Kast: {path}')
-        return kast_term(json_defn, KDefinition)
+        return KDefinition.from_dict(kast_term(json_defn))

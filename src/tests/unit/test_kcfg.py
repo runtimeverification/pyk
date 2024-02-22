@@ -40,7 +40,7 @@ def node(i: int, with_cond: bool = False) -> KCFG.Node:
 
 
 def edge(i: int, j: int) -> KCFG.Edge:
-    return KCFG.Edge(node(i), node(j), 1)
+    return KCFG.Edge(node(i), node(j), 1, ())
 
 
 def cover(i: int, j: int) -> KCFG.Cover:
@@ -59,7 +59,7 @@ def split(i: int, js: Iterable[int]) -> KCFG.Split:
 
 
 def ndbranch(i: int, js: Iterable[int]) -> KCFG.NDBranch:
-    return KCFG.NDBranch(node(i), tuple(node(j) for j in js))
+    return KCFG.NDBranch(node(i), tuple(node(j) for j in js), ())
 
 
 def node_dicts(n: int, start: int = 1) -> list[dict[str, Any]]:
@@ -72,7 +72,7 @@ def predicate_node_dicts(n: int, start: int = 1) -> list[dict[str, Any]]:
 
 def edge_dicts(*edges: Iterable) -> list[dict[str, Any]]:
     def _make_edge_dict(i: int, j: int, depth: int = 1) -> dict[str, Any]:
-        return {'source': i, 'target': j, 'depth': depth}
+        return {'source': i, 'target': j, 'depth': depth, 'rules': []}
 
     return [_make_edge_dict(*edge) for edge in edges]
 

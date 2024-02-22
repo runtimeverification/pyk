@@ -7,14 +7,16 @@ import pytest
 from pyk.kcfg.kcfg import KCFG
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import intToken
-from pyk.proof.equality import EqualityProof, EqualitySummary
+from pyk.proof import EqualityProof
+from pyk.proof.implies import EqualitySummary
 from pyk.proof.proof import CompositeSummary, Proof, ProofStatus
-from pyk.proof.reachability import APRBMCProof, APRBMCSummary, APRFailureInfo, APRProof, APRSummary
+from pyk.proof.reachability import APRFailureInfo, APRProof, APRSummary
 
 from .test_kcfg import node, node_dicts, term
 
 if TYPE_CHECKING:
     from pathlib import Path
+    from typing import Final
 
     from pytest import TempPathFactory
 
@@ -24,7 +26,7 @@ def proof_dir(tmp_path_factory: TempPathFactory) -> Path:
     return tmp_path_factory.mktemp('proofs')
 
 
-def apr_proof(i: int, proof_dir: Path) -> APRProof:
+def apr_proof(i: int, proof_dir: Path, bmc_depth: int | None = None) -> APRProof:
     return APRProof(
         id=f'apr_proof_{i}',
         kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
@@ -33,19 +35,7 @@ def apr_proof(i: int, proof_dir: Path) -> APRProof:
         target=node(1).id,
         logs={},
         proof_dir=proof_dir,
-    )
-
-
-def aprbmc_proof(i: int, proof_dir: Path) -> APRBMCProof:
-    return APRBMCProof(
-        id=f'aprbmc_proof_{i}',
-        init=node(1).id,
-        target=node(1).id,
-        bmc_depth=i,
-        kcfg=KCFG.from_dict({'nodes': node_dicts(i)}),
-        terminal=[],
-        logs={},
-        proof_dir=proof_dir,
+        bmc_depth=bmc_depth,
     )
 
 
@@ -79,15 +69,15 @@ class TestProof:
         assert proof_from_disk.dict == sample_proof.dict
 
     def test_read_proof_aprbmc(self, proof_dir: Path) -> None:
-        sample_proof = APRBMCProof(
+        sample_proof = APRProof(
             id='aprbmc_proof_1',
-            bmc_depth=1,
             kcfg=KCFG.from_dict({'nodes': node_dicts(1)}),
             terminal=[],
             init=node(1).id,
             target=node(1).id,
             logs={},
             proof_dir=proof_dir,
+            bmc_depth=1,
         )
 
         # Given
@@ -201,7 +191,7 @@ def test_apr_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None:
     # Given
     sub_proof_1 = equality_proof(1, proof_dir)
     sub_proof_2 = apr_proof(2, proof_dir)
-    sub_proof_3 = aprbmc_proof(3, proof_dir)
+    sub_proof_3 = apr_proof(3, proof_dir, bmc_depth=3)
     proof = apr_proof(1, proof_dir)
 
     # When
@@ -219,12 +209,31 @@ def test_apr_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None:
     assert proof.dict == proof_from_disk.dict
 
 
+MODULE_NAME_TEST_DATA: Final = (
+    ('sq-bracket', 'TEST-KONTROL-TEST-UINT256-BYTES[]-0', 'M-TEST-KONTROL-TEST-UINT256-BYTESbktbkt-0'),
+    ('underscore', 'TEST_KONTROL_%)_UINT256-1', 'M-TEST-KONTROL-UINT256-1'),
+)
+
+
+@pytest.mark.parametrize(
+    'test_id,proof_id,expected',
+    MODULE_NAME_TEST_DATA,
+    ids=[test_id for test_id, *_ in MODULE_NAME_TEST_DATA],
+)
+def test_proof_module_name(test_id: str, proof_id: str, expected: str) -> None:
+    # Given
+    output = APRProof._make_module_name(proof_id)
+
+    # Then
+    assert output == expected
+
+
 #### APRBMCProof
 
 
 def test_aprbmc_proof_from_dict_no_subproofs(proof_dir: Path) -> None:
     # Given
-    proof = aprbmc_proof(1, proof_dir)
+    proof = apr_proof(1, proof_dir, bmc_depth=1)
 
     # When
     proof.write_proof()
@@ -238,7 +247,7 @@ def test_aprbmc_proof_from_dict_no_subproofs(proof_dir: Path) -> None:
 def test_aprbmc_proof_from_dict_one_subproofs(proof_dir: Path) -> None:
     # Given
     eq_proof = equality_proof(1, proof_dir)
-    proof = aprbmc_proof(1, proof_dir)
+    proof = apr_proof(1, proof_dir, bmc_depth=1)
 
     # When
     eq_proof.write_proof_data()
@@ -255,7 +264,7 @@ def test_aprbmc_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None
     # Given
     eq_proof = equality_proof(1, proof_dir)
     subproof = apr_proof(2, proof_dir)
-    proof = aprbmc_proof(1, proof_dir)
+    proof = apr_proof(1, proof_dir, bmc_depth=1)
 
     # When
     eq_proof.write_proof_data()
@@ -343,6 +352,8 @@ def test_apr_proof_summary(proof_dir: Path) -> None:
                 stuck=0,
                 terminal=0,
                 refuted=0,
+                bmc_depth=None,
+                bounded=0,
                 subproofs=0,
             )
         ]
@@ -350,15 +361,15 @@ def test_apr_proof_summary(proof_dir: Path) -> None:
 
 
 def test_aprbmc_proof_summary(proof_dir: Path) -> None:
-    proof = aprbmc_proof(1, proof_dir)
+    proof = apr_proof(1, proof_dir, bmc_depth=1)
 
     assert len(proof.summary.summaries) == 1
     assert proof.summary == CompositeSummary(
         [
-            APRBMCSummary(
-                id='aprbmc_proof_1',
+            APRSummary(
+                id='apr_proof_1',
                 status=ProofStatus.PASSED,
-                bmc_depth=1,
+                admitted=False,
                 nodes=1,
                 pending=0,
                 failing=0,
@@ -366,8 +377,9 @@ def test_aprbmc_proof_summary(proof_dir: Path) -> None:
                 stuck=0,
                 terminal=0,
                 refuted=0,
-                subproofs=0,
+                bmc_depth=1,
                 bounded=0,
+                subproofs=0,
             )
         ]
     )
@@ -403,6 +415,8 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
         stuck=0,
         terminal=0,
         refuted=0,
+        bmc_depth=None,
+        bounded=0,
         subproofs=1,
     )
 
@@ -419,6 +433,8 @@ def test_apr_proof_summary_subproofs(proof_dir: Path) -> None:
                 stuck=0,
                 terminal=0,
                 refuted=0,
+                bmc_depth=None,
+                bounded=0,
                 subproofs=1,
             ),
             EqualitySummary(

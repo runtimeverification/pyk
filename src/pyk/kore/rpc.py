@@ -13,20 +13,23 @@ from pathlib import Path
 from signal import SIGINT
 from subprocess import Popen
 from time import sleep
-from typing import TYPE_CHECKING, ContextManager, final
+from typing import ClassVar  # noqa: TC003
+from typing import TYPE_CHECKING, ContextManager, NamedTuple, TypedDict, final
 
 from psutil import Process
 
 from ..ktool.kprove import KoreExecLogFormat
 from ..utils import check_dir_path, check_file_path, filter_none, run_process
-from .syntax import And, Pattern, SortApp, kore_term
+from .syntax import And, SortApp, kore_term
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
-    from typing import Any, ClassVar, Final, TextIO, TypeVar
+    from typing import Any, Final, TextIO, TypeVar
+
+    from typing_extensions import Required
 
     from ..utils import BugReport
-    from .syntax import Module
+    from .syntax import Module, Pattern
 
     ER = TypeVar('ER', bound='ExecuteResult')
     RR = TypeVar('RR', bound='RewriteResult')
@@ -338,23 +341,104 @@ class JsonRpcClient(ContextManager['JsonRpcClient']):
         raise JsonRpcError(**response['error'])
 
 
+class KoreClientError(Exception, ABC):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 @final
 @dataclass
-class KoreClientError(Exception):  # TODO refine
+class ParseError(KoreClientError):
+    error: str
+
+    def __init__(self, error: str):
+        self.error = error
+        super().__init__(f'Could not parse pattern: {self.error}')
+
+
+@final
+@dataclass
+class PatternError(KoreClientError):
+    error: str
+    context: tuple[str, ...]
+
+    def __init__(self, error: str, context: Iterable[str]):
+        self.error = error
+        self.context = tuple(context)
+        context_str = ' ;; '.join(self.context)
+        super().__init__(f'Could not verify pattern: {self.error} Context: {context_str}')
+
+
+@final
+@dataclass
+class UnknownModuleError(KoreClientError):
+    module_name: str
+
+    def __init__(self, module_name: str):
+        self.module_name = module_name
+        super().__init__(f'Could not find module: {self.module_name}')
+
+
+@final
+@dataclass
+class InvalidModuleError(KoreClientError):
+    error: str
+    context: tuple[str, ...] | None
+
+    def __init__(self, error: str, context: Iterable[str] | None):
+        self.error = error
+        self.context = tuple(context) if context else None
+        context_str = ' Context: ' + ' ;; '.join(self.context) if self.context else ''
+        super().__init__(f'Could not verify module: {self.error}{context_str}')
+
+
+@final
+@dataclass
+class DuplicateModuleError(KoreClientError):
+    module_name: str
+
+    def __init__(self, module_name: str):
+        self.module_name = module_name
+        super().__init__(f'Duplicate module name: {self.module_name}')
+
+
+@final
+@dataclass
+class ImplicationError(KoreClientError):
+    error: str
+    context: tuple[str, ...]
+
+    def __init__(self, error: str, context: Iterable[str]):
+        self.error = error
+        self.context = tuple(context)
+        context_str = ' ;; '.join(self.context)
+        super().__init__(f'Implication check error: {self.error} Context: {context_str}')
+
+
+@final
+@dataclass
+class DefaultError(KoreClientError):
+    message: str
+    code: int
+    data: Any
+
     def __init__(self, message: str, code: int, data: Any = None):
-        super().__init__(message)
         self.message = message
         self.code = code
         self.data = data
+        message = f'{self.message} | code: {self.code}' + (f' | data: {self.data}' if data is not None else '')
+        super().__init__(message)
 
 
 class StopReason(str, Enum):
     STUCK = 'stuck'
     DEPTH_BOUND = 'depth-bound'
+    TIMEOUT = 'timeout'
     BRANCHING = 'branching'
     CUT_POINT_RULE = 'cut-point-rule'
     TERMINAL_RULE = 'terminal-rule'
     VACUOUS = 'vacuous'
+    ABORTED = 'aborted'
 
 
 @final
@@ -367,10 +451,9 @@ class State:
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> State:
         return State(
-            # https://github.com/python/mypy/issues/4717
-            term=kore_term(dct['term'], Pattern),  # type: ignore
-            substitution=kore_term(dct['substitution'], Pattern) if 'substitution' in dct else None,  # type: ignore
-            predicate=kore_term(dct['predicate'], Pattern) if 'predicate' in dct else None,  # type: ignore
+            term=kore_term(dct['term']),
+            substitution=kore_term(dct['substitution']) if 'substitution' in dct else None,
+            predicate=kore_term(dct['predicate']) if 'predicate' in dct else None,
         )
 
     @property
@@ -410,7 +493,7 @@ class RewriteSuccess(RewriteResult):
     def from_dict(cls: type[RewriteSuccess], dct: Mapping[str, Any]) -> RewriteSuccess:
         return RewriteSuccess(
             rule_id=dct['rule-id'],
-            rewritten_term=kore_term(dct['rewritten-term'], Pattern) if 'rewritten-term' in dct else None,  # type: ignore
+            rewritten_term=kore_term(dct['rewritten-term']) if 'rewritten-term' in dct else None,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -489,7 +572,7 @@ class LogSimplification(LogEntry):
         return LogSimplification(
             origin=LogOrigin(dct['origin']),
             result=RewriteResult.from_dict(dct['result']),
-            original_term=kore_term(dct['original-term'], Pattern) if 'original-term' in dct else None,  # type: ignore
+            original_term=kore_term(dct['original-term']) if 'original-term' in dct else None,
             original_term_index=None,  # TODO fixme
         )
 
@@ -502,10 +585,12 @@ class ExecuteResult(ABC):  # noqa: B024
     _TYPES: Mapping[StopReason, str] = {
         StopReason.STUCK: 'StuckResult',
         StopReason.DEPTH_BOUND: 'DepthBoundResult',
+        StopReason.TIMEOUT: 'TimeoutResult',
         StopReason.BRANCHING: 'BranchingResult',
         StopReason.CUT_POINT_RULE: 'CutPointResult',
         StopReason.TERMINAL_RULE: 'TerminalResult',
         StopReason.VACUOUS: 'VacuousResult',
+        StopReason.ABORTED: 'AbortedResult',
     }
 
     reason: ClassVar[StopReason]
@@ -524,7 +609,7 @@ class ExecuteResult(ABC):  # noqa: B024
     def _check_reason(cls: type[ER], dct: Mapping[str, Any]) -> None:
         reason = StopReason(dct['reason'])
         if reason is not cls.reason:
-            raise ValueError(f"Expected {cls.reason} as 'reason', found: {reason}")
+            raise AssertionError(f"Expected {cls.reason} as 'reason', found: {reason}")
 
 
 @final
@@ -567,6 +652,28 @@ class DepthBoundResult(ExecuteResult):
         cls._check_reason(dct)
         logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
         return DepthBoundResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
+            logs=logs,
+        )
+
+
+@final
+@dataclass(frozen=True)
+class TimeoutResult(ExecuteResult):
+    reason = StopReason.TIMEOUT
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+    logs: tuple[LogEntry, ...]
+
+    @classmethod
+    def from_dict(cls: type[TimeoutResult], dct: Mapping[str, Any]) -> TimeoutResult:
+        cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
+        return TimeoutResult(
             state=State.from_dict(dct['state']),
             depth=dct['depth'],
             logs=logs,
@@ -662,6 +769,30 @@ class VacuousResult(ExecuteResult):
 
 @final
 @dataclass(frozen=True)
+class AbortedResult(ExecuteResult):
+    reason = StopReason.ABORTED
+    next_states = None
+    rule = None
+
+    state: State
+    depth: int
+    unknown_predicate: Pattern | None
+    logs: tuple[LogEntry, ...]
+
+    @classmethod
+    def from_dict(cls: type[AbortedResult], dct: Mapping[str, Any]) -> AbortedResult:
+        cls._check_reason(dct)
+        logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
+        return AbortedResult(
+            state=State.from_dict(dct['state']),
+            depth=dct['depth'],
+            unknown_predicate=kore_term(dct['unknown-predicate']) if dct.get('unknown-predicate') else None,
+            logs=logs,
+        )
+
+
+@final
+@dataclass(frozen=True)
 class ImpliesResult:
     satisfiable: bool
     implication: Pattern
@@ -676,10 +807,9 @@ class ImpliesResult:
         logs = tuple(LogEntry.from_dict(l) for l in dct['logs']) if 'logs' in dct else ()
         return ImpliesResult(
             satisfiable=dct['satisfiable'],
-            # https://github.com/python/mypy/issues/4717
-            implication=kore_term(dct['implication'], Pattern),  # type: ignore
-            substitution=kore_term(substitution, Pattern) if substitution is not None else None,  # type: ignore
-            predicate=kore_term(predicate, Pattern) if predicate is not None else None,  # type: ignore
+            implication=kore_term(dct['implication']),
+            substitution=kore_term(substitution) if substitution is not None else None,
+            predicate=kore_term(predicate) if predicate is not None else None,
             logs=logs,
         )
 
@@ -695,7 +825,7 @@ class GetModelResult(ABC):  # noqa: B024
                 return UnsatResult()
             case 'Sat':
                 substitution = dct.get('substitution')
-                return SatResult(model=kore_term(substitution, Pattern) if substitution else None)  # type: ignore
+                return SatResult(model=kore_term(substitution) if substitution else None)
             case _:
                 raise ValueError(f'Unknown status: {status}')
 
@@ -759,8 +889,25 @@ class KoreClient(ContextManager['KoreClient']):
         try:
             return self._client.request(method, **params)
         except JsonRpcError as err:
-            assert err.code not in {-32601, -32602}, 'Malformed Kore-RPC request'
-            raise KoreClientError(message=err.message, code=err.code, data=err.data) from err
+            raise self._error(err) from err
+
+    def _error(self, err: JsonRpcError) -> KoreClientError:
+        assert err.code not in {-32601, -32602}, 'Malformed Kore-RPC request'
+        match err.code:
+            case 1:
+                return ParseError(error=err.data)
+            case 2:
+                return PatternError(error=err.data['error'], context=err.data['context'])
+            case 3:
+                return UnknownModuleError(module_name=err.data)
+            case 4:
+                return ImplicationError(error=err.data['error'], context=err.data['context'])
+            case 8:
+                return InvalidModuleError(error=err.data['error'], context=err.data.get('context'))
+            case 9:
+                return DuplicateModuleError(module_name=err.data)
+            case _:
+                return DefaultError(message=err.message, code=err.code, data=err.data)
 
     @staticmethod
     def _state(pattern: Pattern) -> dict[str, Any]:
@@ -775,25 +922,33 @@ class KoreClient(ContextManager['KoreClient']):
         pattern: Pattern,
         *,
         max_depth: int | None = None,
+        assume_state_defined: bool | None = None,
         cut_point_rules: Iterable[str] | None = None,
         terminal_rules: Iterable[str] | None = None,
+        moving_average_step_timeout: bool | None = None,
+        step_timeout: int | None = None,
         module_name: str | None = None,
         log_successful_rewrites: bool | None = None,
         log_failed_rewrites: bool | None = None,
         log_successful_simplifications: bool | None = None,
         log_failed_simplifications: bool | None = None,
+        log_timing: bool | None = None,
     ) -> ExecuteResult:
         params = filter_none(
             {
                 'max-depth': max_depth,
+                'assume-state-defined': assume_state_defined,
                 'cut-point-rules': list(cut_point_rules) if cut_point_rules is not None else None,
                 'terminal-rules': list(terminal_rules) if terminal_rules is not None else None,
-                'state': self._state(pattern),
+                'moving-average-step-timeout': moving_average_step_timeout,
+                'step-timeout': step_timeout,
                 'module': module_name,
+                'state': self._state(pattern),
                 'log-successful-rewrites': log_successful_rewrites,
                 'log-failed-rewrites': log_failed_rewrites,
                 'log-successful-simplifications': log_successful_simplifications,
                 'log-failed-simplifications': log_failed_simplifications,
+                'log-timing': log_timing,
             }
         )
 
@@ -802,15 +957,18 @@ class KoreClient(ContextManager['KoreClient']):
 
     def implies(
         self,
-        ant: Pattern,
-        con: Pattern,
+        antecedent: Pattern,
+        consequent: Pattern,
+        *,
+        module_name: str | None = None,
         log_successful_simplifications: bool | None = None,
         log_failed_simplifications: bool | None = None,
     ) -> ImpliesResult:
         params = filter_none(
             {
-                'antecedent': self._state(ant),
-                'consequent': self._state(con),
+                'antecedent': self._state(antecedent),
+                'consequent': self._state(consequent),
+                'module': module_name,
                 'log-successful-simplifications': log_successful_simplifications,
                 'log-failed-simplifications': log_failed_simplifications,
             }
@@ -822,12 +980,15 @@ class KoreClient(ContextManager['KoreClient']):
     def simplify(
         self,
         pattern: Pattern,
+        *,
+        module_name: str | None = None,
         log_successful_simplifications: bool | None = None,
         log_failed_simplifications: bool | None = None,
     ) -> tuple[Pattern, tuple[LogEntry, ...]]:
         params = filter_none(
             {
                 'state': self._state(pattern),
+                'module': module_name,
                 'log-successful-simplifications': log_successful_simplifications,
                 'log-failed-simplifications': log_failed_simplifications,
             }
@@ -835,7 +996,7 @@ class KoreClient(ContextManager['KoreClient']):
 
         result = self._request('simplify', **params)
         logs = tuple(LogEntry.from_dict(l) for l in result['logs']) if 'logs' in result else ()
-        return kore_term(result['state'], Pattern), logs  # type: ignore # https://github.com/python/mypy/issues/4717
+        return kore_term(result['state']), logs
 
     def get_model(self, pattern: Pattern, module_name: str | None = None) -> GetModelResult:
         params = filter_none(
@@ -848,113 +1009,182 @@ class KoreClient(ContextManager['KoreClient']):
         result = self._request('get-model', **params)
         return GetModelResult.from_dict(result)
 
-    def add_module(self, module: Module) -> str:
-        result = self._request('add-module', module=module.text)
+    def add_module(self, module: Module, *, name_as_id: bool | None = None) -> str:
+        params = filter_none(
+            {
+                'module': module.text,
+                'name-as-id': name_as_id,
+            }
+        )
+        result = self._request('add-module', **params)
         return result['module']
+
+
+class KoreServerArgs(TypedDict, total=False):
+    kompiled_dir: Required[str | Path]
+    module_name: Required[str]
+    port: int | None
+    command: str | Iterable[str] | None
+    smt_timeout: int | None
+    smt_retry_limit: int | None
+    smt_reset_interval: int | None
+    smt_tactic: str | None
+    log_axioms_file: Path | None
+    haskell_log_format: KoreExecLogFormat | None
+    haskell_log_entries: Iterable[str] | None
+    bug_report: BugReport | None
+
+
+class KoreServerInfo(NamedTuple):
+    pid: int
+    host: str
+    port: int
 
 
 class KoreServer(ContextManager['KoreServer']):
     _proc: Popen
-    _pid: int
-    _host: str
+    _info: KoreServerInfo
+
+    _kompiled_dir: Path
+    _definition_file: Path
+    _module_name: str
     _port: int
+    _command: list[str]
+    _smt_timeout: int | None
+    _smt_retry_limit: int | None
+    _smt_reset_interval: int | None
+    _smt_tactic: str | None
+    _log_axioms_file: Path | None
+    _haskell_log_format: KoreExecLogFormat
+    _haskell_log_entries: list[str]
 
-    def __init__(
-        self,
-        kompiled_dir: str | Path,
-        module_name: str,
-        *,
-        port: int | None = None,
-        smt_timeout: int | None = None,
-        smt_retry_limit: int | None = None,
-        smt_reset_interval: int | None = None,
-        smt_tactic: str | None = None,
-        command: str | Iterable[str] | None = None,
-        bug_report: BugReport | None = None,
-        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-        haskell_log_entries: Iterable[str] = (),
-        log_axioms_file: Path | None = None,
-    ):
-        kompiled_dir = Path(kompiled_dir)
-        check_dir_path(kompiled_dir)
+    _bug_report: BugReport | None
 
-        definition_file = kompiled_dir / 'definition.kore'
-        check_file_path(definition_file)
+    def __init__(self, args: KoreServerArgs):
+        self._kompiled_dir = Path(args['kompiled_dir'])
+        self._definition_file = self._kompiled_dir / 'definition.kore'
+        self._module_name = args['module_name']
+        self._port = args.get('port') or 0
 
-        self._check_none_or_positive(smt_timeout, 'smt_timeout')
-        self._check_none_or_positive(smt_retry_limit, 'smt_retry_limit')
-        self._check_none_or_positive(smt_reset_interval, 'smt_reset_interval')
-
-        if not command:
-            command = ('kore-rpc',)
+        if not (command := args.get('command')):
+            self._command = ['kore-rpc']
         elif type(command) is str:
-            command = (command,)
+            self._command = [command]
+        else:
+            self._command = list(command)
 
-        args = list(command)
-        args += [str(definition_file)]
-        server_args = ['--module', module_name, '--server-port', str(port or 0)]
-        smt_server_args = []
-        if smt_timeout:
-            smt_server_args += ['--smt-timeout', str(smt_timeout)]
-        if smt_retry_limit:
-            smt_server_args += ['--smt-retry-limit', str(smt_retry_limit)]
-        if smt_reset_interval:
-            smt_server_args += ['--smt-reset-interval', str(smt_reset_interval)]
-        if smt_tactic:
-            smt_server_args += ['--smt-tactic', smt_tactic]
+        self._smt_timeout = args.get('smt_timeout')
+        self._smt_retry_limit = args.get('smt_retry_limit')
+        self._smt_reset_interval = args.get('smt_reset_interval')
+        self._smt_tactic = args.get('smt_tactic')
+        self._log_axioms_file = args.get('log_axioms_file')
 
-        haskell_log_args = (
-            [
-                '--log',
-                str(log_axioms_file),
-                '--log-format',
-                haskell_log_format.value,
-                '--log-entries',
-                ','.join(haskell_log_entries),
-            ]
-            if log_axioms_file
-            else []
-        )
-        args += server_args
-        args += smt_server_args
-        args += haskell_log_args
+        self._haskell_log_format = args.get('haskell_log_format') or KoreExecLogFormat.ONELINE
 
-        if bug_report:
-            self._gather_server_report(
-                module_name,
-                list(command)[0],
-                bug_report,
-                definition_file,
-                list(command)[1:] + smt_server_args + haskell_log_args,
-            )
+        if haskell_log_entries := args.get('haskell_log_entries'):
+            self._haskell_log_entries = list(haskell_log_entries)
+        else:
+            self._haskell_log_entries = []
 
-        _LOGGER.info(f'Starting KoreServer: {" ".join(args)}')
+        self._bug_report = args.get('bug_report')
 
-        self._proc = Popen(args)
-        self._pid = self._proc.pid
-        self._host, self._port = self._get_host_and_port(self._pid)
-        if port:
-            assert self.port == port
+        self._validate()
+        self.start()
+
+    @property
+    def pid(self) -> int:
+        return self._info.pid
+
+    @property
+    def host(self) -> str:
+        return self._info.host
+
+    @property
+    def port(self) -> int:
+        return self._info.port
+
+    def __enter__(self) -> KoreServer:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
+    def start(self) -> None:
+        if self._bug_report:
+            self._populate_bug_report(self._bug_report)
+
+        cli_args = self._cli_args()
+        _LOGGER.info(f'Starting KoreServer: {" ".join(cli_args)}')
+        self._proc = Popen(cli_args)
+        pid = self._proc.pid
+        host, port = self._get_host_and_port(pid)
+        if self._port:
+            assert port == self._port
+        self._info = KoreServerInfo(pid=pid, host=host, port=port)
         _LOGGER.info(f'KoreServer started: {self.host}:{self.port}, pid={self.pid}')
 
-    @staticmethod
-    def _gather_server_report(
-        module_name: str, prog_name: str, bug_report: BugReport, definition_file: Path, extra_args: list[str]
-    ) -> None:
-        bug_report.add_file(definition_file, Path('definition.kore'))
+    def close(self) -> None:
+        _LOGGER.info(f'Stopping KoreServer: {self.host}:{self.port}, pid={self.pid}')
+        self._proc.send_signal(SIGINT)
+        self._proc.wait()
+        _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
+
+    def _validate(self) -> None:
+        def _check_none_or_positive(n: int | None, param_name: str) -> None:
+            if n is not None and n <= 0:
+                raise ValueError(f'Expected positive integer for: {param_name}, got: {n}')
+
+        check_dir_path(self._kompiled_dir)
+        check_file_path(self._definition_file)
+        _check_none_or_positive(self._smt_timeout, 'smt_timeout')
+        _check_none_or_positive(self._smt_retry_limit, 'smt_retry_limit')
+        _check_none_or_positive(self._smt_reset_interval, 'smt_reset_interval')
+
+    def _cli_args(self) -> list[str]:
+        server_args = ['--module', self._module_name, '--server-port', str(self._port)]
+        res = list(self._command)
+        res += [str(self._definition_file)]
+        res += server_args
+        res += self._extra_args()
+        return res
+
+    def _extra_args(self) -> list[str]:
+        """Command line arguments that are intended to be included in the bug report"""
+        smt_server_args = []
+        if self._smt_timeout:
+            smt_server_args += ['--smt-timeout', str(self._smt_timeout)]
+        if self._smt_retry_limit:
+            smt_server_args += ['--smt-retry-limit', str(self._smt_retry_limit)]
+        if self._smt_reset_interval:
+            smt_server_args += ['--smt-reset-interval', str(self._smt_reset_interval)]
+        if self._smt_tactic:
+            smt_server_args += ['--smt-tactic', self._smt_tactic]
+
+        if self._log_axioms_file:
+            haskell_log_args = [
+                '--log',
+                str(self._log_axioms_file),
+                '--log-format',
+                self._haskell_log_format.value,
+                '--log-entries',
+                ','.join(self._haskell_log_entries),
+            ]
+        else:
+            haskell_log_args = []
+
+        return smt_server_args + haskell_log_args
+
+    def _populate_bug_report(self, bug_report: BugReport) -> None:
+        prog_name = self._command[0]
+        bug_report.add_file(self._definition_file, Path('definition.kore'))
         version_info = run_process((prog_name, '--version'), pipe_stderr=True, logger=_LOGGER).stdout.strip()
         bug_report.add_file_contents(version_info, Path('server_version.txt'))
         server_instance = {
             'exe': prog_name,
-            'module': module_name,
-            'extra_args': extra_args,
+            'module': self._module_name,
+            'extra_args': self._command[1:] + self._extra_args(),
         }
         bug_report.add_file_contents(json.dumps(server_instance), Path('server_instance.json'))
-
-    @staticmethod
-    def _check_none_or_positive(n: int | None, param_name: str) -> None:
-        if n is not None and n <= 0:
-            raise ValueError(f'Expected positive integer for: {param_name}, got: {n}')
 
     @staticmethod
     def _get_host_and_port(pid: int) -> tuple[str, int]:
@@ -966,50 +1196,32 @@ class KoreServer(ContextManager['KoreServer']):
         conn = conns[0]
         return conn.laddr
 
-    @property
-    def pid(self) -> int:
-        return self._pid
 
-    @property
-    def host(self) -> str:
-        return self._host
+class FallbackReason(Enum):
+    BRANCHING = 'Branching'
+    STUCK = 'Stuck'
+    ABORTED = 'Aborted'
 
-    @property
-    def port(self) -> int:
-        return self._port
 
-    def __enter__(self) -> KoreServer:
-        return self
-
-    def __exit__(self, *args: Any) -> None:
-        self.close()
-
-    def close(self) -> None:
-        self._proc.send_signal(SIGINT)
-        self._proc.wait()
-        _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
+class BoosterServerArgs(KoreServerArgs, total=False):
+    llvm_kompiled_dir: Required[str | Path]
+    fallback_on: Iterable[str | FallbackReason] | None
+    interim_simplification: int | None
+    no_post_exec_simplify: bool | None
 
 
 class BoosterServer(KoreServer):
-    def __init__(
-        self,
-        kompiled_dir: str | Path,
-        llvm_kompiled_dir: str | Path,
-        module_name: str,
-        *,
-        port: int | None = None,
-        smt_timeout: int | None = None,
-        smt_retry_limit: int | None = None,
-        smt_reset_interval: int | None = None,
-        smt_tactic: str | None = None,
-        command: str | Iterable[str] | None,
-        bug_report: BugReport | None = None,
-        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-        haskell_log_entries: Iterable[str] = (),
-        log_axioms_file: Path | None = None,
-    ):
-        llvm_kompiled_dir = Path(llvm_kompiled_dir)
-        check_dir_path(llvm_kompiled_dir)
+    _llvm_kompiled_dir: Path
+    _dylib: Path
+    _llvm_definition: Path
+    _llvm_dt: Path
+
+    _fallback_on: list[FallbackReason] | None
+    _interim_simplification: int | None
+    _no_post_exec_simplify: bool
+
+    def __init__(self, args: BoosterServerArgs):
+        self._llvm_kompiled_dir = Path(args['llvm_kompiled_dir'])
 
         ext: str
         match sys.platform:
@@ -1020,85 +1232,94 @@ class BoosterServer(KoreServer):
             case _:
                 raise ValueError('Unsupported platform: {sys.platform}')
 
-        dylib = llvm_kompiled_dir / f'interpreter.{ext}'
-        check_file_path(dylib)
-        llvm_definition = llvm_kompiled_dir / 'definition.kore'
-        check_file_path(llvm_definition)
-        llvm_dt = llvm_kompiled_dir / 'dt'
-        check_dir_path(llvm_dt)
+        self._dylib = self._llvm_kompiled_dir / f'interpreter.{ext}'
+        self._llvm_definition = self._llvm_kompiled_dir / 'definition.kore'
+        self._llvm_dt = self._llvm_kompiled_dir / 'dt'
 
-        if bug_report:
-            bug_report.add_file(llvm_definition, Path('llvm_definition/definition.kore'))
-            bug_report.add_file(llvm_dt, Path('llvm_definition/dt'))
+        if fallback_on := args.get('fallback_on'):
+            self._fallback_on = [FallbackReason(reason) for reason in fallback_on]
+        else:
+            self._fallback_on = None
 
-        self._check_none_or_positive(smt_timeout, 'smt_timeout')
-        self._check_none_or_positive(smt_retry_limit, 'smt_retry_limit')
-        self._check_none_or_positive(smt_reset_interval, 'smt_reset_interval')
+        self._interim_simplification = args.get('interim_simplification')
+        self._no_post_exec_simplify = bool(args.get('no_post_exec_simplify'))
 
-        if not command:
-            command = ('kore-rpc-booster',)
-        elif type(command) is str:
-            command = (command,)
+        if not args.get('command'):
+            args['command'] = 'kore-rpc-booster'
 
-        args = list(command)
-        args += ['--llvm-backend-library', str(dylib)]
-        super().__init__(
-            kompiled_dir=kompiled_dir,
-            module_name=module_name,
-            port=port,
-            smt_timeout=smt_timeout,
-            smt_retry_limit=smt_retry_limit,
-            smt_reset_interval=smt_reset_interval,
-            smt_tactic=smt_tactic,
-            command=args,
-            bug_report=bug_report,
-            haskell_log_format=haskell_log_format,
-            haskell_log_entries=haskell_log_entries,
-            log_axioms_file=log_axioms_file,
-        )
+        super().__init__(args)
+
+    def _validate(self) -> None:
+        check_dir_path(self._llvm_kompiled_dir)
+        check_file_path(self._dylib)
+        check_file_path(self._llvm_definition)
+        check_dir_path(self._llvm_dt)
+
+        if self._fallback_on is not None and not self._fallback_on:
+            raise ValueError("'fallback_on' must not be empty")
+
+        if self._interim_simplification and self._interim_simplification < 0:
+            raise ValueError(f"'interim_simplification' must not be negative, got: {self._interim_simplification}")
+
+    def _extra_args(self) -> list[str]:
+        res = super()._extra_args()
+        res += ['--llvm-backend-library', str(self._dylib)]
+        if self._fallback_on is not None:
+            res += ['--fallback-on', ','.join(reason.value for reason in self._fallback_on)]
+        if self._interim_simplification is not None:
+            res += ['--interim-simplification', str(self._interim_simplification)]
+        if self._no_post_exec_simplify:
+            res += ['--no-post-exec-simplify']
+        return res
+
+    def _populate_bug_report(self, bug_report: BugReport) -> None:
+        super()._populate_bug_report(bug_report)
+        bug_report.add_file(self._llvm_definition, Path('llvm_definition/definition.kore'))
+        bug_report.add_file(self._llvm_dt, Path('llvm_definition/dt'))
+        llvm_version = run_process('llvm-backend-version', pipe_stderr=True, logger=_LOGGER).stdout.strip()
+        bug_report.add_file_contents(llvm_version, Path('llvm_version.txt'))
 
 
 def kore_server(
     definition_dir: str | Path,
     module_name: str,
     *,
-    llvm_definition_dir: Path | None = None,
     port: int | None = None,
     command: str | Iterable[str] | None = None,
-    bug_report: BugReport | None = None,
     smt_timeout: int | None = None,
     smt_retry_limit: int | None = None,
     smt_tactic: str | None = None,
-    haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-    haskell_log_entries: Iterable[str] = (),
     log_axioms_file: Path | None = None,
+    haskell_log_format: KoreExecLogFormat | None = None,
+    haskell_log_entries: Iterable[str] | None = None,
+    # booster
+    llvm_definition_dir: Path | None = None,
+    fallback_on: Iterable[str | FallbackReason] | None = None,
+    interim_simplification: int | None = None,
+    no_post_exec_simplify: bool | None = None,
+    # ---
+    bug_report: BugReport | None = None,
 ) -> KoreServer:
+    kore_args: KoreServerArgs = {
+        'kompiled_dir': definition_dir,
+        'module_name': module_name,
+        'port': port,
+        'command': command,
+        'smt_timeout': smt_timeout,
+        'smt_retry_limit': smt_retry_limit,
+        'log_axioms_file': log_axioms_file,
+        'smt_tactic': smt_tactic,
+        'haskell_log_format': haskell_log_format,
+        'haskell_log_entries': haskell_log_entries,
+        'bug_report': bug_report,
+    }
     if llvm_definition_dir:
-        return BoosterServer(
-            kompiled_dir=definition_dir,
-            llvm_kompiled_dir=llvm_definition_dir,
-            module_name=module_name,
-            port=port,
-            command=command,
-            bug_report=bug_report,
-            smt_timeout=smt_timeout,
-            smt_retry_limit=smt_retry_limit,
-            smt_tactic=smt_tactic,
-            haskell_log_format=haskell_log_format,
-            haskell_log_entries=haskell_log_entries,
-            log_axioms_file=log_axioms_file,
-        )
-
-    return KoreServer(
-        kompiled_dir=definition_dir,
-        module_name=module_name,
-        port=port,
-        command=command,
-        bug_report=bug_report,
-        smt_timeout=smt_timeout,
-        smt_retry_limit=smt_retry_limit,
-        smt_tactic=smt_tactic,
-        haskell_log_format=haskell_log_format,
-        haskell_log_entries=haskell_log_entries,
-        log_axioms_file=log_axioms_file,
-    )
+        booster_args: BoosterServerArgs = {
+            'llvm_kompiled_dir': llvm_definition_dir,
+            'fallback_on': fallback_on,
+            'interim_simplification': interim_simplification,
+            'no_post_exec_simplify': no_post_exec_simplify,
+            **kore_args,
+        }
+        return BoosterServer(booster_args)
+    return KoreServer(kore_args)

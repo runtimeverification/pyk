@@ -15,10 +15,13 @@ from subprocess import CalledProcessError
 from typing import TYPE_CHECKING, final
 
 from ..utils import abs_or_rel_to, check_dir_path, check_file_path, run_process
+from . import TypeInferenceMode
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from typing import Any, Final, Literal
+
+    from ..utils import BugReport
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -34,6 +37,7 @@ def kompile(
     command: Iterable[str] = ('kompile',),
     output_dir: str | Path | None = None,
     temp_dir: str | Path | None = None,
+    type_inference_mode: str | TypeInferenceMode | None = None,
     debug: bool = False,
     verbose: bool = False,
     cwd: Path | None = None,
@@ -46,6 +50,7 @@ def kompile(
         command=command,
         output_dir=output_dir,
         temp_dir=temp_dir,
+        type_inference_mode=type_inference_mode,
         debug=debug,
         verbose=verbose,
         cwd=cwd,
@@ -113,10 +118,12 @@ class Kompile(ABC):
         *,
         output_dir: str | Path | None = None,
         temp_dir: str | Path | None = None,
+        type_inference_mode: str | TypeInferenceMode | None = None,
         debug: bool = False,
         verbose: bool = False,
         cwd: Path | None = None,
         check: bool = True,
+        bug_report: BugReport | None = None,
     ) -> Path:
         check_file_path(abs_or_rel_to(self.base_args.main_file, cwd or Path()))
         for include_dir in self.base_args.include_dirs:
@@ -135,6 +142,10 @@ class Kompile(ABC):
             temp_dir = Path(temp_dir)
             args += ['--temp-dir', str(temp_dir)]
 
+        if type_inference_mode is not None:
+            type_inference_mode = TypeInferenceMode(type_inference_mode)
+            args += ['--type-inference-mode', type_inference_mode.value]
+
         if debug:
             args += ['--debug']
 
@@ -152,10 +163,14 @@ class Kompile(ABC):
             ) from err
 
         if proc_res.stdout:
-            print(proc_res.stdout.rstrip())
+            out = proc_res.stdout.rstrip()
+            print(out)
+            if bug_report:
+                bug_report.add_file_contents(out, Path('kompile.log'))
 
         definition_dir = output_dir if output_dir else Path(self.base_args.main_file.stem + '-kompiled')
         assert definition_dir.is_dir()
+
         return definition_dir
 
     @abstractmethod
@@ -305,6 +320,7 @@ class KompileArgs:
     hook_namespaces: tuple[str, ...]
     emit_json: bool
     gen_bison_parser: bool
+    gen_glr_bison_parser: bool
     bison_parser_library: bool
     post_process: str | None
     read_only: bool
@@ -320,6 +336,7 @@ class KompileArgs:
         hook_namespaces: Iterable[str] = (),
         emit_json: bool = True,
         gen_bison_parser: bool = False,
+        gen_glr_bison_parser: bool = False,
         bison_parser_library: bool = False,
         post_process: str | None = None,
         read_only: bool = False,
@@ -336,6 +353,7 @@ class KompileArgs:
         object.__setattr__(self, 'hook_namespaces', hook_namespaces)
         object.__setattr__(self, 'emit_json', emit_json)
         object.__setattr__(self, 'gen_bison_parser', gen_bison_parser)
+        object.__setattr__(self, 'gen_glr_bison_parser', gen_glr_bison_parser)
         object.__setattr__(self, 'bison_parser_library', bison_parser_library)
         object.__setattr__(self, 'post_process', post_process)
         object.__setattr__(self, 'read_only', read_only)
@@ -363,6 +381,9 @@ class KompileArgs:
 
         if self.gen_bison_parser:
             args += ['--gen-bison-parser']
+
+        if self.gen_glr_bison_parser:
+            args += ['--gen-glr-bison-parser']
 
         if self.bison_parser_library:
             args += ['--bison-parser-library']
