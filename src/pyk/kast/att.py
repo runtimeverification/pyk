@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from functools import cache
 from itertools import chain
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, final, overload
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, final, overload
 
 from ..utils import FrozenDict
 from .kast import KAst
@@ -38,16 +38,16 @@ class AttType(Generic[T], ABC):
         ...
 
 
-class NullaryType(AttType[Literal['']]):
-    def from_dict(self, obj: Any) -> Literal['']:
+class NullaryType(AttType[None]):
+    def from_dict(self, obj: Any) -> None:
         assert obj == ''
-        return obj
+        return None
 
-    def to_dict(self, value: Literal['']) -> Any:
-        assert value == ''
-        return value
+    def to_dict(self, value: None) -> Any:
+        assert value is None
+        return ''
 
-    def pretty(self, value: Literal['']) -> None:
+    def pretty(self, value: None) -> None:
         return None
 
 
