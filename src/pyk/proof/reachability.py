@@ -684,7 +684,10 @@ class APRProver(Prover):
                 f'Skipping full subsumption check because of fast may subsume check {self.proof.id}: {node.id}'
             )
             return None
-        return self.kcfg_explore.cterm_implies(node.cterm, target_cterm)
+        csubst = self.kcfg_explore.cterm_implies(node.cterm, target_cterm)
+        if csubst is not None:
+            _LOGGER.info(f'Subsumed into target node {self.proof.id}: {shorten_hashes((node.id, self.proof.target))}')
+        return csubst
 
     def step_proof(self) -> Iterable[StepResult]:
         if not self.proof.pending:
