@@ -762,7 +762,7 @@ class APRSummary(ProofSummary):
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
             f'    bounded: {self.bounded}',
-            f'    execution time: {self.exec_time//3600}h {(self.exec_time%3600)//60}m {self.exec_time%60}s',
+            f'    execution time: {self.exec_time // 3600}h {(self.exec_time % 3600) // 60}m {self.exec_time % 60}s',
         ]
         if self.bmc_depth is not None:
             _lines.append(f'    bmc depth: {self.bmc_depth}')
