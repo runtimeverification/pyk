@@ -51,6 +51,28 @@ class NoneType(AttType[None]):
         return None
 
 
+class OptionalType(Generic[T], AttType[T | None]):
+    _value_type: AttType[T]
+
+    def __init__(self, value_type: AttType[T]):
+        self._value_type = value_type
+
+    def from_dict(self, obj: Any) -> T | None:
+        if obj == '':
+            return None
+        return self._value_type.from_dict(obj)
+
+    def to_dict(self, value: T | None) -> Any:
+        if value is None:
+            return ''
+        return self._value_type.to_dict(value)
+
+    def pretty(self, value: T | None) -> str | None:
+        if value is None:
+            return None
+        return self._value_type.pretty(value)
+
+
 class AnyType(AttType[Any]):
     def from_dict(self, obj: Any) -> Any:
         return self._freeze(obj)
