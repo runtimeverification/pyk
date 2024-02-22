@@ -141,6 +141,7 @@ class PathType(AttType[Path]):
 
 _NONE: Final = NoneType()
 _ANY: Final = AnyType()
+_STR: Final = StrType()
 _LOCATION: Final = LocationType()
 _PATH: Final = PathType()
 
@@ -197,7 +198,7 @@ class Atts:
     PROJECTION: Final = AttKey('projection', type=_NONE)
     RIGHT: Final = AttKey('right', type=_NONE)
     SIMPLIFICATION: Final = AttKey('simplification', type=_ANY)
-    SYMBOL: Final = AttKey('symbol', type=_ANY)
+    SYMBOL: Final = AttKey('symbol', type=OptionalType(_STR))
     SORT: Final = AttKey('org.kframework.kore.Sort', type=_ANY)
     SOURCE: Final = AttKey('org.kframework.attributes.Source', type=_PATH)
     TOKEN: Final = AttKey('token', type=_NONE)
