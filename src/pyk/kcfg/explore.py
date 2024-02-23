@@ -228,8 +228,8 @@ class KCFGExplore:
             _rule_lines = []
             for node_log in _logs:
                 if type(node_log.result) is RewriteSuccess:
-                    if node_log.result.rule_id in self.kprint.definition.sentence_by_unique_id:
-                        sent = self.kprint.definition.sentence_by_unique_id[node_log.result.rule_id]
+                    if node_log.result.rule_id in self.cterm_symbolic._definition.sentence_by_unique_id:
+                        sent = self.cterm_symbolic._definition.sentence_by_unique_id[node_log.result.rule_id]
                         _rule_lines.append(f'{sent.label}:{sent.source}')
                     else:
                         _LOGGER.warning(f'Unknown unique id attached to rule log entry: {node_log}')
