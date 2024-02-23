@@ -142,7 +142,7 @@ class APRProof(Proof, KCFGExploration):
         elif isinstance(result, APRProofBoundedResult):
             self.add_bounded(result.node_id)
         else:
-            raise ValueError('Incorrect result type')
+            raise ValueError(f'Incorrect result type, expected APRProofResult: {result}')
 
     @property
     def module_name(self) -> str:
