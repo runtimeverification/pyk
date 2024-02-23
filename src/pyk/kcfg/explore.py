@@ -98,9 +98,10 @@ class KCFGExplore:
 
             return bottom_up(_replace_rewrites_with_implies, kast)
 
-        config_match = self.cterm_symbolic.implies(
+        _config_match = self.cterm_symbolic.implies(
             CTerm.from_kast(antecedent.config), CTerm.from_kast(consequent.config)
         )
+        config_match = _config_match.csubst
         if config_match is None:
             failing_cells = []
             curr_cell_match = Subst({})
