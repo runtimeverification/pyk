@@ -47,7 +47,12 @@ class APRProofExtendResult(APRProofResult):
 
 @dataclass
 class APRProofSubsumeResult(APRProofResult):
-    csubst: CSubst | None
+    csubst: CSubst
+
+
+@dataclass
+class APRProofTerminalResult(APRProofResult):
+    ...
 
 
 @dataclass
@@ -130,11 +135,10 @@ class APRProof(Proof, KCFGExploration):
         if isinstance(result, APRProofExtendResult):
             self.kcfg.extend(result.extend_result, self.kcfg.node(result.node_id), logs=self.logs)
         elif isinstance(result, APRProofSubsumeResult):
-            if result.csubst is None:
-                self._terminal.add(result.node_id)
-            else:
-                self.kcfg.create_cover(result.node_id, self.target, csubst=result.csubst)
-                _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((result.node_id, self.target))}')
+            self.kcfg.create_cover(result.node_id, self.target, csubst=result.csubst)
+            _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((result.node_id, self.target))}')
+        elif isinstance(result, APRProofTerminalResult):
+            self._terminal.add(result.node_id)
         elif isinstance(result, APRProofBoundedResult):
             self.add_bounded(result.node_id)
         else:
@@ -719,8 +723,11 @@ class APRProver(Prover):
 
         if target_is_terminal and self.always_check_subsumption:
             csubst = self._check_subsume(curr_node)
-            if csubst is not None or is_terminal:
+            if csubst is not None:
                 return [APRProofSubsumeResult(csubst=csubst, node_id=curr_node.id)]
+
+        if is_terminal:
+            return [APRProofTerminalResult(node_id=curr_node.id)]
 
         module_name = self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
 
