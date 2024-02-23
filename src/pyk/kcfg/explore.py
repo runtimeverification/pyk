@@ -4,22 +4,12 @@ import logging
 from typing import TYPE_CHECKING
 
 from ..cterm import CTerm
-from ..kast.inner import KApply, KRewrite, KVariable, Subst
-from ..kast.manip import (
-    abstract_term_safely,
-    bottom_up,
-    extract_lhs,
-    extract_rhs,
-    flatten_label,
-    minimize_term,
-    ml_pred_to_bool,
-    push_down_rewrites,
-)
+from ..kast.inner import KApply, KRewrite, KVariable
+from ..kast.manip import abstract_term_safely, bottom_up, extract_lhs, extract_rhs, minimize_term, push_down_rewrites
 from ..kore.rpc import RewriteSuccess
-from ..prelude import k
 from ..prelude.kbool import notBool
 from ..prelude.kint import leInt, ltInt
-from ..prelude.ml import mlAnd, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot, mlTop
+from ..prelude.ml import mlAnd, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG, Abstract, Branch, NDBranch, Step, Stuck, Vacuous
 from .semantics import DefaultSemantics
@@ -72,24 +62,6 @@ class KCFGExplore:
 
             return bottom_up(_no_cell_rewrite_to_dots, term)
 
-        def _is_cell_subst(csubst: KInner) -> bool:
-            if type(csubst) is KApply and csubst.label.name == '_==K_':
-                csubst_arg = csubst.args[0]
-                if type(csubst_arg) is KVariable and csubst_arg.name.endswith('_CELL'):
-                    return True
-            return False
-
-        def _is_negative_cell_subst(constraint: KInner) -> bool:
-            constraint_bool = ml_pred_to_bool(constraint)
-            if type(constraint_bool) is KApply and constraint_bool.label.name == 'notBool_':
-                negative_constraint = constraint_bool.args[0]
-                if type(negative_constraint) is KApply and negative_constraint.label.name == '_andBool_':
-                    constraints = flatten_label('_andBool_', negative_constraint)
-                    cell_constraints = list(filter(_is_cell_subst, constraints))
-                    if len(cell_constraints) > 0:
-                        return True
-            return False
-
         def replace_rewrites_with_implies(kast: KInner) -> KInner:
             def _replace_rewrites_with_implies(_kast: KInner) -> KInner:
                 if type(_kast) is KRewrite:
@@ -98,48 +70,32 @@ class KCFGExplore:
 
             return bottom_up(_replace_rewrites_with_implies, kast)
 
-        _config_match = self.cterm_symbolic.implies(
-            CTerm.from_kast(antecedent.config), CTerm.from_kast(consequent.config)
-        )
-        config_match = _config_match.csubst
-        if config_match is None:
-            failing_cells = []
-            curr_cell_match = Subst({})
-            for cell in antecedent.cells:
-                antecedent_cell = antecedent.cell(cell)
-                consequent_cell = consequent.cell(cell)
-                cell_match = consequent_cell.match(antecedent_cell)
-                if cell_match is not None:
-                    _curr_cell_match = curr_cell_match.union(cell_match)
-                    if _curr_cell_match is not None:
-                        curr_cell_match = _curr_cell_match
-                        continue
-                failing_cell = push_down_rewrites(KRewrite(antecedent_cell, consequent_cell))
-                failing_cell = no_cell_rewrite_to_dots(failing_cell)
-                failing_cell = replace_rewrites_with_implies(failing_cell)
-                failing_cells.append((cell, failing_cell))
-            failing_cells_str = '\n'.join(
-                f'{cell}: {self.kprint.pretty_print(minimize_term(rew))}' for cell, rew in failing_cells
+        cterm_implies = self.cterm_symbolic.implies(antecedent, consequent, failure_reason=True)
+        if cterm_implies.csubst is not None:
+            return (True, '')
+
+        failing_cells_strs = []
+        for name, failing_cell in cterm_implies.failing_cells:
+            failing_cell = push_down_rewrites(failing_cell)
+            failing_cell = no_cell_rewrite_to_dots(failing_cell)
+            failing_cell = replace_rewrites_with_implies(failing_cell)
+            failing_cells_strs.append(f'{name}: {self.kprint.pretty_print(minimize_term(failing_cell))}')
+
+        ret_str = 'Matching failed.'
+        if len(failing_cells_strs) > 0:
+            failing_cells_str = '\n'.join(failing_cells_strs)
+            ret_str = f'{ret_str}\nThe following cells failed matching individually (antecedent #Implies consequent):\n{failing_cells_str}'
+
+        if cterm_implies.remaining_implication is not None:
+            ret_str = f'{ret_str}\nThe remaining implication is:\n{self.kprint.pretty_print(cterm_implies.remaining_implication)}'
+
+        if len(cterm_implies.negative_cell_constraints) > 0:
+            negative_cell_constraints_str = '\n'.join(
+                self.kprint.pretty_print(cc) for cc in cterm_implies.negative_cell_constraints
             )
-            return (
-                False,
-                f'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n{failing_cells_str}',
-            )
-        else:
-            consequent_constraints = list(
-                filter(lambda x: not CTerm._is_spurious_constraint(x), map(config_match.subst, consequent.constraints))
-            )
-            impl = CTerm._ml_impl(antecedent.constraints, consequent_constraints)
-            if impl != mlTop(k.GENERATED_TOP_CELL):
-                fail_str = self.kprint.pretty_print(impl)
-                negative_cell_constraints = list(filter(_is_negative_cell_subst, antecedent.constraints))
-                if len(negative_cell_constraints) > 0:
-                    fail_str = (
-                        f'{fail_str}\n\nNegated cell substitutions found (consider using _ => ?_):\n'
-                        + '\n'.join([self.kprint.pretty_print(cc) for cc in negative_cell_constraints])
-                    )
-                return (False, f'Implication check failed, the following is the remaining implication:\n{fail_str}')
-        return (True, '')
+            ret_str = f'{ret_str}\nNegated cell substitutions found (consider using _ => ?_):\n{negative_cell_constraints_str}'
+
+        return (False, ret_str)
 
     def simplify(self, cfg: KCFG, logs: dict[int, tuple[LogEntry, ...]]) -> None:
         for node in cfg.nodes:
