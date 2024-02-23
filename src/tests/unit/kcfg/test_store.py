@@ -30,10 +30,10 @@ EQUAL_TEST_DATA: Final[tuple[tuple[KInner, KInner], ...]] = (
 
 @pytest.mark.parametrize('term1,term2', EQUAL_TEST_DATA, ids=count())
 def test_use_cached(term1: KInner, term2: KInner) -> None:
-    # When
-
+    # Given
     cached_values: _Cache[KInner] = _Cache()
 
+    # When
     id1 = cached_values.cache(term1)
     id2 = cached_values.cache(term2)
 
@@ -52,10 +52,10 @@ NOT_EQUAL_TEST_DATA: Final[tuple[tuple[KInner, KInner], ...]] = (
 
 @pytest.mark.parametrize('term1,term2', NOT_EQUAL_TEST_DATA, ids=count())
 def test_not_use_cached(term1: KInner, term2: KInner) -> None:
-    # When
-
+    # Given
     cached_values: _Cache[KInner] = _Cache()
 
+    # When
     id1 = cached_values.cache(term1)
     id2 = cached_values.cache(term2)
 

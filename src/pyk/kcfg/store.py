@@ -28,7 +28,6 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
     _lock: threading.Lock
 
     def __init__(self) -> None:
-        super().__init__()
         self._nodes = {}
         self._optimized_terms = _Cache()
         self._klabels = _Cache()
@@ -50,7 +49,7 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
         del self._nodes[key]
 
     def __iter__(self) -> Iterator[int]:
-        return self._nodes.__iter__()
+        return iter(self._nodes)
 
     def __len__(self) -> int:
         return len(self._nodes)
@@ -84,25 +83,27 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
 
 
 class _Cache(Generic[A]):
+    _value_to_id: dict[A, int]
+    _values: list[A] 
+
     def __init__(self) -> None:
-        self._value_to_id: dict[A, int] = {}
-        self._values: list[A] = []
+        self._value_to_id = {}
+        self._values = []
 
     def cache(self, value: A) -> int:
-        id = self._value_to_id.get(value)
-        if id is not None:
-            return id
-        id = len(self._values)
-        self._value_to_id[value] = id
+        idx = self._value_to_id.get(value)
+        if idx is not None:
+            return idx
+        idx = len(self._values)
+        self._value_to_id[value] = idx
         self._values.append(value)
-        return id
+        return idx
 
     def get(self, idx: int) -> A:
         return self._values[idx]
 
 
-@dataclass(frozen=True)
-class _OptInner:
+class _OptInner(ABC):
     @abstractmethod
     def build(self, klabels: _Cache[KLabel], terms: list[KInner]) -> KInner:
         ...
