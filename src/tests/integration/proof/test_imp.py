@@ -781,7 +781,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         expected_k, expected_state = expected_post
 
         # When
-        exec_res = kcfg_explore.cterm_execute(self.config(kcfg_explore.kprint, k, state), depth=depth)
+        exec_res = kcfg_explore.cterm_symbolic.cterm_execute(self.config(kcfg_explore.kprint, k, state), depth=depth)
         actual_k = kcfg_explore.kprint.pretty_print(exec_res.state.cell('K_CELL'))
         actual_state = kcfg_explore.kprint.pretty_print(exec_res.state.cell('STATE_CELL'))
         actual_depth = exec_res.depth
@@ -816,7 +816,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         cterm_term = self.config(kcfg_explore.kprint, *cterm)
 
         # When
-        actual = kcfg_explore.cterm_get_model(cterm_term)
+        actual = kcfg_explore.cterm_symbolic.cterm_get_model(cterm_term)
 
         # Then
         assert actual == expected
@@ -842,7 +842,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         consequent_term = self.config(kcfg_explore.kprint, *consequent)
 
         # When
-        actual = kcfg_explore.cterm_implies(antecedent_term, consequent_term)
+        actual = kcfg_explore.cterm_symbolic.cterm_implies(antecedent_term, consequent_term)
 
         # Then
         assert actual == expected
@@ -861,7 +861,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         expected = config.add_constraint(constraint)
 
         # When
-        actual = kcfg_explore.cterm_assume_defined(config)
+        actual = kcfg_explore.cterm_symbolic.cterm_assume_defined(config)
 
         # Then
         assert actual == expected

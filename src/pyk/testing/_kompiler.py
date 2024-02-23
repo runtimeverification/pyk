@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from ..cterm import CTermSymbolic
 from ..kast.outer import read_kast_definition
 from ..kcfg import KCFGExplore
 from ..kllvm.compiler import compile_runtime
@@ -239,7 +240,8 @@ class KCFGExploreTest(KoreClientTest, KPrintTest):
         bug_report: BugReport | None,
     ) -> Iterator[KCFGExplore]:
         semantics = self.semantics(kprint.definition)
-        yield KCFGExplore(kprint, kore_client, kcfg_semantics=semantics)
+        cterm_symbolic = CTermSymbolic(kore_client, kprint.definition, kprint.kompiled_kore)
+        yield KCFGExplore(kprint, cterm_symbolic, kcfg_semantics=semantics)
 
 
 class KoreServerPoolTest(KompiledTest, ABC):
