@@ -59,7 +59,7 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
             if isinstance(to_optimize, KToken) or isinstance(to_optimize, KVariable):
                 optimized_id = self._cache(_OptBasic(to_optimize))
             elif isinstance(to_optimize, KApply):
-                klabel_id = self._cache_klabel(to_optimize.label)
+                klabel_id = self._klabels.cache(to_optimize.label)
                 optimized_id = self._cache(_OptApply(klabel_id, tuple(children)))
             elif isinstance(to_optimize, KSequence):
                 optimized_id = self._cache(_OptKSequence(tuple(children)))
@@ -77,9 +77,6 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
         if id == len(self._terms):
             self._terms.append(term.build(self._klabels, self._terms))
         return id
-
-    def _cache_klabel(self, label: KLabel) -> int:
-        return self._klabels.cache(label)
 
 
 class _Cache(Generic[A]):
