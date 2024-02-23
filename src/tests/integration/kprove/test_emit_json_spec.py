@@ -61,7 +61,7 @@ class TestEmitJsonSpec(KProveTest):
         spec_file.write_text(kprove.pretty_print(definition))
 
         # When
-        result = kprove.prove(spec_file, spec_module_name=spec_module_name, args=['-I', str(include_dir)])
+        result = kprove.prove_legacy(spec_file, spec_module_name=spec_module_name, args=['-I', str(include_dir)])
 
         # Then
         assert CTerm._is_top(mlOr([res.kast for res in result]))
