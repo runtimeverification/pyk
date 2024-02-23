@@ -58,7 +58,7 @@ class CTermSymbolic:
     def kore_to_kast(self, pattern: Pattern) -> KInner:
         return kore_to_kast(self._definition, pattern)
 
-    def cterm_execute(
+    def execute(
         self,
         cterm: CTerm,
         depth: int | None = None,
@@ -99,7 +99,7 @@ class CTermSymbolic:
             logs=response.logs,
         )
 
-    def cterm_simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
+    def simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
         kore = self.kast_to_kore(cterm.kast)
         kore_simplified, logs = self._kore_client.simplify(kore)
@@ -113,7 +113,7 @@ class CTermSymbolic:
         kast_simplified = self.kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
-    def cterm_get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
+    def get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
         _LOGGER.info(f'Getting model: {cterm}')
         kore = self.kast_to_kore(cterm.kast)
         result = self._kore_client.get_model(kore, module_name=module_name)
@@ -136,7 +136,7 @@ class CTermSymbolic:
         else:
             raise AssertionError('Received an invalid response from get-model endpoint')
 
-    def cterm_implies(
+    def implies(
         self,
         antecedent: CTerm,
         consequent: CTerm,
@@ -181,7 +181,7 @@ class CTermSymbolic:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         return CSubst(subst=Subst(_subst), constraints=ml_preds)
 
-    def cterm_assume_defined(self, cterm: CTerm) -> CTerm:
+    def assume_defined(self, cterm: CTerm) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
         kore = self.kast_to_kore(kast)

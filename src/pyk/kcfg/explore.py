@@ -101,7 +101,7 @@ class KCFGExplore:
 
             return bottom_up(_replace_rewrites_with_implies, kast)
 
-        config_match = self.cterm_symbolic.cterm_implies(
+        config_match = self.cterm_symbolic.implies(
             CTerm.from_kast(antecedent.config), CTerm.from_kast(consequent.config)
         )
         if config_match is None:
@@ -146,7 +146,7 @@ class KCFGExplore:
     def simplify(self, cfg: KCFG, logs: dict[int, tuple[LogEntry, ...]]) -> None:
         for node in cfg.nodes:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
-            new_term, next_node_logs = self.cterm_symbolic.cterm_simplify(node.cterm)
+            new_term, next_node_logs = self.cterm_symbolic.simplify(node.cterm)
             if new_term != node.cterm:
                 cfg.replace_node(node.id, new_term)
                 if node.id in logs:
@@ -169,7 +169,7 @@ class KCFGExplore:
         if len(successors) != 0 and type(successors[0]) is KCFG.Split:
             raise ValueError(f'Cannot take step from split node {self.id}: {shorten_hashes(node.id)}')
         _LOGGER.info(f'Taking {depth} steps from node {self.id}: {shorten_hashes(node.id)}')
-        exec_res = self.cterm_symbolic.cterm_execute(node.cterm, depth=depth, module_name=module_name)
+        exec_res = self.cterm_symbolic.execute(node.cterm, depth=depth, module_name=module_name)
         if exec_res.depth != depth:
             raise ValueError(f'Unable to take {depth} steps from node, got {exec_res.depth} steps {self.id}: {node.id}')
         if len(exec_res.next_states) > 0:
@@ -269,7 +269,7 @@ class KCFGExplore:
             log(f'{len(branches)} branches using heuristics: {node_id} -> {constraint_strs}')
             return Branch(branches, heuristic=True)
 
-        cterm, next_cterms, depth, vacuous, next_node_logs = self.cterm_symbolic.cterm_execute(
+        cterm, next_cterms, depth, vacuous, next_node_logs = self.cterm_symbolic.execute(
             _cterm,
             depth=execute_depth,
             cut_point_rules=cut_point_rules,
