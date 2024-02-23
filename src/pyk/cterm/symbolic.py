@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
-from ..kast.manip import flatten_label, free_vars, ml_pred_to_bool
+from ..kast.manip import flatten_label, free_vars
 from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.rpc import AbortedResult, SatResult, StopReason, UnknownResult, UnsatResult
 from ..prelude.k import GENERATED_TOP_CELL
@@ -37,7 +37,6 @@ class CTermImplies(NamedTuple):
     csubst: CSubst | None
     failing_cells: tuple[tuple[str, KInner], ...]
     remaining_implication: KInner | None
-    negative_cell_constraints: tuple[KInner, ...]
     logs: tuple[LogEntry, ...]
 
 
@@ -174,7 +173,7 @@ class CTermSymbolic:
                 return self._implication_failure_reason(
                     antecedent, consequent, result.logs, bind_universally=bind_universally
                 )
-            return CTermImplies(None, (), None, (), result.logs)
+            return CTermImplies(None, (), None, result.logs)
         if result.substitution is None:
             raise ValueError('Received empty substutition for satisfiable implication.')
         if result.predicate is None:
@@ -184,7 +183,7 @@ class CTermSymbolic:
         ml_preds = flatten_label('#And', ml_pred)
         if is_top(ml_subst):
             csubst = CSubst(subst=Subst({}), constraints=ml_preds)
-            return CTermImplies(csubst, (), None, (), result.logs)
+            return CTermImplies(csubst, (), None, result.logs)
         subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
         _subst: dict[str, KInner] = {}
         for subst_pred in flatten_label('#And', ml_subst):
@@ -194,7 +193,7 @@ class CTermSymbolic:
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
         csubst = CSubst(subst=Subst(_subst), constraints=ml_preds)
-        return CTermImplies(csubst, (), None, (), result.logs)
+        return CTermImplies(csubst, (), None, result.logs)
 
     def assume_defined(self, cterm: CTerm) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
@@ -208,27 +207,8 @@ class CTermSymbolic:
     def _implication_failure_reason(
         self, antecedent: CTerm, consequent: CTerm, logs: tuple[LogEntry, ...], bind_universally: bool = False
     ) -> CTermImplies:
-        def _is_cell_subst(csubst: KInner) -> bool:
-            if type(csubst) is KApply and csubst.label.name == '_==K_':
-                csubst_arg = csubst.args[0]
-                if type(csubst_arg) is KVariable and csubst_arg.name.endswith('_CELL'):
-                    return True
-            return False
-
-        def _is_negative_cell_subst(constraint: KInner) -> bool:
-            constraint_bool = ml_pred_to_bool(constraint)
-            if type(constraint_bool) is KApply and constraint_bool.label.name == 'notBool_':
-                negative_constraint = constraint_bool.args[0]
-                if type(negative_constraint) is KApply and negative_constraint.label.name == '_andBool_':
-                    constraints = flatten_label('_andBool_', negative_constraint)
-                    cell_constraints = list(filter(_is_cell_subst, constraints))
-                    if len(cell_constraints) > 0:
-                        return True
-            return False
-
         failing_cells: list[tuple[str, KInner]] = []
         remaining_implication: KInner | None = None
-        negative_cell_constraints: list[KInner] = []
 
         _config_match = self.implies(
             CTerm.from_kast(antecedent.config),
@@ -254,7 +234,5 @@ class CTermSymbolic:
                 filter(lambda x: not CTerm._is_spurious_constraint(x), map(config_match.subst, consequent.constraints))
             )
             remaining_implication = CTerm._ml_impl(antecedent.constraints, consequent_constraints)
-            if not is_top(remaining_implication):
-                negative_cell_constraints = list(filter(_is_negative_cell_subst, antecedent.constraints))
 
-        return CTermImplies(None, tuple(failing_cells), remaining_implication, tuple(negative_cell_constraints), logs)
+        return CTermImplies(None, tuple(failing_cells), remaining_implication, logs)

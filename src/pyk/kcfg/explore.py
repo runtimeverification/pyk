@@ -5,11 +5,20 @@ from typing import TYPE_CHECKING
 
 from ..cterm import CTerm
 from ..kast.inner import KApply, KRewrite, KVariable
-from ..kast.manip import abstract_term_safely, bottom_up, extract_lhs, extract_rhs, minimize_term, push_down_rewrites
+from ..kast.manip import (
+    abstract_term_safely,
+    bottom_up,
+    extract_lhs,
+    extract_rhs,
+    flatten_label,
+    minimize_term,
+    ml_pred_to_bool,
+    push_down_rewrites,
+)
 from ..kore.rpc import RewriteSuccess
 from ..prelude.kbool import notBool
 from ..prelude.kint import leInt, ltInt
-from ..prelude.ml import mlAnd, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot
+from ..prelude.ml import is_top, mlAnd, mlEqualsFalse, mlEqualsTrue, mlImplies, mlNot
 from ..utils import shorten_hashes, single
 from .kcfg import KCFG, Abstract, Branch, NDBranch, Step, Stuck, Vacuous
 from .semantics import DefaultSemantics
@@ -70,6 +79,24 @@ class KCFGExplore:
 
             return bottom_up(_replace_rewrites_with_implies, kast)
 
+        def _is_cell_subst(csubst: KInner) -> bool:
+            if type(csubst) is KApply and csubst.label.name == '_==K_':
+                csubst_arg = csubst.args[0]
+                if type(csubst_arg) is KVariable and csubst_arg.name.endswith('_CELL'):
+                    return True
+            return False
+
+        def _is_negative_cell_subst(constraint: KInner) -> bool:
+            constraint_bool = ml_pred_to_bool(constraint)
+            if type(constraint_bool) is KApply and constraint_bool.label.name == 'notBool_':
+                negative_constraint = constraint_bool.args[0]
+                if type(negative_constraint) is KApply and negative_constraint.label.name == '_andBool_':
+                    constraints = flatten_label('_andBool_', negative_constraint)
+                    cell_constraints = list(filter(_is_cell_subst, constraints))
+                    if len(cell_constraints) > 0:
+                        return True
+            return False
+
         cterm_implies = self.cterm_symbolic.implies(antecedent, consequent, failure_reason=True)
         if cterm_implies.csubst is not None:
             return (True, '')
@@ -89,11 +116,14 @@ class KCFGExplore:
         if cterm_implies.remaining_implication is not None:
             ret_str = f'{ret_str}\nThe remaining implication is:\n{self.kprint.pretty_print(cterm_implies.remaining_implication)}'
 
-        if len(cterm_implies.negative_cell_constraints) > 0:
-            negative_cell_constraints_str = '\n'.join(
-                self.kprint.pretty_print(cc) for cc in cterm_implies.negative_cell_constraints
-            )
-            ret_str = f'{ret_str}\nNegated cell substitutions found (consider using _ => ?_):\n{negative_cell_constraints_str}'
+            if cterm_implies.csubst is not None and not is_top(cterm_implies.remaining_implication):
+                negative_cell_constraints = list(filter(_is_negative_cell_subst, antecedent.constraints))
+
+                if len(negative_cell_constraints) > 0:
+                    negative_cell_constraints_str = '\n'.join(
+                        self.kprint.pretty_print(cc) for cc in negative_cell_constraints
+                    )
+                    ret_str = f'{ret_str}\nNegated cell substitutions found (consider using _ => ?_):\n{negative_cell_constraints_str}'
 
         return (False, ret_str)
 
