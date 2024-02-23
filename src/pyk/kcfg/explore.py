@@ -46,7 +46,6 @@ class KCFGExplore:
 
     kcfg_semantics: KCFGSemantics
     id: str
-    _trace_rewrites: bool
 
     def __init__(
         self,
@@ -55,13 +54,11 @@ class KCFGExplore:
         *,
         kcfg_semantics: KCFGSemantics | None = None,
         id: str | None = None,
-        trace_rewrites: bool = False,
     ):
         self.kprint = kprint
         self.cterm_symbolic = cterm_symbolic
         self.kcfg_semantics = kcfg_semantics if kcfg_semantics is not None else DefaultSemantics()
         self.id = id if id is not None else 'NO ID'
-        self._trace_rewrites = trace_rewrites
 
     def implication_failure_reason(self, antecedent: CTerm, consequent: CTerm) -> tuple[bool, str]:
         def no_cell_rewrite_to_dots(term: KInner) -> KInner:
