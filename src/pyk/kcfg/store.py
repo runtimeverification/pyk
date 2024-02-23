@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import threading
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Hashable, MutableMapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, TypeVar, final
@@ -81,7 +81,7 @@ class OptimizedNodeStore(MutableMapping[int, KCFG.Node]):
 
 class _Cache(Generic[A]):
     _value_to_id: dict[A, int]
-    _values: list[A] 
+    _values: list[A]
 
     def __init__(self) -> None:
         self._value_to_id = {}
