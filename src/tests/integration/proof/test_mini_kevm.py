@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from pyk.kast.inner import KApply
 from pyk.kcfg.show import KCFGShow
 from pyk.proof import APRProof, APRProver, ProofStatus
 from pyk.proof.show import APRProofNodePrinter
@@ -28,7 +29,9 @@ if TYPE_CHECKING:
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str], ProofStatus, int]] = (
+APR_PROVE_TEST_DATA: Iterable[
+    tuple[str, Path, str, str, int | None, int | None, Iterable[str], ProofStatus, int, int]
+] = (
     (
         'ensures-constraint-simplification',
         K_FILES / 'mini-kevm-spec.k',
@@ -39,6 +42,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         [],
         ProofStatus.PASSED,
         1,
+        2,
     ),
 )
 
@@ -53,7 +57,7 @@ class TestMiniKEVM(KCFGExploreTest, KProveTest):
     KOMPILE_MAIN_FILE = K_FILES / 'mini-kevm.k'
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,proof_status,expected_leaf_number',
+        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,proof_status,expected_leaf_number,ceil_conditions',
         APR_PROVE_TEST_DATA,
         ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
     )
@@ -70,6 +74,7 @@ class TestMiniKEVM(KCFGExploreTest, KProveTest):
         cut_rules: Iterable[str],
         proof_status: ProofStatus,
         expected_leaf_number: int,
+        ceil_conditions: int,
         tmp_path_factory: TempPathFactory,
     ) -> None:
         with tmp_path_factory.mktemp('apr_tmp_proofs') as proof_dir:
@@ -87,6 +92,9 @@ class TestMiniKEVM(KCFGExploreTest, KProveTest):
             )
 
             new_init_cterm = kcfg_explore.cterm_assume_defined(proof.kcfg.node(proof.init).cterm)
+            actual_ceil_conditions = len(
+                [c for c in new_init_cterm.constraints if type(c) is KApply and c.label.name == '#Ceil']
+            )
             proof.kcfg.replace_node(proof.init, new_init_cterm)
             kcfg_explore.simplify(proof.kcfg, {})
 
@@ -105,5 +113,6 @@ class TestMiniKEVM(KCFGExploreTest, KProveTest):
             cfg_lines = kcfg_show.show(proof.kcfg)
             _LOGGER.info('\n'.join(cfg_lines))
 
+            assert actual_ceil_conditions == ceil_conditions
             assert proof.status == proof_status
             assert leaf_number(proof) == expected_leaf_number
