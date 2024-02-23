@@ -170,9 +170,37 @@ class CTermSymbolic:
             if result.predicate is not None:
                 _LOGGER.debug(f'Received a non-empty predicate for unsatisfiable implication: {result.predicate}')
             if failure_reason:
-                return self._implication_failure_reason(
-                    antecedent, consequent, result.logs, bind_universally=bind_universally
+                failing_cells: list[tuple[str, KInner]] = []
+                remaining_implication: KInner | None = None
+                _config_match = self.implies(
+                    CTerm.from_kast(antecedent.config),
+                    CTerm.from_kast(consequent.config),
+                    bind_universally=bind_universally,
+                    failure_reason=False,
                 )
+                config_match = _config_match.csubst
+                if config_match is None:
+                    curr_cell_match = Subst({})
+                    for cell in antecedent.cells:
+                        antecedent_cell = antecedent.cell(cell)
+                        consequent_cell = consequent.cell(cell)
+                        cell_match = consequent_cell.match(antecedent_cell)
+                        if cell_match is not None:
+                            _curr_cell_match = curr_cell_match.union(cell_match)
+                            if _curr_cell_match is not None:
+                                curr_cell_match = _curr_cell_match
+                                continue
+                        failing_cells.append((cell, KRewrite(antecedent_cell, consequent_cell)))
+                else:
+                    consequent_constraints = list(
+                        filter(
+                            lambda x: not CTerm._is_spurious_constraint(x),
+                            map(config_match.subst, consequent.constraints),
+                        )
+                    )
+                    remaining_implication = CTerm._ml_impl(antecedent.constraints, consequent_constraints)
+
+                return CTermImplies(None, tuple(failing_cells), remaining_implication, result.logs)
             return CTermImplies(None, (), None, result.logs)
         if result.substitution is None:
             raise ValueError('Received empty substutition for satisfiable implication.')
@@ -203,36 +231,3 @@ class CTermSymbolic:
         kast_simplified = self.kore_to_kast(kore_simplified)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
-
-    def _implication_failure_reason(
-        self, antecedent: CTerm, consequent: CTerm, logs: tuple[LogEntry, ...], bind_universally: bool = False
-    ) -> CTermImplies:
-        failing_cells: list[tuple[str, KInner]] = []
-        remaining_implication: KInner | None = None
-
-        _config_match = self.implies(
-            CTerm.from_kast(antecedent.config),
-            CTerm.from_kast(consequent.config),
-            bind_universally=bind_universally,
-            failure_reason=False,
-        )
-        config_match = _config_match.csubst
-        if config_match is None:
-            curr_cell_match = Subst({})
-            for cell in antecedent.cells:
-                antecedent_cell = antecedent.cell(cell)
-                consequent_cell = consequent.cell(cell)
-                cell_match = consequent_cell.match(antecedent_cell)
-                if cell_match is not None:
-                    _curr_cell_match = curr_cell_match.union(cell_match)
-                    if _curr_cell_match is not None:
-                        curr_cell_match = _curr_cell_match
-                        continue
-                failing_cells.append((cell, KRewrite(antecedent_cell, consequent_cell)))
-        else:
-            consequent_constraints = list(
-                filter(lambda x: not CTerm._is_spurious_constraint(x), map(config_match.subst, consequent.constraints))
-            )
-            remaining_implication = CTerm._ml_impl(antecedent.constraints, consequent_constraints)
-
-        return CTermImplies(None, tuple(failing_cells), remaining_implication, logs)
