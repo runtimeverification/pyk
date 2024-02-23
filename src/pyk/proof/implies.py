@@ -63,7 +63,7 @@ class ImpliesProof(Proof):
             self.simplified_consequent = result.simplified_consequent
             _LOGGER.info(f'{proof_type} finished {self.id}: {self.status}')
         else:
-            raise ValueError('Incorrect result type')
+            raise ValueError(f'Incorrect result type, expected ImpliesProofResult: {result}')
 
     @property
     def status(self) -> ProofStatus:
