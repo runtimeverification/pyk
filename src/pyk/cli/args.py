@@ -1,16 +1,91 @@
 from __future__ import annotations
 
+import sys
 from argparse import ArgumentParser
+from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import IO, TYPE_CHECKING, Any, Iterable
 
 from ..utils import ensure_dir_path
 from .utils import bug_report_arg, dir_path, file_path
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from typing import TypeVar
 
     T = TypeVar('T')
+
+
+class PrintInput(Enum):
+    KORE_JSON = 'kore-json'
+    KAST_JSON = 'kast-json'
+
+
+def generate_command_options(args: dict[str, Any]) -> Options:
+    command = args['command'].lower()
+    match command:
+        case 'print':
+            return PrintOptions(args)
+        case 'rpc-print':
+            raise ValueError('Not implemented.')
+        case 'rpc-kast':
+            raise ValueError('Not implemented.')
+        case 'prove':
+            return ProveOptions(args)
+        case 'graph-imports':
+            raise ValueError('Not implemented.')
+        case 'coverage':
+            raise ValueError('Not implemented.')
+        case 'kore-to-json':
+            raise ValueError('Not implemented.')
+        case 'json-to-kore':
+            raise ValueError('Not implemented.')
+        case _:
+            raise ValueError('Unrecognized command.')
+
+
+class Options:
+    ...
+
+
+class PrintOptions(Options):
+    def __init__(self, args: dict[str, Any]) -> None:
+        self.definition_dir = args['definition_dir']
+        self.term = args['term']
+
+        self.input = PrintInput.KAST_JSON if args['input'] is None else args['input']
+        self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
+        self.minimize = True if args['minimize'] is None else args['minimize']
+        self.omit_labels = args['omit_labels']
+        self.keep_cells = args['keep_cells']
+
+    definition_dir: Path
+    term: IO[Any]
+
+    input: PrintInput
+    output_file: IO[Any]
+    minimize: bool
+    omit_labels: str | None
+    keep_cells: str | None
+
+
+class ProveOptions(Options):
+    def __init__(self, args: dict[str, Any]) -> None:
+        self.definition_dir = args['definition_dir']
+        self.main_file = args['main_file']
+        self.spec_file = args['spec_file']
+        self.spec_module = args['spec_module']
+
+        self.k_args = args['k_args']
+
+        self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
+
+    definition_dir: Path
+    main_file: Path
+    spec_file: Path
+    spec_module: str
+    k_args: Iterable[str]
+    output_file: IO[Any]
 
 
 class KCLIArgs:
@@ -112,7 +187,7 @@ class KCLIArgs:
     @cached_property
     def display_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
-        args.add_argument('--minimize', dest='minimize', default=True, action='store_true', help='Minimize output.')
+        args.add_argument('--minimize', dest='minimize', default=None, action='store_true', help='Minimize output.')
         args.add_argument('--no-minimize', dest='minimize', action='store_false', help='Do not minimize output.')
         return args
 
