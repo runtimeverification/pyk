@@ -4,7 +4,6 @@ import json
 import logging
 import sys
 from argparse import ArgumentParser, FileType
-from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,7 +12,7 @@ from graphviz import Digraph
 from pyk.kast.inner import KInner
 from pyk.kore.rpc import ExecuteResult
 
-from .cli.args import KCLIArgs
+from .cli.args import KCLIArgs, PrintInput, generate_command_options
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import CTerm
@@ -39,13 +38,10 @@ if TYPE_CHECKING:
     from argparse import Namespace
     from typing import Any, Final
 
+    from .cli.args import PrintOptions, ProveOptions
+
 
 _LOGGER: Final = logging.getLogger(__name__)
-
-
-class PrintInput(Enum):
-    KORE_JSON = 'kore-json'
-    KAST_JSON = 'kast-json'
 
 
 def main() -> None:
@@ -57,6 +53,8 @@ def main() -> None:
     cli_parser = create_argument_parser()
     args = cli_parser.parse_args()
 
+    options = generate_command_options(vars(args))
+
     logging.basicConfig(level=loglevel(args), format=LOG_FORMAT)
 
     executor_name = 'exec_' + args.command.lower().replace('-', '_')
@@ -64,29 +62,29 @@ def main() -> None:
         raise AssertionError(f'Unimplemented command: {args.command}')
 
     execute = globals()[executor_name]
-    execute(args)
+    execute(options)
 
 
-def exec_print(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
+def exec_print(options: PrintOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
     printer = KPrint(kompiled_dir)
-    if args.input == PrintInput.KORE_JSON:
-        _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
-        kore = Pattern.from_json(args.term.read())
+    if options.input == PrintInput.KORE_JSON:
+        _LOGGER.info(f'Reading Kore JSON from file: {options.term.name}')
+        kore = Pattern.from_json(options.term.read())
         term = printer.kore_to_kast(kore)
     else:
-        _LOGGER.info(f'Reading Kast JSON from file: {args.term.name}')
-        term = KInner.from_json(args.term.read())
+        _LOGGER.info(f'Reading Kast JSON from file: {options.term.name}')
+        term = KInner.from_json(options.term.read())
     if is_top(term):
-        args.output_file.write(printer.pretty_print(term))
-        _LOGGER.info(f'Wrote file: {args.output_file.name}')
+        options.output_file.write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {options.output_file.name}')
     else:
-        if args.minimize:
-            if args.omit_labels != '' and args.keep_cells != '':
+        if options.minimize:
+            if options.omit_labels != None and options.keep_cells != None:
                 raise ValueError('You cannot use both --omit-labels and --keep-cells.')
 
-            abstract_labels = args.omit_labels.split(',') if args.omit_labels != '' else []
-            keep_cells = args.keep_cells.split(',') if args.keep_cells != '' else []
+            abstract_labels = options.omit_labels.split(',') if options.omit_labels is not None else []
+            keep_cells = options.keep_cells.split(',') if options.keep_cells is not None else []
             minimized_disjuncts = []
 
             for disjunct in flatten_label('#Or', term):
@@ -102,8 +100,8 @@ def exec_print(args: Namespace) -> None:
                     minimized_disjuncts.append(config)
             term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
 
-        args.output_file.write(printer.pretty_print(term))
-        _LOGGER.info(f'Wrote file: {args.output_file.name}')
+        options.output_file.write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {options.output_file.name}')
 
 
 def exec_rpc_print(args: Namespace) -> None:
@@ -210,12 +208,12 @@ def exec_rpc_kast(args: Namespace) -> None:
     args.output_file.write(json.dumps(request))
 
 
-def exec_prove(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
-    kprover = KProve(kompiled_dir, args.main_file)
-    final_state = kprover.prove(Path(args.spec_file), spec_module_name=args.spec_module, args=args.kArgs)
-    args.output_file.write(json.dumps(mlOr([state.kast for state in final_state]).to_dict()))
-    _LOGGER.info(f'Wrote file: {args.output_file.name}')
+def exec_prove(options: ProveOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
+    kprover = KProve(kompiled_dir, options.main_file)
+    final_state = kprover.prove(Path(options.spec_file), spec_module_name=options.spec_module, args=options.k_args)
+    options.output_file.write(json.dumps(mlOr([state.kast for state in final_state]).to_dict()))
+    _LOGGER.info(f'Wrote file: {options.output_file.name}')
 
 
 def exec_graph_imports(args: Namespace) -> None:
@@ -274,12 +272,12 @@ def create_argument_parser() -> ArgumentParser:
         parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
     )
     print_args.add_argument('term', type=FileType('r'), help='Input term (in format specified with --input).')
-    print_args.add_argument('--input', default=PrintInput.KAST_JSON, type=PrintInput, choices=list(PrintInput))
-    print_args.add_argument('--omit-labels', default='', nargs='?', help='List of labels to omit from output.')
+    print_args.add_argument('--input', default=None, type=PrintInput, choices=list(PrintInput))
+    print_args.add_argument('--omit-labels', default=None, nargs='?', help='List of labels to omit from output.')
     print_args.add_argument(
-        '--keep-cells', default='', nargs='?', help='List of cells with primitive values to keep in output.'
+        '--keep-cells', default=None, nargs='?', help='List of cells with primitive values to keep in output.'
     )
-    print_args.add_argument('--output-file', type=FileType('w'), default='-')
+    print_args.add_argument('--output-file', type=str, default=None)
 
     rpc_print_args = pyk_args_command.add_parser(
         'rpc-print',
@@ -318,8 +316,8 @@ def create_argument_parser() -> ArgumentParser:
     prove_args.add_argument('main_file', type=str, help='Main file used for kompilation.')
     prove_args.add_argument('spec_file', type=str, help='File with the specification module.')
     prove_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
-    prove_args.add_argument('--output-file', type=FileType('w'), default='-')
-    prove_args.add_argument('kArgs', nargs='*', help='Arguments to pass through to K invocation.')
+    prove_args.add_argument('--output-file', type=str, default=None)
+    prove_args.add_argument('k_args', nargs='*', help='Arguments to pass through to K invocation.')
 
     pyk_args_command.add_parser(
         'graph-imports',
