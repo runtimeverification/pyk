@@ -12,6 +12,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   pyk.cterm
    pyk.kast
    pyk.kbuild
    pyk.kcfg
@@ -33,7 +34,6 @@ Submodules
    :maxdepth: 4
 
    pyk.coverage
-   pyk.cterm
    pyk.dequote
    pyk.kcovr
    pyk.utils
