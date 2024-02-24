@@ -108,9 +108,7 @@ class CTermSymbolic:
 
     def simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
-        kore = self.kast_to_kore(cterm.kast)
-        kore_simplified, logs = self._kore_client.simplify(kore)
-        kast_simplified = self.kore_to_kast(kore_simplified)
+        kast_simplified, logs = self.kast_simplify(cterm.kast)
         return CTerm.from_kast(kast_simplified), logs
 
     def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
