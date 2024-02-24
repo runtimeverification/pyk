@@ -225,8 +225,6 @@ class CTermSymbolic:
     def assume_defined(self, cterm: CTerm, module_name: str | None = None) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
-        kore = self.kast_to_kore(kast)
-        kore_simplified, _logs = self._kore_client.simplify(kore, module_name=module_name)
-        kast_simplified = self.kore_to_kast(kore_simplified)
+        kast_simplified, logs = self.kast_simplify(kast, module_name=module_name)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
