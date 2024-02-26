@@ -591,44 +591,26 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._created_nodes.add(node.id)
 
         for succ in self.successors(node_id):
-            if type(succ) is KCFG.Edge:
-                new_edge = KCFG.Edge(node, succ.target, succ.depth, succ.rules)
-                self._edges[succ.source.id][succ.target.id] = new_edge
-            if type(succ) is KCFG.Cover:
-                new_cover = KCFG.Cover(node, succ.target, succ.csubst)
-                self._covers[succ.source.id][succ.target.id] = new_cover
-            if type(succ) is KCFG.Split:
-                new_split = KCFG.Split(node, succ._targets)
-                self._splits[succ.source.id] = new_split
-            if type(succ) is KCFG.NDBranch:
-                new_ndbranch = KCFG.NDBranch(node, succ._targets, succ.rules)
-                self._ndbranches[succ.source.id] = new_ndbranch
+            new_succ = succ.replace_source(node)
+            if type(new_succ) is KCFG.Edge:
+                self._edges[new_succ.source.id][new_succ.target.id] = new_succ
+            if type(new_succ) is KCFG.Cover:
+                self._covers[new_succ.source.id][new_succ.target.id] = new_succ
+            if type(new_succ) is KCFG.Split:
+                self._splits[new_succ.source.id] = new_succ
+            if type(new_succ) is KCFG.NDBranch:
+                self._ndbranches[new_succ.source.id] = new_succ
 
         for pred in self.predecessors(node_id):
-            if type(pred) is KCFG.Edge:
-                new_edge = KCFG.Edge(pred.source, node, pred.depth, pred.rules)
-                self._edges[pred.source.id][pred.target.id] = new_edge
-            if type(pred) is KCFG.Cover:
-                new_cover = KCFG.Cover(pred.source, node, pred.csubst)
-                self._covers[pred.source.id][pred.target.id] = new_cover
-            if type(pred) is KCFG.Split:
-                new_split_targets = []
-                for _target, csubst in pred._targets:
-                    if _target.id == node_id:
-                        new_split_targets.append((node, csubst))
-                    else:
-                        new_split_targets.append((_target, csubst))
-                new_split = KCFG.Split(pred.source, new_split_targets)
-                self._splits[pred.source.id] = new_split
-            if type(pred) is KCFG.NDBranch:
-                new_ndbranch_targets = []
-                for _target in pred._targets:
-                    if _target.id == node_id:
-                        new_ndbranch_targets.append(node)
-                    else:
-                        new_ndbranch_targets.append(_target)
-                new_ndbranch = KCFG.NDBranch(pred.source, new_ndbranch_targets, pred.rules)
-                self._ndbranches[pred.source.id] = new_ndbranch
+            new_pred = pred.replace_target(node)
+            if type(new_pred) is KCFG.Edge:
+                self._edges[new_pred.source.id][new_pred.target.id] = new_pred
+            if type(new_pred) is KCFG.Cover:
+                self._covers[new_pred.source.id][new_pred.target.id] = new_pred
+            if type(new_pred) is KCFG.Split:
+                self._splits[new_pred.source.id] = new_pred
+            if type(new_pred) is KCFG.NDBranch:
+                self._ndbranches[new_pred.source.id] = new_pred
 
     def successors(
         self,
