@@ -232,7 +232,7 @@ class KoreClientTest(KompiledTest):
             yield client
 
 
-class CTermSymbolicTest(KoreClientTest, KompiledTest):
+class CTermSymbolicTest(KoreClientTest):
     @pytest.fixture
     def cterm_symbolic(
         self,
@@ -240,8 +240,8 @@ class CTermSymbolicTest(KoreClientTest, KompiledTest):
         definition: KDefinition,
         kompiled_kore: KompiledKore,
         bug_report: BugReport | None,
-    ) -> Iterator[CTermSymbolic]:
-        yield CTermSymbolic(kore_client, definition, kompiled_kore)
+    ) -> CTermSymbolic:
+        return CTermSymbolic(kore_client, definition, kompiled_kore)
 
 
 class KCFGExploreTest(CTermSymbolicTest, KPrintTest):
