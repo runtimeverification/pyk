@@ -610,32 +610,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             if type(new_pred) is KCFG.NDBranch:
                 self._ndbranches[new_pred.source.id] = new_pred
 
-    def successors(
-        self,
-        source_id: NodeIdLike,
-        edges: bool = True,
-        covers: bool = True,
-        splits: bool = True,
-        ndbranches: bool = True,
-    ) -> list[Successor]:
-        out_edges: Iterable[KCFG.Successor] = self.edges(source_id=source_id) if edges else []
-        out_covers: Iterable[KCFG.Successor] = self.covers(source_id=source_id) if covers else []
-        out_splits: Iterable[KCFG.Successor] = self.splits(source_id=source_id) if splits else []
-        out_ndbranches: Iterable[KCFG.Successor] = self.ndbranches(source_id=source_id) if ndbranches else []
+    def successors(self, source_id: NodeIdLike) -> list[Successor]:
+        out_edges: Iterable[KCFG.Successor] = self.edges(source_id=source_id)
+        out_covers: Iterable[KCFG.Successor] = self.covers(source_id=source_id)
+        out_splits: Iterable[KCFG.Successor] = self.splits(source_id=source_id)
+        out_ndbranches: Iterable[KCFG.Successor] = self.ndbranches(source_id=source_id)
         return list(out_edges) + list(out_covers) + list(out_splits) + list(out_ndbranches)
 
-    def predecessors(
-        self,
-        target_id: NodeIdLike,
-        edges: bool = True,
-        covers: bool = True,
-        splits: bool = True,
-        ndbranches: bool = True,
-    ) -> list[Successor]:
-        in_edges: Iterable[KCFG.Successor] = self.edges(target_id=target_id) if edges else []
-        in_covers: Iterable[KCFG.Successor] = self.covers(target_id=target_id) if covers else []
-        in_splits: Iterable[KCFG.Successor] = self.splits(target_id=target_id) if splits else []
-        in_ndbranches: Iterable[KCFG.Successor] = self.ndbranches(target_id=target_id) if ndbranches else []
+    def predecessors(self, target_id: NodeIdLike) -> list[Successor]:
+        in_edges: Iterable[KCFG.Successor] = self.edges(target_id=target_id)
+        in_covers: Iterable[KCFG.Successor] = self.covers(target_id=target_id)
+        in_splits: Iterable[KCFG.Successor] = self.splits(target_id=target_id)
+        in_ndbranches: Iterable[KCFG.Successor] = self.ndbranches(target_id=target_id)
         return list(in_edges) + list(in_covers) + list(in_splits) + list(in_ndbranches)
 
     def _check_no_successors(self, source_id: NodeIdLike) -> None:
@@ -981,16 +967,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         return paths
 
-    def reachable_nodes(
-        self,
-        source_id: NodeIdLike,
-        *,
-        reverse: bool = False,
-        edges: bool = True,
-        covers: bool = True,
-        splits: bool = True,
-        ndbranches: bool = True,
-    ) -> set[Node]:
+    def reachable_nodes(self, source_id: NodeIdLike, *, reverse: bool = False) -> set[Node]:
         visited: set[KCFG.Node] = set()
         worklist: list[KCFG.Node] = [self.node(source_id)]
 
@@ -1003,20 +980,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             visited.add(node)
 
             if not reverse:
-                worklist.extend(
-                    target
-                    for succ in self.successors(
-                        source_id=node.id, edges=edges, covers=covers, splits=splits, ndbranches=ndbranches
-                    )
-                    for target in succ.targets
-                )
+                worklist.extend(target for succ in self.successors(source_id=node.id) for target in succ.targets)
             else:
-                worklist.extend(
-                    succ.source
-                    for succ in self.predecessors(
-                        target_id=node.id, edges=edges, covers=covers, splits=splits, ndbranches=ndbranches
-                    )
-                )
+                worklist.extend(succ.source for succ in self.predecessors(target_id=node.id))
 
         return visited
 
