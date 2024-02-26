@@ -291,7 +291,7 @@ def create_argument_parser() -> ArgumentParser:
         type=FileType('r'),
         help='An input file containing the JSON RPC request or response with KoreJSON payload.',
     )
-    rpc_print_args.add_argument('--output-file', type=FileType('w'), default='-')
+    rpc_print_args.add_argument('--output-file', type=FileType('w'), default=None)
 
     rpc_kast_args = pyk_args_command.add_parser(
         'rpc-kast',
@@ -308,7 +308,7 @@ def create_argument_parser() -> ArgumentParser:
         type=FileType('r'),
         help='An input file containing a JSON RPC response with KoreJSON payload.',
     )
-    rpc_kast_args.add_argument('--output-file', type=FileType('w'), default='-')
+    rpc_kast_args.add_argument('--output-file', type=FileType('w'), default=None)
 
     prove_args = pyk_args_command.add_parser(
         'prove',
@@ -333,7 +333,7 @@ def create_argument_parser() -> ArgumentParser:
         parents=[k_cli_args.logging_args, definition_args],
     )
     coverage_args.add_argument('coverage_file', type=FileType('r'), help='Coverage file to build log for.')
-    coverage_args.add_argument('-o', '--output', type=FileType('w'), default='-')
+    coverage_args.add_argument('-o', '--output', type=FileType('w'), default=None)
 
     pyk_args_command.add_parser('kore-to-json', help='Convert textual KORE to JSON', parents=[k_cli_args.logging_args])
 
