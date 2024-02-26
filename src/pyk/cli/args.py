@@ -27,19 +27,19 @@ def generate_command_options(args: dict[str, Any]) -> Options:
         case 'print':
             return PrintOptions(args)
         case 'rpc-print':
-            raise ValueError('Not implemented.')
+            return RPCPrintOptions(args)
         case 'rpc-kast':
-            raise ValueError('Not implemented.')
+            return RPCKastOptions(args)
         case 'prove':
             return ProveOptions(args)
         case 'graph-imports':
-            raise ValueError('Not implemented.')
+            return GraphImportsOptions(args)
         case 'coverage':
-            raise ValueError('Not implemented.')
+            return CoverageOptions(args)
         case 'kore-to-json':
-            raise ValueError('Not implemented.')
+            return Options()
         case 'json-to-kore':
-            raise ValueError('Not implemented.')
+            return Options()
         case _:
             raise ValueError('Unrecognized command.')
 
@@ -48,7 +48,60 @@ class Options:
     ...
 
 
+class CoverageOptions(Options):
+    definition_dir: Path
+    coverage_file: IO[Any]
+    output: IO[Any]
+
+    def __init__(self, args: dict[str, Any]) -> None:
+        self.definition_dir = args['definition_dir']
+        self.coverage_file = args['response_file']
+        self.output = sys.stdout if args['output'] is None else args['output']
+
+
+class GraphImportsOptions(Options):
+    definition_dir: Path
+
+    def __init__(self, args: dict[str, Any]) -> None:
+        self.definition_dir = args['definition_dir']
+
+
+class RPCKastOptions(Options):
+    reference_request_file: IO[Any]
+    response_file: IO[Any]
+
+    output_file: IO[Any]
+
+    def __init__(self, args: dict[str, Any]) -> None:
+        self.reference_request_file = args['reference_request_file']
+        self.response_file = args['response_file']
+
+        self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
+
+
+class RPCPrintOptions(Options):
+    definition_dir: Path
+    input_file: IO[Any]
+
+    output_file: IO[Any]
+
+    def __init__(self, args: dict[str, Any]) -> None:
+        self.definition_dir = args['definition_dir']
+        self.input_file = args['input_file']
+
+        self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
+
+
 class PrintOptions(Options):
+    definition_dir: Path
+    term: IO[Any]
+
+    input: PrintInput
+    output_file: IO[Any]
+    minimize: bool
+    omit_labels: str | None
+    keep_cells: str | None
+
     def __init__(self, args: dict[str, Any]) -> None:
         self.definition_dir = args['definition_dir']
         self.term = args['term']
@@ -59,17 +112,15 @@ class PrintOptions(Options):
         self.omit_labels = args['omit_labels']
         self.keep_cells = args['keep_cells']
 
-    definition_dir: Path
-    term: IO[Any]
-
-    input: PrintInput
-    output_file: IO[Any]
-    minimize: bool
-    omit_labels: str | None
-    keep_cells: str | None
-
 
 class ProveOptions(Options):
+    definition_dir: Path
+    main_file: Path
+    spec_file: Path
+    spec_module: str
+    k_args: Iterable[str]
+    output_file: IO[Any]
+
     def __init__(self, args: dict[str, Any]) -> None:
         self.definition_dir = args['definition_dir']
         self.main_file = args['main_file']
@@ -79,13 +130,6 @@ class ProveOptions(Options):
         self.k_args = args['k_args']
 
         self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
-
-    definition_dir: Path
-    main_file: Path
-    spec_file: Path
-    spec_module: str
-    k_args: Iterable[str]
-    output_file: IO[Any]
 
 
 class KCLIArgs:

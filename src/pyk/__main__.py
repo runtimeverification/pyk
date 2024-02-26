@@ -271,7 +271,9 @@ def create_argument_parser() -> ArgumentParser:
         help='Pretty print a term.',
         parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
     )
-    print_args.add_argument('term', type=FileType('r'), help='Input term (in format specified with --input).')
+    print_args.add_argument(
+        'term', type=FileType('r'), help='File containing input term (in format specified with --input).'
+    )
     print_args.add_argument('--input', default=None, type=PrintInput, choices=list(PrintInput))
     print_args.add_argument('--omit-labels', default=None, nargs='?', help='List of labels to omit from output.')
     print_args.add_argument(
