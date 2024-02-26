@@ -13,3 +13,4 @@ Submodules
    :maxdepth: 4
 
    pyk.cterm.cterm
+   pyk.cterm.symbolic
