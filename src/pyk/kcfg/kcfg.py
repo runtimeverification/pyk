@@ -16,7 +16,6 @@ from ..kast.manip import (
     extract_rhs,
     flatten_label,
     inline_cell_maps,
-    remove_source_attributes,
     rename_generated_vars,
     sort_ac_collections,
 )
@@ -549,9 +548,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._created_nodes.add(node.id)
 
     def create_node(self, cterm: CTerm) -> Node:
-        term = cterm.kast
-        term = remove_source_attributes(term)
-        cterm = CTerm.from_kast(term)
         node = KCFG.Node(self._node_id, cterm)
         self._node_id += 1
         self._nodes[node.id] = node
@@ -587,9 +583,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             self.remove_alias(alias)
 
     def replace_node(self, node_id: NodeIdLike, cterm: CTerm) -> None:
-        term = cterm.kast
-        term = remove_source_attributes(term)
-        cterm = CTerm.from_kast(term)
         node_id = self._resolve(node_id)
         node = KCFG.Node(node_id, cterm)
         self._nodes[node_id] = node
