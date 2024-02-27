@@ -46,7 +46,6 @@ from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
 
 if TYPE_CHECKING:
-    from argparse import Namespace
     from typing import Any, Final
 
 
@@ -113,10 +112,10 @@ def exec_print(options: PrintOptions) -> None:
         _LOGGER.info(f'Wrote file: {options.output_file.name}')
 
 
-def exec_rpc_print(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
+def exec_rpc_print(options: RPCPrintOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
     printer = KPrint(kompiled_dir)
-    input_dict = json.loads(args.input_file.read())
+    input_dict = json.loads(options.input_file.read())
     output_buffer = []
 
     def pretty_print_request(request_params: dict[str, Any]) -> list[str]:
@@ -185,8 +184,8 @@ def exec_rpc_print(args: Namespace) -> None:
                 except KeyError as e:
                     _LOGGER.critical(f'Could not find key {str(e)} in input JSON file')
                     exit(1)
-        if args.output_file is not None:
-            args.output_file.write('\n'.join(output_buffer))
+        if options.output_file is not None:
+            options.output_file.write('\n'.join(output_buffer))
         else:
             print('\n'.join(output_buffer))
     except ValueError as e:
@@ -195,13 +194,13 @@ def exec_rpc_print(args: Namespace) -> None:
         exit(1)
 
 
-def exec_rpc_kast(args: Namespace) -> None:
+def exec_rpc_kast(options: RPCKastOptions) -> None:
     """
     Convert an 'execute' JSON RPC response to a new 'execute' or 'simplify' request,
     copying parameters from a reference request.
     """
-    reference_request = json.loads(args.reference_request_file.read())
-    input_dict = json.loads(args.response_file.read())
+    reference_request = json.loads(options.reference_request_file.read())
+    input_dict = json.loads(options.response_file.read())
     execute_result = ExecuteResult.from_dict(input_dict['result'])
     non_state_keys = set(reference_request['params'].keys()).difference(['state'])
     request_params = {}
@@ -214,7 +213,7 @@ def exec_rpc_kast(args: Namespace) -> None:
         'method': reference_request['method'],
         'params': request_params,
     }
-    args.output_file.write(json.dumps(request))
+    options.output_file.write(json.dumps(request))
 
 
 def exec_prove(options: ProveOptions) -> None:
@@ -225,8 +224,8 @@ def exec_prove(options: ProveOptions) -> None:
     _LOGGER.info(f'Wrote file: {options.output_file.name}')
 
 
-def exec_graph_imports(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
+def exec_graph_imports(options: GraphImportsOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
     kprinter = KPrint(kompiled_dir)
     definition = kprinter.definition
     import_graph = Digraph()
@@ -240,26 +239,26 @@ def exec_graph_imports(args: Namespace) -> None:
     _LOGGER.info(f'Wrote file: {graph_file}')
 
 
-def exec_coverage(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
+def exec_coverage(options: CoverageOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
     definition = remove_source_map(read_kast_definition(kompiled_dir / 'compiled.json'))
     pretty_printer = PrettyPrinter(definition)
-    for rid in args.coverage_file:
+    for rid in options.coverage_file:
         rule = minimize_rule(strip_coverage_logger(get_rule_by_id(definition, rid.strip())))
-        args.output.write('\n\n')
-        args.output.write('Rule: ' + rid.strip())
-        args.output.write('\nUnparsed:\n')
-        args.output.write(pretty_printer.print(rule))
-    _LOGGER.info(f'Wrote file: {args.output.name}')
+        options.output_file.write('\n\n')
+        options.output_file.write('Rule: ' + rid.strip())
+        options.output_file.write('\nUnparsed:\n')
+        options.output_file.write(pretty_printer.print(rule))
+    _LOGGER.info(f'Wrote file: {options.output_file.name}')
 
 
-def exec_kore_to_json(args: Namespace) -> None:
+def exec_kore_to_json(options: KoreToJsonOptions) -> None:
     text = sys.stdin.read()
     kore = KoreParser(text).pattern()
     print(kore.json)
 
 
-def exec_json_to_kore(args: dict[str, Any]) -> None:
+def exec_json_to_kore(options: JsonToKoreOptions) -> None:
     text = sys.stdin.read()
     kore = Pattern.from_json(text)
     kore.write(sys.stdout)
