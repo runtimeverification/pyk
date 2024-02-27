@@ -47,6 +47,7 @@ def generate_command_options(args: dict[str, Any]) -> LoggingOptions:
 
 class Options(object):
     def __init__(self, args: dict[str, Any]) -> None:
+        # Get defaults from all subclasses that define them, preferring the most specific class
         defaults: dict[str, Any] = {}
         mro = type(self).mro()
         mro.reverse()
@@ -54,6 +55,7 @@ class Options(object):
             if hasattr(cl, 'default'):
                 defaults = defaults | cl.default()
 
+        # Overwrite defaults with args from command line
         _args = defaults | args
 
         for attr, val in _args.items():
@@ -61,6 +63,7 @@ class Options(object):
 
     @classmethod
     def all_args(cls: Type[Options]) -> ArgumentParser:
+        # Collect args from all superclasses
         parser = ArgumentParser(add_help=False)
         mro = set(cls.mro())
         for cl in mro:
