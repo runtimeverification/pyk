@@ -73,6 +73,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def replace_target(self, node: KCFG.Node) -> KCFG.Successor:
             ...
 
+        @abstractmethod
+        def to_dict(self) -> dict[str, Any]:
+            ...
+
     class EdgeLike(Successor):
         source: KCFG.Node
         target: KCFG.Node
