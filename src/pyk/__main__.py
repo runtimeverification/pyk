@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from argparse import ArgumentParser, FileType
-from enum import Enum
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,7 +12,18 @@ from graphviz import Digraph
 from pyk.kast.inner import KInner
 from pyk.kore.rpc import ExecuteResult
 
-from .cli.args import KCLIArgs
+from .cli.args import (
+    CoverageOptions,
+    GraphImportsOptions,
+    JsonToKoreOptions,
+    KoreToJsonOptions,
+    PrintInput,
+    PrintOptions,
+    ProveOptions,
+    RPCKastOptions,
+    RPCPrintOptions,
+    generate_command_options,
+)
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import CTerm
@@ -36,16 +46,10 @@ from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
 
 if TYPE_CHECKING:
-    from argparse import Namespace
     from typing import Any, Final
 
 
 _LOGGER: Final = logging.getLogger(__name__)
-
-
-class PrintInput(Enum):
-    KORE_JSON = 'kore-json'
-    KAST_JSON = 'kast-json'
 
 
 def main() -> None:
@@ -57,36 +61,38 @@ def main() -> None:
     cli_parser = create_argument_parser()
     args = cli_parser.parse_args()
 
-    logging.basicConfig(level=loglevel(args), format=LOG_FORMAT)
+    options = generate_command_options({key: val for (key, val) in vars(args).items() if val is not None})
+
+    logging.basicConfig(level=loglevel(options), format=LOG_FORMAT)
 
     executor_name = 'exec_' + args.command.lower().replace('-', '_')
     if executor_name not in globals():
         raise AssertionError(f'Unimplemented command: {args.command}')
 
     execute = globals()[executor_name]
-    execute(args)
+    execute(options)
 
 
-def exec_print(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
+def exec_print(options: PrintOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
     printer = KPrint(kompiled_dir)
-    if args.input == PrintInput.KORE_JSON:
-        _LOGGER.info(f'Reading Kore JSON from file: {args.term.name}')
-        kore = Pattern.from_json(args.term.read())
+    if options.input == PrintInput.KORE_JSON:
+        _LOGGER.info(f'Reading Kore JSON from file: {options.term.name}')
+        kore = Pattern.from_json(options.term.read())
         term = printer.kore_to_kast(kore)
     else:
-        _LOGGER.info(f'Reading Kast JSON from file: {args.term.name}')
-        term = KInner.from_json(args.term.read())
+        _LOGGER.info(f'Reading Kast JSON from file: {options.term.name}')
+        term = KInner.from_json(options.term.read())
     if is_top(term):
-        args.output_file.write(printer.pretty_print(term))
-        _LOGGER.info(f'Wrote file: {args.output_file.name}')
+        options.output_file.write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {options.output_file.name}')
     else:
-        if args.minimize:
-            if args.omit_labels != '' and args.keep_cells != '':
+        if options.minimize:
+            if options.omit_labels != None and options.keep_cells != None:
                 raise ValueError('You cannot use both --omit-labels and --keep-cells.')
 
-            abstract_labels = args.omit_labels.split(',') if args.omit_labels != '' else []
-            keep_cells = args.keep_cells.split(',') if args.keep_cells != '' else []
+            abstract_labels = options.omit_labels.split(',') if options.omit_labels is not None else []
+            keep_cells = options.keep_cells.split(',') if options.keep_cells is not None else []
             minimized_disjuncts = []
 
             for disjunct in flatten_label('#Or', term):
@@ -102,14 +108,14 @@ def exec_print(args: Namespace) -> None:
                     minimized_disjuncts.append(config)
             term = propagate_up_constraints(mlOr(minimized_disjuncts, sort=GENERATED_TOP_CELL))
 
-        args.output_file.write(printer.pretty_print(term))
-        _LOGGER.info(f'Wrote file: {args.output_file.name}')
+        options.output_file.write(printer.pretty_print(term))
+        _LOGGER.info(f'Wrote file: {options.output_file.name}')
 
 
-def exec_rpc_print(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
+def exec_rpc_print(options: RPCPrintOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
     printer = KPrint(kompiled_dir)
-    input_dict = json.loads(args.input_file.read())
+    input_dict = json.loads(options.input_file.read())
     output_buffer = []
 
     def pretty_print_request(request_params: dict[str, Any]) -> list[str]:
@@ -178,8 +184,8 @@ def exec_rpc_print(args: Namespace) -> None:
                 except KeyError as e:
                     _LOGGER.critical(f'Could not find key {str(e)} in input JSON file')
                     exit(1)
-        if args.output_file is not None:
-            args.output_file.write('\n'.join(output_buffer))
+        if options.output_file is not None:
+            options.output_file.write('\n'.join(output_buffer))
         else:
             print('\n'.join(output_buffer))
     except ValueError as e:
@@ -188,13 +194,13 @@ def exec_rpc_print(args: Namespace) -> None:
         exit(1)
 
 
-def exec_rpc_kast(args: Namespace) -> None:
+def exec_rpc_kast(options: RPCKastOptions) -> None:
     """
     Convert an 'execute' JSON RPC response to a new 'execute' or 'simplify' request,
     copying parameters from a reference request.
     """
-    reference_request = json.loads(args.reference_request_file.read())
-    input_dict = json.loads(args.response_file.read())
+    reference_request = json.loads(options.reference_request_file.read())
+    input_dict = json.loads(options.response_file.read())
     execute_result = ExecuteResult.from_dict(input_dict['result'])
     non_state_keys = set(reference_request['params'].keys()).difference(['state'])
     request_params = {}
@@ -207,19 +213,19 @@ def exec_rpc_kast(args: Namespace) -> None:
         'method': reference_request['method'],
         'params': request_params,
     }
-    args.output_file.write(json.dumps(request))
+    options.output_file.write(json.dumps(request))
 
 
-def exec_prove(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
-    kprover = KProve(kompiled_dir, args.main_file)
-    final_state = kprover.prove(Path(args.spec_file), spec_module_name=args.spec_module, args=args.kArgs)
-    args.output_file.write(json.dumps(mlOr([state.kast for state in final_state]).to_dict()))
-    _LOGGER.info(f'Wrote file: {args.output_file.name}')
+def exec_prove(options: ProveOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
+    kprover = KProve(kompiled_dir, options.main_file)
+    final_state = kprover.prove(Path(options.spec_file), spec_module_name=options.spec_module, args=options.k_args)
+    options.output_file.write(json.dumps(mlOr([state.kast for state in final_state]).to_dict()))
+    _LOGGER.info(f'Wrote file: {options.output_file.name}')
 
 
-def exec_graph_imports(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
+def exec_graph_imports(options: GraphImportsOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
     kprinter = KPrint(kompiled_dir)
     definition = kprinter.definition
     import_graph = Digraph()
@@ -233,26 +239,26 @@ def exec_graph_imports(args: Namespace) -> None:
     _LOGGER.info(f'Wrote file: {graph_file}')
 
 
-def exec_coverage(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
+def exec_coverage(options: CoverageOptions) -> None:
+    kompiled_dir: Path = options.definition_dir
     definition = remove_source_map(read_kast_definition(kompiled_dir / 'compiled.json'))
     pretty_printer = PrettyPrinter(definition)
-    for rid in args.coverage_file:
+    for rid in options.coverage_file:
         rule = minimize_rule(strip_coverage_logger(get_rule_by_id(definition, rid.strip())))
-        args.output.write('\n\n')
-        args.output.write('Rule: ' + rid.strip())
-        args.output.write('\nUnparsed:\n')
-        args.output.write(pretty_printer.print(rule))
-    _LOGGER.info(f'Wrote file: {args.output.name}')
+        options.output_file.write('\n\n')
+        options.output_file.write('Rule: ' + rid.strip())
+        options.output_file.write('\nUnparsed:\n')
+        options.output_file.write(pretty_printer.print(rule))
+    _LOGGER.info(f'Wrote file: {options.output_file.name}')
 
 
-def exec_kore_to_json(args: Namespace) -> None:
+def exec_kore_to_json(options: KoreToJsonOptions) -> None:
     text = sys.stdin.read()
     kore = KoreParser(text).pattern()
     print(kore.json)
 
 
-def exec_json_to_kore(args: dict[str, Any]) -> None:
+def exec_json_to_kore(options: JsonToKoreOptions) -> None:
     text = sys.stdin.read()
     kore = Pattern.from_json(text)
     kore.write(sys.stdout)
@@ -260,84 +266,20 @@ def exec_json_to_kore(args: dict[str, Any]) -> None:
 
 
 def create_argument_parser() -> ArgumentParser:
-    k_cli_args = KCLIArgs()
-
     definition_args = ArgumentParser(add_help=False)
     definition_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
 
     pyk_args = ArgumentParser()
     pyk_args_command = pyk_args.add_subparsers(dest='command', required=True)
 
-    print_args = pyk_args_command.add_parser(
-        'print',
-        help='Pretty print a term.',
-        parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
-    )
-    print_args.add_argument('term', type=FileType('r'), help='Input term (in format specified with --input).')
-    print_args.add_argument('--input', default=PrintInput.KAST_JSON, type=PrintInput, choices=list(PrintInput))
-    print_args.add_argument('--omit-labels', default='', nargs='?', help='List of labels to omit from output.')
-    print_args.add_argument(
-        '--keep-cells', default='', nargs='?', help='List of cells with primitive values to keep in output.'
-    )
-    print_args.add_argument('--output-file', type=FileType('w'), default='-')
-
-    rpc_print_args = pyk_args_command.add_parser(
-        'rpc-print',
-        help='Pretty-print an RPC request/response',
-        parents=[k_cli_args.logging_args, definition_args],
-    )
-    rpc_print_args.add_argument(
-        'input_file',
-        type=FileType('r'),
-        help='An input file containing the JSON RPC request or response with KoreJSON payload.',
-    )
-    rpc_print_args.add_argument('--output-file', type=FileType('w'), default='-')
-
-    rpc_kast_args = pyk_args_command.add_parser(
-        'rpc-kast',
-        help='Convert an "execute" JSON RPC response to a new "execute" or "simplify" request, copying parameters from a reference request.',
-        parents=[k_cli_args.logging_args],
-    )
-    rpc_kast_args.add_argument(
-        'reference_request_file',
-        type=FileType('r'),
-        help='An input file containing a JSON RPC request to server as a reference for the new request.',
-    )
-    rpc_kast_args.add_argument(
-        'response_file',
-        type=FileType('r'),
-        help='An input file containing a JSON RPC response with KoreJSON payload.',
-    )
-    rpc_kast_args.add_argument('--output-file', type=FileType('w'), default='-')
-
-    prove_args = pyk_args_command.add_parser(
-        'prove',
-        help='Prove an input specification (using kprovex).',
-        parents=[k_cli_args.logging_args, definition_args],
-    )
-    prove_args.add_argument('main_file', type=str, help='Main file used for kompilation.')
-    prove_args.add_argument('spec_file', type=str, help='File with the specification module.')
-    prove_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
-    prove_args.add_argument('--output-file', type=FileType('w'), default='-')
-    prove_args.add_argument('kArgs', nargs='*', help='Arguments to pass through to K invocation.')
-
-    pyk_args_command.add_parser(
-        'graph-imports',
-        help='Graph the imports of a given definition.',
-        parents=[k_cli_args.logging_args, definition_args],
-    )
-
-    coverage_args = pyk_args_command.add_parser(
-        'coverage',
-        help='Convert coverage file to human readable log.',
-        parents=[k_cli_args.logging_args, definition_args],
-    )
-    coverage_args.add_argument('coverage_file', type=FileType('r'), help='Coverage file to build log for.')
-    coverage_args.add_argument('-o', '--output', type=FileType('w'), default='-')
-
-    pyk_args_command.add_parser('kore-to-json', help='Convert textual KORE to JSON', parents=[k_cli_args.logging_args])
-
-    pyk_args_command.add_parser('json-to-kore', help='Convert JSON to textual KORE', parents=[k_cli_args.logging_args])
+    pyk_args_command = PrintOptions.parser(pyk_args_command)
+    pyk_args_command = RPCPrintOptions.parser(pyk_args_command)
+    pyk_args_command = RPCKastOptions.parser(pyk_args_command)
+    pyk_args_command = ProveOptions.parser(pyk_args_command)
+    pyk_args_command = GraphImportsOptions.parser(pyk_args_command)
+    pyk_args_command = CoverageOptions.parser(pyk_args_command)
+    pyk_args_command = KoreToJsonOptions.parser(pyk_args_command)
+    pyk_args_command = JsonToKoreOptions.parser(pyk_args_command)
 
     return pyk_args
 
