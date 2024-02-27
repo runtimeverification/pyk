@@ -66,7 +66,8 @@ class Options:
     def all_args(cls: type[Options]) -> ArgumentParser:
         # Collect args from this and all superclasses
         parser = ArgumentParser(add_help=False)
-        mro = set(cls.mro())
+        mro = cls.mro()
+        mro.reverse()
         for cl in mro:
             if hasattr(cl, 'args') and 'args' in cl.__dict__:
                 parser = cl.args(parser)
@@ -166,7 +167,7 @@ class GraphImportsOptions(DefinitionOptions):
         return base
 
 
-class RPCKastOptions(DefinitionOptions, OutputFileOptions):
+class RPCKastOptions(LoggingOptions, OutputFileOptions):
     reference_request_file: IO[Any]
     response_file: IO[Any]
 
