@@ -561,6 +561,7 @@ class APRProver(Prover):
     _checked_for_terminal: set[int]
     _checked_for_subsumption: set[int]
     _checked_for_bounded: set[int]
+    _prior_loops_cache: dict[NodeIdLike, list[NodeIdLike]]
 
     def __init__(
         self,
@@ -612,6 +613,7 @@ class APRProver(Prover):
         self._checked_for_terminal = set()
         self._checked_for_subsumption = set()
         self._checked_for_bounded = set()
+        self._prior_loops_cache = {}
         self._check_all_terminals()
 
     def nonzero_depth(self, node: KCFG.Node) -> bool:
@@ -666,18 +668,28 @@ class APRProver(Prover):
         if self.proof.bmc_depth is not None and node.id not in self._checked_for_bounded:
             _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {node.id}')
             self._checked_for_bounded.add(node.id)
+
+            self._prior_loops_cache[node.id] = (
+                [] if node.id not in self._prior_loops_cache else self._prior_loops_cache[node.id]
+            )
+
             _prior_loops = [
                 succ.source.id
                 for succ in self.proof.shortest_path_to(node.id)
-                if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
+                if succ.source.id not in self._prior_loops_cache[node.id]
+                and self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
             ]
             prior_loops: list[NodeIdLike] = []
             for _pl in _prior_loops:
-                if not (
+                if _pl not in self._prior_loops_cache[node.id] and not (
                     self.proof.kcfg.zero_depth_between(_pl, node.id)
                     or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
                 ):
                     prior_loops.append(_pl)
+
+            self._prior_loops_cache[node.id].extend(prior_loops)
+            prior_loops = self._prior_loops_cache[node.id]
+
             _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
             if len(prior_loops) > self.proof.bmc_depth:
                 _LOGGER.warning(f'Bounded node {self.proof.id}: {node.id} at bmc depth {self.proof.bmc_depth}')
