@@ -4,13 +4,14 @@ import sys
 from argparse import ArgumentParser, FileType
 from enum import Enum
 from functools import cached_property
-from typing import IO, TYPE_CHECKING, Any, Iterable, Type
+from typing import IO, TYPE_CHECKING, Any
 
 from ..utils import ensure_dir_path
 from .utils import bug_report_arg, dir_path, file_path
 
 if TYPE_CHECKING:
     from argparse import _SubParsersAction
+    from collections.abc import Iterable
     from pathlib import Path
     from typing import TypeVar
 
@@ -45,7 +46,7 @@ def generate_command_options(args: dict[str, Any]) -> LoggingOptions:
             raise ValueError('Unrecognized command.')
 
 
-class Options(object):
+class Options:
     def __init__(self, args: dict[str, Any]) -> None:
         # Get defaults from all subclasses that define them, preferring the most specific class
         defaults: dict[str, Any] = {}
@@ -62,7 +63,7 @@ class Options(object):
             self.__setattr__(attr, val)
 
     @classmethod
-    def all_args(cls: Type[Options]) -> ArgumentParser:
+    def all_args(cls: type[Options]) -> ArgumentParser:
         # Collect args from all superclasses
         parser = ArgumentParser(add_help=False)
         mro = set(cls.mro())
