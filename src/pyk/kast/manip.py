@@ -552,15 +552,6 @@ def remove_attrs(term: KInner) -> KInner:
     return top_down(remove_attr, term)
 
 
-def remove_source_attributes(term: KInner) -> KInner:
-    def _remove_source_attr(term: KInner) -> KInner:
-        if not isinstance(term, WithKAtt):
-            return term
-        return term.let_att(term.att.drop_source())
-
-    return top_down(_remove_source_attr, term)
-
-
 def remove_generated_cells(term: KInner) -> KInner:
     """Remove <generatedTop> and <generatedCounter> from a configuration.
 
