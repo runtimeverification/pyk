@@ -63,7 +63,7 @@ class Options(object):
 
     @classmethod
     def all_args(cls: Type[Options]) -> ArgumentParser:
-        # Collect args from all superclasses
+        # Collect args from this and all superclasses
         parser = ArgumentParser(add_help=False)
         mro = set(cls.mro())
         for cl in mro:
