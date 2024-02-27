@@ -850,7 +850,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         actual = kcfg_explore.cterm_symbolic.implies(antecedent_term, consequent_term)
 
         # Then
-        assert actual == expected
+        assert actual.csubst == expected
 
     def test_assume_defined(
         self,
