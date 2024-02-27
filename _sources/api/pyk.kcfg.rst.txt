@@ -17,4 +17,5 @@ Submodules
    pyk.kcfg.kcfg
    pyk.kcfg.semantics
    pyk.kcfg.show
+   pyk.kcfg.store
    pyk.kcfg.tui
