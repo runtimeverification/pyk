@@ -258,6 +258,16 @@ class CTerm:
             )
         return (new_cterm, self_csubst, other_csubst)
 
+    def remove_useless_constraints(self, keep_vars: Iterable[str] = ()) -> CTerm:
+        """Return a new `CTerm` with constraints over unbound variables removed.
+
+        :param keep_vars: List of variables to keep constraints for even if unbound in the `CTerm`.
+        :return: A `CTerm` with the constraints over unbound variables removed.
+        """
+        initial_vars = free_vars(self.config) + list(keep_vars)
+        new_constraints = remove_useless_constraints(self.constraints, initial_vars)
+        return CTerm(self.config, new_constraints)
+
 
 def anti_unify(state1: KInner, state2: KInner, kdef: KDefinition | None = None) -> tuple[KInner, Subst, Subst]:
     """Return a generalized state over the two input states.
@@ -337,18 +347,6 @@ class CSubst:
         """Apply this `CSubst` to the given `CTerm` (instantiating the free variables, and adding the constraints)."""
         _kast = self.subst(cterm.kast)
         return CTerm(_kast, [self.constraint])
-
-
-def remove_useless_constraints_from_cterm(cterm: CTerm, keep_vars: Iterable[str] = ()) -> CTerm:
-    """Given a `CTerm`, return one with constraints over unbound variables removed.
-
-    :param cterm: Original `CTerm` potentially with constraints over unbound variables.
-    :param keep_vars: List of variables to keep constraints for even if unbound in the `cterm`.
-    :return: A `CTerm` with the constraints over unbound variables removed.
-    """
-    initial_vars = free_vars(cterm.config) + list(keep_vars)
-    new_constraints = remove_useless_constraints(cterm.constraints, initial_vars)
-    return CTerm(cterm.config, new_constraints)
 
 
 def build_claim(
