@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final
 
-    from ..cterm.symbolic import CTermSymbolic
+    from ..cterm import CTermSymbolic
     from ..kast import KInner
     from ..kcfg.exploration import KCFGExploration
     from ..kore.rpc import LogEntry

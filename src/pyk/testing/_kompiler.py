@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from ..cterm.symbolic import CTermSymbolic
+from ..cterm import CTermSymbolic
 from ..kast.outer import read_kast_definition
 from ..kcfg import KCFGExplore
 from ..kllvm.compiler import compile_runtime

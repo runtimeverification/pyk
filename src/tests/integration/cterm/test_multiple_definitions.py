@@ -14,7 +14,7 @@ from ..utils import K_FILES
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from pyk.cterm.symbolic import CTermSymbolic
+    from pyk.cterm import CTermSymbolic
     from pyk.ktool.kprint import KPrint
 
 
