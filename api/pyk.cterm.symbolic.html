@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyk.cterm.symbolic module &#8212; pyk 0.1.659 documentation</title>
+    <title>pyk.cterm.symbolic module &#8212; pyk 0.1.660 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <script src="../_static/documentation_options.js?v=786c53e2"></script>
+    <script src="../_static/documentation_options.js?v=52d79438"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -71,6 +71,36 @@
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="pyk.cterm.symbolic.CTermImplies">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CTermImplies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">csubst</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failing_cells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remaining_implication</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pyk/cterm/symbolic.html#CTermImplies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.cterm.symbolic.CTermImplies" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">NamedTuple</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.cterm.symbolic.CTermImplies.csubst">
+<span class="sig-name descname"><span class="pre">csubst</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="pyk.cterm.cterm.html#pyk.cterm.cterm.CSubst" title="pyk.cterm.cterm.CSubst"><span class="pre">CSubst</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pyk.cterm.symbolic.CTermImplies.csubst" title="Link to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.cterm.symbolic.CTermImplies.failing_cells">
+<span class="sig-name descname"><span class="pre">failing_cells</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="pyk.kast.inner.html#pyk.kast.inner.KInner" title="pyk.kast.inner.KInner"><span class="pre">KInner</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pyk.cterm.symbolic.CTermImplies.failing_cells" title="Link to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.cterm.symbolic.CTermImplies.logs">
+<span class="sig-name descname"><span class="pre">logs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="pyk.kore.rpc.html#pyk.kore.rpc.LogEntry" title="pyk.kore.rpc.LogEntry"><span class="pre">LogEntry</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pyk.cterm.symbolic.CTermImplies.logs" title="Link to this definition">¶</a></dt>
+<dd><p>Alias for field number 3</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.cterm.symbolic.CTermImplies.remaining_implication">
+<span class="sig-name descname"><span class="pre">remaining_implication</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="pyk.kast.inner.html#pyk.kast.inner.KInner" title="pyk.kast.inner.KInner"><span class="pre">KInner</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pyk.cterm.symbolic.CTermImplies.remaining_implication" title="Link to this definition">¶</a></dt>
+<dd><p>Alias for field number 2</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="pyk.cterm.symbolic.CTermSymbolic">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CTermSymbolic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kore_client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.kore.rpc.html#pyk.kore.rpc.KoreClient" title="pyk.kore.rpc.KoreClient"><span class="pre">KoreClient</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">definition</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.kast.outer.html#pyk.kast.outer.KDefinition" title="pyk.kast.outer.KDefinition"><span class="pre">KDefinition</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">kompiled_kore</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.kore.kompiled.html#pyk.kore.kompiled.KompiledKore" title="pyk.kore.kompiled.KompiledKore"><span class="pre">KompiledKore</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trace_rewrites</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/pyk/cterm/symbolic.html#CTermSymbolic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.cterm.symbolic.CTermSymbolic" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
@@ -91,7 +121,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pyk.cterm.symbolic.CTermSymbolic.implies">
-<span class="sig-name descname"><span class="pre">implies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">antecedent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.cterm.cterm.html#pyk.cterm.cterm.CTerm" title="pyk.cterm.cterm.CTerm"><span class="pre">CTerm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">consequent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.cterm.cterm.html#pyk.cterm.cterm.CTerm" title="pyk.cterm.cterm.CTerm"><span class="pre">CTerm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bind_universally</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="pyk.cterm.cterm.html#pyk.cterm.cterm.CSubst" title="pyk.cterm.cterm.CSubst"><span class="pre">CSubst</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/pyk/cterm/symbolic.html#CTermSymbolic.implies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.cterm.symbolic.CTermSymbolic.implies" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">implies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">antecedent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.cterm.cterm.html#pyk.cterm.cterm.CTerm" title="pyk.cterm.cterm.CTerm"><span class="pre">CTerm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">consequent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.cterm.cterm.html#pyk.cterm.cterm.CTerm" title="pyk.cterm.cterm.CTerm"><span class="pre">CTerm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bind_universally</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">failure_reason</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyk.cterm.symbolic.CTermImplies" title="pyk.cterm.symbolic.CTermImplies"><span class="pre">CTermImplies</span></a></span></span><a class="reference internal" href="../_modules/pyk/cterm/symbolic.html#CTermSymbolic.implies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.cterm.symbolic.CTermSymbolic.implies" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
