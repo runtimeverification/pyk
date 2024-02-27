@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from argparse import ArgumentParser, FileType
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,7 +12,18 @@ from graphviz import Digraph
 from pyk.kast.inner import KInner
 from pyk.kore.rpc import ExecuteResult
 
-from .cli.args import KCLIArgs, PrintInput, generate_command_options
+from .cli.args import (
+    CoverageOptions,
+    GraphImportsOptions,
+    JsonToKoreOptions,
+    KoreToJsonOptions,
+    PrintInput,
+    PrintOptions,
+    ProveOptions,
+    RPCKastOptions,
+    RPCPrintOptions,
+    generate_command_options,
+)
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import CTerm
@@ -38,8 +49,6 @@ if TYPE_CHECKING:
     from argparse import Namespace
     from typing import Any, Final
 
-    from .cli.args import PrintOptions, ProveOptions
-
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -53,9 +62,9 @@ def main() -> None:
     cli_parser = create_argument_parser()
     args = cli_parser.parse_args()
 
-    options = generate_command_options(vars(args))
+    options = generate_command_options({key: val for (key, val) in vars(args).items() if val is not None})
 
-    logging.basicConfig(level=loglevel(args), format=LOG_FORMAT)
+    logging.basicConfig(level=loglevel(options), format=LOG_FORMAT)
 
     executor_name = 'exec_' + args.command.lower().replace('-', '_')
     if executor_name not in globals():
@@ -258,86 +267,20 @@ def exec_json_to_kore(args: dict[str, Any]) -> None:
 
 
 def create_argument_parser() -> ArgumentParser:
-    k_cli_args = KCLIArgs()
-
     definition_args = ArgumentParser(add_help=False)
     definition_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
 
     pyk_args = ArgumentParser()
     pyk_args_command = pyk_args.add_subparsers(dest='command', required=True)
 
-    print_args = pyk_args_command.add_parser(
-        'print',
-        help='Pretty print a term.',
-        parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
-    )
-    print_args.add_argument(
-        'term', type=FileType('r'), help='File containing input term (in format specified with --input).'
-    )
-    print_args.add_argument('--input', default=None, type=PrintInput, choices=list(PrintInput))
-    print_args.add_argument('--omit-labels', default=None, nargs='?', help='List of labels to omit from output.')
-    print_args.add_argument(
-        '--keep-cells', default=None, nargs='?', help='List of cells with primitive values to keep in output.'
-    )
-    print_args.add_argument('--output-file', type=str, default=None)
-
-    rpc_print_args = pyk_args_command.add_parser(
-        'rpc-print',
-        help='Pretty-print an RPC request/response',
-        parents=[k_cli_args.logging_args, definition_args],
-    )
-    rpc_print_args.add_argument(
-        'input_file',
-        type=FileType('r'),
-        help='An input file containing the JSON RPC request or response with KoreJSON payload.',
-    )
-    rpc_print_args.add_argument('--output-file', type=FileType('w'), default=None)
-
-    rpc_kast_args = pyk_args_command.add_parser(
-        'rpc-kast',
-        help='Convert an "execute" JSON RPC response to a new "execute" or "simplify" request, copying parameters from a reference request.',
-        parents=[k_cli_args.logging_args],
-    )
-    rpc_kast_args.add_argument(
-        'reference_request_file',
-        type=FileType('r'),
-        help='An input file containing a JSON RPC request to server as a reference for the new request.',
-    )
-    rpc_kast_args.add_argument(
-        'response_file',
-        type=FileType('r'),
-        help='An input file containing a JSON RPC response with KoreJSON payload.',
-    )
-    rpc_kast_args.add_argument('--output-file', type=FileType('w'), default=None)
-
-    prove_args = pyk_args_command.add_parser(
-        'prove',
-        help='Prove an input specification (using kprovex).',
-        parents=[k_cli_args.logging_args, definition_args],
-    )
-    prove_args.add_argument('main_file', type=str, help='Main file used for kompilation.')
-    prove_args.add_argument('spec_file', type=str, help='File with the specification module.')
-    prove_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
-    prove_args.add_argument('--output-file', type=str, default=None)
-    prove_args.add_argument('k_args', nargs='*', help='Arguments to pass through to K invocation.')
-
-    pyk_args_command.add_parser(
-        'graph-imports',
-        help='Graph the imports of a given definition.',
-        parents=[k_cli_args.logging_args, definition_args],
-    )
-
-    coverage_args = pyk_args_command.add_parser(
-        'coverage',
-        help='Convert coverage file to human readable log.',
-        parents=[k_cli_args.logging_args, definition_args],
-    )
-    coverage_args.add_argument('coverage_file', type=FileType('r'), help='Coverage file to build log for.')
-    coverage_args.add_argument('-o', '--output', type=FileType('w'), default=None)
-
-    pyk_args_command.add_parser('kore-to-json', help='Convert textual KORE to JSON', parents=[k_cli_args.logging_args])
-
-    pyk_args_command.add_parser('json-to-kore', help='Convert JSON to textual KORE', parents=[k_cli_args.logging_args])
+    pyk_args_command = PrintOptions.parser(pyk_args_command)
+    pyk_args_command = RPCPrintOptions.parser(pyk_args_command)
+    pyk_args_command = RPCKastOptions.parser(pyk_args_command)
+    pyk_args_command = ProveOptions.parser(pyk_args_command)
+    pyk_args_command = GraphImportsOptions.parser(pyk_args_command)
+    pyk_args_command = CoverageOptions.parser(pyk_args_command)
+    pyk_args_command = KoreToJsonOptions.parser(pyk_args_command)
+    pyk_args_command = JsonToKoreOptions.parser(pyk_args_command)
 
     return pyk_args
 

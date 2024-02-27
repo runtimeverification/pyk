@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, FileType
 from enum import Enum
 from functools import cached_property
-from typing import IO, TYPE_CHECKING, Any, Iterable
+from typing import IO, TYPE_CHECKING, Any, Iterable, Type
 
 from ..utils import ensure_dir_path
 from .utils import bug_report_arg, dir_path, file_path
 
 if TYPE_CHECKING:
+    from argparse import _SubParsersAction
     from pathlib import Path
     from typing import TypeVar
 
@@ -21,7 +22,7 @@ class PrintInput(Enum):
     KAST_JSON = 'kast-json'
 
 
-def generate_command_options(args: dict[str, Any]) -> Options:
+def generate_command_options(args: dict[str, Any]) -> LoggingOptions:
     command = args['command'].lower()
     match command:
         case 'print':
@@ -37,99 +38,248 @@ def generate_command_options(args: dict[str, Any]) -> Options:
         case 'coverage':
             return CoverageOptions(args)
         case 'kore-to-json':
-            return Options()
+            return KoreToJsonOptions(args)
         case 'json-to-kore':
-            return Options()
+            return JsonToKoreOptions(args)
         case _:
             raise ValueError('Unrecognized command.')
 
 
-class Options:
-    ...
+class Options(object):
+    def __init__(self, args: dict[str, Any]) -> None:
+        defaults: dict[str, Any] = {}
+        mro = type(self).mro()
+        mro.reverse()
+        for cl in mro:
+            if hasattr(cl, 'default'):
+                defaults = defaults | cl.default()
+
+        _args = defaults | args
+
+        for attr, val in _args.items():
+            self.__setattr__(attr, val)
+
+    @classmethod
+    def all_args(cls: Type[Options]) -> ArgumentParser:
+        parser = ArgumentParser(add_help=False)
+        mro = set(cls.mro())
+        for cl in mro:
+            if hasattr(cl, 'args') and 'args' in cl.__dict__:
+                parser = cl.args(parser)
+        return parser
 
 
-class CoverageOptions(Options):
+class LoggingOptions(Options):
+    debug: bool
+    verbose: bool
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'verbose': False,
+            'debug': False,
+        }
+
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument('--verbose', '-v', default=None, action='store_true', help='Verbose output.')
+        parser.add_argument('--debug', default=None, action='store_true', help='Debug output.')
+        return parser
+
+
+class JsonToKoreOptions(LoggingOptions):
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'json-to-kore',
+            help='Convert JSON to textual KORE',
+            parents=[JsonToKoreOptions.all_args()],
+        )
+        return base
+
+
+class KoreToJsonOptions(LoggingOptions):
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'kore-to-json',
+            help='Convert textual KORE to JSON',
+            parents=[KoreToJsonOptions.all_args()],
+        )
+        return base
+
+
+class OutputFileOptions(Options):
+    output_file: IO[Any]
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'output_file': sys.stdout,
+        }
+
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument('--output-file', type=FileType('w'), default=None)
+        return parser
+
+
+class DefinitionOptions(LoggingOptions):
     definition_dir: Path
+
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
+        return parser
+
+
+class CoverageOptions(DefinitionOptions, OutputFileOptions):
     coverage_file: IO[Any]
-    output: IO[Any]
 
-    def __init__(self, args: dict[str, Any]) -> None:
-        self.definition_dir = args['definition_dir']
-        self.coverage_file = args['response_file']
-        self.output = sys.stdout if args['output'] is None else args['output']
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'coverage',
+            help='Convert coverage file to human readable log.',
+            parents=[CoverageOptions.all_args()],
+        )
+        return base
+
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument('coverage_file', type=FileType('r'), help='Coverage file to build log for.')
+        return parser
 
 
-class GraphImportsOptions(Options):
-    definition_dir: Path
+class GraphImportsOptions(DefinitionOptions):
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'graph-imports',
+            help='Graph the imports of a given definition.',
+            parents=[GraphImportsOptions.all_args()],
+        )
+        return base
 
-    def __init__(self, args: dict[str, Any]) -> None:
-        self.definition_dir = args['definition_dir']
 
-
-class RPCKastOptions(Options):
+class RPCKastOptions(DefinitionOptions, OutputFileOptions):
     reference_request_file: IO[Any]
     response_file: IO[Any]
 
-    output_file: IO[Any]
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'rpc-kast',
+            help='Convert an "execute" JSON RPC response to a new "execute" or "simplify" request, copying parameters from a reference request.',
+            parents=[RPCKastOptions.all_args()],
+        )
+        return base
 
-    def __init__(self, args: dict[str, Any]) -> None:
-        self.reference_request_file = args['reference_request_file']
-        self.response_file = args['response_file']
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument(
+            'reference_request_file',
+            type=FileType('r'),
+            help='An input file containing a JSON RPC request to server as a reference for the new request.',
+        )
+        parser.add_argument(
+            'response_file',
+            type=FileType('r'),
+            help='An input file containing a JSON RPC response with KoreJSON payload.',
+        )
+        return parser
 
-        self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
 
-
-class RPCPrintOptions(Options):
-    definition_dir: Path
+class RPCPrintOptions(DefinitionOptions, OutputFileOptions):
     input_file: IO[Any]
 
-    output_file: IO[Any]
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'rpc-print',
+            help='Pretty-print an RPC request/response',
+            parents=[RPCPrintOptions.all_args()],
+        )
+        return base
 
-    def __init__(self, args: dict[str, Any]) -> None:
-        self.definition_dir = args['definition_dir']
-        self.input_file = args['input_file']
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument(
+            'input_file',
+            type=FileType('r'),
+            help='An input file containing the JSON RPC request or response with KoreJSON payload.',
+        )
+        return parser
 
-        self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
+
+class DisplayOptions(Options):
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument('--minimize', dest='minimize', default=None, action='store_true', help='Minimize output.')
+        parser.add_argument('--no-minimize', dest='minimize', action='store_false', help='Do not minimize output.')
+        return parser
 
 
-class PrintOptions(Options):
-    definition_dir: Path
+class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions):
     term: IO[Any]
-
     input: PrintInput
-    output_file: IO[Any]
     minimize: bool
     omit_labels: str | None
     keep_cells: str | None
 
-    def __init__(self, args: dict[str, Any]) -> None:
-        self.definition_dir = args['definition_dir']
-        self.term = args['term']
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'input': PrintInput.KAST_JSON,
+            'minimize': True,
+            'omit_labels': None,
+            'keep_cells': None,
+        }
 
-        self.input = PrintInput.KAST_JSON if args['input'] is None else args['input']
-        self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
-        self.minimize = True if args['minimize'] is None else args['minimize']
-        self.omit_labels = args['omit_labels']
-        self.keep_cells = args['keep_cells']
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument(
+            'term', type=FileType('r'), help='File containing input term (in format specified with --input).'
+        )
+        parser.add_argument('--input', default=None, type=PrintInput, choices=list(PrintInput))
+        parser.add_argument('--omit-labels', default=None, nargs='?', help='List of labels to omit from output.')
+        parser.add_argument(
+            '--keep-cells', default=None, nargs='?', help='List of cells with primitive values to keep in output.'
+        )
+        return parser
+
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'print',
+            help='Pretty print a term.',
+            parents=[PrintOptions.all_args()],
+        )
+        return base
 
 
-class ProveOptions(Options):
-    definition_dir: Path
+class ProveOptions(DefinitionOptions, OutputFileOptions):
     main_file: Path
     spec_file: Path
     spec_module: str
     k_args: Iterable[str]
-    output_file: IO[Any]
 
-    def __init__(self, args: dict[str, Any]) -> None:
-        self.definition_dir = args['definition_dir']
-        self.main_file = args['main_file']
-        self.spec_file = args['spec_file']
-        self.spec_module = args['spec_module']
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument('main_file', type=str, help='Main file used for kompilation.')
+        parser.add_argument('spec_file', type=str, help='File with the specification module.')
+        parser.add_argument('spec_module', type=str, help='Module with claims to be proven.')
+        parser.add_argument('k_args', nargs='*', help='Arguments to pass through to K invocation.')
+        return parser
 
-        self.k_args = args['k_args']
-
-        self.output_file = sys.stdout if args['output_file'] is None else args['output_file']
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'prove',
+            help='Prove an input specification (using kprovex).',
+            parents=[ProveOptions.all_args()],
+        )
+        return base
 
 
 class KCLIArgs:
@@ -226,13 +376,6 @@ class KCLIArgs:
             type=str,
             help='Z3 tactic to use when checking satisfiability. Example: (check-sat-using smt)',
         )
-        return args
-
-    @cached_property
-    def display_args(self) -> ArgumentParser:
-        args = ArgumentParser(add_help=False)
-        args.add_argument('--minimize', dest='minimize', default=None, action='store_true', help='Minimize output.')
-        args.add_argument('--no-minimize', dest='minimize', action='store_false', help='Do not minimize output.')
         return args
 
     @cached_property
