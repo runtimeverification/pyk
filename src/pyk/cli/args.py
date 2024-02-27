@@ -48,7 +48,7 @@ def generate_command_options(args: dict[str, Any]) -> LoggingOptions:
 
 class Options:
     def __init__(self, args: dict[str, Any]) -> None:
-        # Get defaults from all subclasses that define them, preferring the most specific class
+        # Get defaults from this and all superclasses that define them, preferring the most specific class
         defaults: dict[str, Any] = {}
         mro = type(self).mro()
         mro.reverse()
@@ -64,7 +64,7 @@ class Options:
 
     @classmethod
     def all_args(cls: type[Options]) -> ArgumentParser:
-        # Collect args from all superclasses
+        # Collect args from this and all superclasses
         parser = ArgumentParser(add_help=False)
         mro = set(cls.mro())
         for cl in mro:
