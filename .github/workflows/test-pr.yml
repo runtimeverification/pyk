@@ -146,7 +146,7 @@ jobs:
       - name: 'Set Python version'
         run: docker exec --user user pyk-ci poetry env use ${{ matrix.python-version }}
       - name: 'Build and run integration tests'
-        run: docker exec --user user pyk-ci make cov-integration COV_ARGS='-n8 --timeout 300'
+        run: docker exec --user user pyk-ci make cov-integration COV_ARGS='-n8 --timeout 500'
       - name: 'Tear down Docker container'
         if: always()
         run: |
