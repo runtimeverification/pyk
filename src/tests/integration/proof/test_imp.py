@@ -153,7 +153,7 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             mlAnd(
                 [
                     mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
-                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
                 ]
             ),
         ),
@@ -163,14 +163,15 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             mlAnd(
                 [
                     mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
-                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
                 ]
             ),
         ),
         (
-            'Implication check failed, the following is the remaining implication:\n'
+            'Matching failed.\n'
+            'The remaining implication is:\n'
             '{ true #Equals A:Int <Int 1 }\n'
-            '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+            '#And { true #Equals B:Int <Int 2 } #Implies { true #Equals B:Int <Int 1 }'
         ),
     ),
     (
@@ -181,7 +182,7 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             mlAnd(
                 [
                     mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
-                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
                 ]
             ),
         ),
@@ -191,14 +192,15 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             mlAnd(
                 [
                     mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
-                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
                 ]
             ),
         ),
         (
-            'Implication check failed, the following is the remaining implication:\n'
+            'Matching failed.\n'
+            'The remaining implication is:\n'
             '{ true #Equals A:Int <Int 1 }\n'
-            '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+            '#And { true #Equals B:Int <Int 2 } #Implies { true #Equals B:Int <Int 1 }'
         ),
     ),
     (
