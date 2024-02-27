@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kast.manip &#8212; pyk 0.1.657 documentation</title>
+    <title>pyk.kast.manip &#8212; pyk 0.1.658 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=340e7439"></script>
+    <script src="../../../_static/documentation_options.js?v=dc14d7fb"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -873,6 +873,31 @@
 <span class="linenos">716</span>        <span class="k">return</span> <span class="n">k</span><span class="o">.</span><span class="n">map_inner</span><span class="p">(</span><span class="n">_rename_vars</span><span class="p">)</span>
 <span class="linenos">717</span>
 <span class="linenos">718</span>    <span class="k">return</span> <span class="n">_rename_vars</span><span class="p">(</span><span class="n">term</span><span class="p">)</span></div>
+
+<span class="linenos">719</span>
+<span class="linenos">720</span>
+<div class="viewcode-block" id="remove_useless_constraints">
+<a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.remove_useless_constraints">[docs]</a>
+<span class="linenos">721</span><span class="k">def</span> <span class="nf">remove_useless_constraints</span><span class="p">(</span><span class="n">constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">],</span> <span class="n">initial_vars</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">KInner</span><span class="p">]:</span>
+<span class="linenos">722</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Given a list of constraints and a list of variables, return an updated list with only constraints that depend on these variables (directly or indirectly).</span>
+<span class="linenos">723</span>
+<span class="linenos">724</span><span class="sd">    :param constraints: Original list of constraints to remove from.</span>
+<span class="linenos">725</span><span class="sd">    :param initial_vars: Initial list of variables to keep constraints for.</span>
+<span class="linenos">726</span><span class="sd">    :return: A list of constraints with only those constraints that contain the initial variables or variables that depend on those through other constraints in the list.</span>
+<span class="linenos">727</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">728</span>    <span class="n">used_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">initial_vars</span><span class="p">)</span>
+<span class="linenos">729</span>    <span class="n">prev_len_used_vars</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="linenos">730</span>    <span class="n">new_constraints</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">731</span>    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_vars</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">prev_len_used_vars</span><span class="p">:</span>
+<span class="linenos">732</span>        <span class="n">prev_len_used_vars</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_vars</span><span class="p">)</span>
+<span class="linenos">733</span>        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">constraints</span><span class="p">:</span>
+<span class="linenos">734</span>            <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">new_constraints</span><span class="p">:</span>
+<span class="linenos">735</span>                <span class="n">new_vars</span> <span class="o">=</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="linenos">736</span>                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">v</span> <span class="ow">in</span> <span class="n">used_vars</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_vars</span><span class="p">):</span>
+<span class="linenos">737</span>                    <span class="n">new_constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="linenos">738</span>                    <span class="n">used_vars</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">new_vars</span><span class="p">)</span>
+<span class="linenos">739</span>        <span class="n">used_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">used_vars</span><span class="p">))</span>
+<span class="linenos">740</span>    <span class="k">return</span> <span class="n">new_constraints</span></div>
 
 </pre></div>
 

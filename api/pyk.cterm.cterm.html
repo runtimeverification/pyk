@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyk.cterm.cterm module &#8212; pyk 0.1.657 documentation</title>
+    <title>pyk.cterm.cterm module &#8212; pyk 0.1.658 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <script src="../_static/documentation_options.js?v=340e7439"></script>
+    <script src="../_static/documentation_options.js?v=dc14d7fb"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -190,6 +190,20 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="pyk.cterm.cterm.CTerm.remove_useless_constraints">
+<span class="sig-name descname"><span class="pre">remove_useless_constraints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">keep_vars</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyk.cterm.cterm.CTerm" title="pyk.cterm.cterm.CTerm"><span class="pre">CTerm</span></a></span></span><a class="reference internal" href="../_modules/pyk/cterm/cterm.html#CTerm.remove_useless_constraints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.cterm.cterm.CTerm.remove_useless_constraints" title="Link to this definition">¶</a></dt>
+<dd><p>Return a new <cite>CTerm</cite> with constraints over unbound variables removed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>keep_vars</strong> – List of variables to keep constraints for even if unbound in the <cite>CTerm</cite>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <cite>CTerm</cite> with the constraints over unbound variables removed.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="pyk.cterm.cterm.CTerm.to_dict">
 <span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/pyk/cterm/cterm.html#CTerm.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.cterm.cterm.CTerm.to_dict" title="Link to this definition">¶</a></dt>
 <dd><p>Serialize a <cite>CTerm</cite> to dictionary representation.</p>
@@ -271,23 +285,6 @@
 <dd class="field-even"><p>tuple <cite>claim: KRule, var_map: Subst</cite> such that:
 - <cite>rule</cite>: A <cite>KRule</cite> with variable naming conventions applied so that it should be parseable by K frontend.
 - <cite>var_map</cite>: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="pyk.cterm.cterm.remove_useless_constraints">
-<span class="sig-name descname"><span class="pre">remove_useless_constraints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cterm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#pyk.cterm.cterm.CTerm" title="pyk.cterm.cterm.CTerm"><span class="pre">CTerm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_vars</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyk.cterm.cterm.CTerm" title="pyk.cterm.cterm.CTerm"><span class="pre">CTerm</span></a></span></span><a class="reference internal" href="../_modules/pyk/cterm/cterm.html#remove_useless_constraints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.cterm.cterm.remove_useless_constraints" title="Link to this definition">¶</a></dt>
-<dd><p>Given a <cite>CTerm</cite>, return one with constraints over unbound variables removed.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cterm</strong> – Original <cite>CTerm</cite> potentially with constraints over unbound variables.</p></li>
-<li><p><strong>keep_vars</strong> – List of variables to keep constraints for even if unbound in the <cite>cterm</cite>.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A <cite>CTerm</cite> with the constraints over unbound variables removed.</p>
 </dd>
 </dl>
 </dd></dl>
