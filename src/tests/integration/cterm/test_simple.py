@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Final, Union
 
-    from pyk.cterm import CTermSymbolic
+    from pyk.cterm.symbolic import CTermSymbolic
     from pyk.ktool.kprint import KPrint
 
     STATE = Union[tuple[str, str], tuple[str, str, str]]
