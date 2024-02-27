@@ -169,9 +169,9 @@ class CTermSymbolic:
                 _LOGGER.debug(f'Received a non-empty substitution for unsatisfiable implication: {result.substitution}')
             if result.predicate is not None:
                 _LOGGER.debug(f'Received a non-empty predicate for unsatisfiable implication: {result.predicate}')
+            failing_cells: list[tuple[str, KInner]] = []
+            remaining_implication: KInner | None = None
             if failure_reason:
-                failing_cells: list[tuple[str, KInner]] = []
-                remaining_implication: KInner | None = None
                 _config_match = self.implies(
                     CTerm.from_kast(antecedent.config),
                     CTerm.from_kast(consequent.config),
@@ -199,9 +199,8 @@ class CTermSymbolic:
                         )
                     )
                     remaining_implication = CTerm._ml_impl(antecedent.constraints, consequent_constraints)
+            return CTermImplies(None, tuple(failing_cells), remaining_implication, result.logs)
 
-                return CTermImplies(None, tuple(failing_cells), remaining_implication, result.logs)
-            return CTermImplies(None, (), None, result.logs)
         if result.substitution is None:
             raise ValueError('Received empty substutition for satisfiable implication.')
         if result.predicate is None:
