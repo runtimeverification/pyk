@@ -92,7 +92,10 @@ jobs:
           wget https://github.com/runtimeverification/k/releases/download/v${K_VERSION}/${DEB_PACKAGE_NAME}
           sudo apt-get update
           sudo apt-get -y install ./${DEB_PACKAGE_NAME}
-          kompile --version
+      - name: 'Set up Java'
+        run: |
+          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+          java --version
       - name: 'Run profiling'
         run: |
           make profile PROF_ARGS=-n4
@@ -123,7 +126,10 @@ jobs:
           wget https://github.com/runtimeverification/k/releases/download/v${K_VERSION}/${DEB_PACKAGE_NAME}
           sudo apt-get update
           sudo apt-get -y install graphviz ./${DEB_PACKAGE_NAME}
-          kompile --version
+      - name: 'Set up Java'
+        run: |
+          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+          java --version
       - name: 'Run integration tests'
         run: make cov-integration COV_ARGS='-n4 --timeout 500'
 
