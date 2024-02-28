@@ -468,26 +468,19 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         cfg = KCFG(optimize_memory=optimize_memory)
 
         for node_dict in dct.get('nodes') or []:
-            node_id = node_dict['id']
-            cterm = CTerm.from_dict(node_dict['cterm'])
-            node = KCFG.Node(node_id, cterm)
+            node = KCFG.Node.from_dict(node_dict)
             cfg.add_node(node)
 
         max_id = max([node.id for node in cfg.nodes], default=0)
         cfg._node_id = dct.get('next', max_id + 1)
 
         for edge_dict in dct.get('edges') or []:
-            source_id = edge_dict['source']
-            target_id = edge_dict['target']
-            depth = edge_dict['depth']
-            rules = edge_dict['rules']
-            cfg.create_edge(source_id, target_id, depth, rules=rules)
+            edge = KCFG.Edge.from_dict(edge_dict, cfg._nodes)
+            cfg.add_successor(edge)
 
         for cover_dict in dct.get('covers') or []:
-            source_id = cover_dict['source']
-            target_id = cover_dict['target']
-            csubst = CSubst.from_dict(cover_dict['csubst'])
-            cfg.create_cover(source_id, target_id, csubst=csubst)
+            cover = KCFG.Cover.from_dict(cover_dict, cfg._nodes)
+            cfg.add_successor(cover)
 
         for vacuous_id in dct.get('vacuous') or []:
             cfg.add_vacuous(vacuous_id)
@@ -499,17 +492,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             cfg.add_alias(alias=alias, node_id=node_id)
 
         for split_dict in dct.get('splits') or []:
-            source_id = split_dict['source']
-            targets = [
-                (target_dict['target'], CSubst.from_dict(target_dict['csubst']))
-                for target_dict in split_dict['targets']
-            ]
-            cfg.create_split(source_id, targets)
+            split = KCFG.Split.from_dict(split_dict, cfg._nodes)
+            cfg.add_successor(split)
 
         for ndbranch_dict in dct.get('ndbranches') or []:
-            source_id = ndbranch_dict['source']
-            target_ids = ndbranch_dict['targets']
-            cfg.create_ndbranch(source_id, target_ids)
+            ndbranch = KCFG.NDBranch.from_dict(ndbranch_dict, cfg._nodes)
+            cfg.add_successor(ndbranch)
 
         return cfg
 
