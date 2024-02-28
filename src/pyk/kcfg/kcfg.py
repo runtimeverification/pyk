@@ -48,6 +48,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def to_dict(self) -> dict[str, Any]:
             return {'id': self.id, 'cterm': self.cterm.to_dict()}
 
+        @staticmethod
+        def from_dict(dct: dict[str, Any]) -> KCFG.Node:
+            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']))
+
     class Successor(ABC):
         source: KCFG.Node
 
