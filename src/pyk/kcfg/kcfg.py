@@ -668,6 +668,25 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                     f'Adding successor would create zero-length loop with backedge: {source_id} -> {target_id}'
                 )
 
+    def add_successor(self, succ: KCFG.Successor) -> None:
+        self._check_no_successors(succ.source.id)
+        self._check_no_zero_loops(succ.source.id, succ.target_ids)
+        if type(succ) is KCFG.Edge:
+            self._edges[succ.source.id] = {}
+            self._edges[succ.source.id][succ.target.id] = succ
+        elif type(succ) is KCFG.Cover:
+            self._covers[succ.source.id] = {}
+            self._covers[succ.source.id][succ.target.id] = succ
+        else:
+            if len(succ.target_ids) <= 1:
+                raise ValueError(
+                    f'Cannot create {type(succ)} node with less than 2 targets: {succ.source.id} -> {succ.target_ids}'
+                )
+            if type(succ) is KCFG.Split:
+                self._splits[succ.source.id] = succ
+            elif type(succ) is KCFG.NDBranch:
+                self._ndbranches[succ.source.id] = succ
+
     def edge(self, source_id: NodeIdLike, target_id: NodeIdLike) -> Edge | None:
         source_id = self._resolve(source_id)
         target_id = self._resolve(target_id)
@@ -691,20 +710,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return False
 
     def create_edge(self, source_id: NodeIdLike, target_id: NodeIdLike, depth: int, rules: Iterable[str] = ()) -> Edge:
-        self._check_no_successors(source_id)
-        self._check_no_zero_loops(source_id, [target_id])
-
         if depth <= 0:
             raise ValueError(f'Cannot build KCFG Edge with non-positive depth: {depth}')
-
         source = self.node(source_id)
         target = self.node(target_id)
-
-        if source.id not in self._edges:
-            self._edges[source.id] = {}
-
         edge = KCFG.Edge(source, target, depth, tuple(rules))
-        self._edges[source.id][target.id] = edge
+        self.add_successor(edge)
         return edge
 
     def remove_edge(self, source_id: NodeIdLike, target_id: NodeIdLike) -> None:
@@ -742,22 +753,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return False
 
     def create_cover(self, source_id: NodeIdLike, target_id: NodeIdLike, csubst: CSubst | None = None) -> Cover:
-        self._check_no_successors(source_id)
-        self._check_no_zero_loops(source_id, [target_id])
-
         source = self.node(source_id)
         target = self.node(target_id)
-
         if csubst is None:
             csubst = target.cterm.match_with_constraint(source.cterm)
             if csubst is None:
                 raise ValueError(f'No matching between: {source.id} and {target.id}')
-
-        if source.id not in self._covers:
-            self._covers[source.id] = {}
-
         cover = KCFG.Cover(source, target, csubst=csubst)
-        self._covers[source.id][target.id] = cover
+        self.add_successor(cover)
         return cover
 
     def remove_cover(self, source_id: NodeIdLike, target_id: NodeIdLike) -> None:
@@ -815,17 +818,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def contains_split(self, split: Split) -> bool:
         return split in self._splits
 
-    def create_split(self, source_id: NodeIdLike, splits: Iterable[tuple[NodeIdLike, CSubst]]) -> None:
-        splits = list(splits)
-        self._check_no_successors(source_id)
-        self._check_no_zero_loops(source_id, [id for id, _ in splits])
-
-        if len(splits) <= 1:
-            raise ValueError(f'Cannot create split node with less than 2 targets: {source_id} -> {splits}')
-
+    def create_split(self, source_id: NodeIdLike, splits: Iterable[tuple[NodeIdLike, CSubst]]) -> KCFG.Split:
         source_id = self._resolve(source_id)
-        split = KCFG.Split(self.node(source_id), tuple((self.node(nid), csubst) for nid, csubst in splits))
-        self._splits[source_id] = split
+        split = KCFG.Split(self.node(source_id), tuple((self.node(nid), csubst) for nid, csubst in list(splits)))
+        self.add_successor(split)
+        return split
 
     def ndbranches(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[NDBranch]:
         source_id = self._resolve(source_id) if source_id is not None else None
@@ -841,19 +838,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def create_ndbranch(
         self, source_id: NodeIdLike, ndbranches: Iterable[NodeIdLike], rules: Iterable[str] = ()
-    ) -> None:
-        ndbranches = list(ndbranches)
-        self._check_no_successors(source_id)
-        self._check_no_zero_loops(source_id, ndbranches)
-
-        if len(ndbranches) <= 1:
-            raise ValueError(
-                f'Cannot create non-deterministic branches node with less than 2 targets: {source_id} -> {ndbranches}'
-            )
-
+    ) -> KCFG.NDBranch:
         source_id = self._resolve(source_id)
-        ndbranch = KCFG.NDBranch(self.node(source_id), tuple(self.node(nid) for nid in ndbranches), tuple(rules))
-        self._ndbranches[source_id] = ndbranch
+        ndbranch = KCFG.NDBranch(self.node(source_id), tuple(self.node(nid) for nid in list(ndbranches)), tuple(rules))
+        self.add_successor(ndbranch)
+        return ndbranch
 
     def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
         source = self.node(source_id)
