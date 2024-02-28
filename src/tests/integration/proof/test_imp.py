@@ -1134,10 +1134,10 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     def test_anti_unify_forget_values(
         self,
         kcfg_explore: KCFGExplore,
-        kprint: KPrint,
+        kprove: KProve,
     ) -> None:
         cterm1 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> X:Int',
             constraint=mlAnd(
@@ -1150,7 +1150,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
         cterm2 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> Y:Int',
             constraint=mlAnd(
@@ -1163,7 +1163,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
 
-        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=False, kdef=kprint.definition)
+        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=False, kdef=kprove.definition)
 
         k_cell = get_cell(anti_unifier.kast, 'STATE_CELL')
         assert type(k_cell) is KApply
@@ -1172,7 +1172,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         abstracted_var: KVariable = k_cell.args[1]
 
         expected_anti_unifier = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state=f'N |-> {abstracted_var.name}:Int',
             constraint=mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
@@ -1183,10 +1183,10 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     def test_anti_unify_keep_values(
         self,
         kcfg_explore: KCFGExplore,
-        kprint: KPrint,
+        kprove: KProve,
     ) -> None:
         cterm1 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> X:Int',
             constraint=mlAnd(
@@ -1200,7 +1200,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
         cterm2 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> Y:Int',
             constraint=mlAnd(
@@ -1214,7 +1214,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
 
-        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprint.definition)
+        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprove.definition)
 
         k_cell = get_cell(anti_unifier.kast, 'STATE_CELL')
         assert type(k_cell) is KApply
@@ -1223,7 +1223,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         abstracted_var: KVariable = k_cell.args[1]
 
         expected_anti_unifier = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state=f'N |-> {abstracted_var.name}:Int',
             constraint=mlAnd(
@@ -1258,22 +1258,22 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     def test_anti_unify_subst_true(
         self,
         kcfg_explore: KCFGExplore,
-        kprint: KPrint,
+        kprove: KProve,
     ) -> None:
         cterm1 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> 0',
             constraint=mlEqualsTrue(KApply('_==K_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
         )
         cterm2 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> 0',
             constraint=mlEqualsTrue(KApply('_==K_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
         )
 
-        anti_unifier, _, _ = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprint.definition)
+        anti_unifier, _, _ = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprove.definition)
 
         assert anti_unifier.kast == cterm1.kast
 
