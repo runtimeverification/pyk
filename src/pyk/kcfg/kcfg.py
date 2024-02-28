@@ -81,6 +81,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def to_dict(self) -> dict[str, Any]:
             ...
 
+        @staticmethod
+        @abstractmethod
+        def from_dict(dct: dict[str, Any], nodes: dict[int, KCFG.Node]) -> KCFG.Successor:
+            ...
+
     class EdgeLike(Successor):
         source: KCFG.Node
         target: KCFG.Node
@@ -104,6 +109,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 'depth': self.depth,
                 'rules': list(self.rules),
             }
+
+        @staticmethod
+        def from_dict(dct: dict[str, Any], nodes: dict[int, KCFG.Node]) -> KCFG.Edge:
+            return KCFG.Edge(nodes[dct['source']], nodes[dct['target']], dct['depth'], tuple(dct['rules']))
 
         def to_rule(self, label: str, claim: bool = False, priority: int | None = None) -> KRuleLike:
             def is_ceil_condition(kast: KInner) -> bool:
@@ -145,6 +154,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 'target': self.target.id,
                 'csubst': self.csubst.to_dict(),
             }
+
+        @staticmethod
+        def from_dict(dct: dict[str, Any], nodes: dict[int, KCFG.Node]) -> KCFG.Cover:
+            return KCFG.Cover(nodes[dct['source']], nodes[dct['target']], CSubst.from_dict(dct['csubst']))
 
         def replace_source(self, node: KCFG.Node) -> KCFG.Cover:
             assert node.id == self.source.id
@@ -197,6 +210,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 ],
             }
 
+        @staticmethod
+        def from_dict(dct: dict[str, Any], nodes: dict[int, KCFG.Node]) -> KCFG.Split:
+            _targets = [(nodes[target['target']], CSubst.from_dict(target['csubst'])) for target in dct['targets']]
+            return KCFG.Split(nodes[dct['source']], tuple(_targets))
+
         def with_single_target(self, target: KCFG.Node) -> KCFG.Split:
             return KCFG.Split(self.source, ((target, self.splits[target.id]),))
 
@@ -238,6 +256,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 'targets': [target.id for target in self.targets],
                 'rules': list(self.rules),
             }
+
+        @staticmethod
+        def from_dict(dct: dict[str, Any], nodes: dict[int, KCFG.Node]) -> KCFG.NDBranch:
+            return KCFG.NDBranch(
+                nodes[dct['source']], tuple([nodes[target] for target in dct['targets']]), tuple(dct['rules'])
+            )
 
         def with_single_target(self, target: KCFG.Node) -> KCFG.NDBranch:
             return KCFG.NDBranch(self.source, (target,), ())
