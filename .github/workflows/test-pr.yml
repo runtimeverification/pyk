@@ -71,7 +71,7 @@ jobs:
   profile:
     needs: code-quality-checks
     name: 'Profiling'
-    runs-on: [self-hosted, linux, normal-ephemeral]
+    runs-on: [ubuntu-latest]
     timeout-minutes: 10
     strategy:
       matrix:
@@ -95,13 +95,13 @@ jobs:
           kompile --version
       - name: 'Run profiling'
         run: |
-          make profile
+          make profile PROF_ARGS=-n4
           find /tmp/pytest-of-${USER}/pytest-current/ -type f -name '*.prof' | sort | xargs tail -n +1
 
   integration-tests:
     needs: code-quality-checks
     name: 'Integration Tests'
-    runs-on: [self-hosted, linux, normal-ephemeral]
+    runs-on: [ubuntu-latest]
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -125,7 +125,7 @@ jobs:
           sudo apt-get -y install graphviz ./${DEB_PACKAGE_NAME}
           kompile --version
       - name: 'Run integration tests'
-        run: make cov-integration COV_ARGS='-n8 --timeout 500'
+        run: make cov-integration COV_ARGS='-n4 --timeout 500'
 
   build-on-nix:
     needs: code-quality-checks
