@@ -287,6 +287,24 @@ class ProveOptions(DefinitionOptions, OutputFileOptions):
         return base
 
 
+class KDefinitionOptions:
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument(
+            '-I', type=str, dest='includes', default=[], action='append', help='Directories to lookup K definitions in.'
+        )
+        parser.add_argument('--main-module', default=None, type=str, help='Name of the main module.')
+        parser.add_argument('--syntax-module', default=None, type=str, help='Name of the syntax module.')
+        parser.add_argument('--spec-module', default=None, type=str, help='Name of the spec module.')
+        parser.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
+        parser.add_argument(
+            '--md-selector',
+            type=str,
+            help='Code selector expression to use when reading markdown.',
+        )
+        return parser
+
+
 class KCLIArgs:
     @cached_property
     def logging_args(self) -> ArgumentParser:
@@ -380,23 +398,6 @@ class KCLIArgs:
             dest='smt_tactic',
             type=str,
             help='Z3 tactic to use when checking satisfiability. Example: (check-sat-using smt)',
-        )
-        return args
-
-    @cached_property
-    def definition_args(self) -> ArgumentParser:
-        args = ArgumentParser(add_help=False)
-        args.add_argument(
-            '-I', type=str, dest='includes', default=[], action='append', help='Directories to lookup K definitions in.'
-        )
-        args.add_argument('--main-module', default=None, type=str, help='Name of the main module.')
-        args.add_argument('--syntax-module', default=None, type=str, help='Name of the syntax module.')
-        args.add_argument('--spec-module', default=None, type=str, help='Name of the spec module.')
-        args.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
-        args.add_argument(
-            '--md-selector',
-            type=str,
-            help='Code selector expression to use when reading markdown.',
         )
         return args
 
