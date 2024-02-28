@@ -1074,62 +1074,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     @staticmethod
     def read_cfg_data(cfg_dir: Path, id: str) -> KCFG:
-        cfg = KCFG(cfg_dir)
-
         assert cfg_dir is not None
-
         cfg_json = cfg_dir / 'kcfg.json'
         nodes_dir = cfg_dir / 'nodes'
         dct = json.loads(cfg_json.read_text())
-
+        nodes_dct = [
+            json.loads((nodes_dir / (str(node_id) + '.json')).read_text()) for node_id in dct.get('nodes') or []
+        ]
+        dct['nodes'] = nodes_dct
+        cfg = KCFG.from_dict(dct)
         cfg.cfg_dir = cfg_dir
-
-        max_id = 0
-        for node_id in dct.get('nodes') or []:
-            max_id = max(max_id, node_id)
-            node_json = nodes_dir / (str(node_id) + '.json')
-            node_dict = json.loads(node_json.read_text())
-            cterm = CTerm.from_dict(node_dict['cterm'])
-            node = KCFG.Node(node_id, cterm)
-            cfg.add_node(node)
-
-        cfg._node_id = dct.get('next', max_id + 1)
-
-        for edge_dict in dct.get('edges') or []:
-            source_id = edge_dict['source']
-            target_id = edge_dict['target']
-            depth = edge_dict['depth']
-            rules = edge_dict['rules']
-            cfg.create_edge(source_id, target_id, depth, rules=rules)
-
-        for cover_dict in dct.get('covers') or []:
-            source_id = cover_dict['source']
-            target_id = cover_dict['target']
-            csubst = CSubst.from_dict(cover_dict['csubst'])
-            cfg.create_cover(source_id, target_id, csubst=csubst)
-
-        for vacuous_id in dct.get('vacuous') or []:
-            cfg.add_vacuous(vacuous_id)
-
-        for stuck_id in dct.get('stuck') or []:
-            cfg.add_stuck(stuck_id)
-
-        for alias, node_id in dct.get('aliases', {}).items():
-            cfg.add_alias(alias=alias, node_id=node_id)
-
-        for split_dict in dct.get('splits') or []:
-            source_id = split_dict['source']
-            targets = [
-                (target_dict['target'], CSubst.from_dict(target_dict['csubst']))
-                for target_dict in split_dict['targets']
-            ]
-            cfg.create_split(source_id, targets)
-
-        for ndbranch_dict in dct.get('ndbranches') or []:
-            source_id = ndbranch_dict['source']
-            target_ids = ndbranch_dict['targets']
-            cfg.create_ndbranch(source_id, target_ids)
-
         return cfg
 
 
