@@ -5,11 +5,11 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
-from ..cterm import CSubst, CTerm
+from ..cterm import CSubst, CTerm, build_claim
 from ..kast.inner import KApply, KInner, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
-from ..prelude.kbool import BOOL, TRUE
+from ..prelude.kbool import BOOL, FALSE, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue
 from ..utils import ensure_dir_path
 from .proof import FailureInfo, Proof, ProofStatus, ProofSummary, Prover, StepResult
@@ -367,6 +367,17 @@ class RefutationProof(ImpliesProof):
             lines.append(f'Implication csubst: {self.csubst}')
         lines.append(f'Status: {self.status}')
         return lines
+
+    def to_claim(self, claim_id: str) -> tuple[KClaim, Subst]:
+        init_config = KApply('<k>', self.last_constraint)
+        init_constraints = self.pre_constraints
+        init_cterm = CTerm(init_config, init_constraints)
+
+        final_config = KApply('<k>', FALSE)
+        final_constraints: list[KInner] = []
+        final_cterm = CTerm(final_config, final_constraints)
+
+        return build_claim(claim_id, init_cterm, final_cterm)
 
 
 @dataclass(frozen=True)
