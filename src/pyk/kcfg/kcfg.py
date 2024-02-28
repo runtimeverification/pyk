@@ -236,6 +236,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return {
                 'source': self.source.id,
                 'targets': [target.id for target in self.targets],
+                'rules': list(self.rules),
             }
 
         def with_single_target(self, target: KCFG.Node) -> KCFG.NDBranch:
