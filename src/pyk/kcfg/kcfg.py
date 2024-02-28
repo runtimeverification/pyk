@@ -482,6 +482,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             cover = KCFG.Cover.from_dict(cover_dict, cfg._nodes)
             cfg.add_successor(cover)
 
+        for split_dict in dct.get('splits') or []:
+            split = KCFG.Split.from_dict(split_dict, cfg._nodes)
+            cfg.add_successor(split)
+
+        for ndbranch_dict in dct.get('ndbranches') or []:
+            ndbranch = KCFG.NDBranch.from_dict(ndbranch_dict, cfg._nodes)
+            cfg.add_successor(ndbranch)
+
         for vacuous_id in dct.get('vacuous') or []:
             cfg.add_vacuous(vacuous_id)
 
@@ -490,14 +498,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         for alias, node_id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=node_id)
-
-        for split_dict in dct.get('splits') or []:
-            split = KCFG.Split.from_dict(split_dict, cfg._nodes)
-            cfg.add_successor(split)
-
-        for ndbranch_dict in dct.get('ndbranches') or []:
-            ndbranch = KCFG.NDBranch.from_dict(ndbranch_dict, cfg._nodes)
-            cfg.add_successor(ndbranch)
 
         return cfg
 
