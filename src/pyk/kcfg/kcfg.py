@@ -467,14 +467,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def from_dict(dct: Mapping[str, Any], optimize_memory: bool = True) -> KCFG:
         cfg = KCFG(optimize_memory=optimize_memory)
 
-        max_id = 0
         for node_dict in dct.get('nodes') or []:
             node_id = node_dict['id']
-            max_id = max(max_id, node_id)
             cterm = CTerm.from_dict(node_dict['cterm'])
             node = KCFG.Node(node_id, cterm)
             cfg.add_node(node)
 
+        max_id = max([node.id for node in cfg.nodes], default=0)
         cfg._node_id = dct.get('next', max_id + 1)
 
         for edge_dict in dct.get('edges') or []:
