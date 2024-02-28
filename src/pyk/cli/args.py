@@ -305,6 +305,28 @@ class KDefinitionOptions:
         return parser
 
 
+class SpecOptions:
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument('spec_file', type=file_path, help='Path to spec file.')
+        parser.add_argument('--save-directory', type=ensure_dir_path, help='Path to where CFGs are stored.')
+        parser.add_argument(
+            '--claim',
+            type=str,
+            dest='claim_labels',
+            action='append',
+            help='Only prove listed claims, MODULE_NAME.claim-id',
+        )
+        parser.add_argument(
+            '--exclude-claim',
+            type=str,
+            dest='exclude_claim_labels',
+            action='append',
+            help='Skip listed claims, MODULE_NAME.claim-id',
+        )
+        return parser
+
+
 class KCLIArgs:
     @cached_property
     def logging_args(self) -> ArgumentParser:
@@ -398,26 +420,5 @@ class KCLIArgs:
             dest='smt_tactic',
             type=str,
             help='Z3 tactic to use when checking satisfiability. Example: (check-sat-using smt)',
-        )
-        return args
-
-    @cached_property
-    def spec_args(self) -> ArgumentParser:
-        args = ArgumentParser(add_help=False)
-        args.add_argument('spec_file', type=file_path, help='Path to spec file.')
-        args.add_argument('--save-directory', type=ensure_dir_path, help='Path to where CFGs are stored.')
-        args.add_argument(
-            '--claim',
-            type=str,
-            dest='claim_labels',
-            action='append',
-            help='Only prove listed claims, MODULE_NAME.claim-id',
-        )
-        args.add_argument(
-            '--exclude-claim',
-            type=str,
-            dest='exclude_claim_labels',
-            action='append',
-            help='Skip listed claims, MODULE_NAME.claim-id',
         )
         return args
