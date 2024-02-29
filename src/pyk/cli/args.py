@@ -322,6 +322,12 @@ class SpecOptions(Options):
     exclude_claim_labels: list[str]
 
     @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'save_directory': None,
+        }
+
+    @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument('spec_file', type=file_path, help='Path to spec file.')
         parser.add_argument('--save-directory', type=ensure_dir_path, help='Path to where CFGs are stored.')
