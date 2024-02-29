@@ -329,12 +329,8 @@ class KDefinitionOptions(Options):
         )
         return parser
 
-
-class SpecOptions(Options):
-    spec_file: Path
+class SaveDirOptions(Options):
     save_directory: Path | None
-    claim_labels: list[str]
-    exclude_claim_labels: list[str]
 
     @staticmethod
     def default() -> dict[str, Any]:
@@ -344,8 +340,24 @@ class SpecOptions(Options):
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
-        parser.add_argument('spec_file', type=file_path, help='Path to spec file.')
         parser.add_argument('--save-directory', type=ensure_dir_path, help='Path to where CFGs are stored.')
+        return parser
+
+class SpecOptions(SaveDirOptions):
+    spec_file: Path
+    claim_labels: list[str] | None
+    exclude_claim_labels: list[str]
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'claim_labels': None,
+            'exclude_claim_labels': [],
+        }
+
+    @staticmethod
+    def args(parser: ArgumentParser) -> ArgumentParser:
+        parser.add_argument('spec_file', type=file_path, help='Path to spec file.')
         parser.add_argument(
             '--claim',
             type=str,
