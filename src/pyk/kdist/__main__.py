@@ -207,7 +207,7 @@ def _parse_arguments() -> Namespace:
             help=help_text,
         )
 
-    parser = ArgumentParser(prog='kdist', parents=[])
+    parser = ArgumentParser(prog='kdist', parents=[LoggingOptions.all_args()])
     command_parser = parser.add_subparsers(dest='command', required=True)
 
     command_parser = KDistBuildOptions.parser(command_parser)
