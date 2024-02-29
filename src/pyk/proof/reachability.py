@@ -3,7 +3,6 @@ from __future__ import annotations
 import graphlib
 import json
 import logging
-import pprint
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -34,7 +33,6 @@ if TYPE_CHECKING:
     T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
-_PP: Final = pprint.PrettyPrinter(indent=4)
 
 
 class APRProof(Proof, KCFGExploration):
@@ -789,24 +787,21 @@ class APRFailureInfo:
         failure_reasons = {}
         models = {}
         for node in proof.failing:
-            try:
-                node_cterm, _ = kcfg_explore.cterm_simplify(node.cterm)
-                target_cterm, _ = kcfg_explore.cterm_simplify(target.cterm)
-                _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
-                path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
-                failure_reasons[node.id] = reason
-                path_conditions[node.id] = path_condition
-                if counterexample_info:
-                    model_subst = kcfg_explore.cterm_get_model(node.cterm)
-                    if type(model_subst) is Subst:
-                        model: list[tuple[str, str]] = []
-                        for var, term in model_subst.to_dict().items():
-                            term_kast = KInner.from_dict(term)
-                            term_pretty = kcfg_explore.kprint.pretty_print(term_kast)
-                            model.append((var, term_pretty))
-                        models[node.id] = model
-            except BaseException:
-                _PP.pprint(node_cterm)
+            node_cterm, _ = kcfg_explore.cterm_simplify(node.cterm)
+            target_cterm, _ = kcfg_explore.cterm_simplify(target.cterm)
+            _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
+            path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
+            failure_reasons[node.id] = reason
+            path_conditions[node.id] = path_condition
+            if counterexample_info:
+                model_subst = kcfg_explore.cterm_get_model(node.cterm)
+                if type(model_subst) is Subst:
+                    model: list[tuple[str, str]] = []
+                    for var, term in model_subst.to_dict().items():
+                        term_kast = KInner.from_dict(term)
+                        term_pretty = kcfg_explore.kprint.pretty_print(term_kast)
+                        model.append((var, term_pretty))
+                    models[node.id] = model
 
         return APRFailureInfo(
             failing_nodes=failing_nodes,
