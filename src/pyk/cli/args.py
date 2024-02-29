@@ -269,14 +269,8 @@ class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions):
 class ProveOptions(DefinitionOptions, OutputFileOptions):
     main_file: Path
     spec_file: Path
-    spec_module: str | None
+    spec_module: str
     k_args: Iterable[str]
-
-    @staticmethod
-    def default() -> dict[str, Any]:
-        return {
-            'spec_module': None,
-        }
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
@@ -300,9 +294,15 @@ class KDefinitionOptions(Options):
     includes: list[str]
     main_module: str
     syntax_module: str
-    spec_module: str
+    spec_module: str | None
     definition_dir: Path | None
     md_selector: str
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'spec_module': None,
+        }
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
