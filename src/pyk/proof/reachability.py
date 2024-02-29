@@ -789,27 +789,24 @@ class APRFailureInfo:
         failure_reasons = {}
         models = {}
         for node in proof.failing:
-            _LOGGER.warning('Node')
-            _PP.pprint(node)
-            node_cterm, _ = kcfg_explore.cterm_simplify(node.cterm)
-            _LOGGER.warning('Node CTerm')
-            _PP.pprint(node_cterm)
-            target_cterm, _ = kcfg_explore.cterm_simplify(target.cterm)
-            _LOGGER.warning('Target CTerm')
-            _PP.pprint(target_cterm)
-            _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
-            path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
-            failure_reasons[node.id] = reason
-            path_conditions[node.id] = path_condition
-            if counterexample_info:
-                model_subst = kcfg_explore.cterm_get_model(node.cterm)
-                if type(model_subst) is Subst:
-                    model: list[tuple[str, str]] = []
-                    for var, term in model_subst.to_dict().items():
-                        term_kast = KInner.from_dict(term)
-                        term_pretty = kcfg_explore.kprint.pretty_print(term_kast)
-                        model.append((var, term_pretty))
-                    models[node.id] = model
+            try:
+                node_cterm, _ = kcfg_explore.cterm_simplify(node.cterm)
+                target_cterm, _ = kcfg_explore.cterm_simplify(target.cterm)
+                _, reason = kcfg_explore.implication_failure_reason(node_cterm, target_cterm)
+                path_condition = kcfg_explore.kprint.pretty_print(proof.path_constraints(node.id))
+                failure_reasons[node.id] = reason
+                path_conditions[node.id] = path_condition
+                if counterexample_info:
+                    model_subst = kcfg_explore.cterm_get_model(node.cterm)
+                    if type(model_subst) is Subst:
+                        model: list[tuple[str, str]] = []
+                        for var, term in model_subst.to_dict().items():
+                            term_kast = KInner.from_dict(term)
+                            term_pretty = kcfg_explore.kprint.pretty_print(term_kast)
+                            model.append((var, term_pretty))
+                        models[node.id] = model
+            except BaseException:
+                _PP.pprint(node_cterm)
 
         return APRFailureInfo(
             failing_nodes=failing_nodes,
