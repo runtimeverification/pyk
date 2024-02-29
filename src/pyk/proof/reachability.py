@@ -721,7 +721,7 @@ class APRProver(Prover):
             self._checked_for_bounded.add(curr_node.id)
 
             self.proof.prior_loops_cache[curr_node.id] = (
-                [] if curr_node.id not in self.proof.prior_loops_cache else self.proof.prior_loops_cache[node.id]
+                [] if curr_node.id not in self.proof.prior_loops_cache else self.proof.prior_loops_cache[curr_node.id]
             )
 
             _prior_loops = [
@@ -741,7 +741,7 @@ class APRProver(Prover):
             self.proof.prior_loops_cache[curr_node.id].extend(prior_loops)
             prior_loops = self.proof.prior_loops_cache[curr_node.id]
 
-            _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(node.id, prior_loops)}')
+            _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(curr_node.id, prior_loops)}')
             if len(prior_loops) > self.proof.bmc_depth:
                 _LOGGER.warning(f'Bounded node {self.proof.id}: {curr_node.id} at bmc depth {self.proof.bmc_depth}')
                 return [APRProofBoundedResult(curr_node.id)]
