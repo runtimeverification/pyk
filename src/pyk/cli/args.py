@@ -222,6 +222,12 @@ class DisplayOptions(Options):
     minimize: bool
 
     @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'minimize': True,
+        }
+
+    @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument('--minimize', dest='minimize', default=None, action='store_true', help='Minimize output.')
         parser.add_argument('--no-minimize', dest='minimize', action='store_false', help='Do not minimize output.')
@@ -239,7 +245,6 @@ class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions):
     def default() -> dict[str, Any]:
         return {
             'input': PrintInput.KAST_JSON,
-            'minimize': True,
             'omit_labels': None,
             'keep_cells': None,
         }
@@ -292,8 +297,8 @@ class ProveOptions(DefinitionOptions, OutputFileOptions):
 
 class KDefinitionOptions(Options):
     includes: list[str]
-    main_module: str
-    syntax_module: str
+    main_module: str | None
+    syntax_module: str | None
     spec_module: str | None
     definition_dir: Path | None
     md_selector: str
@@ -302,6 +307,10 @@ class KDefinitionOptions(Options):
     def default() -> dict[str, Any]:
         return {
             'spec_module': None,
+            'main_module': None,
+            'syntax_module': None,
+            'definition_dir': None,
+            'md_selector': 'k',
         }
 
     @staticmethod
@@ -450,7 +459,11 @@ class ParallelOptions(Options):
 
 
 class BugReportOptions(Options):
-    bug_report: BugReport
+    bug_report: BugReport | None
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {'bug_report': None}
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
@@ -465,7 +478,15 @@ class BugReportOptions(Options):
 class SMTOptions(Options):
     smt_timeout: int
     smt_retry_limit: int
-    smt_tactic: str
+    smt_tactic: str | None
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'smt_timeout': 300,
+            'smt_retry_limit': 10,
+            'smt_tactic': None,
+        }
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
