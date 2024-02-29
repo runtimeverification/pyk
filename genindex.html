@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; pyk 0.1.667 documentation</title>
+    <title>Index &#8212; pyk 0.1.668 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
-    <script src="_static/documentation_options.js?v=995e04f5"></script>
+    <script src="_static/documentation_options.js?v=7144a737"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="#" />
@@ -135,8 +135,6 @@
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.admitted">(Proof attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProver.advance_pending_node">advance_pending_node() (APRProver method)</a>
-</li>
       <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Prover.advance_proof">advance_proof() (Prover method)</a>
 </li>
       <li><a href="api/pyk.kbuild.utils.html#pyk.kbuild.utils.KVersion.Git.ahead">ahead (KVersion.Git attribute)</a>
@@ -229,11 +227,21 @@
 </li>
       <li><a href="api/pyk.proof.tui.html#pyk.proof.tui.APRProofBehaviorView">APRProofBehaviorView (class in pyk.proof.tui)</a>
 </li>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProofBoundedResult">APRProofBoundedResult (class in pyk.proof.reachability)</a>
+</li>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProofExtendResult">APRProofExtendResult (class in pyk.proof.reachability)</a>
+</li>
       <li><a href="api/pyk.proof.show.html#pyk.proof.show.APRProofNodePrinter">APRProofNodePrinter (class in pyk.proof.show)</a>
+</li>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProofResult">APRProofResult (class in pyk.proof.reachability)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/pyk.proof.show.html#pyk.proof.show.APRProofShow">APRProofShow (class in pyk.proof.show)</a>
+</li>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProofSubsumeResult">APRProofSubsumeResult (class in pyk.proof.reachability)</a>
+</li>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProofTerminalResult">APRProofTerminalResult (class in pyk.proof.reachability)</a>
 </li>
       <li><a href="api/pyk.proof.tui.html#pyk.proof.tui.APRProofViewer">APRProofViewer (class in pyk.proof.tui)</a>
 </li>
@@ -731,8 +739,16 @@
         <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.Transport.command">(Transport method)</a>
 </li>
       </ul></li>
-      <li><a href="api/pyk.proof.parallel.html#pyk.proof.parallel.Prover.commit">commit() (Prover method)</a>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.commit">commit() (APRProof method)</a>
+
+      <ul>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.commit">(ImpliesProof method)</a>
 </li>
+        <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Proof.commit">(Proof method)</a>
+</li>
+        <li><a href="api/pyk.proof.parallel.html#pyk.proof.parallel.Prover.commit">(Prover method)</a>
+</li>
+      </ul></li>
       <li><a href="api/pyk.utils.html#pyk.utils.compare_short_hashes">compare_short_hashes() (in module pyk.utils)</a>
 </li>
       <li><a href="api/pyk.kllvm.compiler.html#pyk.kllvm.compiler.compile_kllvm">compile_kllvm() (in module pyk.kllvm.compiler)</a>
@@ -865,12 +881,16 @@
 </li>
       <li><a href="api/pyk.kcfg.tui.html#pyk.kcfg.tui.KCFGViewer.CSS_PATH">CSS_PATH (KCFGViewer attribute)</a>
 </li>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProofSubsumeResult.csubst">csubst (APRProofSubsumeResult attribute)</a>
+</li>
       <li><a href="api/pyk.cterm.cterm.html#pyk.cterm.cterm.CSubst">CSubst (class in pyk.cterm.cterm)</a>
 </li>
       <li><a href="api/pyk.cterm.symbolic.html#pyk.cterm.symbolic.CTermImplies.csubst">csubst (CTermImplies attribute)</a>
 
       <ul>
         <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.csubst">(ImpliesProof attribute)</a>
+</li>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProofResult.csubst">(ImpliesProofResult attribute)</a>
 </li>
         <li><a href="api/pyk.kcfg.kcfg.html#pyk.kcfg.kcfg.KCFG.Cover.csubst">(KCFG.Cover attribute)</a>
 </li>
@@ -1218,6 +1238,8 @@
       <li><a href="api/pyk.kcfg.kcfg.html#pyk.kcfg.kcfg.KCFG.extend">extend() (KCFG method)</a>
 </li>
       <li><a href="api/pyk.kcfg.explore.html#pyk.kcfg.explore.KCFGExplore.extend_cterm">extend_cterm() (KCFGExplore method)</a>
+</li>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProofExtendResult.extend_result">extend_result (APRProofExtendResult attribute)</a>
 </li>
       <li><a href="api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.DefaultSemantics.extract_branches">extract_branches() (DefaultSemantics method)</a>
 
@@ -1640,6 +1662,8 @@
       <li><a href="api/pyk.prelude.kbool.html#pyk.prelude.kbool.impliesBool">impliesBool() (in module pyk.prelude.kbool)</a>
 </li>
       <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof">ImpliesProof (class in pyk.proof.implies)</a>
+</li>
+      <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProofResult">ImpliesProofResult (class in pyk.proof.implies)</a>
 </li>
       <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProver">ImpliesProver (class in pyk.proof.implies)</a>
 </li>
@@ -3196,6 +3220,8 @@
         <li><a href="api/pyk.kcfg.show.html#pyk.kcfg.show.NodePrinter.node_attrs">(NodePrinter method)</a>
 </li>
       </ul></li>
+      <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProofResult.node_id">node_id (APRProofResult attribute)</a>
+</li>
       <li><a href="api/pyk.kcfg.show.html#pyk.kcfg.show.KCFGShow.node_printer">node_printer (KCFGShow attribute)</a>
 </li>
       <li><a href="api/pyk.proof.reachability.html#pyk.proof.reachability.APRProof.node_refutations">node_refutations (APRProof attribute)</a>
@@ -4813,9 +4839,17 @@
       <li><a href="api/pyk.kast.att.html#pyk.kast.att.Atts.SIMPLIFICATION">SIMPLIFICATION (Atts attribute)</a>
 </li>
       <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.simplified_antecedent">simplified_antecedent (ImpliesProof attribute)</a>
+
+      <ul>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProofResult.simplified_antecedent">(ImpliesProofResult attribute)</a>
 </li>
+      </ul></li>
       <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProof.simplified_consequent">simplified_consequent (ImpliesProof attribute)</a>
+
+      <ul>
+        <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProofResult.simplified_consequent">(ImpliesProofResult attribute)</a>
 </li>
+      </ul></li>
       <li><a href="api/pyk.proof.implies.html#pyk.proof.implies.EqualityProof.simplified_constraints">simplified_constraints (EqualityProof property)</a>
 
       <ul>
@@ -5120,6 +5154,8 @@
         <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.Prover.step_proof">(Prover method)</a>
 </li>
       </ul></li>
+      <li><a href="api/pyk.proof.proof.html#pyk.proof.proof.StepResult">StepResult (class in pyk.proof.proof)</a>
+</li>
       <li><a href="api/pyk.proof.parallel.html#pyk.proof.parallel.Prover.steps">steps() (Prover method)</a>
 </li>
       <li><a href="api/pyk.kore.rpc.html#pyk.kore.rpc.StopReason">StopReason (class in pyk.kore.rpc)</a>
