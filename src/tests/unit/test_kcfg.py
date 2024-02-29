@@ -325,14 +325,12 @@ def test_reachable_nodes() -> None:
     cfg = KCFG.from_dict(d)
 
     # When
-    nodes_1 = cfg.reachable_nodes(12, covers=False)
     nodes_2 = cfg.reachable_nodes(12)
     nodes_3 = cfg.reachable_nodes(16)
     nodes_4 = cfg.reachable_nodes(13, reverse=True)
     nodes_5 = cfg.reachable_nodes(19, reverse=True)
 
     # Then
-    assert nodes_1 == {node(12)}
     assert nodes_2 == {node(12), node(13), node(15)}
     assert nodes_3 == {node(16), node(12), node(13), node(17), node(18), node(15), node(19), node(20)}
     assert nodes_4 == {node(13), node(16), node(12), node(15), node(17), node(14)}
@@ -392,6 +390,29 @@ def test_vacuous() -> None:
     cfg = KCFG.from_dict(d)
     cfg.add_vacuous(3)
     assert cfg.vacuous, node(3)
+
+
+def test_replace_node() -> None:
+    # Given
+    d = {
+        'nodes': node_dicts(4),
+        'edges': edge_dicts((1, 2), (2, 3)),
+    }
+
+    cfg = KCFG.from_dict(d)
+    cfg.replace_node(2, term(5))
+
+    node = cfg.node(2)
+    assert node is not None
+    assert node.cterm == term(5)
+
+    first_edge = cfg.edge(1, 2)
+    assert first_edge is not None
+    assert first_edge.target.cterm == term(5)
+
+    second_edge = cfg.edge(2, 3)
+    assert second_edge is not None
+    assert second_edge.source.cterm == term(5)
 
 
 def test_aliases() -> None:

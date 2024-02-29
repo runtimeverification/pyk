@@ -86,7 +86,7 @@ class TestMiniKEVM(KCFGExploreTest, KProveTest):
                 proof_dir=proof_dir,
             )
 
-            new_init_cterm = kcfg_explore.cterm_assume_defined(proof.kcfg.node(proof.init).cterm)
+            new_init_cterm = kcfg_explore.cterm_symbolic.assume_defined(proof.kcfg.node(proof.init).cterm)
             proof.kcfg.replace_node(proof.init, new_init_cterm)
             kcfg_explore.simplify(proof.kcfg, {})
 
@@ -99,8 +99,7 @@ class TestMiniKEVM(KCFGExploreTest, KProveTest):
             prover.advance_proof(max_iterations=max_iterations)
 
             kcfg_show = KCFGShow(
-                kcfg_explore.kprint,
-                node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True, minimize=False),
+                kprove, node_printer=APRProofNodePrinter(proof, kprove, full_printer=True, minimize=False)
             )
             cfg_lines = kcfg_show.show(proof.kcfg)
             _LOGGER.info('\n'.join(cfg_lines))

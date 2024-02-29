@@ -406,10 +406,10 @@ class ImpliesProver(Prover):
 
         # to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.
         # "LHS equals RHS under these constraints"
-        simplified_antecedent, _ = self.kcfg_explore.kast_simplify(self.proof.antecedent)
-        simplified_consequent, _ = self.kcfg_explore.kast_simplify(self.proof.consequent)
-        _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.kprint.pretty_print(simplified_antecedent)}')
-        _LOGGER.info(f'Simplified consequent: {self.kcfg_explore.kprint.pretty_print(simplified_consequent)}')
+        simplified_antecedent, _ = self.kcfg_explore.cterm_symbolic.kast_simplify(self.proof.antecedent)
+        simplified_consequent, _ = self.kcfg_explore.cterm_symbolic.kast_simplify(self.proof.consequent)
+        _LOGGER.info(f'Simplified antecedent: {self.kcfg_explore.pretty_print(simplified_antecedent)}')
+        _LOGGER.info(f'Simplified consequent: {self.kcfg_explore.pretty_print(simplified_consequent)}')
 
         csubst: CSubst | None = None
 
@@ -423,12 +423,13 @@ class ImpliesProver(Prover):
 
         else:
             # TODO: we should not be forced to include the dummy configuration in the antecedent and consequent
-            dummy_config = self.kcfg_explore.kprint.definition.empty_config(sort=GENERATED_TOP_CELL)
-            result = self.kcfg_explore.cterm_implies(
+            dummy_config = self.kcfg_explore.cterm_symbolic._definition.empty_config(sort=GENERATED_TOP_CELL)
+            _result = self.kcfg_explore.cterm_symbolic.implies(
                 antecedent=CTerm(config=dummy_config, constraints=[simplified_antecedent]),
                 consequent=CTerm(config=dummy_config, constraints=[simplified_consequent]),
                 bind_universally=self.proof.bind_universally,
             )
+            result = _result.csubst
             if result is not None:
                 csubst = result
 
