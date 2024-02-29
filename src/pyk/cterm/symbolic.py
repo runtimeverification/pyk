@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..cterm import CSubst, CTerm
-from ..kast.inner import KApply, KLabel, KVariable, Subst
+from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
 from ..kast.manip import flatten_label, free_vars
 from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.rpc import AbortedResult, SatResult, StopReason, UnknownResult, UnsatResult
@@ -30,6 +30,13 @@ class CTermExecute(NamedTuple):
     next_states: tuple[CTerm, ...]
     depth: int
     vacuous: bool
+    logs: tuple[LogEntry, ...]
+
+
+class CTermImplies(NamedTuple):
+    csubst: CSubst | None
+    failing_cells: tuple[tuple[str, KInner], ...]
+    remaining_implication: KInner | None
     logs: tuple[LogEntry, ...]
 
 
@@ -99,17 +106,15 @@ class CTermSymbolic:
             logs=response.logs,
         )
 
-    def simplify(self, cterm: CTerm) -> tuple[CTerm, tuple[LogEntry, ...]]:
+    def simplify(self, cterm: CTerm, module_name: str | None = None) -> tuple[CTerm, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {cterm}')
-        kore = self.kast_to_kore(cterm.kast)
-        kore_simplified, logs = self._kore_client.simplify(kore)
-        kast_simplified = self.kore_to_kast(kore_simplified)
+        kast_simplified, logs = self.kast_simplify(cterm.kast, module_name=module_name)
         return CTerm.from_kast(kast_simplified), logs
 
-    def kast_simplify(self, kast: KInner) -> tuple[KInner, tuple[LogEntry, ...]]:
+    def kast_simplify(self, kast: KInner, module_name: str | None = None) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
         kore = self.kast_to_kore(kast)
-        kore_simplified, logs = self._kore_client.simplify(kore)
+        kore_simplified, logs = self._kore_client.simplify(kore, module_name=module_name)
         kast_simplified = self.kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
@@ -141,7 +146,9 @@ class CTermSymbolic:
         antecedent: CTerm,
         consequent: CTerm,
         bind_universally: bool = False,
-    ) -> CSubst | None:
+        failure_reason: bool = False,
+        module_name: str | None = None,
+    ) -> CTermImplies:
         _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
         _consequent = consequent.kast
         fv_antecedent = free_vars(antecedent.kast)
@@ -155,13 +162,45 @@ class CTermSymbolic:
                 _consequent = KApply(KLabel(bind_label, [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kast_to_kore(antecedent.kast)
         consequent_kore = self.kast_to_kore(_consequent)
-        result = self._kore_client.implies(antecedent_kore, consequent_kore)
+        result = self._kore_client.implies(antecedent_kore, consequent_kore, module_name=module_name)
         if not result.satisfiable:
             if result.substitution is not None:
                 _LOGGER.debug(f'Received a non-empty substitution for unsatisfiable implication: {result.substitution}')
             if result.predicate is not None:
                 _LOGGER.debug(f'Received a non-empty predicate for unsatisfiable implication: {result.predicate}')
-            return None
+            failing_cells: list[tuple[str, KInner]] = []
+            remaining_implication: KInner | None = None
+            if failure_reason:
+                _config_match = self.implies(
+                    CTerm.from_kast(antecedent.config),
+                    CTerm.from_kast(consequent.config),
+                    bind_universally=bind_universally,
+                    failure_reason=False,
+                    module_name=module_name,
+                )
+                config_match = _config_match.csubst
+                if config_match is None:
+                    curr_cell_match = Subst({})
+                    for cell in antecedent.cells:
+                        antecedent_cell = antecedent.cell(cell)
+                        consequent_cell = consequent.cell(cell)
+                        cell_match = consequent_cell.match(antecedent_cell)
+                        if cell_match is not None:
+                            _curr_cell_match = curr_cell_match.union(cell_match)
+                            if _curr_cell_match is not None:
+                                curr_cell_match = _curr_cell_match
+                                continue
+                        failing_cells.append((cell, KRewrite(antecedent_cell, consequent_cell)))
+                else:
+                    consequent_constraints = list(
+                        filter(
+                            lambda x: not CTerm._is_spurious_constraint(x),
+                            map(config_match.subst, consequent.constraints),
+                        )
+                    )
+                    remaining_implication = CTerm._ml_impl(antecedent.constraints, consequent_constraints)
+            return CTermImplies(None, tuple(failing_cells), remaining_implication, result.logs)
+
         if result.substitution is None:
             raise ValueError('Received empty substutition for satisfiable implication.')
         if result.predicate is None:
@@ -170,7 +209,8 @@ class CTermSymbolic:
         ml_pred = self.kore_to_kast(result.predicate) if result.predicate is not None else mlTop()
         ml_preds = flatten_label('#And', ml_pred)
         if is_top(ml_subst):
-            return CSubst(subst=Subst({}), constraints=ml_preds)
+            csubst = CSubst(subst=Subst({}), constraints=ml_preds)
+            return CTermImplies(csubst, (), None, result.logs)
         subst_pattern = mlEquals(KVariable('###VAR'), KVariable('###TERM'))
         _subst: dict[str, KInner] = {}
         for subst_pred in flatten_label('#And', ml_subst):
@@ -179,13 +219,12 @@ class CTermSymbolic:
                 _subst[m['###VAR'].name] = m['###TERM']
             else:
                 raise AssertionError(f'Received a non-substitution from implies endpoint: {subst_pred}')
-        return CSubst(subst=Subst(_subst), constraints=ml_preds)
+        csubst = CSubst(subst=Subst(_subst), constraints=ml_preds)
+        return CTermImplies(csubst, (), None, result.logs)
 
-    def assume_defined(self, cterm: CTerm) -> CTerm:
+    def assume_defined(self, cterm: CTerm, module_name: str | None = None) -> CTerm:
         _LOGGER.debug(f'Computing definedness condition for: {cterm}')
         kast = KApply(KLabel('#Ceil', [GENERATED_TOP_CELL, GENERATED_TOP_CELL]), [cterm.config])
-        kore = self.kast_to_kore(kast)
-        kore_simplified, _logs = self._kore_client.simplify(kore)
-        kast_simplified = self.kore_to_kast(kore_simplified)
+        kast_simplified, logs = self.kast_simplify(kast, module_name=module_name)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)

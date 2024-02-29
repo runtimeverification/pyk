@@ -552,15 +552,6 @@ def remove_attrs(term: KInner) -> KInner:
     return top_down(remove_attr, term)
 
 
-def remove_source_attributes(term: KInner) -> KInner:
-    def _remove_source_attr(term: KInner) -> KInner:
-        if not isinstance(term, WithKAtt):
-            return term
-        return term.let_att(term.att.drop_source())
-
-    return top_down(_remove_source_attr, term)
-
-
 def remove_generated_cells(term: KInner) -> KInner:
     """Remove <generatedTop> and <generatedCounter> from a configuration.
 
@@ -575,15 +566,6 @@ def is_anon_var(kast: KInner) -> bool:
     return type(kast) is KVariable and kast.name.startswith('_')
 
 
-def omit_large_tokens(kast: KInner, max_len: int = 78) -> KInner:
-    def _large_tokens_to_dots(_k: KInner) -> KInner:
-        if type(_k) is KToken and len(_k.token) > max_len:
-            return KToken('...', _k.sort)
-        return _k
-
-    return bottom_up(_large_tokens_to_dots, kast)
-
-
 def get_cell(constrained_term: KInner, cell_variable: str) -> KInner:
     state, _ = split_config_and_constraints(constrained_term)
     _, subst = split_config_from(state)
@@ -595,21 +577,6 @@ def set_cell(constrained_term: KInner, cell_variable: str, cell_value: KInner) -
     config, subst = split_config_from(state)
     subst[cell_variable] = cell_value
     return mlAnd([Subst(subst)(config), constraint])
-
-
-def remove_constraint_clauses_for(var_names: Collection[str], constraint: KInner) -> KInner:
-    constraints = flatten_label('#And', constraint)
-    new_constraints = []
-    for c in constraints:
-        if not any(v in var_names for v in free_vars(c)):
-            new_constraints.append(c)
-    return mlAnd(new_constraints)
-
-
-def remove_constraints_for(var_names: Collection[str], constrained_term: KInner) -> KInner:
-    state, constraint = split_config_and_constraints(constrained_term)
-    constraint = remove_constraint_clauses_for(var_names, constraint)
-    return mlAnd([state, constraint])
 
 
 def abstract_term_safely(
@@ -716,3 +683,25 @@ def rename_generated_vars(term: KInner) -> KInner:
         return k.map_inner(_rename_vars)
 
     return _rename_vars(term)
+
+
+def remove_useless_constraints(constraints: Iterable[KInner], initial_vars: Iterable[str]) -> list[KInner]:
+    """Given a list of constraints and a list of variables, return an updated list with only constraints that depend on these variables (directly or indirectly).
+
+    :param constraints: Original list of constraints to remove from.
+    :param initial_vars: Initial list of variables to keep constraints for.
+    :return: A list of constraints with only those constraints that contain the initial variables or variables that depend on those through other constraints in the list.
+    """
+    used_vars = list(initial_vars)
+    prev_len_used_vars = 0
+    new_constraints = []
+    while len(used_vars) > prev_len_used_vars:
+        prev_len_used_vars = len(used_vars)
+        for c in constraints:
+            if c not in new_constraints:
+                new_vars = free_vars(c)
+                if any(v in used_vars for v in new_vars):
+                    new_constraints.append(c)
+                    used_vars.extend(new_vars)
+        used_vars = list(set(used_vars))
+    return new_constraints

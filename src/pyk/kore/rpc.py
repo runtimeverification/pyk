@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, ContextManager, NamedTuple, TypedDict, final
 
 from psutil import Process
 
-from ..ktool.kprove import KoreExecLogFormat
 from ..utils import check_dir_path, check_file_path, filter_none, run_process
 from .syntax import And, SortApp, kore_term
 
@@ -36,6 +35,11 @@ if TYPE_CHECKING:
     LE = TypeVar('LE', bound='LogEntry')
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class KoreExecLogFormat(Enum):
+    STANDARD = 'standard'
+    ONELINE = 'oneline'
 
 
 @final
@@ -413,6 +417,16 @@ class ImplicationError(KoreClientError):
         self.context = tuple(context)
         context_str = ' ;; '.join(self.context)
         super().__init__(f'Implication check error: {self.error} Context: {context_str}')
+
+
+@final
+@dataclass
+class SmtSolverError(KoreClientError):
+    pattern: Pattern
+
+    def __init__(self, pattern: Pattern):
+        self.pattern = pattern
+        super().__init__(f'Smt solver error: {self.pattern.text}')
 
 
 @final
@@ -902,6 +916,8 @@ class KoreClient(ContextManager['KoreClient']):
                 return UnknownModuleError(module_name=err.data)
             case 4:
                 return ImplicationError(error=err.data['error'], context=err.data['context'])
+            case 5:
+                return SmtSolverError(pattern=kore_term(err.data))
             case 8:
                 return InvalidModuleError(error=err.data['error'], context=err.data.get('context'))
             case 9:
