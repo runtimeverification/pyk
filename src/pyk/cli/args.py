@@ -329,6 +329,7 @@ class KDefinitionOptions(Options):
         )
         return parser
 
+
 class SaveDirOptions(Options):
     save_directory: Path | None
 
@@ -342,6 +343,7 @@ class SaveDirOptions(Options):
     def args(parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument('--save-directory', type=ensure_dir_path, help='Path to where CFGs are stored.')
         return parser
+
 
 class SpecOptions(SaveDirOptions):
     spec_file: Path
