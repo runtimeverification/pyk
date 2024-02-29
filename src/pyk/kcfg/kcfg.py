@@ -83,7 +83,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         @staticmethod
         @abstractmethod
-        def from_dict(dct: dict[str, Any], nodes: MutableMapping[int, KCFG.Node]) -> KCFG.Successor:
+        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.Successor:
             ...
 
     class EdgeLike(Successor):
@@ -111,7 +111,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             }
 
         @staticmethod
-        def from_dict(dct: dict[str, Any], nodes: MutableMapping[int, KCFG.Node]) -> KCFG.Edge:
+        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.Edge:
             return KCFG.Edge(nodes[dct['source']], nodes[dct['target']], dct['depth'], tuple(dct['rules']))
 
         def to_rule(self, label: str, claim: bool = False, priority: int | None = None) -> KRuleLike:
@@ -156,7 +156,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             }
 
         @staticmethod
-        def from_dict(dct: dict[str, Any], nodes: MutableMapping[int, KCFG.Node]) -> KCFG.Cover:
+        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.Cover:
             return KCFG.Cover(nodes[dct['source']], nodes[dct['target']], CSubst.from_dict(dct['csubst']))
 
         def replace_source(self, node: KCFG.Node) -> KCFG.Cover:
@@ -211,7 +211,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             }
 
         @staticmethod
-        def from_dict(dct: dict[str, Any], nodes: MutableMapping[int, KCFG.Node]) -> KCFG.Split:
+        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.Split:
             _targets = [(nodes[target['target']], CSubst.from_dict(target['csubst'])) for target in dct['targets']]
             return KCFG.Split(nodes[dct['source']], tuple(_targets))
 
@@ -258,7 +258,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             }
 
         @staticmethod
-        def from_dict(dct: dict[str, Any], nodes: MutableMapping[int, KCFG.Node]) -> KCFG.NDBranch:
+        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.NDBranch:
             return KCFG.NDBranch(
                 nodes[dct['source']], tuple([nodes[target] for target in dct['targets']]), tuple(dct['rules'])
             )
