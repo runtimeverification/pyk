@@ -5,6 +5,8 @@ from argparse import ArgumentParser, FileType
 from enum import Enum
 from typing import IO, TYPE_CHECKING, Any
 
+from pyk.kdist import kdist
+
 from ..utils import ensure_dir_path
 from .utils import bug_report_arg, dir_path, file_path
 
@@ -299,6 +301,12 @@ class KDefinitionOptions(Options):
     md_selector: str
 
     @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'definition_dir': kdist.get('evm-semantics.haskell'),
+        }
+
+    @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument(
             '-I', type=str, dest='includes', default=[], action='append', help='Directories to lookup K definitions in.'
@@ -317,7 +325,7 @@ class KDefinitionOptions(Options):
 
 class SpecOptions(Options):
     spec_file: Path
-    save_directory: Path
+    save_directory: Path | None
     claim_labels: list[str]
     exclude_claim_labels: list[str]
 
