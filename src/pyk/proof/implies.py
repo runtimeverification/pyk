@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from ..kast.outer import KClaim, KDefinition
     from ..kcfg import KCFGExplore
     from ..ktool.kprint import KPrint
+    from .proof import FailureInfo
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -439,3 +440,6 @@ class ImpliesProver(Prover):
                 csubst=csubst, simplified_antecedent=simplified_antecedent, simplified_consequent=simplified_consequent
             )
         ]
+
+    def failure_info(self) -> FailureInfo:
+        raise AssertionError('Failure info unimplemented for ImpliesProof')
