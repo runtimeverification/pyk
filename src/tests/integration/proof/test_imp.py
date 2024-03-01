@@ -15,6 +15,7 @@ from pyk.prelude.kbool import BOOL, andBool, notBool, orBool
 from pyk.prelude.kint import intToken
 from pyk.prelude.ml import mlAnd, mlBottom, mlEqualsFalse, mlEqualsTrue, mlTop
 from pyk.proof import APRProof, APRProver, ProofStatus
+from pyk.proof.reachability import APRFailureInfo
 from pyk.proof.show import APRProofNodePrinter
 from pyk.testing import KCFGExploreTest, KProveTest
 from pyk.utils import single
@@ -130,7 +131,8 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ('int $n ; $n = 0 ;', '.Map'),
         ('int $n ; $n = 1 ;', '.Map'),
         (
-            'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
+            'Matching failed.\n'
+            'The following cells failed matching individually (antecedent #Implies consequent):\n'
             'K_CELL: int $n , .Ids ; $n = 0 ; #Implies int $n , .Ids ; $n = 1 ;'
         ),
     ),
@@ -139,7 +141,8 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ('int $n ; $n = X:Int ;', '.Map'),
         ('int $n ; $n = 1 ;', '.Map'),
         (
-            'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
+            'Matching failed.\n'
+            'The following cells failed matching individually (antecedent #Implies consequent):\n'
             'K_CELL: int $n , .Ids ; $n = X:Int ; #Implies int $n , .Ids ; $n = 1 ;'
         ),
     ),
@@ -151,7 +154,7 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             mlAnd(
                 [
                     mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
-                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
                 ]
             ),
         ),
@@ -161,14 +164,15 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             mlAnd(
                 [
                     mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
-                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
                 ]
             ),
         ),
         (
-            'Implication check failed, the following is the remaining implication:\n'
+            'Matching failed.\n'
+            'The remaining implication is:\n'
             '{ true #Equals A:Int <Int 1 }\n'
-            '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+            '#And { true #Equals B:Int <Int 2 } #Implies { true #Equals B:Int <Int 1 }'
         ),
     ),
     (
@@ -179,7 +183,7 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             mlAnd(
                 [
                     mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
-                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
                 ]
             ),
         ),
@@ -189,14 +193,15 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
             mlAnd(
                 [
                     mlEqualsTrue(KApply('_<Int_', [KVariable('A', 'Int'), KToken('1', 'Int')])),
-                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('2', 'Int')])),
+                    mlEqualsTrue(KApply('_<Int_', [KVariable('B', 'Int'), KToken('1', 'Int')])),
                 ]
             ),
         ),
         (
-            'Implication check failed, the following is the remaining implication:\n'
+            'Matching failed.\n'
+            'The remaining implication is:\n'
             '{ true #Equals A:Int <Int 1 }\n'
-            '#And { true #Equals B:Int <Int 1 } #Implies { true #Equals B:Int <Int 2 }'
+            '#And { true #Equals B:Int <Int 2 } #Implies { true #Equals B:Int <Int 1 }'
         ),
     ),
     (
@@ -204,7 +209,8 @@ IMPLICATION_FAILURE_TEST_DATA: Final = (
         ('int $n ; $n = 5 ;', '3 |-> 6'),
         ('int $n ; $n = X:Int ;', '3 |-> X:Int'),
         (
-            'Structural matching failed, the following cells failed individually (antecedent #Implies consequent):\n'
+            'Matching failed.\n'
+            'The following cells failed matching individually (antecedent #Implies consequent):\n'
             'STATE_CELL: 3 |-> 6 #Implies X:Int'
         ),
     ),
@@ -768,6 +774,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     )
     def test_execute(
         self,
+        kprove: KProve,
         kcfg_explore: KCFGExplore,
         test_id: str,
         depth: int,
@@ -781,15 +788,15 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         expected_k, expected_state = expected_post
 
         # When
-        exec_res = kcfg_explore.cterm_symbolic.execute(self.config(kcfg_explore.kprint, k, state), depth=depth)
-        actual_k = kcfg_explore.kprint.pretty_print(exec_res.state.cell('K_CELL'))
-        actual_state = kcfg_explore.kprint.pretty_print(exec_res.state.cell('STATE_CELL'))
+        exec_res = kcfg_explore.cterm_symbolic.execute(self.config(kprove, k, state), depth=depth)
+        actual_k = kcfg_explore.pretty_print(exec_res.state.cell('K_CELL'))
+        actual_state = kcfg_explore.pretty_print(exec_res.state.cell('STATE_CELL'))
         actual_depth = exec_res.depth
 
         actual_next_states = [
             (
-                kcfg_explore.kprint.pretty_print(s.cell('K_CELL')),
-                kcfg_explore.kprint.pretty_print(s.cell('STATE_CELL')),
+                kcfg_explore.pretty_print(s.cell('K_CELL')),
+                kcfg_explore.pretty_print(s.cell('STATE_CELL')),
             )
             for s in exec_res.next_states
         ]
@@ -807,13 +814,14 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     )
     def test_get_model(
         self,
+        kprove: KProve,
         kcfg_explore: KCFGExplore,
         cterm: CTerm,
         test_id: str,
         expected: Subst | None,
     ) -> None:
         # Given
-        cterm_term = self.config(kcfg_explore.kprint, *cterm)
+        cterm_term = self.config(kprove, *cterm)
 
         # When
         actual = kcfg_explore.cterm_symbolic.get_model(cterm_term)
@@ -828,6 +836,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     )
     def test_implies(
         self,
+        kprove: KProve,
         kcfg_explore: KCFGExplore,
         test_id: str,
         antecedent: tuple[str, str] | tuple[str, str, KInner],
@@ -838,22 +847,23 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             pytest.skip()
 
         # Given
-        antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
-        consequent_term = self.config(kcfg_explore.kprint, *consequent)
+        antecedent_term = self.config(kprove, *antecedent)
+        consequent_term = self.config(kprove, *consequent)
 
         # When
         actual = kcfg_explore.cterm_symbolic.implies(antecedent_term, consequent_term)
 
         # Then
-        assert actual == expected
+        assert actual.csubst == expected
 
     def test_assume_defined(
         self,
+        kprove: KProve,
         kcfg_explore: KCFGExplore,
     ) -> None:
         # Given
         k, state = ('PGM', '( $n |-> 0 ) MAP')
-        config = self.config(kcfg_explore.kprint, k, state)
+        config = self.config(kprove, k, state)
 
         constraint = mlEqualsFalse(
             KApply('_in_keys(_)_MAP_Bool_KItem_Map', KToken('$n', 'Id'), KVariable('MAP', 'Map'))
@@ -906,9 +916,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             prover = APRProver(proof, kcfg_explore=kcfg_explore, execute_depth=max_depth, cut_point_rules=cut_rules)
             prover.advance_proof(max_iterations=max_iterations)
 
-            kcfg_show = KCFGShow(
-                kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
-            )
+            kcfg_show = KCFGShow(kprove, node_printer=APRProofNodePrinter(proof, kprove, full_printer=True))
             cfg_lines = kcfg_show.show(proof.kcfg)
             _LOGGER.info('\n'.join(cfg_lines))
 
@@ -937,7 +945,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     ) -> None:
         def _node_printer(cterm: CTerm) -> list[str]:
             _kast = minimize_term(cterm.kast)
-            return kcfg_explore.kprint.pretty_print(_kast).split('\n')
+            return kcfg_explore.pretty_print(_kast).split('\n')
 
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
@@ -955,7 +963,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         assert len(proof.failing) == 1
         path_constraint = proof.path_constraints(proof.failing[0].id)
-        actual_constraint = kcfg_explore.kprint.pretty_print(path_constraint).replace('\n', ' ')
+        actual_constraint = kcfg_explore.pretty_print(path_constraint).replace('\n', ' ')
         assert actual_constraint == expected_constraint
 
     @pytest.mark.parametrize(
@@ -994,9 +1002,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         )
         prover.advance_proof(max_iterations=max_iterations)
 
-        kcfg_show = KCFGShow(
-            kcfg_explore.kprint, node_printer=APRProofNodePrinter(proof, kcfg_explore.kprint, full_printer=True)
-        )
+        kcfg_show = KCFGShow(kprove, node_printer=APRProofNodePrinter(proof, kprove, full_printer=True))
         cfg_lines = kcfg_show.show(proof.kcfg)
         _LOGGER.info('\n'.join(cfg_lines))
 
@@ -1030,6 +1036,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         prover.advance_proof()
 
         failure_info = prover.failure_info()
+        assert isinstance(failure_info, APRFailureInfo)
 
         actual_pending = len(failure_info.pending_nodes)
         actual_failing = len(failure_info.failing_nodes)
@@ -1129,10 +1136,10 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     def test_anti_unify_forget_values(
         self,
         kcfg_explore: KCFGExplore,
-        kprint: KPrint,
+        kprove: KProve,
     ) -> None:
         cterm1 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> X:Int',
             constraint=mlAnd(
@@ -1145,7 +1152,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
         cterm2 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> Y:Int',
             constraint=mlAnd(
@@ -1158,7 +1165,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
 
-        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=False, kdef=kprint.definition)
+        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=False, kdef=kprove.definition)
 
         k_cell = get_cell(anti_unifier.kast, 'STATE_CELL')
         assert type(k_cell) is KApply
@@ -1167,7 +1174,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         abstracted_var: KVariable = k_cell.args[1]
 
         expected_anti_unifier = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state=f'N |-> {abstracted_var.name}:Int',
             constraint=mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
@@ -1178,10 +1185,10 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     def test_anti_unify_keep_values(
         self,
         kcfg_explore: KCFGExplore,
-        kprint: KPrint,
+        kprove: KProve,
     ) -> None:
         cterm1 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> X:Int',
             constraint=mlAnd(
@@ -1195,7 +1202,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
         cterm2 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> Y:Int',
             constraint=mlAnd(
@@ -1209,7 +1216,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
 
-        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprint.definition)
+        anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprove.definition)
 
         k_cell = get_cell(anti_unifier.kast, 'STATE_CELL')
         assert type(k_cell) is KApply
@@ -1218,7 +1225,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         abstracted_var: KVariable = k_cell.args[1]
 
         expected_anti_unifier = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state=f'N |-> {abstracted_var.name}:Int',
             constraint=mlAnd(
@@ -1253,22 +1260,22 @@ class TestImpProof(KCFGExploreTest, KProveTest):
     def test_anti_unify_subst_true(
         self,
         kcfg_explore: KCFGExplore,
-        kprint: KPrint,
+        kprove: KProve,
     ) -> None:
         cterm1 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> 0',
             constraint=mlEqualsTrue(KApply('_==K_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
         )
         cterm2 = self.config(
-            kprint=kprint,
+            kprint=kprove,
             k='int $n ; { }',
             state='N |-> 0',
             constraint=mlEqualsTrue(KApply('_==K_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
         )
 
-        anti_unifier, _, _ = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprint.definition)
+        anti_unifier, _, _ = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprove.definition)
 
         assert anti_unifier.kast == cterm1.kast
 
@@ -1286,10 +1293,10 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         consequent: tuple[str, str] | tuple[str, str, KInner],
         expected: str,
     ) -> None:
-        antecedent_term = self.config(kcfg_explore.kprint, *antecedent)
-        consequent_term = self.config(kcfg_explore.kprint, *consequent)
+        antecedent_term = self.config(kprove, *antecedent)
+        consequent_term = self.config(kprove, *consequent)
 
-        failed, actual = kcfg_explore.implication_failure_reason(antecedent_term, consequent_term)
+        passed, actual = kcfg_explore.implication_failure_reason(antecedent_term, consequent_term)
 
-        assert not failed
+        assert not passed
         assert actual == expected

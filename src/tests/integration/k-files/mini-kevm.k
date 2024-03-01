@@ -38,18 +38,18 @@ module MINI-KEVM
     // Buffers
 
     syntax Bytes ::= #bufStrict ( Int , Int ) [function]
-    syntax Bytes ::= #buf ( Int , Int ) [function, total, smtlib(buf)]
+    syntax Bytes ::= #buf ( Int , Int ) [function, total, smtlib(buf), no-evaluators]
 
     rule #bufStrict(SIZE, DATA) => #buf(SIZE, DATA)
       requires 0 <=Int DATA andBool DATA <Int (2 ^Int (SIZE *Int 8))
 
     // Hashed Locations
 
-    syntax IntList ::= List{Int, ""} [klabel(intList), smtlib(intList)]
+    syntax IntList ::= List{Int, ""} [symbol(intList), smtlib(intList)]
 
     syntax Int ::= keccak ( Bytes ) [function, total, no-evaluators, smtlib(keccak)]
 
-    syntax Int ::= #hashedLocation( String , Int , IntList ) [function, klabel(hashLoc), smtlib(hashLoc)]
+    syntax Int ::= #hashedLocation( String , Int , IntList ) [function, symbol(hashLoc), smtlib(hashLoc)]
     rule #hashedLocation(_LANG, BASE, .IntList      ) => BASE
     rule #hashedLocation( LANG, BASE, OFFSET OFFSETS) => #hashedLocation(LANG, #hashedLocation(LANG, BASE, OFFSET .IntList), OFFSETS) requires OFFSETS =/=K .IntList
 
