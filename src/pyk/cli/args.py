@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import sys
+from abc import abstractmethod
 from argparse import ArgumentParser, FileType
 from enum import Enum
-from typing import IO, TYPE_CHECKING, Any
+from typing import IO, TYPE_CHECKING, Any, Type
 
 from ..utils import ensure_dir_path
 from .utils import bug_report_arg, dir_path, file_path
@@ -24,27 +25,26 @@ class PrintInput(Enum):
     KAST_JSON = 'kast-json'
 
 
-def generate_command_options(args: dict[str, Any]) -> LoggingOptions:
-    command = args['command'].lower()
-    match command:
-        case 'print':
-            return PrintOptions(args)
-        case 'rpc-print':
-            return RPCPrintOptions(args)
-        case 'rpc-kast':
-            return RPCKastOptions(args)
-        case 'prove':
-            return ProveOptions(args)
-        case 'graph-imports':
-            return GraphImportsOptions(args)
-        case 'coverage':
-            return CoverageOptions(args)
-        case 'kore-to-json':
-            return KoreToJsonOptions(args)
-        case 'json-to-kore':
-            return JsonToKoreOptions(args)
-        case _:
-            raise ValueError('Unrecognized command.')
+class CommandHandler:
+    commands: list[Type[Command]]
+
+    # Input a list of all Command types to be used
+    def __init__(self, commands: Iterable[Type[Command]]):
+        self.commands = list(commands)
+
+    # Return an instance of the correct Options subclass by matching its name with the requested command
+    def generate_options(self, args: dict[str, Any]) -> LoggingOptions:
+        command = args['command'].lower()
+        for cmd_type in self.commands:
+            if cmd_type.name() == command:
+                return cmd_type(args)
+        raise ValueError(f'Unrecognized command: {command}')
+
+    # Generate the parsers for all commands
+    def add_parsers(self, base: _SubParsersAction) -> _SubParsersAction:
+        for cmd_type in self.commands:
+            base = cmd_type.parser(base)
+        return base
 
 
 class Options:
@@ -93,26 +93,46 @@ class LoggingOptions(Options):
         return parser
 
 
-class JsonToKoreOptions(LoggingOptions):
+class Command(LoggingOptions):
     @staticmethod
-    def parser(base: _SubParsersAction) -> _SubParsersAction:
+    @abstractmethod
+    def name() -> str:
+        ...
+
+    @staticmethod
+    @staticmethod
+    @abstractmethod
+    def help_str() -> str:
+        ...
+
+    @classmethod
+    def parser(cls, base: _SubParsersAction) -> _SubParsersAction:
         base.add_parser(
-            'json-to-kore',
-            help='Convert JSON to textual KORE',
-            parents=[JsonToKoreOptions.all_args()],
+            name=cls.name(),
+            help=cls.help_str(),
+            parents=[cls.all_args()],
         )
         return base
 
 
-class KoreToJsonOptions(LoggingOptions):
+class JsonToKoreOptions(Command):
     @staticmethod
-    def parser(base: _SubParsersAction) -> _SubParsersAction:
-        base.add_parser(
-            'kore-to-json',
-            help='Convert textual KORE to JSON',
-            parents=[KoreToJsonOptions.all_args()],
-        )
-        return base
+    def name() -> str:
+        return 'json-to-kore'
+
+    @staticmethod
+    def help_str() -> str:
+        return 'Convert JSON to textual KORE'
+
+
+class KoreToJsonOptions(Command):
+    @staticmethod
+    def name() -> str:
+        return 'kore-to-json'
+
+    @staticmethod
+    def help_str() -> str:
+        return 'Convert textual KORE to JSON'
 
 
 class OutputFileOptions(Options):
@@ -139,17 +159,16 @@ class DefinitionOptions(LoggingOptions):
         return parser
 
 
-class CoverageOptions(DefinitionOptions, OutputFileOptions):
+class CoverageOptions(Command, DefinitionOptions, OutputFileOptions):
     coverage_file: IO[Any]
 
     @staticmethod
-    def parser(base: _SubParsersAction) -> _SubParsersAction:
-        base.add_parser(
-            'coverage',
-            help='Convert coverage file to human readable log.',
-            parents=[CoverageOptions.all_args()],
-        )
-        return base
+    def name() -> str:
+        return 'coverage'
+
+    @staticmethod
+    def help_str() -> str:
+        return 'Convert coverage file to human readable log.'
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
@@ -157,29 +176,27 @@ class CoverageOptions(DefinitionOptions, OutputFileOptions):
         return parser
 
 
-class GraphImportsOptions(DefinitionOptions):
+class GraphImportsOptions(Command, DefinitionOptions):
     @staticmethod
-    def parser(base: _SubParsersAction) -> _SubParsersAction:
-        base.add_parser(
-            'graph-imports',
-            help='Graph the imports of a given definition.',
-            parents=[GraphImportsOptions.all_args()],
-        )
-        return base
+    def name() -> str:
+        return 'graph-imports'
+
+    @staticmethod
+    def help_str() -> str:
+        return 'Graph the imports of a given definition.'
 
 
-class RPCKastOptions(LoggingOptions, OutputFileOptions):
+class RPCKastOptions(Command, OutputFileOptions):
     reference_request_file: IO[Any]
     response_file: IO[Any]
 
     @staticmethod
-    def parser(base: _SubParsersAction) -> _SubParsersAction:
-        base.add_parser(
-            'rpc-kast',
-            help='Convert an "execute" JSON RPC response to a new "execute" or "simplify" request, copying parameters from a reference request.',
-            parents=[RPCKastOptions.all_args()],
-        )
-        return base
+    def name() -> str:
+        return 'rpc-kast'
+
+    @staticmethod
+    def help_str() -> str:
+        return 'Convert an "execute" JSON RPC response to a new "execute" or "simplify" request, copying parameters from a reference request.'
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
@@ -196,17 +213,16 @@ class RPCKastOptions(LoggingOptions, OutputFileOptions):
         return parser
 
 
-class RPCPrintOptions(DefinitionOptions, OutputFileOptions):
+class RPCPrintOptions(Command, DefinitionOptions, OutputFileOptions):
     input_file: IO[Any]
 
     @staticmethod
-    def parser(base: _SubParsersAction) -> _SubParsersAction:
-        base.add_parser(
-            'rpc-print',
-            help='Pretty-print an RPC request/response',
-            parents=[RPCPrintOptions.all_args()],
-        )
-        return base
+    def name() -> str:
+        return 'rpc-print'
+
+    @staticmethod
+    def help_str() -> str:
+        return 'Pretty-print an RPC request/response'
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
@@ -234,12 +250,20 @@ class DisplayOptions(Options):
         return parser
 
 
-class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions):
+class PrintOptions(Command, DefinitionOptions, OutputFileOptions, DisplayOptions):
     term: IO[Any]
     input: PrintInput
     minimize: bool
     omit_labels: str | None
     keep_cells: str | None
+
+    @staticmethod
+    def name() -> str:
+        return 'print'
+
+    @staticmethod
+    def help_str() -> str:
+        return 'Pretty print a term.'
 
     @staticmethod
     def default() -> dict[str, Any]:
@@ -261,21 +285,20 @@ class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions):
         )
         return parser
 
-    @staticmethod
-    def parser(base: _SubParsersAction) -> _SubParsersAction:
-        base.add_parser(
-            'print',
-            help='Pretty print a term.',
-            parents=[PrintOptions.all_args()],
-        )
-        return base
 
-
-class ProveOptions(DefinitionOptions, OutputFileOptions):
+class ProveOptions(Command, DefinitionOptions, OutputFileOptions):
     main_file: Path
     spec_file: Path
     spec_module: str
     k_args: Iterable[str]
+
+    @staticmethod
+    def name() -> str:
+        return 'prove'
+
+    @staticmethod
+    def help_str() -> str:
+        return 'Prove an input specification (using kprovex).'
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
@@ -284,15 +307,6 @@ class ProveOptions(DefinitionOptions, OutputFileOptions):
         parser.add_argument('spec_module', type=str, help='Module with claims to be proven.')
         parser.add_argument('k_args', nargs='*', help='Arguments to pass through to K invocation.')
         return parser
-
-    @staticmethod
-    def parser(base: _SubParsersAction) -> _SubParsersAction:
-        base.add_parser(
-            'prove',
-            help='Prove an input specification (using kprovex).',
-            parents=[ProveOptions.all_args()],
-        )
-        return base
 
 
 class KDefinitionOptions(Options):

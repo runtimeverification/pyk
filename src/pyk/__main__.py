@@ -13,6 +13,7 @@ from pyk.kast.inner import KInner
 from pyk.kore.rpc import ExecuteResult
 
 from .cli.args import (
+    CommandHandler,
     CoverageOptions,
     GraphImportsOptions,
     JsonToKoreOptions,
@@ -22,7 +23,6 @@ from .cli.args import (
     ProveOptions,
     RPCKastOptions,
     RPCPrintOptions,
-    generate_command_options,
 )
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
@@ -58,10 +58,23 @@ def main() -> None:
     # This change makes it so that in most cases, by default, pyk doesn't run out of stack space.
     sys.setrecursionlimit(10**7)
 
-    cli_parser = create_argument_parser()
+    cmd_handler = CommandHandler(
+        [
+            CoverageOptions,
+            GraphImportsOptions,
+            JsonToKoreOptions,
+            KoreToJsonOptions,
+            PrintOptions,
+            ProveOptions,
+            RPCKastOptions,
+            RPCPrintOptions,
+        ]
+    )
+
+    cli_parser = create_argument_parser(cmd_handler)
     args = cli_parser.parse_args()
 
-    options = generate_command_options({key: val for (key, val) in vars(args).items() if val is not None})
+    options = cmd_handler.generate_options({key: val for (key, val) in vars(args).items() if val is not None})
 
     logging.basicConfig(level=loglevel(options), format=LOG_FORMAT)
 
@@ -265,21 +278,14 @@ def exec_json_to_kore(options: JsonToKoreOptions) -> None:
     sys.stdout.write('\n')
 
 
-def create_argument_parser() -> ArgumentParser:
+def create_argument_parser(cmd_handler: CommandHandler) -> ArgumentParser:
     definition_args = ArgumentParser(add_help=False)
     definition_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
 
     pyk_args = ArgumentParser()
     pyk_args_command = pyk_args.add_subparsers(dest='command', required=True)
 
-    pyk_args_command = PrintOptions.parser(pyk_args_command)
-    pyk_args_command = RPCPrintOptions.parser(pyk_args_command)
-    pyk_args_command = RPCKastOptions.parser(pyk_args_command)
-    pyk_args_command = ProveOptions.parser(pyk_args_command)
-    pyk_args_command = GraphImportsOptions.parser(pyk_args_command)
-    pyk_args_command = CoverageOptions.parser(pyk_args_command)
-    pyk_args_command = KoreToJsonOptions.parser(pyk_args_command)
-    pyk_args_command = JsonToKoreOptions.parser(pyk_args_command)
+    pyk_args_command = cmd_handler.add_parsers(pyk_args_command)
 
     return pyk_args
 
