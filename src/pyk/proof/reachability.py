@@ -136,7 +136,6 @@ class APRProof(Proof, KCFGExploration):
             self.kcfg.extend(result.extend_result, self.kcfg.node(result.node_id), logs=self.logs)
         elif isinstance(result, APRProofSubsumeResult):
             self.kcfg.create_cover(result.node_id, self.target, csubst=result.csubst)
-            _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((result.node_id, self.target))}')
         elif isinstance(result, APRProofTerminalResult):
             self._terminal.add(result.node_id)
         elif isinstance(result, APRProofBoundedResult):
