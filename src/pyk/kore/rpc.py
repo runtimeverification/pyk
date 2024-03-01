@@ -6,7 +6,7 @@ import logging
 import socket
 import sys
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from pathlib import Path
@@ -457,8 +457,19 @@ class StopReason(str, Enum):
 @dataclass(frozen=True)
 class State:
     term: Pattern
-    substitution: Pattern | None = field(default=None, kw_only=True)
-    predicate: Pattern | None = field(default=None, kw_only=True)
+    substitution: Pattern | None
+    predicate: Pattern | None
+
+    def __init__(
+        self,
+        term: Pattern,
+        *,
+        substitution: Pattern | None = None,
+        predicate: Pattern | None = None,
+    ):
+        object.__setattr__(self, 'term', term)
+        object.__setattr__(self, 'substitution', substitution)
+        object.__setattr__(self, 'predicate', predicate)
 
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> State:
