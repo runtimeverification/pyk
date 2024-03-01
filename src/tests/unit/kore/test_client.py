@@ -106,7 +106,7 @@ EXECUTE_TEST_DATA: Final = (
             'depth': 1,
             'reason': 'stuck',
         },
-        StuckResult(State(int_dv(2), int_top, int_top), 1, logs=()),
+        StuckResult(State(int_dv(2), substitution=int_top, predicate=int_top), 1, logs=()),
     ),
     (
         App('IntAdd', (), (int_dv(1), int_dv(1))),
@@ -116,7 +116,7 @@ EXECUTE_TEST_DATA: Final = (
             'depth': 1,
             'reason': 'vacuous',
         },
-        VacuousResult(State(int_dv(2), int_top, int_top), 1, logs=()),
+        VacuousResult(State(int_dv(2), substitution=int_top, predicate=int_top), 1, logs=()),
     ),
     (
         int_dv(0),

@@ -87,7 +87,7 @@ def term(n: int) -> Pattern:
 
 
 def state(n: int) -> State:
-    return State(term=term(n), substitution=None, predicate=None)
+    return State(term=term(n))
 
 
 EXECUTE_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult], ...]] = (
@@ -420,7 +420,7 @@ class TestAddModule(KoreClientTest):
     def test_base_module(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        expected = StuckResult(State(term=config, substitution=None, predicate=None), depth=0, logs=())
+        expected = StuckResult(State(term=config), depth=0, logs=())
 
         # When
         actual = kore_client.execute(config)
@@ -431,7 +431,7 @@ class TestAddModule(KoreClientTest):
     def test_base_module_explicitly(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        expected = StuckResult(State(term=config, substitution=None, predicate=None), depth=0, logs=())
+        expected = StuckResult(State(term=config), depth=0, logs=())
 
         # When
         actual = kore_client.execute(config, module_name=self.MAIN_MODULE)
@@ -443,7 +443,7 @@ class TestAddModule(KoreClientTest):
         # Given
         config = self.config(0)
         module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
+        expected = StuckResult(State(term=self.config(1)), depth=1, logs=())
 
         # When
         module_id = kore_client.add_module(module)
@@ -456,7 +456,7 @@ class TestAddModule(KoreClientTest):
         # Given
         config = self.config(0)
         module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        expected = StuckResult(State(term=self.config(0), substitution=None, predicate=None), depth=0, logs=())
+        expected = StuckResult(State(term=self.config(0)), depth=0, logs=())
 
         # When
         kore_client.add_module(module)
@@ -469,7 +469,7 @@ class TestAddModule(KoreClientTest):
         # Given
         config = self.config(0)
         module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
+        expected = StuckResult(State(term=self.config(1)), depth=1, logs=())
 
         # When
         kore_client.add_module(module, name_as_id=True)
@@ -492,7 +492,7 @@ class TestAddModule(KoreClientTest):
         # Given
         config = self.config(0)
         module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
+        expected = StuckResult(State(term=self.config(1)), depth=1, logs=())
 
         # When
         module_id = kore_client.add_module(module)
@@ -511,7 +511,7 @@ class TestAddModule(KoreClientTest):
         # Given
         config = self.config(0)
         module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
+        expected = StuckResult(State(term=self.config(1)), depth=1, logs=())
 
         # When
         module_id = kore_client.add_module(module, name_as_id=True)
@@ -530,7 +530,7 @@ class TestAddModule(KoreClientTest):
         # Given
         config = self.config(0)
         module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
+        expected = StuckResult(State(term=self.config(1)), depth=1, logs=())
 
         # When
         module_id = kore_client.add_module(module)
@@ -555,7 +555,7 @@ class TestAddModule(KoreClientTest):
         # Given
         config = self.config(0)
         module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
+        expected = StuckResult(State(term=self.config(1)), depth=1, logs=())
 
         # When
         module_id = kore_client.add_module(module, name_as_id=True)
@@ -597,8 +597,8 @@ class TestAddModule(KoreClientTest):
         config = self.config(0)
         module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
         module_2 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
-        expected_1 = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
-        expected_2 = StuckResult(State(term=self.config(2), substitution=None, predicate=None), depth=1, logs=())
+        expected_1 = StuckResult(State(term=self.config(1)), depth=1, logs=())
+        expected_2 = StuckResult(State(term=self.config(2)), depth=1, logs=())
 
         # When
         module_id = kore_client.add_module(module_1)
@@ -619,8 +619,8 @@ class TestAddModule(KoreClientTest):
         config = self.config(0)
         module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
         module_2 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
-        expected_1 = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
-        expected_2 = StuckResult(State(term=self.config(2), substitution=None, predicate=None), depth=1, logs=())
+        expected_1 = StuckResult(State(term=self.config(1)), depth=1, logs=())
+        expected_2 = StuckResult(State(term=self.config(2)), depth=1, logs=())
 
         # When
         kore_client.add_module(module_1, name_as_id=True)
@@ -640,7 +640,7 @@ class TestAddModule(KoreClientTest):
         # Given
         config = self.config(0)
         module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        expected = StuckResult(State(term=self.config(2), substitution=None, predicate=None), depth=2, logs=())
+        expected = StuckResult(State(term=self.config(2)), depth=2, logs=())
 
         # When
         module_1_id = kore_client.add_module(module_1)
@@ -656,7 +656,7 @@ class TestAddModule(KoreClientTest):
         config = self.config(0)
         module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
         module_2 = Module('B', sentences=(Import('A'), self.rule(1, 2)))
-        expected = StuckResult(State(term=self.config(2), substitution=None, predicate=None), depth=2, logs=())
+        expected = StuckResult(State(term=self.config(2)), depth=2, logs=())
 
         # When
         kore_client.add_module(module_1, name_as_id=True)
