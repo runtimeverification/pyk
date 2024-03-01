@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyk.proof.proof module &#8212; pyk 0.1.672 documentation</title>
+    <title>pyk.proof.proof module &#8212; pyk 0.1.673 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <script src="../_static/documentation_options.js?v=a5984a0f"></script>
+    <script src="../_static/documentation_options.js?v=01e0ce16"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -48,6 +48,12 @@
 <span class="sig-name descname"><span class="pre">summaries</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pyk.proof.proof.ProofSummary" title="pyk.proof.proof.ProofSummary"><span class="pre">ProofSummary</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pyk.proof.proof.CompositeSummary.summaries" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="pyk.proof.proof.FailureInfo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FailureInfo</span></span><a class="reference internal" href="../_modules/pyk/proof/proof.html#FailureInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.proof.proof.FailureInfo" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 </dd></dl>
 
 <dl class="py class">
@@ -92,6 +98,11 @@
 <dl class="py property">
 <dt class="sig sig-object py" id="pyk.proof.proof.Proof.failed">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">failed</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#pyk.proof.proof.Proof.failed" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="pyk.proof.proof.Proof.failure_info">
+<span class="sig-name descname"><span class="pre">failure_info</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#pyk.proof.proof.FailureInfo" title="pyk.proof.proof.FailureInfo"><span class="pre">FailureInfo</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#pyk.proof.proof.Proof.failure_info" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -265,6 +276,11 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="pyk.proof.proof.Prover.advance_proof">
 <span class="sig-name descname"><span class="pre">advance_proof</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fail_fast</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/pyk/proof/proof.html#Prover.advance_proof"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.proof.proof.Prover.advance_proof" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyk.proof.proof.Prover.failure_info">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">failure_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyk.proof.proof.FailureInfo" title="pyk.proof.proof.FailureInfo"><span class="pre">FailureInfo</span></a></span></span><a class="reference internal" href="../_modules/pyk/proof/proof.html#Prover.failure_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.proof.proof.Prover.failure_info" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
