@@ -12,7 +12,7 @@ from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import BOOL, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue
 from ..utils import ensure_dir_path
-from .proof import Proof, ProofStatus, ProofSummary, Prover, StepResult
+from .proof import FailureInfo, Proof, ProofStatus, ProofSummary, Prover, StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from ..kast.outer import KClaim, KDefinition
     from ..kcfg import KCFGExplore
     from ..ktool.kprint import KPrint
-    from .proof import FailureInfo
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -442,4 +441,5 @@ class ImpliesProver(Prover):
         ]
 
     def failure_info(self) -> FailureInfo:
-        raise AssertionError('Failure info unimplemented for ImpliesProof')
+        # TODO add implementation
+        return FailureInfo()
