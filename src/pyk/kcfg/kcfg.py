@@ -977,33 +977,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         assert self.cfg_dir is not None
         cfg_json = self.cfg_dir / 'kcfg.json'
         ensure_dir_path(self.cfg_dir)
-        nodes = [node.id for node in self.nodes]
-        edges = [edge.to_dict() for edge in self.edges()]
-        covers = [cover.to_dict() for cover in self.covers()]
-        splits = [split.to_dict() for split in self.splits()]
-        ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
-
-        vacuous = sorted(self._vacuous)
-        stuck = sorted(self._stuck)
-        aliases = dict(sorted(self._aliases.items()))
-        dct: dict[str, list[int] | int | dict[str, int] | list[dict[str, Any]]] = {}
-        dct['next'] = self._node_id
-        dct['nodes'] = nodes
-        dct['edges'] = edges
-        dct['covers'] = covers
-        dct['splits'] = splits
-        dct['ndbranches'] = ndbranches
-        dct['vacuous'] = vacuous
-        dct['stuck'] = stuck
-        dct['aliases'] = aliases
-        cfg_json.write_text(json.dumps(dct))
-
+        cfg_dict = self.to_dict()
+        cfg_dict['nodes'] = list(self._nodes.keys())
+        cfg_json.write_text(json.dumps(cfg_dict))
         for node_id in self._deleted_nodes:
             self._delete_node_data(node_id)
         for node_id in self._created_nodes:
-            node = self.get_node(node_id)
-            assert node is not None
-            self._write_node_data(node)
+            self._write_node_data(self.node(node_id))
         self._deleted_nodes.clear()
         self._created_nodes.clear()
 
