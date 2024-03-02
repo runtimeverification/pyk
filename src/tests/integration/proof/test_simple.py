@@ -3,11 +3,10 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from pyk.kast.inner import KSequence, KToken, KApply
+from pyk.kast.inner import KApply, KSequence
 from pyk.kcfg.semantics import KCFGSemantics
 from pyk.proof import APRProof, APRProver
 from pyk.testing import KCFGExploreTest, KProveTest
-from pyk.proof.show import KCFGShow, APRProofNodePrinter
 from pyk.utils import single
 
 from ..utils import K_FILES
