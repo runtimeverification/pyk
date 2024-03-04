@@ -593,9 +593,7 @@ def abstract_term_safely(
     return new_var
 
 
-def apply_existential_substitutions(constrained_term: KInner) -> KInner:
-    state, constraint = split_config_and_constraints(constrained_term)
-    constraints = flatten_label('#And', constraint)
+def apply_existential_substitutions(state: KInner, constraints: Iterable[KInner]) -> tuple[KInner, Iterable[KInner]]:
     pattern = mlEqualsTrue(KApply('_==K_', [KVariable('#VAR'), KVariable('#VAL')]))
     subst = {}
     new_constraints = []
@@ -605,7 +603,7 @@ def apply_existential_substitutions(constrained_term: KInner) -> KInner:
             subst[match['#VAR'].name] = match['#VAL']
         else:
             new_constraints.append(c)
-    return Subst(subst)(mlAnd([state] + new_constraints))
+    return (Subst(subst)(state), [Subst(subst)(c) for c in new_constraints])
 
 
 def indexed_rewrite(kast: KInner, rewrites: Iterable[KRewrite]) -> KInner:

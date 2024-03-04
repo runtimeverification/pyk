@@ -411,14 +411,15 @@ def build_rule(
             v_subst[v] = KVariable(new_v)
             vremap_subst[new_v] = KVariable(v)
 
-    init_term = Subst(v_subst)(init_term)
-    final_term = apply_existential_substitutions(Subst(v_subst)(final_term))
-    (init_config, init_constraint) = split_config_and_constraints(init_term)
-    (final_config, final_constraint) = split_config_and_constraints(final_term)
+    new_init_config = Subst(v_subst)(init_config)
+    new_init_constraints = [Subst(v_subst)(c) for c in init_constraints]
+    new_final_config, new_final_constraints = apply_existential_substitutions(
+        Subst(v_subst)(final_config), [Subst(v_subst)(c) for c in final_constraints]
+    )
 
-    rule_body = push_down_rewrites(KRewrite(init_config, final_config))
-    rule_requires = simplify_bool(ml_pred_to_bool(init_constraint))
-    rule_ensures = simplify_bool(ml_pred_to_bool(final_constraint))
+    rule_body = push_down_rewrites(KRewrite(new_init_config, new_final_config))
+    rule_requires = simplify_bool(ml_pred_to_bool(mlAnd(new_init_constraints)))
+    rule_ensures = simplify_bool(ml_pred_to_bool(mlAnd(new_final_constraints)))
     att_entries = [] if priority is None else [Atts.PRIORITY(str(priority))]
     rule_att = KAtt(entries=att_entries)
 
