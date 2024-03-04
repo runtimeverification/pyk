@@ -12,7 +12,9 @@ from pyk.kore.parser import KoreParser
 from pyk.kore.prelude import (
     BOOL,
     INT,
+    SORT_GENERATED_COUNTER_CELL,
     SORT_GENERATED_TOP_CELL,
+    SORT_K,
     SORT_K_ITEM,
     TRUE,
     and_bool,
@@ -93,7 +95,34 @@ def state(n: int) -> State:
 
 
 EXECUTE_TEST_DATA: Final[tuple[tuple[str, int, Mapping[str, Any], ExecuteResult], ...]] = (
-    ('branching', 0, {}, BranchingResult(state=state(2), depth=2, next_states=(state(4), state(3)), logs=())),
+    (
+        'branching',
+        0,
+        {},
+        BranchingResult(
+            state=state(2),
+            depth=2,
+            next_states=(
+                State(
+                    term=term(3),
+                    rule_id='ae0c978867ef4cc5cbfbadf7be2ff55e30e59465697ceaffa1d9fd5343a21fc6',
+                    rule_substitution={
+                        EVar('GCC', SORT_GENERATED_COUNTER_CELL): EVar("Var'Unds'DotVar0", SORT_GENERATED_COUNTER_CELL),
+                        EVar('K', SORT_K): EVar("Var'Unds'DotVar1", SORT_K),
+                    },
+                ),
+                State(
+                    term=term(4),
+                    rule_id='37a544ff4b6da9b4fb839f86d2ad51b770bcaf3dd578b716c38cf0da33458374',
+                    rule_substitution={
+                        EVar('GCC', SORT_GENERATED_COUNTER_CELL): EVar("Var'Unds'DotVar0", SORT_GENERATED_COUNTER_CELL),
+                        EVar('K', SORT_K): EVar("Var'Unds'DotVar1", SORT_K),
+                    },
+                ),
+            ),
+            logs=(),
+        ),
+    ),
     ('depth-bound', 0, {'max_depth': 2}, DepthBoundResult(state=state(2), depth=2, logs=())),
     ('stuck', 4, {}, StuckResult(state=state(6), depth=2, logs=())),
     (

@@ -461,6 +461,9 @@ class State:
     term: Pattern
     substitution: FrozenDict[EVar, Pattern] | None
     predicate: Pattern | None
+    rule_id: str | None
+    rule_substitution: FrozenDict[EVar, Pattern] | None
+    rule_predicate: Pattern | None
 
     def __init__(
         self,
@@ -468,11 +471,18 @@ class State:
         *,
         substitution: Mapping[EVar, Pattern] | None = None,
         predicate: Pattern | None = None,
+        rule_id: str | None = None,
+        rule_substitution: Mapping[EVar, Pattern] | None = None,
+        rule_predicate: Pattern | None = None,
     ):
         substitution = FrozenDict(substitution) if substitution is not None else None
+        rule_substitution = FrozenDict(rule_substitution) if rule_substitution is not None else None
         object.__setattr__(self, 'term', term)
         object.__setattr__(self, 'substitution', substitution)
         object.__setattr__(self, 'predicate', predicate)
+        object.__setattr__(self, 'rule_id', rule_id)
+        object.__setattr__(self, 'rule_substitution', rule_substitution)
+        object.__setattr__(self, 'rule_predicate', rule_predicate)
 
     @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> State:
@@ -480,6 +490,11 @@ class State:
             term=kore_term(dct['term']),
             substitution=State._subst_to_dict(kore_term(dct['substitution'])) if 'substitution' in dct else None,
             predicate=kore_term(dct['predicate']) if 'predicate' in dct else None,
+            rule_id=dct.get('rule-id'),
+            rule_substitution=(
+                State._subst_to_dict(kore_term(dct['rule-substitution'])) if 'rule-substitution' in dct else None
+            ),
+            rule_predicate=kore_term(dct['rule-predicate']) if 'rule-predicate' in dct else None,
         )
 
     @staticmethod
