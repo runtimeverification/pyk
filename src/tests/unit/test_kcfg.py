@@ -442,17 +442,20 @@ def test_aliases() -> None:
 
 
 def test_write_cfg_data(tmp_path: Path) -> None:
+    def _written_nodes() -> set[str]:
+        return {nd_path.name for nd_path in (tmp_path / 'nodes').iterdir()}
+
     kcfg = KCFG(cfg_dir=tmp_path)
 
     kcfg.add_node(node(1))
     kcfg.add_node(node(2))
     kcfg.add_node(node(3))
 
-    assert {nd_path.name for nd_path in (tmp_path / 'nodes').iterdir()} == set()
+    assert _written_nodes() == set()
 
     kcfg.write_cfg_data()
 
-    assert {nd_path.name for nd_path in (tmp_path / 'nodes').iterdir()} == {'1.json', '2.json', '3.json'}
+    assert _written_nodes() == {'1.json', '2.json', '3.json'}
 
     kcfg.add_node(node(4))
     kcfg.remove_node(1)
@@ -460,11 +463,11 @@ def test_write_cfg_data(tmp_path: Path) -> None:
     kcfg.replace_node(3, node(3).cterm)
     kcfg.add_node(node(2))
 
-    assert {nd_path.name for nd_path in (tmp_path / 'nodes').iterdir()} == {'1.json', '2.json', '3.json'}
+    assert _written_nodes() == {'1.json', '2.json', '3.json'}
 
     kcfg.write_cfg_data()
 
-    assert {nd_path.name for nd_path in (tmp_path / 'nodes').iterdir()} == {'2.json', '3.json', '4.json'}
+    assert _written_nodes() == {'2.json', '3.json', '4.json'}
 
 
 def test_pretty_print() -> None:
