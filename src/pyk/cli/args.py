@@ -26,10 +26,10 @@ class PrintInput(Enum):
 
 
 class CommandHandler:
-    commands: list[Type[Command]]
+    commands: list[type[Command]]
 
     # Input a list of all Command types to be used
-    def __init__(self, commands: Iterable[Type[Command]]):
+    def __init__(self, commands: Iterable[type[Command]]):
         self.commands = list(commands)
 
     # Return an instance of the correct Options subclass by matching its name with the requested command
