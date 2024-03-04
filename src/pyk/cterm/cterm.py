@@ -5,22 +5,20 @@ from functools import cached_property
 from itertools import chain
 from typing import TYPE_CHECKING
 
-from ..kast import Atts, KAtt, KInner
-from ..kast.inner import KApply, KRewrite, KToken, KVariable, Subst, bottom_up
+from ..kast import KInner
+from ..kast.inner import KApply, KRewrite, KToken, Subst, bottom_up
 from ..kast.manip import (
     abstract_term_safely,
-    apply_existential_substitutions,
-    count_vars,
+    build_claim,
+    build_rule,
     flatten_label,
     free_vars,
     ml_pred_to_bool,
     push_down_rewrites,
     remove_useless_constraints,
-    simplify_bool,
     split_config_and_constraints,
     split_config_from,
 )
-from ..kast.outer import KClaim, KRule
 from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.kbool import andBool, orBool
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlBottom, mlEqualsTrue, mlImplies, mlTop
@@ -30,7 +28,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from typing import Any
 
-    from ..kast.outer import KDefinition
+    from ..kast.outer import KClaim, KDefinition, KRule
 
 
 @dataclass(frozen=True, order=True)
@@ -347,98 +345,6 @@ class CSubst:
         """Apply this `CSubst` to the given `CTerm` (instantiating the free variables, and adding the constraints)."""
         _kast = self.subst(cterm.kast)
         return CTerm(_kast, [self.constraint])
-
-
-def build_claim(
-    claim_id: str,
-    init_config: KInner,
-    final_config: KInner,
-    init_constraints: Iterable[KInner] = (),
-    final_constraints: Iterable[KInner] = (),
-    keep_vars: Iterable[str] = (),
-) -> tuple[KClaim, Subst]:
-    """Return a `KClaim` between the supplied initial and final states.
-
-    :param claim_id: Label to give the claim.
-    :param init_config: State to put on LHS of the rule.
-    :param final_config: State to put on RHS of the rule.
-    :param init_constraints: Constraints to use as `requires` clause.
-    :param final_constraints: Constraints to use as `ensures` clause.
-    :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.
-    :return: tuple `claim: KClaim, var_map: Subst`:
-      - `claim`: A `KClaim` with variable naming conventions applied so that it should be parseable by K frontend.
-      - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).
-    """
-    rule, var_map = build_rule(
-        claim_id, init_config, final_config, init_constraints, final_constraints, keep_vars=keep_vars
-    )
-    claim = KClaim(rule.body, requires=rule.requires, ensures=rule.ensures, att=rule.att)
-    return claim, var_map
-
-
-def build_rule(
-    rule_id: str,
-    init_config: KInner,
-    final_config: KInner,
-    init_constraints: Iterable[KInner] = (),
-    final_constraints: Iterable[KInner] = (),
-    priority: int | None = None,
-    keep_vars: Iterable[str] = (),
-) -> tuple[KRule, Subst]:
-    """Return a `KRule` between the supplied initial and final states.
-
-    :param rule_id: Label to give the rule.
-    :param init_config: State to put on LHS of the rule.
-    :param final_config: State to put on RHS of the rule.
-    :param init_constraints: Constraints to use as `requires` clause.
-    :param final_constraints: Constraints to use as `ensures` clause.
-    :param priority: Rule priority to give to the generated `KRule`.
-    :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.
-    :return: tuple `claim: KRule, var_map: Subst` such that:
-      - `rule`: A `KRule` with variable naming conventions applied so that it should be parseable by K frontend.
-      - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).
-    """
-    init_constraints = list(init_constraints)
-    final_constraints = [c for c in final_constraints if c not in init_constraints]
-    init_term = mlAnd([init_config] + init_constraints)
-    final_term = mlAnd([final_config] + final_constraints)
-
-    lhs_vars = free_vars(init_term)
-    rhs_vars = free_vars(final_term)
-    var_occurrences = count_vars(
-        mlAnd(
-            [push_down_rewrites(KRewrite(init_config, final_config))] + init_constraints + final_constraints,
-            GENERATED_TOP_CELL,
-        )
-    )
-    v_subst: dict[str, KVariable] = {}
-    vremap_subst: dict[str, KVariable] = {}
-    for v in var_occurrences:
-        new_v = v
-        if var_occurrences[v] == 1:
-            new_v = '_' + new_v
-        if v in rhs_vars and v not in lhs_vars:
-            new_v = '?' + new_v
-        if new_v != v:
-            v_subst[v] = KVariable(new_v)
-            vremap_subst[new_v] = KVariable(v)
-
-    new_init_config = Subst(v_subst)(init_config)
-    new_init_constraints = [Subst(v_subst)(c) for c in init_constraints]
-    new_final_config, new_final_constraints = apply_existential_substitutions(
-        Subst(v_subst)(final_config), [Subst(v_subst)(c) for c in final_constraints]
-    )
-
-    rule_body = push_down_rewrites(KRewrite(new_init_config, new_final_config))
-    rule_requires = simplify_bool(ml_pred_to_bool(mlAnd(new_init_constraints)))
-    rule_ensures = simplify_bool(ml_pred_to_bool(mlAnd(new_final_constraints)))
-    att_entries = [] if priority is None else [Atts.PRIORITY(str(priority))]
-    rule_att = KAtt(entries=att_entries)
-
-    rule = KRule(rule_body, requires=rule_requires, ensures=rule_ensures, att=rule_att)
-    rule = rule.update_atts([Atts.LABEL(rule_id)])
-
-    return (rule, Subst(vremap_subst))
 
 
 def cterm_build_claim(
