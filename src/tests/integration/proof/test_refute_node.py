@@ -309,9 +309,7 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
         # claim ['refute-node-claim']: <k> ( N:Int <=Int 0 => false ) </k>
         #   requires _L +Int N:Int <=Int 0 [label(refute-node-claim)]
         expected = KClaim(
-            body=KApply(
-                '<k>', KRewrite(KApply('_<=Int_', KVariable('N', 'Int'), KToken('0', 'Int')), KToken('false', 'Bool'))
-            ),
+            body=KRewrite(KApply('_<=Int_', KVariable('N', 'Int'), KToken('0', 'Int')), KToken('false', 'Bool')),
             requires=KApply(
                 '_<=Int_', KApply('_+Int_', KVariable('_L', None), KVariable('N', 'Int')), KToken('0', 'Int')
             ),

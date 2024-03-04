@@ -369,13 +369,13 @@ class RefutationProof(ImpliesProof):
         return lines
 
     def to_claim(self, claim_id: str) -> tuple[KClaim, Subst]:
-        init_config = KApply('<k>', self.last_constraint)
-        init_constraints = self.pre_constraints
-
-        final_config = KApply('<k>', FALSE)
-        final_constraints: list[KInner] = []
-
-        return build_claim(claim_id, init_config, final_config, init_constraints, final_constraints)
+        return build_claim(
+            claim_id,
+            init_config=self.last_constraint,
+            final_config=FALSE,
+            init_constraints=self.pre_constraints,
+            final_constraints=[],
+        )
 
 
 @dataclass(frozen=True)
