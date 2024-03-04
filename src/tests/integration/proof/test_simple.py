@@ -67,8 +67,8 @@ class TestSimpleProof(KCFGExploreTest, KProveTest):
         prover.advance_proof()
 
         assert not proof.is_terminal(proof.target)
-        predecessor_node = single(proof.kcfg.predecessors(proof.target)).source.id
-        assert not proof.is_terminal(predecessor_node)
+        for pred in proof.kcfg.predecessors(proof.target):
+            assert not proof.is_terminal(pred.source.id)
 
         claim = single(
             kprove.get_claims(spec_file, spec_module_name=spec_module, claim_labels=[f'{spec_module}.a-to-f'])
@@ -83,5 +83,5 @@ class TestSimpleProof(KCFGExploreTest, KProveTest):
         prover.advance_proof()
 
         assert proof.is_terminal(proof.target)
-        predecessor_node = single(proof.kcfg.predecessors(proof.target)).source.id
-        assert proof.is_terminal(predecessor_node)
+        for pred in proof.kcfg.predecessors(proof.target):
+            assert proof.is_terminal(pred.source.id)

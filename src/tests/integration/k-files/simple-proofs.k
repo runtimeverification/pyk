@@ -40,7 +40,8 @@ module SIMPLE-PROOFS
 
     rule [a.b]: <k> a => b ... </k>
     rule [b.c]: <k> b => c ... </k>
-    rule [c.e]: <k> c => d ... </k>
+    rule [b.d]: <k> b => d ... </k>
+    rule [c.e]: <k> c => e ... </k>
     rule [d.e]: <k> d => e ... </k>
     rule [e.f]: <k> e => f ... </k>
 
