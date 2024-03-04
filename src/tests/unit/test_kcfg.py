@@ -18,8 +18,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
 
-    from pytest import MonkeyPatch
-
     from pyk.cterm import CSubst
     from pyk.kast import KInner
 
@@ -443,7 +441,7 @@ def test_aliases() -> None:
         cfg.add_alias('buzz', 10)
 
 
-def test_write_cfg_data(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+def test_write_cfg_data(tmp_path: Path) -> None:
     kcfg = KCFG(cfg_dir=tmp_path)
 
     kcfg.add_node(node(1))
