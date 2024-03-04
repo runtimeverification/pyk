@@ -350,43 +350,55 @@ class CSubst:
 
 
 def build_claim(
-    claim_id: str, init_cterm: CTerm, final_cterm: CTerm, keep_vars: Iterable[str] = ()
+    claim_id: str,
+    init_config: KInner,
+    final_config: KInner,
+    init_constraints: Iterable[KInner] = (),
+    final_constraints: Iterable[KInner] = (),
+    keep_vars: Iterable[str] = (),
 ) -> tuple[KClaim, Subst]:
     """Return a `KClaim` between the supplied initial and final states.
 
     :param claim_id: Label to give the claim.
-    :param init_cterm: State to put on LHS of the rule (constraints interpreted as `requires` clause).
-    :param final_cterm: State to put on RHS of the rule (constraints interpreted as `ensures` clause).
+    :param init_config: State to put on LHS of the rule.
+    :param final_config: State to put on RHS of the rule.
+    :param init_constraints: Constraints to use as `requires` clause.
+    :param final_constraints: Constraints to use as `ensures` clause.
     :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.
     :return: tuple `claim: KClaim, var_map: Subst`:
       - `claim`: A `KClaim` with variable naming conventions applied so that it should be parseable by K frontend.
       - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).
     """
-    rule, var_map = build_rule(claim_id, init_cterm, final_cterm, keep_vars=keep_vars)
+    rule, var_map = build_rule(
+        claim_id, init_config, final_config, init_constraints, final_constraints, keep_vars=keep_vars
+    )
     claim = KClaim(rule.body, requires=rule.requires, ensures=rule.ensures, att=rule.att)
     return claim, var_map
 
 
 def build_rule(
     rule_id: str,
-    init_cterm: CTerm,
-    final_cterm: CTerm,
+    init_config: KInner,
+    final_config: KInner,
+    init_constraints: Iterable[KInner] = (),
+    final_constraints: Iterable[KInner] = (),
     priority: int | None = None,
     keep_vars: Iterable[str] = (),
 ) -> tuple[KRule, Subst]:
     """Return a `KRule` between the supplied initial and final states.
 
     :param rule_id: Label to give the rule.
-    :param init_cterm: State to put on LHS of the rule (constraints interpreted as `requires` clause).
-    :param final_cterm: State to put on RHS of the rule (constraints interpreted as `ensures` clause).
+    :param init_config: State to put on LHS of the rule.
+    :param final_config: State to put on RHS of the rule.
+    :param init_constraints: Constraints to use as `requires` clause.
+    :param final_constraints: Constraints to use as `ensures` clause.
     :param priority: Rule priority to give to the generated `KRule`.
     :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.
     :return: tuple `claim: KRule, var_map: Subst` such that:
       - `rule`: A `KRule` with variable naming conventions applied so that it should be parseable by K frontend.
       - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).
     """
-    init_config, *init_constraints = init_cterm
-    final_config, *final_constraints = final_cterm
+    init_constraints = list(init_constraints)
     final_constraints = [c for c in final_constraints if c not in init_constraints]
     init_term = mlAnd([init_config] + init_constraints)
     final_term = mlAnd([final_config] + final_constraints)
@@ -427,3 +439,44 @@ def build_rule(
     rule = rule.update_atts([Atts.LABEL(rule_id)])
 
     return (rule, Subst(vremap_subst))
+
+
+def cterm_build_claim(
+    claim_id: str, init_cterm: CTerm, final_cterm: CTerm, keep_vars: Iterable[str] = ()
+) -> tuple[KClaim, Subst]:
+    """Return a `KClaim` between the supplied initial and final states.
+
+    :param claim_id: Label to give the claim.
+    :param init_cterm: State to put on LHS of the rule (constraints interpreted as `requires` clause).
+    :param final_cterm: State to put on RHS of the rule (constraints interpreted as `ensures` clause).
+    :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.
+    :return: tuple `claim: KClaim, var_map: Subst`:
+      - `claim`: A `KClaim` with variable naming conventions applied so that it should be parseable by K frontend.
+      - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).
+    """
+    init_config, *init_constraints = init_cterm
+    final_config, *final_constraints = final_cterm
+    return build_claim(claim_id, init_config, final_config, init_constraints, final_constraints, keep_vars=keep_vars)
+
+
+def cterm_build_rule(
+    rule_id: str,
+    init_cterm: CTerm,
+    final_cterm: CTerm,
+    priority: int | None = None,
+    keep_vars: Iterable[str] = (),
+) -> tuple[KRule, Subst]:
+    """Return a `KRule` between the supplied initial and final states.
+
+    :param rule_id: Label to give the rule.
+    :param init_cterm: State to put on LHS of the rule (constraints interpreted as `requires` clause).
+    :param final_cterm: State to put on RHS of the rule (constraints interpreted as `ensures` clause).
+    :param priority: Rule priority to give to the generated `KRule`.
+    :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.
+    :return: tuple `claim: KRule, var_map: Subst` such that:
+      - `rule`: A `KRule` with variable naming conventions applied so that it should be parseable by K frontend.
+      - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).
+    """
+    init_config, *init_constraints = init_cterm
+    final_config, *final_constraints = final_cterm
+    return build_rule(rule_id, init_config, final_config, init_constraints, final_constraints, priority, keep_vars)
