@@ -120,8 +120,8 @@ class LoggingOptions(Options):
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
-        parser.add_argument('--verbose', '-v', default=None, action='store_true', help='Verbose output.')
-        parser.add_argument('--debug', default=None, action='store_true', help='Debug output.')
+        parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output.')
+        parser.add_argument('--debug', action='store_true', help='Debug output.')
         return parser
 
 
@@ -193,7 +193,7 @@ class OutputFileOptions(Options):
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
-        parser.add_argument('--output-file', type=FileType('w'), default=None)
+        parser.add_argument('--output-file', type=FileType('w'))
         return parser
 
 
@@ -420,7 +420,7 @@ class DisplayOptions(Options):
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
-        parser.add_argument('--minimize', dest='minimize', default=None, action='store_true', help='Minimize output.')
+        parser.add_argument('--minimize', dest='minimize', action='store_true', help='Minimize output.')
         parser.add_argument('--no-minimize', dest='minimize', action='store_false', help='Do not minimize output.')
         return parser
 
@@ -453,11 +453,9 @@ class PrintOptions(Command, DefinitionOptions, OutputFileOptions, DisplayOptions
         parser.add_argument(
             'term', type=FileType('r'), help='File containing input term (in format specified with --input).'
         )
-        parser.add_argument('--input', default=None, type=PrintInput, choices=list(PrintInput))
-        parser.add_argument('--omit-labels', default=None, nargs='?', help='List of labels to omit from output.')
-        parser.add_argument(
-            '--keep-cells', default=None, nargs='?', help='List of cells with primitive values to keep in output.'
-        )
+        parser.add_argument('--input', type=PrintInput, choices=list(PrintInput))
+        parser.add_argument('--omit-labels', nargs='?', help='List of labels to omit from output.')
+        parser.add_argument('--keep-cells', nargs='?', help='List of cells with primitive values to keep in output.')
         return parser
 
     def exec(self) -> None:
@@ -545,16 +543,17 @@ class KDefinitionOptions(Options):
             'syntax_module': None,
             'definition_dir': None,
             'md_selector': 'k',
+            'includes': [],
         }
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument(
-            '-I', type=str, dest='includes', default=[], action='append', help='Directories to lookup K definitions in.'
+            '-I', type=str, dest='includes', action='append', help='Directories to lookup K definitions in.'
         )
-        parser.add_argument('--main-module', default=None, type=str, help='Name of the main module.')
-        parser.add_argument('--syntax-module', default=None, type=str, help='Name of the syntax module.')
-        parser.add_argument('--spec-module', default=None, type=str, help='Name of the spec module.')
+        parser.add_argument('--main-module', type=str, help='Name of the main module.')
+        parser.add_argument('--syntax-module', type=str, help='Name of the syntax module.')
+        parser.add_argument('--spec-module', type=str, help='Name of the spec module.')
         parser.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
         parser.add_argument(
             '--md-selector',
@@ -635,6 +634,7 @@ class KompileOptions(Options):
             'o1': False,
             'o2': False,
             'o3': False,
+            'ccopt': [],
         }
 
     @staticmethod
@@ -642,7 +642,6 @@ class KompileOptions(Options):
         parser.add_argument(
             '--emit-json',
             dest='emit_json',
-            default=None,
             action='store_true',
             help='Emit JSON definition after compilation.',
         )
@@ -652,42 +651,37 @@ class KompileOptions(Options):
         parser.add_argument(
             '-ccopt',
             dest='ccopts',
-            default=[],
             action='append',
             help='Additional arguments to pass to llvm-kompile.',
         )
         parser.add_argument(
             '--no-llvm-kompile',
             dest='llvm_kompile',
-            default=None,
             action='store_false',
             help='Do not run llvm-kompile process.',
         )
         parser.add_argument(
             '--with-llvm-library',
             dest='llvm_library',
-            default=None,
             action='store_true',
             help='Make kompile generate a dynamic llvm library.',
         )
         parser.add_argument(
             '--enable-llvm-debug',
             dest='enable_llvm_debug',
-            default=None,
             action='store_true',
             help='Make kompile generate debug symbols for llvm.',
         )
         parser.add_argument(
             '--read-only-kompiled-directory',
             dest='read_only',
-            default=None,
             action='store_true',
             help='Generated a kompiled directory that K will not attempt to write to afterwards.',
         )
-        parser.add_argument('-O0', dest='o0', default=None, action='store_true', help='Optimization level 0.')
-        parser.add_argument('-O1', dest='o1', default=None, action='store_true', help='Optimization level 1.')
-        parser.add_argument('-O2', dest='o2', default=None, action='store_true', help='Optimization level 2.')
-        parser.add_argument('-O3', dest='o3', default=None, action='store_true', help='Optimization level 3.')
+        parser.add_argument('-O0', dest='o0', action='store_true', help='Optimization level 0.')
+        parser.add_argument('-O1', dest='o1', action='store_true', help='Optimization level 1.')
+        parser.add_argument('-O2', dest='o2', action='store_true', help='Optimization level 2.')
+        parser.add_argument('-O3', dest='o3', action='store_true', help='Optimization level 3.')
         return parser
 
 
@@ -702,7 +696,7 @@ class ParallelOptions(Options):
 
     @staticmethod
     def args(parser: ArgumentParser) -> ArgumentParser:
-        parser.add_argument('--workers', '-j', default=None, type=int, help='Number of processes to run in parallel.')
+        parser.add_argument('--workers', '-j', type=int, help='Number of processes to run in parallel.')
         return parser
 
 
