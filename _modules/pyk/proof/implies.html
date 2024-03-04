@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.proof.implies &#8212; pyk 0.1.676 documentation</title>
+    <title>pyk.proof.implies &#8212; pyk 0.1.677 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=59e950a8"></script>
+    <script src="../../../_static/documentation_options.js?v=fd91d4b1"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -37,11 +37,11 @@
 <span class="linenos">  5</span><span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
 <span class="linenos">  6</span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Final</span>
 <span class="linenos">  7</span>
-<span class="linenos">  8</span><span class="kn">from</span> <span class="nn">..cterm</span> <span class="kn">import</span> <span class="n">CSubst</span><span class="p">,</span> <span class="n">CTerm</span>
+<span class="linenos">  8</span><span class="kn">from</span> <span class="nn">..cterm</span> <span class="kn">import</span> <span class="n">CSubst</span><span class="p">,</span> <span class="n">CTerm</span><span class="p">,</span> <span class="n">build_claim</span>
 <span class="linenos">  9</span><span class="kn">from</span> <span class="nn">..kast.inner</span> <span class="kn">import</span> <span class="n">KApply</span><span class="p">,</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">Subst</span>
 <span class="linenos"> 10</span><span class="kn">from</span> <span class="nn">..kast.manip</span> <span class="kn">import</span> <span class="n">extract_lhs</span><span class="p">,</span> <span class="n">extract_rhs</span><span class="p">,</span> <span class="n">flatten_label</span>
 <span class="linenos"> 11</span><span class="kn">from</span> <span class="nn">..prelude.k</span> <span class="kn">import</span> <span class="n">GENERATED_TOP_CELL</span>
-<span class="linenos"> 12</span><span class="kn">from</span> <span class="nn">..prelude.kbool</span> <span class="kn">import</span> <span class="n">BOOL</span><span class="p">,</span> <span class="n">TRUE</span>
+<span class="linenos"> 12</span><span class="kn">from</span> <span class="nn">..prelude.kbool</span> <span class="kn">import</span> <span class="n">BOOL</span><span class="p">,</span> <span class="n">FALSE</span><span class="p">,</span> <span class="n">TRUE</span>
 <span class="linenos"> 13</span><span class="kn">from</span> <span class="nn">..prelude.ml</span> <span class="kn">import</span> <span class="n">is_bottom</span><span class="p">,</span> <span class="n">is_top</span><span class="p">,</span> <span class="n">mlAnd</span><span class="p">,</span> <span class="n">mlEquals</span><span class="p">,</span> <span class="n">mlEqualsFalse</span><span class="p">,</span> <span class="n">mlEqualsTrue</span>
 <span class="linenos"> 14</span><span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="n">ensure_dir_path</span>
 <span class="linenos"> 15</span><span class="kn">from</span> <span class="nn">.proof</span> <span class="kn">import</span> <span class="n">FailureInfo</span><span class="p">,</span> <span class="n">Proof</span><span class="p">,</span> <span class="n">ProofStatus</span><span class="p">,</span> <span class="n">ProofSummary</span><span class="p">,</span> <span class="n">Prover</span><span class="p">,</span> <span class="n">StepResult</span>
@@ -439,97 +439,109 @@
 <span class="linenos">367</span>            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Implication csubst: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">csubst</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 <span class="linenos">368</span>        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Status: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
 <span class="linenos">369</span>        <span class="k">return</span> <span class="n">lines</span></div>
-</div>
 
 <span class="linenos">370</span>
-<span class="linenos">371</span>
+<div class="viewcode-block" id="RefutationProof.to_claim">
+<a class="viewcode-back" href="../../../api/pyk.proof.implies.html#pyk.proof.implies.RefutationProof.to_claim">[docs]</a>
+<span class="linenos">371</span>    <span class="k">def</span> <span class="nf">to_claim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">claim_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KClaim</span><span class="p">,</span> <span class="n">Subst</span><span class="p">]:</span>
+<span class="linenos">372</span>        <span class="k">return</span> <span class="n">build_claim</span><span class="p">(</span>
+<span class="linenos">373</span>            <span class="n">claim_id</span><span class="p">,</span>
+<span class="linenos">374</span>            <span class="n">init_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">last_constraint</span><span class="p">,</span>
+<span class="linenos">375</span>            <span class="n">final_config</span><span class="o">=</span><span class="n">FALSE</span><span class="p">,</span>
+<span class="linenos">376</span>            <span class="n">init_constraints</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pre_constraints</span><span class="p">,</span>
+<span class="linenos">377</span>            <span class="n">final_constraints</span><span class="o">=</span><span class="p">[],</span>
+<span class="linenos">378</span>        <span class="p">)</span></div>
+</div>
+
+<span class="linenos">379</span>
+<span class="linenos">380</span>
 <div class="viewcode-block" id="RefutationSummary">
 <a class="viewcode-back" href="../../../api/pyk.proof.implies.html#pyk.proof.implies.RefutationSummary">[docs]</a>
-<span class="linenos">372</span><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="linenos">373</span><span class="k">class</span> <span class="nc">RefutationSummary</span><span class="p">(</span><span class="n">ProofSummary</span><span class="p">):</span>
-<span class="linenos">374</span>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
-<span class="linenos">375</span>    <span class="n">status</span><span class="p">:</span> <span class="n">ProofStatus</span>
-<span class="linenos">376</span>
-<span class="linenos">377</span>    <span class="nd">@property</span>
-<span class="linenos">378</span>    <span class="k">def</span> <span class="nf">lines</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="linenos">379</span>        <span class="k">return</span> <span class="p">[</span>
-<span class="linenos">380</span>            <span class="sa">f</span><span class="s1">&#39;RefutationProof: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
-<span class="linenos">381</span>            <span class="sa">f</span><span class="s1">&#39;    status: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
-<span class="linenos">382</span>        <span class="p">]</span></div>
+<span class="linenos">381</span><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="linenos">382</span><span class="k">class</span> <span class="nc">RefutationSummary</span><span class="p">(</span><span class="n">ProofSummary</span><span class="p">):</span>
+<span class="linenos">383</span>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+<span class="linenos">384</span>    <span class="n">status</span><span class="p">:</span> <span class="n">ProofStatus</span>
+<span class="linenos">385</span>
+<span class="linenos">386</span>    <span class="nd">@property</span>
+<span class="linenos">387</span>    <span class="k">def</span> <span class="nf">lines</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="linenos">388</span>        <span class="k">return</span> <span class="p">[</span>
+<span class="linenos">389</span>            <span class="sa">f</span><span class="s1">&#39;RefutationProof: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+<span class="linenos">390</span>            <span class="sa">f</span><span class="s1">&#39;    status: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+<span class="linenos">391</span>        <span class="p">]</span></div>
 
-<span class="linenos">383</span>
-<span class="linenos">384</span>
+<span class="linenos">392</span>
+<span class="linenos">393</span>
 <div class="viewcode-block" id="ImpliesProofResult">
 <a class="viewcode-back" href="../../../api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProofResult">[docs]</a>
-<span class="linenos">385</span><span class="nd">@dataclass</span>
-<span class="linenos">386</span><span class="k">class</span> <span class="nc">ImpliesProofResult</span><span class="p">(</span><span class="n">StepResult</span><span class="p">):</span>
-<span class="linenos">387</span>    <span class="n">csubst</span><span class="p">:</span> <span class="n">CSubst</span> <span class="o">|</span> <span class="kc">None</span>
-<span class="linenos">388</span>    <span class="n">simplified_antecedent</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">|</span> <span class="kc">None</span>
-<span class="linenos">389</span>    <span class="n">simplified_consequent</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">|</span> <span class="kc">None</span></div>
+<span class="linenos">394</span><span class="nd">@dataclass</span>
+<span class="linenos">395</span><span class="k">class</span> <span class="nc">ImpliesProofResult</span><span class="p">(</span><span class="n">StepResult</span><span class="p">):</span>
+<span class="linenos">396</span>    <span class="n">csubst</span><span class="p">:</span> <span class="n">CSubst</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="linenos">397</span>    <span class="n">simplified_antecedent</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="linenos">398</span>    <span class="n">simplified_consequent</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">|</span> <span class="kc">None</span></div>
 
-<span class="linenos">390</span>
-<span class="linenos">391</span>
+<span class="linenos">399</span>
+<span class="linenos">400</span>
 <div class="viewcode-block" id="ImpliesProver">
 <a class="viewcode-back" href="../../../api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProver">[docs]</a>
-<span class="linenos">392</span><span class="k">class</span> <span class="nc">ImpliesProver</span><span class="p">(</span><span class="n">Prover</span><span class="p">):</span>
-<span class="linenos">393</span>    <span class="n">proof</span><span class="p">:</span> <span class="n">ImpliesProof</span>
-<span class="linenos">394</span>
-<span class="linenos">395</span>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">proof</span><span class="p">:</span> <span class="n">ImpliesProof</span><span class="p">,</span> <span class="n">kcfg_explore</span><span class="p">:</span> <span class="n">KCFGExplore</span><span class="p">):</span>
-<span class="linenos">396</span>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">kcfg_explore</span><span class="p">)</span>
-<span class="linenos">397</span>        <span class="bp">self</span><span class="o">.</span><span class="n">proof</span> <span class="o">=</span> <span class="n">proof</span>
-<span class="linenos">398</span>
+<span class="linenos">401</span><span class="k">class</span> <span class="nc">ImpliesProver</span><span class="p">(</span><span class="n">Prover</span><span class="p">):</span>
+<span class="linenos">402</span>    <span class="n">proof</span><span class="p">:</span> <span class="n">ImpliesProof</span>
+<span class="linenos">403</span>
+<span class="linenos">404</span>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">proof</span><span class="p">:</span> <span class="n">ImpliesProof</span><span class="p">,</span> <span class="n">kcfg_explore</span><span class="p">:</span> <span class="n">KCFGExplore</span><span class="p">):</span>
+<span class="linenos">405</span>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">kcfg_explore</span><span class="p">)</span>
+<span class="linenos">406</span>        <span class="bp">self</span><span class="o">.</span><span class="n">proof</span> <span class="o">=</span> <span class="n">proof</span>
+<span class="linenos">407</span>
 <div class="viewcode-block" id="ImpliesProver.step_proof">
 <a class="viewcode-back" href="../../../api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProver.step_proof">[docs]</a>
-<span class="linenos">399</span>    <span class="k">def</span> <span class="nf">step_proof</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">StepResult</span><span class="p">]:</span>
-<span class="linenos">400</span>        <span class="n">proof_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
-<span class="linenos">401</span>        <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Attempting </span><span class="si">{</span><span class="n">proof_type</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">402</span>
-<span class="linenos">403</span>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">ProofStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span>
-<span class="linenos">404</span>            <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">proof_type</span><span class="si">}</span><span class="s1"> finished </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">405</span>            <span class="k">return</span> <span class="p">[]</span>
-<span class="linenos">406</span>
-<span class="linenos">407</span>        <span class="c1"># to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.</span>
-<span class="linenos">408</span>        <span class="c1"># &quot;LHS equals RHS under these constraints&quot;</span>
-<span class="linenos">409</span>        <span class="n">simplified_antecedent</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">cterm_symbolic</span><span class="o">.</span><span class="n">kast_simplify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">antecedent</span><span class="p">)</span>
-<span class="linenos">410</span>        <span class="n">simplified_consequent</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">cterm_symbolic</span><span class="o">.</span><span class="n">kast_simplify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">consequent</span><span class="p">)</span>
-<span class="linenos">411</span>        <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Simplified antecedent: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">pretty_print</span><span class="p">(</span><span class="n">simplified_antecedent</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">412</span>        <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Simplified consequent: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">pretty_print</span><span class="p">(</span><span class="n">simplified_consequent</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">413</span>
-<span class="linenos">414</span>        <span class="n">csubst</span><span class="p">:</span> <span class="n">CSubst</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="linenos">408</span>    <span class="k">def</span> <span class="nf">step_proof</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">StepResult</span><span class="p">]:</span>
+<span class="linenos">409</span>        <span class="n">proof_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+<span class="linenos">410</span>        <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Attempting </span><span class="si">{</span><span class="n">proof_type</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">411</span>
+<span class="linenos">412</span>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">ProofStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span>
+<span class="linenos">413</span>            <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">proof_type</span><span class="si">}</span><span class="s1"> finished </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">414</span>            <span class="k">return</span> <span class="p">[]</span>
 <span class="linenos">415</span>
-<span class="linenos">416</span>        <span class="k">if</span> <span class="n">is_bottom</span><span class="p">(</span><span class="n">simplified_antecedent</span><span class="p">):</span>
-<span class="linenos">417</span>            <span class="n">_LOGGER</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Antecedent of implication (proof constraints) simplifies to #Bottom </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">418</span>            <span class="n">csubst</span> <span class="o">=</span> <span class="n">CSubst</span><span class="p">(</span><span class="n">Subst</span><span class="p">({}),</span> <span class="p">())</span>
-<span class="linenos">419</span>
-<span class="linenos">420</span>        <span class="k">elif</span> <span class="n">is_top</span><span class="p">(</span><span class="n">simplified_consequent</span><span class="p">):</span>
-<span class="linenos">421</span>            <span class="n">_LOGGER</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Consequent of implication (proof equality) simplifies to #Top </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">422</span>            <span class="n">csubst</span> <span class="o">=</span> <span class="n">CSubst</span><span class="p">(</span><span class="n">Subst</span><span class="p">({}),</span> <span class="p">())</span>
-<span class="linenos">423</span>
-<span class="linenos">424</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">425</span>            <span class="c1"># TODO: we should not be forced to include the dummy configuration in the antecedent and consequent</span>
-<span class="linenos">426</span>            <span class="n">dummy_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">cterm_symbolic</span><span class="o">.</span><span class="n">_definition</span><span class="o">.</span><span class="n">empty_config</span><span class="p">(</span><span class="n">sort</span><span class="o">=</span><span class="n">GENERATED_TOP_CELL</span><span class="p">)</span>
-<span class="linenos">427</span>            <span class="n">_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">cterm_symbolic</span><span class="o">.</span><span class="n">implies</span><span class="p">(</span>
-<span class="linenos">428</span>                <span class="n">antecedent</span><span class="o">=</span><span class="n">CTerm</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">dummy_config</span><span class="p">,</span> <span class="n">constraints</span><span class="o">=</span><span class="p">[</span><span class="n">simplified_antecedent</span><span class="p">]),</span>
-<span class="linenos">429</span>                <span class="n">consequent</span><span class="o">=</span><span class="n">CTerm</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">dummy_config</span><span class="p">,</span> <span class="n">constraints</span><span class="o">=</span><span class="p">[</span><span class="n">simplified_consequent</span><span class="p">]),</span>
-<span class="linenos">430</span>                <span class="n">bind_universally</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">bind_universally</span><span class="p">,</span>
-<span class="linenos">431</span>            <span class="p">)</span>
-<span class="linenos">432</span>            <span class="n">result</span> <span class="o">=</span> <span class="n">_result</span><span class="o">.</span><span class="n">csubst</span>
-<span class="linenos">433</span>            <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<span class="linenos">434</span>                <span class="n">csubst</span> <span class="o">=</span> <span class="n">result</span>
-<span class="linenos">435</span>
-<span class="linenos">436</span>        <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">proof_type</span><span class="si">}</span><span class="s1"> finished </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">437</span>        <span class="k">return</span> <span class="p">[</span>
-<span class="linenos">438</span>            <span class="n">ImpliesProofResult</span><span class="p">(</span>
-<span class="linenos">439</span>                <span class="n">csubst</span><span class="o">=</span><span class="n">csubst</span><span class="p">,</span> <span class="n">simplified_antecedent</span><span class="o">=</span><span class="n">simplified_antecedent</span><span class="p">,</span> <span class="n">simplified_consequent</span><span class="o">=</span><span class="n">simplified_consequent</span>
+<span class="linenos">416</span>        <span class="c1"># to prove the equality, we check the implication of the form `constraints #Implies LHS #Equals RHS`, i.e.</span>
+<span class="linenos">417</span>        <span class="c1"># &quot;LHS equals RHS under these constraints&quot;</span>
+<span class="linenos">418</span>        <span class="n">simplified_antecedent</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">cterm_symbolic</span><span class="o">.</span><span class="n">kast_simplify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">antecedent</span><span class="p">)</span>
+<span class="linenos">419</span>        <span class="n">simplified_consequent</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">cterm_symbolic</span><span class="o">.</span><span class="n">kast_simplify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">consequent</span><span class="p">)</span>
+<span class="linenos">420</span>        <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Simplified antecedent: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">pretty_print</span><span class="p">(</span><span class="n">simplified_antecedent</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">421</span>        <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Simplified consequent: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">pretty_print</span><span class="p">(</span><span class="n">simplified_consequent</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">422</span>
+<span class="linenos">423</span>        <span class="n">csubst</span><span class="p">:</span> <span class="n">CSubst</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="linenos">424</span>
+<span class="linenos">425</span>        <span class="k">if</span> <span class="n">is_bottom</span><span class="p">(</span><span class="n">simplified_antecedent</span><span class="p">):</span>
+<span class="linenos">426</span>            <span class="n">_LOGGER</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Antecedent of implication (proof constraints) simplifies to #Bottom </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">427</span>            <span class="n">csubst</span> <span class="o">=</span> <span class="n">CSubst</span><span class="p">(</span><span class="n">Subst</span><span class="p">({}),</span> <span class="p">())</span>
+<span class="linenos">428</span>
+<span class="linenos">429</span>        <span class="k">elif</span> <span class="n">is_top</span><span class="p">(</span><span class="n">simplified_consequent</span><span class="p">):</span>
+<span class="linenos">430</span>            <span class="n">_LOGGER</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Consequent of implication (proof equality) simplifies to #Top </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">431</span>            <span class="n">csubst</span> <span class="o">=</span> <span class="n">CSubst</span><span class="p">(</span><span class="n">Subst</span><span class="p">({}),</span> <span class="p">())</span>
+<span class="linenos">432</span>
+<span class="linenos">433</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">434</span>            <span class="c1"># TODO: we should not be forced to include the dummy configuration in the antecedent and consequent</span>
+<span class="linenos">435</span>            <span class="n">dummy_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">cterm_symbolic</span><span class="o">.</span><span class="n">_definition</span><span class="o">.</span><span class="n">empty_config</span><span class="p">(</span><span class="n">sort</span><span class="o">=</span><span class="n">GENERATED_TOP_CELL</span><span class="p">)</span>
+<span class="linenos">436</span>            <span class="n">_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kcfg_explore</span><span class="o">.</span><span class="n">cterm_symbolic</span><span class="o">.</span><span class="n">implies</span><span class="p">(</span>
+<span class="linenos">437</span>                <span class="n">antecedent</span><span class="o">=</span><span class="n">CTerm</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">dummy_config</span><span class="p">,</span> <span class="n">constraints</span><span class="o">=</span><span class="p">[</span><span class="n">simplified_antecedent</span><span class="p">]),</span>
+<span class="linenos">438</span>                <span class="n">consequent</span><span class="o">=</span><span class="n">CTerm</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">dummy_config</span><span class="p">,</span> <span class="n">constraints</span><span class="o">=</span><span class="p">[</span><span class="n">simplified_consequent</span><span class="p">]),</span>
+<span class="linenos">439</span>                <span class="n">bind_universally</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">bind_universally</span><span class="p">,</span>
 <span class="linenos">440</span>            <span class="p">)</span>
-<span class="linenos">441</span>        <span class="p">]</span></div>
+<span class="linenos">441</span>            <span class="n">result</span> <span class="o">=</span> <span class="n">_result</span><span class="o">.</span><span class="n">csubst</span>
+<span class="linenos">442</span>            <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="linenos">443</span>                <span class="n">csubst</span> <span class="o">=</span> <span class="n">result</span>
+<span class="linenos">444</span>
+<span class="linenos">445</span>        <span class="n">_LOGGER</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">proof_type</span><span class="si">}</span><span class="s1"> finished </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">proof</span><span class="o">.</span><span class="n">status</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">446</span>        <span class="k">return</span> <span class="p">[</span>
+<span class="linenos">447</span>            <span class="n">ImpliesProofResult</span><span class="p">(</span>
+<span class="linenos">448</span>                <span class="n">csubst</span><span class="o">=</span><span class="n">csubst</span><span class="p">,</span> <span class="n">simplified_antecedent</span><span class="o">=</span><span class="n">simplified_antecedent</span><span class="p">,</span> <span class="n">simplified_consequent</span><span class="o">=</span><span class="n">simplified_consequent</span>
+<span class="linenos">449</span>            <span class="p">)</span>
+<span class="linenos">450</span>        <span class="p">]</span></div>
 
-<span class="linenos">442</span>
+<span class="linenos">451</span>
 <div class="viewcode-block" id="ImpliesProver.failure_info">
 <a class="viewcode-back" href="../../../api/pyk.proof.implies.html#pyk.proof.implies.ImpliesProver.failure_info">[docs]</a>
-<span class="linenos">443</span>    <span class="k">def</span> <span class="nf">failure_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FailureInfo</span><span class="p">:</span>
-<span class="linenos">444</span>        <span class="c1"># TODO add implementation</span>
-<span class="linenos">445</span>        <span class="k">return</span> <span class="n">FailureInfo</span><span class="p">()</span></div>
+<span class="linenos">452</span>    <span class="k">def</span> <span class="nf">failure_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FailureInfo</span><span class="p">:</span>
+<span class="linenos">453</span>        <span class="c1"># TODO add implementation</span>
+<span class="linenos">454</span>        <span class="k">return</span> <span class="n">FailureInfo</span><span class="p">()</span></div>
 </div>
 
 </pre></div>

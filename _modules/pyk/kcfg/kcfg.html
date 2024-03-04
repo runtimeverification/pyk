@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kcfg.kcfg &#8212; pyk 0.1.676 documentation</title>
+    <title>pyk.kcfg.kcfg &#8212; pyk 0.1.677 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=59e950a8"></script>
+    <script src="../../../_static/documentation_options.js?v=fd91d4b1"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -39,7 +39,7 @@
 <span class="linenos">   7</span><span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">RLock</span>
 <span class="linenos">   8</span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span><span class="p">,</span> <span class="n">final</span>
 <span class="linenos">   9</span>
-<span class="linenos">  10</span><span class="kn">from</span> <span class="nn">..cterm</span> <span class="kn">import</span> <span class="n">CSubst</span><span class="p">,</span> <span class="n">CTerm</span><span class="p">,</span> <span class="n">build_claim</span><span class="p">,</span> <span class="n">build_rule</span>
+<span class="linenos">  10</span><span class="kn">from</span> <span class="nn">..cterm</span> <span class="kn">import</span> <span class="n">CSubst</span><span class="p">,</span> <span class="n">CTerm</span><span class="p">,</span> <span class="n">cterm_build_claim</span><span class="p">,</span> <span class="n">cterm_build_rule</span>
 <span class="linenos">  11</span><span class="kn">from</span> <span class="nn">..kast</span> <span class="kn">import</span> <span class="n">EMPTY_ATT</span>
 <span class="linenos">  12</span><span class="kn">from</span> <span class="nn">..kast.inner</span> <span class="kn">import</span> <span class="n">KApply</span>
 <span class="linenos">  13</span><span class="kn">from</span> <span class="nn">..kast.manip</span> <span class="kn">import</span> <span class="p">(</span>
@@ -199,9 +199,9 @@
 <span class="linenos"> 128</span>            <span class="n">target_cterm</span> <span class="o">=</span> <span class="n">CTerm</span><span class="p">(</span><span class="n">_simplify_config</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">cterm</span><span class="o">.</span><span class="n">config</span><span class="p">),</span> <span class="n">target_constraints</span><span class="p">)</span>
 <span class="linenos"> 129</span>            <span class="n">rule</span><span class="p">:</span> <span class="n">KRuleLike</span>
 <span class="linenos"> 130</span>            <span class="k">if</span> <span class="n">claim</span><span class="p">:</span>
-<span class="linenos"> 131</span>                <span class="n">rule</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">build_claim</span><span class="p">(</span><span class="n">sentence_id</span><span class="p">,</span> <span class="n">init_cterm</span><span class="p">,</span> <span class="n">target_cterm</span><span class="p">)</span>
+<span class="linenos"> 131</span>                <span class="n">rule</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cterm_build_claim</span><span class="p">(</span><span class="n">sentence_id</span><span class="p">,</span> <span class="n">init_cterm</span><span class="p">,</span> <span class="n">target_cterm</span><span class="p">)</span>
 <span class="linenos"> 132</span>            <span class="k">else</span><span class="p">:</span>
-<span class="linenos"> 133</span>                <span class="n">rule</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">build_rule</span><span class="p">(</span><span class="n">sentence_id</span><span class="p">,</span> <span class="n">init_cterm</span><span class="p">,</span> <span class="n">target_cterm</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="n">priority</span><span class="p">)</span>
+<span class="linenos"> 133</span>                <span class="n">rule</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cterm_build_rule</span><span class="p">(</span><span class="n">sentence_id</span><span class="p">,</span> <span class="n">init_cterm</span><span class="p">,</span> <span class="n">target_cterm</span><span class="p">,</span> <span class="n">priority</span><span class="o">=</span><span class="n">priority</span><span class="p">)</span>
 <span class="linenos"> 134</span>            <span class="k">return</span> <span class="n">rule</span></div>
 
 <span class="linenos"> 135</span>
