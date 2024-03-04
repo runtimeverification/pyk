@@ -730,9 +730,7 @@ class APRProver(Prover):
 
         # Subsumption should be checked if and only if the target node
         # and the current node are either both terminal or both not terminal
-        check_subsume = is_terminal == target_is_terminal
-
-        if check_subsume:
+        if is_terminal == target_is_terminal:
             csubst = self._check_subsume(curr_node)
             if csubst is not None:
                 # Information about the subsumed node being terminal must be returned
