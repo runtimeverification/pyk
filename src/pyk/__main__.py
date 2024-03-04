@@ -5,7 +5,7 @@ import sys
 from typing import TYPE_CHECKING
 
 from .cli.args import (
-    KEVMCLI,
+    CLI,
     CoverageOptions,
     GraphImportsOptions,
     JsonToKoreOptions,
@@ -30,7 +30,7 @@ def main() -> None:
     # This change makes it so that in most cases, by default, pyk doesn't run out of stack space.
     sys.setrecursionlimit(10**7)
 
-    cli = KEVMCLI(
+    cli = CLI(
         [
             CoverageOptions,
             GraphImportsOptions,

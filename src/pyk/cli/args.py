@@ -49,7 +49,7 @@ class PrintInput(Enum):
     KAST_JSON = 'kast-json'
 
 
-class KEVMCLI:
+class CLI:
     commands: list[type[Command]]
 
     # Input a list of all Command types to be used
