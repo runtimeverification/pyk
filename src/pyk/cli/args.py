@@ -83,9 +83,7 @@ class Options:
     def __init__(self, args: dict[str, Any]) -> None:
         # Get defaults from this and all superclasses that define them, preferring the most specific class
         defaults: dict[str, Any] = {}
-        mro = type(self).mro()
-        mro.reverse()
-        for cl in mro:
+        for cl in reversed(type(self).mro()):
             if hasattr(cl, 'default'):
                 defaults = defaults | cl.default()
 
