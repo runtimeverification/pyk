@@ -191,11 +191,11 @@ jobs:
           K_VERSION=$(cut --delim=v --field=2 deps/k_release)
           PYK_VERSION=$(cat package/version)
 
-          docker build .                                            \
-            -f package/Dockerfile.k+pyk                             \
-            --build-arg K_VERSION=${K_VERSION}                      \
-            --build-arg PYK_VERSION=${PYK_VERSION}                  \
-            --tag runtimeverificationinc/kframework-pyk:${COMMIT}
+          docker build .                                 \
+            -f package/Dockerfile                        \
+            --build-arg K_VERSION=${K_VERSION}           \
+            --build-arg PYK_VERSION=${PYK_VERSION}       \
+            --tag runtimeverificationinc/pyk:${COMMIT}
 
-          docker run --rm runtimeverificationinc/kframework-pyk:${COMMIT}
-          docker run --rm runtimeverificationinc/kframework-pyk:${COMMIT} kompile --version
+          docker run --rm runtimeverificationinc/pyk:${COMMIT}
+          docker run --rm runtimeverificationinc/pyk:${COMMIT} kompile --version
