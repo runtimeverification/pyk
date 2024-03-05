@@ -19,7 +19,7 @@ from ..kast.manip import flatten_label
 from ..kast.outer import KDefinition, KFlatModule, KFlatModuleList, KImport, KRequire
 from ..kore.rpc import KoreExecLogFormat
 from ..prelude.ml import is_top
-from ..utils import gen_file_timestamp, run_process, unique
+from ..utils import gen_file_timestamp, run_process
 from . import TypeInferenceMode
 from .kprint import KPrint
 
@@ -194,27 +194,19 @@ class KProve(KPrint):
         include_dirs: Iterable[Path] = (),
         md_selector: str | None = None,
         haskell_args: Iterable[str] = (),
-        haskell_rts_args: Iterable[str] = (),
-        haskell_log_entries: Iterable[str] = (),
-        log_axioms_file: Path | None = None,
         dry_run: bool = False,
         depth: int | None = None,
-        haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
-        haskell_log_debug_transition: bool = True,
     ) -> list[CTerm]:
-        log_file = spec_file.with_suffix('.debug-log') if log_axioms_file is None else log_axioms_file
+        log_file = spec_file.with_suffix('.debug-log')
         if log_file.exists():
             log_file.unlink()
-        haskell_log_entries = unique(
-            list(haskell_log_entries) + (['DebugTransition'] if haskell_log_debug_transition else [])
-        )
         haskell_log_args = [
             '--log',
             str(log_file),
             '--log-format',
-            haskell_log_format.value,
+            KoreExecLogFormat.ONELINE.value,
             '--log-entries',
-            ','.join(haskell_log_entries),
+            'DebugTransition',
         ]
 
         env = os.environ.copy()
@@ -222,12 +214,6 @@ class KProve(KPrint):
         kore_exec_opts = ' '.join(list(haskell_args) + haskell_log_args + ([existing_opts] if existing_opts else []))
         _LOGGER.debug(f'export KORE_EXEC_OPTS={kore_exec_opts!r}')
         env['KORE_EXEC_OPTS'] = kore_exec_opts
-
-        if haskell_rts_args:
-            existing = os.getenv('GHCRTS')
-            ghc_rts = ' '.join(list(haskell_rts_args) + ([existing] if existing else []))
-            _LOGGER.debug(f'export GHCRTS={ghc_rts!r}')
-            env['GHCRTS'] = ghc_rts
 
         proc_result = _kprove(
             spec_file=spec_file,
@@ -264,8 +250,6 @@ class KProve(KPrint):
         lemmas: Iterable[KRule] = (),
         args: Iterable[str] = (),
         haskell_args: Iterable[str] = (),
-        haskell_log_entries: Iterable[str] = (),
-        log_axioms_file: Path | None = None,
         dry_run: bool = False,
         depth: int | None = None,
     ) -> list[CTerm]:
@@ -275,8 +259,6 @@ class KProve(KPrint):
                 spec_module_name=claim_module_name,
                 args=args,
                 haskell_args=haskell_args,
-                haskell_log_entries=haskell_log_entries,
-                log_axioms_file=log_axioms_file,
                 dry_run=dry_run,
                 depth=depth,
             )
