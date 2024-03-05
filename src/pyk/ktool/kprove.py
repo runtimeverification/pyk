@@ -16,11 +16,12 @@ from ..cli.utils import check_dir_path, check_file_path
 from ..cterm import CTerm, cterm_symbolic_with_server
 from ..kast import Atts, kast_term
 from ..kast.inner import KInner
-from ..kast.manip import flatten_label
-from ..kast.outer import KDefinition, KFlatModule, KFlatModuleList, KImport, KRequire
+from ..kast.manip import extract_lhs, flatten_label
+from ..kast.outer import KApply, KDefinition, KFlatModule, KFlatModuleList, KImport, KRequire
 from ..kcfg.explore import KCFGExplore
 from ..kore.rpc import KoreExecLogFormat
 from ..prelude.ml import is_top
+from ..proof import APRProof, APRProver, EqualityProof, ImpliesProver
 from ..utils import gen_file_timestamp, run_process
 from . import TypeInferenceMode
 from .kprint import KPrint
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
 
     from ..kast.outer import KClaim, KRule, KRuleLike
     from ..kast.pretty import SymbolTable
+    from ..proof import Proof, Prover
     from ..utils import BugReport
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -262,6 +264,34 @@ class KProve(KPrint):
                 haskell_args=haskell_args,
                 depth=depth,
             )
+
+    def prove_claim_rpc(self, claim: KClaim) -> Proof:
+        proof: Proof
+        prover: Prover
+        lhs_top = extract_lhs(claim.body)
+        if (
+            type(lhs_top) is KApply
+            and self.definition.production_for_klabel(lhs_top.label) in self.definition.functions
+        ):
+            proof = EqualityProof.from_claim(claim, self.definition)
+            prover = ImpliesProver(proof, self.kcfg_explore)
+        else:
+            proof = APRProof.from_claim(self.definition, claim, {})
+            prover = APRProver(proof, self.kcfg_explore)
+        prover.advance_proof()
+        if proof.passed:
+            _LOGGER.info(f'Proof passed: {proof.id}')
+        elif proof.failed:
+            _LOGGER.info(f'Proof failed: {proof.id}')
+        else:
+            _LOGGER.info(f'Proof pending: {proof.id}')
+        return proof
+
+    def prove_rpc(self, spec_file: Path, spec_module_name: str) -> list[Proof]:
+        all_claims = self.get_claims(spec_file, spec_module_name=spec_module_name)
+        if all_claims is None:
+            raise ValueError(f'No claims found in file: {spec_file}')
+        return [self.prove_claim_rpc(claim) for claim in all_claims]
 
     def get_claim_modules(
         self,
