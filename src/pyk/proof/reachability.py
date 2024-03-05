@@ -781,7 +781,7 @@ class APRSummary(ProofSummary):
     bmc_depth: int | None
     bounded: int
     subproofs: int
-    exec_time: str
+    formatted_exec_time: str
 
     @property
     def lines(self) -> list[str]:
@@ -797,7 +797,7 @@ class APRSummary(ProofSummary):
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
             f'    bounded: {self.bounded}',
-            f'    execution time: {self.exec_time}',
+            f'    execution time: {self.formatted_exec_time}',
         ]
         if self.bmc_depth is not None:
             _lines.append(f'    bmc depth: {self.bmc_depth}')
