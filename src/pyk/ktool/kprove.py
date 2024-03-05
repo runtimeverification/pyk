@@ -194,7 +194,6 @@ class KProve(KPrint):
         include_dirs: Iterable[Path] = (),
         md_selector: str | None = None,
         haskell_args: Iterable[str] = (),
-        dry_run: bool = False,
         depth: int | None = None,
     ) -> list[CTerm]:
         log_file = spec_file.with_suffix('.debug-log')
@@ -224,7 +223,6 @@ class KProve(KPrint):
             md_selector=md_selector,
             output=KProveOutput.JSON,
             temp_dir=self.use_directory,
-            dry_run=dry_run,
             args=self.prover_args + list(args),
             env=env,
             check=False,
@@ -233,9 +231,6 @@ class KProve(KPrint):
 
         if proc_result.returncode not in (0, 1):
             raise RuntimeError('kprove failed!')
-
-        if dry_run:
-            return [CTerm.bottom()]
 
         debug_log = _get_rule_log(log_file)
         final_state = KInner.from_dict(kast_term(json.loads(proc_result.stdout)))
@@ -250,7 +245,6 @@ class KProve(KPrint):
         lemmas: Iterable[KRule] = (),
         args: Iterable[str] = (),
         haskell_args: Iterable[str] = (),
-        dry_run: bool = False,
         depth: int | None = None,
     ) -> list[CTerm]:
         with self._tmp_claim_definition(claim, claim_id, lemmas=lemmas) as (claim_path, claim_module_name):
@@ -259,7 +253,6 @@ class KProve(KPrint):
                 spec_module_name=claim_module_name,
                 args=args,
                 haskell_args=haskell_args,
-                dry_run=dry_run,
                 depth=depth,
             )
 
