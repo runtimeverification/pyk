@@ -6,17 +6,19 @@ import os
 import re
 from contextlib import contextmanager
 from enum import Enum
+from functools import cached_property
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import CTerm
+from ..cterm import CTerm, cterm_symbolic_with_server
 from ..kast import Atts, kast_term
 from ..kast.inner import KInner
 from ..kast.manip import flatten_label
 from ..kast.outer import KDefinition, KFlatModule, KFlatModuleList, KImport, KRequire
+from ..kcfg.explore import KCFGExplore
 from ..kore.rpc import KoreExecLogFormat
 from ..prelude.ml import is_top
 from ..utils import gen_file_timestamp, run_process
@@ -185,6 +187,11 @@ class KProve(KPrint):
         self.main_file = main_file
         self.prover = [command]
         self.prover_args = []
+
+    @cached_property
+    def kcfg_explore(self) -> KCFGExplore:
+        cterm_symbolic = cterm_symbolic_with_server(self.definition, self.kompiled_kore, self.definition_dir)
+        return KCFGExplore(cterm_symbolic)
 
     def prove(
         self,
