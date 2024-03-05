@@ -103,7 +103,7 @@ class Options:
         mro.reverse()
         for cl in mro:
             if hasattr(cl, 'update_args') and 'update_args' in cl.__dict__:
-                parser = cl.update_args(parser)
+                cl.update_args(parser)
         return parser
 
 
