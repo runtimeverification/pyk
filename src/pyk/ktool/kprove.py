@@ -12,13 +12,13 @@ from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import CTerm, cterm_build_claim
+from ..cterm import CTerm
 from ..kast import Atts, kast_term
 from ..kast.inner import KInner
-from ..kast.manip import extract_subst, flatten_label, free_vars
+from ..kast.manip import flatten_label
 from ..kast.outer import KDefinition, KFlatModule, KFlatModuleList, KImport, KRequire
 from ..kore.rpc import KoreExecLogFormat
-from ..prelude.ml import is_top, mlAnd
+from ..prelude.ml import is_top
 from ..utils import gen_file_timestamp, run_process, unique
 from . import TypeInferenceMode
 from .kprint import KPrint
@@ -283,39 +283,6 @@ class KProve(KPrint):
                 dry_run=dry_run,
                 depth=depth,
             )
-
-    # TODO: This should return the empty disjunction `[]` instead of `#Top`.
-    # The prover should never return #Bottom, so we can ignore that case.
-    # Once those are taken care of, we can change the return type to a CTerm
-    def prove_cterm(
-        self,
-        claim_id: str,
-        init_cterm: CTerm,
-        target_cterm: CTerm,
-        lemmas: Iterable[KRule] = (),
-        args: Iterable[str] = (),
-        haskell_args: Iterable[str] = (),
-        log_axioms_file: Path | None = None,
-        allow_zero_step: bool = False,
-        depth: int | None = None,
-    ) -> list[CTerm]:
-        claim, var_map = cterm_build_claim(claim_id, init_cterm, target_cterm, keep_vars=free_vars(init_cterm.kast))
-        next_state = self.prove_claim(
-            claim,
-            claim_id,
-            lemmas=lemmas,
-            args=args,
-            haskell_args=haskell_args,
-            log_axioms_file=log_axioms_file,
-            allow_zero_step=allow_zero_step,
-            depth=depth,
-        )
-        next_states = list(unique(CTerm.from_kast(var_map(ns.kast)) for ns in next_state if not CTerm._is_top(ns.kast)))
-        constraint_subst, _ = extract_subst(init_cterm.kast)
-        next_states = [
-            CTerm.from_kast(mlAnd([constraint_subst.unapply(ns.kast), constraint_subst.ml_pred])) for ns in next_states
-        ]
-        return next_states if len(next_states) > 0 else [CTerm.top()]
 
     def get_claim_modules(
         self,
