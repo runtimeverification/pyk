@@ -271,11 +271,14 @@ class KProve(KPrint):
         md_selector: str | None = None,
     ) -> KFlatModuleList:
         with self._temp_file() as ntf:
-            self.prove(
-                spec_file,
+            _kprove(
+                spec_file=spec_file,
+                kompiled_dir=self.definition_dir,
                 spec_module_name=spec_module_name,
                 include_dirs=include_dirs,
                 md_selector=md_selector,
+                output=KProveOutput.JSON,
+                temp_dir=self.use_directory,
                 dry_run=True,
                 args=['--emit-json-spec', ntf.name],
             )
