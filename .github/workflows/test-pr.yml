@@ -184,7 +184,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: 'Check out code'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Build Docker image for release'
         run: |
           COMMIT=$(git rev-parse --short=7 HEAD)
