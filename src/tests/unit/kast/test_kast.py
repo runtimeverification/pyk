@@ -7,7 +7,7 @@ import pytest
 
 from pyk.kast import KInner
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KVariable, build_assoc
-from pyk.kast.outer import KDefinition, KFlatModule, KImport
+from pyk.kast.outer import KDefinition, KFlatModule, KImport, KNonTerminal, KProduction, KRegexTerminal, KTerminal
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import INT
 from pyk.prelude.string import STRING
@@ -291,4 +291,53 @@ KAST_COMPARE_TEST_DATA: Final = (
 @pytest.mark.parametrize('lkast,rkast,expected', KAST_COMPARE_TEST_DATA, ids=count())
 def test_kast_compare(lkast: KInner, rkast: KInner, expected: bool) -> None:
     actual = lkast < rkast
+    assert actual == expected
+
+
+IS_PREFIX_TEST_DATA: Final = (
+    (KProduction('Int'), False),
+    (KProduction('Int', (KTerminal('foo'),)), False),
+    (KProduction('Int', (KNonTerminal(KSort('Foo')),)), False),
+    (KProduction('Int', (KTerminal('foo'), KTerminal('('))), False),
+    (KProduction('Int', (KTerminal('foo'), KTerminal('('), KTerminal(')'))), True),
+    (KProduction('Int', (KRegexTerminal('foo', '', ''), KTerminal('('), KTerminal(')'))), False),
+    (KProduction('Int', (KNonTerminal(KSort('foo')), KTerminal('('), KTerminal(')'))), False),
+    (KProduction('Int', (KTerminal('foo'), KTerminal('bar'), KTerminal('('), KTerminal(')'))), True),
+    (KProduction('Int', (KTerminal('foo'), KTerminal('('), KNonTerminal(KSort('Foo')), KTerminal(')'))), True),
+    (
+        KProduction(
+            'Int',
+            (
+                KTerminal('foo'),
+                KTerminal('('),
+                KNonTerminal(KSort('Foo')),
+                KTerminal(','),
+                KTerminal(')'),
+            ),
+        ),
+        False,
+    ),
+    (
+        KProduction(
+            'Int',
+            (
+                KTerminal('foo'),
+                KTerminal('('),
+                KNonTerminal(KSort('Foo')),
+                KTerminal(','),
+                KNonTerminal(KSort('Bar')),
+                KTerminal(')'),
+            ),
+        ),
+        True,
+    ),
+)
+
+
+@pytest.mark.parametrize('production,expected', IS_PREFIX_TEST_DATA, ids=count())
+def test_production_is_prefix(production: KProduction, expected: bool) -> None:
+    # When
+    actual = production.is_prefix
+
+    # Then
     assert actual == expected

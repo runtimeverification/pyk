@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
@@ -292,6 +293,32 @@ class KProduction(KSentence):
     def argument_sorts(self) -> list[KSort]:
         """Return the sorts of the non-terminal positions of the productions."""
         return [knt.sort for knt in self.non_terminals]
+
+    @cached_property
+    def is_prefix(self) -> bool:
+        """
+        The production is of the form `t* "(" (n ("," n)*)? ")"`.
+
+        Here, `t` is a terminal other than `"("`, `","` or `")"`, and `n` a non-terminal.
+        Example: `Int ::= "mul" "(" Int "," Int ")"`
+        """
+
+        def encode(item: KProductionItem) -> str:
+            match item:
+                case KTerminal(value):
+                    if value in ['(', ',', ')']:
+                        return value
+                    return 't'
+                case KNonTerminal():
+                    return 'n'
+                case KRegexTerminal():
+                    return 'r'
+                case _:
+                    raise AssertionError()
+
+        string = ''.join(encode(item) for item in self.items)
+        pattern = r't*\((n(,n)*)?\)'
+        return bool(re.fullmatch(pattern, string))
 
     @property
     def default_format(self) -> Format:
