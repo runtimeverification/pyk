@@ -215,16 +215,15 @@ class APRProof(Proof, KCFGExploration):
 
     def formatted_exec_time(self) -> str:
         exec_time = round(self.exec_time)
-        h = exec_time // 3600
-        m = (exec_time % 3600) // 60
-        s = exec_time % 60
-        if h != 0:
-            return f'{h}h {m}m {s}s'
-        else:
-            if m != 0:
-                return f'{m}m {s}s'
-            else:
-                return f'{s}s'
+        h, remainder = divmod(exec_time, 3600)
+        m, s = divmod(remainder, 60)
+        formatted = []
+        if h:
+            formatted.append(f'{h}h')
+        if m or h:
+            formatted.append(f'{m}m')
+        formatted.append(f'{s}s')
+        return ' '.join(formatted)
 
     @staticmethod
     def _make_module_name(proof_id: str) -> str:
