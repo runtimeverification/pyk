@@ -38,6 +38,8 @@ if TYPE_CHECKING:
     from argparse import _SubParsersAction
     from collections.abc import Iterable
 
+    from pyk.cli.args import Options
+
 
 class PrintInput(Enum):
     KORE_JSON = 'kore-json'
@@ -65,8 +67,8 @@ class CLI:
             base = cmd_type.parser(base)
         return base
 
-    def create_argument_parser(self) -> ArgumentParser:
-        pyk_args = ArgumentParser()
+    def create_argument_parser(self, top_level_args: Iterable[type[Options]] = ()) -> ArgumentParser:
+        pyk_args = ArgumentParser(parents=[tla.all_args() for tla in top_level_args])
         pyk_args_command = pyk_args.add_subparsers(dest='command', required=True)
 
         pyk_args_command = self.add_parsers(pyk_args_command)

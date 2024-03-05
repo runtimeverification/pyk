@@ -4,7 +4,7 @@ import fnmatch
 import logging
 from typing import TYPE_CHECKING, Any
 
-from pyk.cli.cli import CLI, Command
+from pyk.cli.cli import CLI, Command, LoggingOptions
 
 from ..kdist import kdist, target_ids
 
@@ -19,7 +19,7 @@ _LOG_FORMAT: Final = '%(levelname)s %(asctime)s %(name)s - %(message)s'
 
 def main() -> None:
     kdist_cli = CLI({KDistBuildCommand, KDistCleanCommand, KDistWhichCommand, KDistListCommand})
-    parser = kdist_cli.create_argument_parser()
+    parser = kdist_cli.create_argument_parser(top_level_args=[LoggingOptions])
     parser.parse_args()
     args = parser.parse_args()
     command = kdist_cli.generate_command({key: val for (key, val) in vars(args).items() if val is not None})
