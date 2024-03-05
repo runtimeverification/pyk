@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ..kast import EMPTY_ATT, Atts, KInner
 from ..kast.inner import KApply, KRewrite, KSort
 from ..kast.manip import extract_lhs, extract_rhs
-from ..kast.outer import KDefinition, KNonTerminal, KProduction, KRule, KSyntaxSort
+from ..kast.outer import KDefinition, KNonTerminal, KProduction, KRule, KSyntaxSort, KTerminal
 from ..kore.prelude import inj
 from ..kore.syntax import (
     And,
@@ -625,6 +625,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
         },
     )
     module = _discard_hook_atts(module)
+    module = _discard_format_atts(module)
     module = _add_anywhere_atts(module)
     module = _add_symbol_atts(module, Atts.MACRO, _is_macro)
     module = _add_symbol_atts(module, Atts.FUNCTIONAL, _is_functional)
@@ -913,6 +914,25 @@ def _discard_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = 
             return sentence.let(att=sentence.att.discard([Atts.HOOK]))
 
         return sentence
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _discard_format_atts(module: KFlatModule) -> KFlatModule:
+    """Remove format attributes from symbol productions with items other than terminals and non-terminals."""
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        if all(isinstance(item, (KTerminal, KNonTerminal)) for item in sentence.items):
+            return sentence
+
+        return sentence.let(att=sentence.att.discard([Atts.FORMAT]))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
