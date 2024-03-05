@@ -4,7 +4,7 @@ import fnmatch
 import logging
 from typing import TYPE_CHECKING, Any
 
-from pyk.cli.args import CLI, Command
+from pyk.cli.cli import CLI, Command
 
 from ..kdist import kdist, target_ids
 

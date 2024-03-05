@@ -4,16 +4,16 @@ import logging
 import sys
 from typing import TYPE_CHECKING
 
-from .cli.args import (
+from .cli.cli import (
     CLI,
-    CoverageOptions,
-    GraphImportsOptions,
-    JsonToKoreOptions,
-    KoreToJsonOptions,
-    PrintOptions,
-    ProveOptions,
-    RPCKastOptions,
-    RPCPrintOptions,
+    CoverageCommand,
+    GraphImportsCommand,
+    JsonToKoreCommand,
+    KoreToJsonCommand,
+    PrintCommand,
+    ProveCommand,
+    RPCKastCommand,
+    RPCPrintCommand,
 )
 from .cli.utils import LOG_FORMAT, loglevel
 
@@ -32,14 +32,14 @@ def main() -> None:
 
     cli = CLI(
         [
-            CoverageOptions,
-            GraphImportsOptions,
-            JsonToKoreOptions,
-            KoreToJsonOptions,
-            PrintOptions,
-            ProveOptions,
-            RPCKastOptions,
-            RPCPrintOptions,
+            CoverageCommand,
+            GraphImportsCommand,
+            JsonToKoreCommand,
+            KoreToJsonCommand,
+            PrintCommand,
+            ProveCommand,
+            RPCKastCommand,
+            RPCPrintCommand,
         ]
     )
 
