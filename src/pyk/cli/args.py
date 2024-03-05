@@ -131,7 +131,6 @@ class Command(LoggingOptions):
         ...
 
     @staticmethod
-    @staticmethod
     @abstractmethod
     def help_str() -> str:
         ...
