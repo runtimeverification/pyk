@@ -113,6 +113,8 @@ class KDistBuildOptions(LoggingOptions):
         return {
             'force': False,
             'jobs': 1,
+            'targets': [],
+            'args': [],
         }
 
     @staticmethod
@@ -126,18 +128,17 @@ class KDistBuildOptions(LoggingOptions):
 
     @staticmethod
     def update_args(parser: ArgumentParser) -> None:
-        parser.add_argument('targets', metavar='TARGET', nargs='*', default='*', help='target to build')
+        parser.add_argument('targets', metavar='TARGET', nargs='*', help='target to build')
         parser.add_argument(
             '-a',
             '--arg',
             dest='args',
             metavar='ARG',
             action='append',
-            default=[],
             help='build with argument',
         )
-        parser.add_argument('-f', '--force', action='store_true', default=None, help='force build')
-        parser.add_argument('-j', '--jobs', metavar='N', type=int, default=None, help='maximal number of build jobs')
+        parser.add_argument('-f', '--force', action='store_true', help='force build')
+        parser.add_argument('-j', '--jobs', metavar='N', type=int, help='maximal number of build jobs')
 
 
 class KDistCleanOptions(LoggingOptions):
