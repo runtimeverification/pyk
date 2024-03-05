@@ -81,7 +81,6 @@ jobs:
         uses: actions/checkout@v3
       - name: 'Build Docker image for release'
         run: |
-          COMMIT=$(git rev-parse --short=7 HEAD)
           K_VERSION=$(cut --delim=v --field=2 deps/k_release)
           PYK_VERSION=$(cat package/version)
 
@@ -90,14 +89,14 @@ jobs:
             --build-arg K_VERSION=${K_VERSION}                         \
             --build-arg PYK_VERSION=${PYK_VERSION}                     \
             --tag runtimeverificationinc/kframework-pyk:${PYK_VERSION}
-      - name: 'Smoke-test the image'
-        run: |
-          docker run --rm runtimeverificationinc/kframework-pyk:${COMMIT}
-          docker run --rm runtimeverificationinc/kframework-pyk:${COMMIT} kompile --version
+
+          docker run --rm runtimeverificationinc/kframework-pyk:${PYK_VERSION}
+          docker run --rm runtimeverificationinc/kframework-pyk:${PYK_VERSION} kompile --version
       - name: 'Push docker image'
         env:
           USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
         run: |
+          PYK_VERSION=$(cat package/version)
           docker login --username ${USERNAME} --password ${PASSWORD}
           docker image push runtimeverificationinc/kframework-pyk:${PYK_VERSION}

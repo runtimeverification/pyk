@@ -196,7 +196,6 @@ jobs:
             --build-arg K_VERSION=${K_VERSION}                      \
             --build-arg PYK_VERSION=${PYK_VERSION}                  \
             --tag runtimeverificationinc/kframework-pyk:${COMMIT}
-      - name: 'Smoke-test the image'
-        run: |
+
           docker run --rm runtimeverificationinc/kframework-pyk:${COMMIT}
           docker run --rm runtimeverificationinc/kframework-pyk:${COMMIT} kompile --version
