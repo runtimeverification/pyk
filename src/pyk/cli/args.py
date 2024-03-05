@@ -102,8 +102,8 @@ class Options:
         mro = cls.mro()
         mro.reverse()
         for cl in mro:
-            if hasattr(cl, 'args') and 'args' in cl.__dict__:
-                parser = cl.args(parser)
+            if hasattr(cl, 'update_args') and 'update_args' in cl.__dict__:
+                parser = cl.update_args(parser)
         return parser
 
 
@@ -119,10 +119,9 @@ class LoggingOptions(Options):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output.')
         parser.add_argument('--debug', action='store_true', help='Debug output.')
-        return parser
 
 
 class Command(LoggingOptions):
@@ -192,18 +191,16 @@ class OutputFileOptions(Options):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('--output-file', type=FileType('w'))
-        return parser
 
 
 class DefinitionOptions(LoggingOptions):
     definition_dir: Path
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
-        return parser
 
 
 class CoverageOptions(Command, DefinitionOptions, OutputFileOptions):
@@ -218,9 +215,8 @@ class CoverageOptions(Command, DefinitionOptions, OutputFileOptions):
         return 'Convert coverage file to human readable log.'
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('coverage_file', type=FileType('r'), help='Coverage file to build log for.')
-        return parser
 
     def exec(self) -> None:
         kompiled_dir: Path = self.definition_dir
@@ -272,7 +268,7 @@ class RPCKastOptions(Command, OutputFileOptions):
         return 'Convert an "execute" JSON RPC response to a new "execute" or "simplify" request, copying parameters from a reference request.'
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument(
             'reference_request_file',
             type=FileType('r'),
@@ -283,7 +279,6 @@ class RPCKastOptions(Command, OutputFileOptions):
             type=FileType('r'),
             help='An input file containing a JSON RPC response with KoreJSON payload.',
         )
-        return parser
 
     def exec(self) -> None:
         """
@@ -319,13 +314,12 @@ class RPCPrintOptions(Command, DefinitionOptions, OutputFileOptions):
         return 'Pretty-print an RPC request/response'
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument(
             'input_file',
             type=FileType('r'),
             help='An input file containing the JSON RPC request or response with KoreJSON payload.',
         )
-        return parser
 
     def exec(self) -> None:
         kompiled_dir: Path = self.definition_dir
@@ -419,10 +413,9 @@ class DisplayOptions(Options):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('--minimize', dest='minimize', action='store_true', help='Minimize output.')
         parser.add_argument('--no-minimize', dest='minimize', action='store_false', help='Do not minimize output.')
-        return parser
 
 
 class PrintOptions(Command, DefinitionOptions, OutputFileOptions, DisplayOptions):
@@ -449,14 +442,13 @@ class PrintOptions(Command, DefinitionOptions, OutputFileOptions, DisplayOptions
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument(
             'term', type=FileType('r'), help='File containing input term (in format specified with --input).'
         )
         parser.add_argument('--input', type=PrintInput, choices=list(PrintInput))
         parser.add_argument('--omit-labels', nargs='?', help='List of labels to omit from output.')
         parser.add_argument('--keep-cells', nargs='?', help='List of cells with primitive values to keep in output.')
-        return parser
 
     def exec(self) -> None:
         kompiled_dir: Path = self.definition_dir
@@ -512,12 +504,11 @@ class ProveOptions(Command, DefinitionOptions, OutputFileOptions):
         return 'Prove an input specification (using kprovex).'
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('main_file', type=str, help='Main file used for kompilation.')
         parser.add_argument('spec_file', type=str, help='File with the specification module.')
         parser.add_argument('spec_module', type=str, help='Module with claims to be proven.')
         parser.add_argument('k_args', nargs='*', help='Arguments to pass through to K invocation.')
-        return parser
 
     def exec(self) -> None:
         kompiled_dir: Path = self.definition_dir
@@ -547,7 +538,7 @@ class KDefinitionOptions(Options):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument(
             '-I', type=str, dest='includes', action='append', help='Directories to lookup K definitions in.'
         )
@@ -560,7 +551,6 @@ class KDefinitionOptions(Options):
             type=str,
             help='Code selector expression to use when reading markdown.',
         )
-        return parser
 
 
 class SaveDirOptions(Options):
@@ -573,9 +563,8 @@ class SaveDirOptions(Options):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('--save-directory', type=ensure_dir_path, help='Path to where CFGs are stored.')
-        return parser
 
 
 class SpecOptions(SaveDirOptions):
@@ -591,7 +580,7 @@ class SpecOptions(SaveDirOptions):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('spec_file', type=file_path, help='Path to spec file.')
         parser.add_argument(
             '--claim',
@@ -607,7 +596,6 @@ class SpecOptions(SaveDirOptions):
             action='append',
             help='Skip listed claims, MODULE_NAME.claim-id',
         )
-        return parser
 
 
 class KompileOptions(Options):
@@ -638,7 +626,7 @@ class KompileOptions(Options):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument(
             '--emit-json',
             dest='emit_json',
@@ -682,7 +670,6 @@ class KompileOptions(Options):
         parser.add_argument('-O1', dest='o1', action='store_true', help='Optimization level 1.')
         parser.add_argument('-O2', dest='o2', action='store_true', help='Optimization level 2.')
         parser.add_argument('-O3', dest='o3', action='store_true', help='Optimization level 3.')
-        return parser
 
 
 class ParallelOptions(Options):
@@ -695,9 +682,8 @@ class ParallelOptions(Options):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('--workers', '-j', type=int, help='Number of processes to run in parallel.')
-        return parser
 
 
 class BugReportOptions(Options):
@@ -708,13 +694,12 @@ class BugReportOptions(Options):
         return {'bug_report': None}
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument(
             '--bug-report',
             type=bug_report_arg,
             help='Generate bug report with given name',
         )
-        return parser
 
 
 class SMTOptions(Options):
@@ -731,7 +716,7 @@ class SMTOptions(Options):
         }
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('--smt-timeout', dest='smt_timeout', type=int, help='Timeout in ms to use for SMT queries.')
         parser.add_argument(
             '--smt-retry-limit',
@@ -745,4 +730,3 @@ class SMTOptions(Options):
             type=str,
             help='Z3 tactic to use when checking satisfiability. Example: (check-sat-using smt)',
         )
-        return parser

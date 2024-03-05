@@ -125,7 +125,7 @@ class KDistBuildOptions(LoggingOptions):
         return base
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('targets', metavar='TARGET', nargs='*', default='*', help='target to build')
         parser.add_argument(
             '-a',
@@ -138,7 +138,6 @@ class KDistBuildOptions(LoggingOptions):
         )
         parser.add_argument('-f', '--force', action='store_true', default=None, help='force build')
         parser.add_argument('-j', '--jobs', metavar='N', type=int, default=None, help='maximal number of build jobs')
-        return parser
 
 
 class KDistCleanOptions(LoggingOptions):
@@ -154,14 +153,13 @@ class KDistCleanOptions(LoggingOptions):
         return base
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument(
             'target',
             metavar='TARGET',
             nargs='?',
             help='target to clean',
         )
-        return parser
 
 
 class KDistWhichOptions(LoggingOptions):
@@ -177,14 +175,13 @@ class KDistWhichOptions(LoggingOptions):
         return base
 
     @staticmethod
-    def args(parser: ArgumentParser) -> ArgumentParser:
+    def update_args(parser: ArgumentParser) -> None:
         parser.add_argument(
             'target',
             metavar='TARGET',
             nargs='?',
             help='target to print directory for',
         )
-        return parser
 
 
 class KDistListOptions(LoggingOptions):
