@@ -195,7 +195,7 @@ jobs:
             -f package/Dockerfile                        \
             --build-arg K_VERSION=${K_VERSION}           \
             --build-arg PYK_VERSION=${PYK_VERSION}       \
-            --tag runtimeverificationinc/pyk:${COMMIT}
+            --tag runtimeverificationinc/kframework-pyk:${COMMIT}
 
-          docker run --rm runtimeverificationinc/pyk:${COMMIT}
-          docker run --rm runtimeverificationinc/pyk:${COMMIT} kompile --version
+          docker run --rm runtimeverificationinc/kframework-pyk:${COMMIT}
+          docker run --rm runtimeverificationinc/kframework-pyk:${COMMIT} kompile --version

@@ -88,10 +88,10 @@ jobs:
             -f package/Dockerfile                           \
             --build-arg K_VERSION=${K_VERSION}              \
             --build-arg PYK_VERSION=${PYK_VERSIO            \
-            --tag runtimeverificationinc/pyk:${PYK_VERSION}
+            --tag runtimeverificationinc/kframework-pyk:${PYK_VERSION}
 
-          docker run --rm runtimeverificationinc/pyk:${PYK_VERSION}
-          docker run --rm runtimeverificationinc/pyk:${PYK_VERSION} kompile --version
+          docker run --rm runtimeverificationinc/kframework-pyk:${PYK_VERSION}
+          docker run --rm runtimeverificationinc/kframework-pyk:${PYK_VERSION} kompile --version
       - name: 'Push docker image'
         env:
           USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -99,4 +99,4 @@ jobs:
         run: |
           PYK_VERSION=$(cat package/version)
           docker login --username ${USERNAME} --password ${PASSWORD}
-          docker image push runtimeverificationinc/pyk:${PYK_VERSION}
+          docker image push runtimeverificationinc/kframework-pyk:${PYK_VERSION}
