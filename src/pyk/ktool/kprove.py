@@ -197,7 +197,6 @@ class KProve(KPrint):
         haskell_rts_args: Iterable[str] = (),
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
-        allow_zero_step: bool = False,
         dry_run: bool = False,
         depth: int | None = None,
         haskell_log_format: KoreExecLogFormat = KoreExecLogFormat.ONELINE,
@@ -254,7 +253,7 @@ class KProve(KPrint):
 
         debug_log = _get_rule_log(log_file)
         final_state = KInner.from_dict(kast_term(json.loads(proc_result.stdout)))
-        if is_top(final_state) and len(debug_log) == 0 and not allow_zero_step:
+        if is_top(final_state) and len(debug_log) == 0:
             raise ValueError(f'Proof took zero steps, likely the LHS is invalid: {spec_file}')
         return [CTerm.from_kast(disjunct) for disjunct in flatten_label('#Or', final_state)]
 
@@ -267,7 +266,6 @@ class KProve(KPrint):
         haskell_args: Iterable[str] = (),
         haskell_log_entries: Iterable[str] = (),
         log_axioms_file: Path | None = None,
-        allow_zero_step: bool = False,
         dry_run: bool = False,
         depth: int | None = None,
     ) -> list[CTerm]:
@@ -279,7 +277,6 @@ class KProve(KPrint):
                 haskell_args=haskell_args,
                 haskell_log_entries=haskell_log_entries,
                 log_axioms_file=log_axioms_file,
-                allow_zero_step=allow_zero_step,
                 dry_run=dry_run,
                 depth=depth,
             )
