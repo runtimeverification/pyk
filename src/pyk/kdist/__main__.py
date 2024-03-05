@@ -3,15 +3,15 @@ from __future__ import annotations
 import fnmatch
 import logging
 from argparse import ArgumentParser
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from pyk.cli.args import KCLIArgs
+from pyk.cli.args import LoggingOptions
 from pyk.cli.utils import loglevel
 
 from ..kdist import kdist, target_ids
 
 if TYPE_CHECKING:
-    from argparse import Namespace
+    from argparse import Namespace, _SubParsersAction
     from typing import Final
 
 
@@ -103,6 +103,98 @@ def _exec_list() -> None:
             print(f'* {target_name}')
 
 
+class KDistBuildOptions(LoggingOptions):
+    targets: list[str]
+    force: bool
+    jobs: int
+
+    @staticmethod
+    def defaults() -> dict[str, Any]:
+        return {
+            'force': False,
+            'jobs': 1,
+        }
+
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'build',
+            help='build targets',
+            parents=[KDistBuildOptions.all_args()],
+        )
+        return base
+
+    @staticmethod
+    def update_args(parser: ArgumentParser) -> None:
+        parser.add_argument('targets', metavar='TARGET', nargs='*', default='*', help='target to build')
+        parser.add_argument(
+            '-a',
+            '--arg',
+            dest='args',
+            metavar='ARG',
+            action='append',
+            default=[],
+            help='build with argument',
+        )
+        parser.add_argument('-f', '--force', action='store_true', default=None, help='force build')
+        parser.add_argument('-j', '--jobs', metavar='N', type=int, default=None, help='maximal number of build jobs')
+
+
+class KDistCleanOptions(LoggingOptions):
+    target: str
+
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'clean',
+            help='clean targets',
+            parents=[KDistCleanOptions.all_args()],
+        )
+        return base
+
+    @staticmethod
+    def update_args(parser: ArgumentParser) -> None:
+        parser.add_argument(
+            'target',
+            metavar='TARGET',
+            nargs='?',
+            help='target to clean',
+        )
+
+
+class KDistWhichOptions(LoggingOptions):
+    target: str
+
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'which',
+            help='print target location',
+            parents=[KDistCleanOptions.all_args()],
+        )
+        return base
+
+    @staticmethod
+    def update_args(parser: ArgumentParser) -> None:
+        parser.add_argument(
+            'target',
+            metavar='TARGET',
+            nargs='?',
+            help='target to print directory for',
+        )
+
+
+class KDistListOptions(LoggingOptions):
+    @staticmethod
+    def parser(base: _SubParsersAction) -> _SubParsersAction:
+        base.add_parser(
+            'list',
+            help='print list of available targets',
+            parents=[KDistCleanOptions.all_args()],
+        )
+        return base
+
+
 def _parse_arguments() -> Namespace:
     def add_target_arg(parser: ArgumentParser, help_text: str) -> None:
         parser.add_argument(
@@ -112,32 +204,13 @@ def _parse_arguments() -> Namespace:
             help=help_text,
         )
 
-    k_cli_args = KCLIArgs()
-
-    parser = ArgumentParser(prog='kdist', parents=[k_cli_args.logging_args])
+    parser = ArgumentParser(prog='kdist', parents=[LoggingOptions.all_args()])
     command_parser = parser.add_subparsers(dest='command', required=True)
 
-    build_parser = command_parser.add_parser('build', help='build targets')
-    build_parser.add_argument('targets', metavar='TARGET', nargs='*', default='*', help='target to build')
-    build_parser.add_argument(
-        '-a',
-        '--arg',
-        dest='args',
-        metavar='ARG',
-        action='append',
-        default=[],
-        help='build with argument',
-    )
-    build_parser.add_argument('-f', '--force', action='store_true', default=False, help='force build')
-    build_parser.add_argument('-j', '--jobs', metavar='N', type=int, default=1, help='maximal number of build jobs')
-
-    clean_parser = command_parser.add_parser('clean', help='clean targets')
-    add_target_arg(clean_parser, 'target to clean')
-
-    which_parser = command_parser.add_parser('which', help='print target location')
-    add_target_arg(which_parser, 'target to print directory for')
-
-    command_parser.add_parser('list', help='print list of available targets')
+    command_parser = KDistBuildOptions.parser(command_parser)
+    command_parser = KDistCleanOptions.parser(command_parser)
+    command_parser = KDistWhichOptions.parser(command_parser)
+    command_parser = KDistListOptions.parser(command_parser)
 
     return parser.parse_args()
 
