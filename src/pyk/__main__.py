@@ -16,8 +16,10 @@ from pyk.kore.rpc import ExecuteResult
 from .cli.args import KCLIArgs
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
-from .cterm import CTerm
+from .cterm import CTerm, cterm_symbolic_with_server
+from .kast.inner import KApply
 from .kast.manip import (
+    extract_lhs,
     flatten_label,
     minimize_rule,
     minimize_term,
@@ -27,6 +29,7 @@ from .kast.manip import (
 )
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
+from .kcfg.explore import KCFGExplore
 from .kore.parser import KoreParser
 from .kore.rpc import StopReason
 from .kore.syntax import Pattern, kore_term
@@ -34,10 +37,14 @@ from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
+from .proof import APRProof, APRProver, EqualityProof, ImpliesProver
 
 if TYPE_CHECKING:
     from argparse import Namespace
     from typing import Any, Final
+
+    from .kast.outer import KClaim
+    from .proof import Proof, Prover
 
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -218,6 +225,42 @@ def exec_prove_legacy(args: Namespace) -> None:
     _LOGGER.info(f'Wrote file: {args.output_file.name}')
 
 
+def exec_prove(args: Namespace) -> None:
+    kompiled_dir: Path = args.definition_dir
+    kprove = KProve(kompiled_dir, args.main_file)
+    all_claims = kprove.get_claims(args.spec_file, spec_module_name=args.spec_module)
+    if all_claims is None:
+        raise ValueError(f'No claims found in file: {args.spec_file}')
+    cterm_symbolic = cterm_symbolic_with_server(kprove.definition, kprove.kompiled_kore, kompiled_dir)
+    kcfg_explore = KCFGExplore(cterm_symbolic)
+
+    def _get_prover(claim: KClaim) -> Prover:
+        proof: Proof
+        lhs_top = extract_lhs(claim.body)
+        if type(lhs_top) is KApply:
+            prod = kprove.definition.production_for_klabel(lhs_top.label)
+            if prod in kprove.definition.functions:
+                proof = EqualityProof.from_claim(claim, kprove.definition)
+                return ImpliesProver(proof, kcfg_explore)
+        proof = APRProof.from_claim(kprove.definition, claim, {})
+        return APRProver(proof, kcfg_explore)
+
+    failed = 0
+    for claim in all_claims:
+        prover = _get_prover(claim)
+        prover.advance_proof()
+        if prover.proof.passed:
+            _LOGGER.info(f'Proof passed: {prover.proof.id}')
+        elif prover.proof.failed:
+            failed += 1
+            _LOGGER.info(f'Proof failed: {prover.proof.id}')
+        else:
+            failed += 1
+            _LOGGER.info(f'Proof pending: {prover.proof.id}')
+
+    sys.exit(failed)
+
+
 def exec_graph_imports(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     kprinter = KPrint(kompiled_dir)
@@ -320,6 +363,15 @@ def create_argument_parser() -> ArgumentParser:
     prove_legacy_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
     prove_legacy_args.add_argument('--output-file', type=FileType('w'), default='-')
     prove_legacy_args.add_argument('kArgs', nargs='*', help='Arguments to pass through to K invocation.')
+
+    prove_args = pyk_args_command.add_parser(
+        'prove',
+        help='Prove an input specification (using RPC based prover).',
+        parents=[k_cli_args.logging_args, definition_args],
+    )
+    prove_args.add_argument('main_file', type=str, help='Main file used for kompilation.')
+    prove_args.add_argument('spec_file', type=str, help='File with the specification module.')
+    prove_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
 
     pyk_args_command.add_parser(
         'graph-imports',
