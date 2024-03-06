@@ -5,14 +5,14 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
-from ..cterm import CSubst, CTerm
+from ..cterm import CSubst, CTerm, build_claim
 from ..kast.inner import KApply, KInner, Subst
 from ..kast.manip import extract_lhs, extract_rhs, flatten_label
 from ..prelude.k import GENERATED_TOP_CELL
-from ..prelude.kbool import BOOL, TRUE
+from ..prelude.kbool import BOOL, FALSE, TRUE
 from ..prelude.ml import is_bottom, is_top, mlAnd, mlEquals, mlEqualsFalse, mlEqualsTrue
 from ..utils import ensure_dir_path
-from .proof import Proof, ProofStatus, ProofSummary, Prover, StepResult
+from .proof import FailureInfo, Proof, ProofStatus, ProofSummary, Prover, StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -368,6 +368,15 @@ class RefutationProof(ImpliesProof):
         lines.append(f'Status: {self.status}')
         return lines
 
+    def to_claim(self, claim_id: str) -> tuple[KClaim, Subst]:
+        return build_claim(
+            claim_id,
+            init_config=self.last_constraint,
+            final_config=FALSE,
+            init_constraints=self.pre_constraints,
+            final_constraints=[],
+        )
+
 
 @dataclass(frozen=True)
 class RefutationSummary(ProofSummary):
@@ -439,3 +448,7 @@ class ImpliesProver(Prover):
                 csubst=csubst, simplified_antecedent=simplified_antecedent, simplified_consequent=simplified_consequent
             )
         ]
+
+    def failure_info(self) -> FailureInfo:
+        # TODO add implementation
+        return FailureInfo()

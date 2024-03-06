@@ -13,13 +13,13 @@ from ..cterm.cterm import remove_useless_constraints
 from ..kast.inner import KInner, Subst
 from ..kast.manip import flatten_label, free_vars, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
-from ..kcfg import KCFG
+from ..kcfg import KCFG, KCFGStore
 from ..kcfg.exploration import KCFGExploration
 from ..konvert import kflatmodule_to_kore
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
 from .implies import ProofSummary, Prover, RefutationProof
-from .proof import CompositeSummary, Proof, ProofStatus, StepResult
+from .proof import CompositeSummary, FailureInfo, Proof, ProofStatus, StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -78,7 +78,6 @@ class APRProof(Proof, KCFGExploration):
     _bounded: set[int]
     logs: dict[int, tuple[LogEntry, ...]]
     circularity: bool
-    failure_info: APRFailureInfo | None
     _exec_time: float
     error_info: Exception | None
     prior_loops_cache: dict[NodeIdLike, list[NodeIdLike]]
@@ -114,7 +113,7 @@ class APRProof(Proof, KCFGExploration):
         self.circularity = circularity
         self.node_refutations = {}
         self.prior_loops_cache = prior_loops_cache if prior_loops_cache is not None else {}
-        self.kcfg.cfg_dir = self.proof_subdir / 'kcfg' if self.proof_subdir else None
+        self.kcfg._kcfg_store = KCFGStore(self.proof_subdir / 'kcfg') if self.proof_subdir else None
         self._exec_time = _exec_time
         self.error_info = error_info
 
@@ -140,7 +139,6 @@ class APRProof(Proof, KCFGExploration):
             self.kcfg.extend(result.extend_result, self.kcfg.node(result.node_id), logs=self.logs)
         elif isinstance(result, APRProofSubsumeResult):
             self.kcfg.create_cover(result.node_id, self.target, csubst=result.csubst)
-            _LOGGER.info(f'Subsumed into target node {self.id}: {shorten_hashes((result.node_id, self.target))}')
         elif isinstance(result, APRProofTerminalResult):
             self._terminal.add(result.node_id)
         elif isinstance(result, APRProofBoundedResult):
@@ -217,6 +215,18 @@ class APRProof(Proof, KCFGExploration):
 
     def set_exec_time(self, exec_time: float) -> None:
         self._exec_time = exec_time
+
+    def formatted_exec_time(self) -> str:
+        exec_time = round(self.exec_time)
+        h, remainder = divmod(exec_time, 3600)
+        m, s = divmod(remainder, 60)
+        formatted = []
+        if h:
+            formatted.append(f'{h}h')
+        if m or h:
+            formatted.append(f'{m}m')
+        formatted.append(f'{s}s')
+        return ' '.join(formatted)
 
     @staticmethod
     def _make_module_name(proof_id: str) -> str:
@@ -444,7 +454,7 @@ class APRProof(Proof, KCFGExploration):
                     self.bmc_depth,
                     len(self._bounded),
                     len(self.subproof_ids),
-                    round(self._exec_time),
+                    self.formatted_exec_time(),
                 ),
                 *subproofs_summaries,
             ]
@@ -746,16 +756,23 @@ class APRProver(Prover):
                 _LOGGER.warning(f'Bounded node {self.proof.id}: {curr_node.id} at bmc depth {self.proof.bmc_depth}')
                 return [APRProofBoundedResult(curr_node.id)]
 
+        # Terminal checks for current node and target node
         is_terminal = self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm)
-        target_is_terminal = (self.proof.target in self.proof._terminal,)
+        target_is_terminal = self.proof.target in self.proof._terminal
 
-        if target_is_terminal and self.always_check_subsumption:
+        terminal_result = [APRProofTerminalResult(node_id=curr_node.id)] if is_terminal else []
+
+        # Subsumption should be checked if and only if the target node
+        # and the current node are either both terminal or both not terminal
+        if is_terminal == target_is_terminal:
             csubst = self._check_subsume(curr_node)
             if csubst is not None:
-                return [APRProofSubsumeResult(csubst=csubst, node_id=curr_node.id)]
+                # Information about the subsumed node being terminal must be returned
+                # so that the set of terminal nodes is correctly updated
+                return terminal_result + [APRProofSubsumeResult(csubst=csubst, node_id=curr_node.id)]
 
         if is_terminal:
-            return [APRProofTerminalResult(node_id=curr_node.id)]
+            return terminal_result
 
         module_name = self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
 
@@ -770,7 +787,7 @@ class APRProver(Prover):
         )
         return [APRProofExtendResult(node_id=curr_node.id, extend_result=extend_result)]
 
-    def failure_info(self) -> APRFailureInfo:
+    def failure_info(self) -> FailureInfo:
         return APRFailureInfo.from_proof(self.proof, self.kcfg_explore, counterexample_info=self.counterexample_info)
 
 
@@ -789,7 +806,7 @@ class APRSummary(ProofSummary):
     bmc_depth: int | None
     bounded: int
     subproofs: int
-    exec_time: float
+    formatted_exec_time: str
 
     @property
     def lines(self) -> list[str]:
@@ -805,7 +822,7 @@ class APRSummary(ProofSummary):
             f'    terminal: {self.terminal}',
             f'    refuted: {self.refuted}',
             f'    bounded: {self.bounded}',
-            f'    execution time: {self.exec_time // 3600}h {(self.exec_time % 3600) // 60}m {self.exec_time % 60}s',
+            f'    execution time: {self.formatted_exec_time}',
         ]
         if self.bmc_depth is not None:
             _lines.append(f'    bmc depth: {self.bmc_depth}')
@@ -814,7 +831,7 @@ class APRSummary(ProofSummary):
 
 
 @dataclass(frozen=True)
-class APRFailureInfo:
+class APRFailureInfo(FailureInfo):
     pending_nodes: frozenset[int]
     failing_nodes: frozenset[int]
     path_conditions: FrozenDict[int, str]
