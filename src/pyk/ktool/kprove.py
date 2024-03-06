@@ -287,8 +287,19 @@ class KProve(KPrint):
             _LOGGER.info(f'Proof pending: {proof.id}')
         return proof
 
-    def prove_rpc(self, spec_file: Path, spec_module_name: str) -> list[Proof]:
-        all_claims = self.get_claims(spec_file, spec_module_name=spec_module_name)
+    def prove_rpc(
+        self,
+        spec_file: Path,
+        spec_module_name: str,
+        claim_labels: Iterable[str] | None = None,
+        exclude_claim_labels: Iterable[str] | None = None,
+    ) -> list[Proof]:
+        all_claims = self.get_claims(
+            spec_file,
+            spec_module_name=spec_module_name,
+            claim_labels=claim_labels,
+            exclude_claim_labels=exclude_claim_labels,
+        )
         if all_claims is None:
             raise ValueError(f'No claims found in file: {spec_file}')
         return [self.prove_claim_rpc(claim) for claim in all_claims]
