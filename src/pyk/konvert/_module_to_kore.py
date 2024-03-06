@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..kast import EMPTY_ATT, Atts, KInner
+from ..kast.att import Format
 from ..kast.inner import KApply, KRewrite, KSort
 from ..kast.manip import extract_lhs, extract_rhs
 from ..kast.outer import KDefinition, KNonTerminal, KProduction, KRule, KSyntaxSort, KTerminal
@@ -160,6 +161,9 @@ def _parse_special_att_value(key: AttKey, value: Any) -> tuple[tuple[Sort, ...],
     if key == Atts.SOURCE:
         assert isinstance(value, Path)
         return (), (String(f'Source({value})'),)
+    if key == Atts.FORMAT:
+        assert isinstance(value, Format)
+        return (), (String(value.unparse()),)
     if key == Atts.ELEMENT:
         # TODO avoid special casing by pre-processing the attribute into a KApply
         # This should be handled by the frontend
