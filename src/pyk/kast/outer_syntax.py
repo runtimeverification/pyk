@@ -141,18 +141,18 @@ class NonTerminal(ProductionItem):
 
 
 @final
+@dataclass
+class Lexical(ProductionLike):
+    regex: str
+    att: Att = field(default=EMPTY_ATT)
+
+
+@final
 @dataclass(frozen=True)
 class UserList(ProductionLike):
     sort: str
     sep: str
     non_empty: bool = field(default=False)
-    att: Att = field(default=EMPTY_ATT)
-
-
-@final
-@dataclass
-class Lexical(ProductionLike):
-    regex: str
     att: Att = field(default=EMPTY_ATT)
 
 
