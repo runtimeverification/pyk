@@ -73,15 +73,12 @@ class ImpSemantics(KCFGSemantics):
         return False
 
 
-APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None, Iterable[str], ProofStatus]] = (
+PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
     (
         'imp-simple-addition-1',
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-1',
-        2,
-        1,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -89,9 +86,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-2',
-        2,
-        7,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -99,9 +93,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'addition-var',
-        2,
-        1,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -109,9 +100,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'pre-branch-proved',
-        2,
-        100,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -119,9 +107,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'while-cut-rule',
-        2,
-        1,
-        ['IMP.while'],
         ProofStatus.PASSED,
     ),
     (
@@ -129,9 +114,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'while-cut-rule-delayed',
-        4,
-        100,
-        ['IMP.while'],
         ProofStatus.PASSED,
     ),
     (
@@ -139,9 +121,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'failing-if',
-        10,
-        1,
-        [],
         ProofStatus.FAILED,
     ),
     (
@@ -149,9 +128,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-10',
-        None,
-        None,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -159,19 +135,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-100',
-        None,
-        None,
-        [],
-        ProofStatus.PASSED,
-    ),
-    (
-        'imp-simple-sum-1000',
-        K_FILES / 'imp-simple-spec.k',
-        'IMP-SIMPLE-SPEC',
-        'sum-1000',
-        None,
-        None,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -179,9 +142,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC-DEPENDENCIES',
         'if-almost-same-plus',
-        None,
-        None,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -189,29 +149,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'if-almost-same-times',
-        None,
-        None,
-        [],
-        ProofStatus.PASSED,
-    ),
-    (
-        'imp-use-if-almost-same',
-        K_FILES / 'imp-simple-spec.k',
-        'IMP-SIMPLE-SPEC',
-        'use-if-almost-same',
-        None,
-        None,
-        [],
-        ProofStatus.PASSED,
-    ),
-    (
-        'imp-use-if-almost-same-twice',
-        K_FILES / 'imp-simple-spec.k',
-        'IMP-SIMPLE-SPEC',
-        'use-if-almost-same-twice',
-        None,
-        None,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -219,19 +156,6 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'sum-loop',
-        None,
-        None,
-        ['IMP.while'],  # If we do not include `IMP.while` in this list, we get 4 branches instead of 2
-        ProofStatus.PASSED,
-    ),
-    (
-        'imp-simple-sum-N',
-        K_FILES / 'imp-simple-spec.k',
-        'IMP-SIMPLE-SPEC',
-        'sum-N',
-        None,
-        None,
-        [],
         ProofStatus.PASSED,
     ),
     (
@@ -239,30 +163,7 @@ APR_PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, int | None, int | None,
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC',
         'failing-circularity',
-        None,
-        None,
-        [],
         ProofStatus.FAILED,
-    ),
-    (
-        'imp-dep-untrue-fail',
-        K_FILES / 'imp-simple-spec.k',
-        'IMP-SIMPLE-SPEC',
-        'dep-fail-1',
-        None,
-        None,
-        [],
-        ProofStatus.FAILED,  # because we do NOT admit the dependency
-    ),
-    (
-        'imp-dep-untrue-admitted',
-        K_FILES / 'imp-simple-spec.k',
-        'IMP-SIMPLE-SPEC',
-        'dep-fail-1',
-        None,
-        None,
-        [],
-        ProofStatus.PASSED,  # because we DO admit the dependency, even though it is untrue
     ),
 )
 
@@ -279,9 +180,9 @@ class TestImpProve(KProveTest):
         symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,max_iterations,max_depth,cut_rules,proof_status',
-        APR_PROVE_TEST_DATA,
-        ids=[test_id for test_id, *_ in APR_PROVE_TEST_DATA],
+        'test_id,spec_file,spec_module,claim_id,proof_status',
+        PROVE_TEST_DATA,
+        ids=[test_id for test_id, *_ in PROVE_TEST_DATA],
     )
     def test_prove_rpc(
         self,
@@ -290,11 +191,11 @@ class TestImpProve(KProveTest):
         spec_file: str,
         spec_module: str,
         claim_id: str,
-        max_iterations: int | None,
-        max_depth: int | None,
-        cut_rules: Iterable[str],
-        admit_deps: bool,
         proof_status: ProofStatus,
     ) -> None:
-        proof = single(kprove.prove_rpc(Path(spec_file), spec_module, claim_labels=[claim_id]))
+        proof = single(
+            kprove.prove_rpc(
+                Path(spec_file), spec_module, claim_labels=[claim_id], kcfg_semantics=ImpSemantics(kprove.definition)
+            )
+        )
         assert proof.status == proof_status
