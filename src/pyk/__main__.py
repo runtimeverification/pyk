@@ -5,8 +5,8 @@ import sys
 from typing import TYPE_CHECKING
 
 from .cli.args import LoggingOptions
-from .cli.cli import (
-    CLI,
+from .cli.cli import CLI
+from .cli.pyk import (
     CoverageCommand,
     GraphImportsCommand,
     JsonToKoreCommand,
