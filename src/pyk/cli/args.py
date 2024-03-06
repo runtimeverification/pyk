@@ -74,7 +74,7 @@ class OutputFileOptions(Options):
         parser.add_argument('--output-file', type=FileType('w'))
 
 
-class DefinitionOptions(LoggingOptions):
+class DefinitionOptions(Options):
     definition_dir: Path
 
     @staticmethod

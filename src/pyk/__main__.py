@@ -4,6 +4,7 @@ import logging
 import sys
 from typing import TYPE_CHECKING
 
+from .cli.args import LoggingOptions
 from .cli.cli import (
     CLI,
     CoverageCommand,
@@ -42,14 +43,10 @@ def main() -> None:
             RPCPrintCommand,
         ]
     )
-
-    cli_parser = cli.create_argument_parser()
-    args = cli_parser.parse_args()
-
-    command = cli.generate_command({key: val for (key, val) in vars(args).items() if val is not None})
-    command.exec()
-
+    command = cli.get_command()
+    assert isinstance(command, LoggingOptions)
     logging.basicConfig(level=loglevel(command), format=LOG_FORMAT)
+    command.exec()
 
 
 if __name__ == '__main__':

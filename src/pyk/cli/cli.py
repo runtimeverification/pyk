@@ -10,6 +10,7 @@ from typing import IO, TYPE_CHECKING, Any
 
 from graphviz import Digraph
 
+from pyk.cli.args import Options
 from pyk.coverage import get_rule_by_id, strip_coverage_logger
 from pyk.cterm import CTerm
 from pyk.kast.inner import KInner
@@ -38,8 +39,6 @@ if TYPE_CHECKING:
     from argparse import _SubParsersAction
     from collections.abc import Iterable
 
-    from pyk.cli.args import Options
-
 
 class PrintInput(Enum):
     KORE_JSON = 'kore-json'
@@ -48,17 +47,22 @@ class PrintInput(Enum):
 
 class CLI:
     commands: list[type[Command]]
+    top_level_args: Iterable[type[Options]]
 
     # Input a list of all Command types to be used
-    def __init__(self, commands: Iterable[type[Command]]):
+    def __init__(self, commands: Iterable[type[Command]], top_level_args: Iterable[type[Options]] = ()):
         self.commands = list(commands)
+        self.top_level_args = top_level_args
 
     # Return an instance of the correct Options subclass by matching its name with the requested command
     def generate_command(self, args: dict[str, Any]) -> Command:
         command = args['command'].lower()
         for cmd_type in self.commands:
             if cmd_type.name() == command:
-                return cmd_type(args)
+                if issubclass(cmd_type, Options):
+                    return cmd_type(args)
+                else:
+                    return cmd_type()
         raise ValueError(f'Unrecognized command: {command}')
 
     # Generate the parsers for all commands
@@ -67,16 +71,25 @@ class CLI:
             base = cmd_type.parser(base)
         return base
 
-    def create_argument_parser(self, top_level_args: Iterable[type[Options]] = ()) -> ArgumentParser:
-        pyk_args = ArgumentParser(parents=[tla.all_args() for tla in top_level_args])
+    def create_argument_parser(self) -> ArgumentParser:
+        pyk_args = ArgumentParser(parents=[tla.all_args() for tla in self.top_level_args])
         pyk_args_command = pyk_args.add_subparsers(dest='command', required=True)
 
         pyk_args_command = self.add_parsers(pyk_args_command)
 
         return pyk_args
 
+    def get_command(self) -> Command:
+        parser = self.create_argument_parser()
+        args = parser.parse_args()
+        return self.generate_command({key: val for (key, val) in vars(args).items() if val is not None})
 
-class Command(LoggingOptions):
+    def get_and_exec_command(self) -> None:
+        cmd = self.get_command()
+        cmd.exec()
+
+
+class Command:
     @staticmethod
     @abstractmethod
     def name() -> str:
@@ -93,15 +106,16 @@ class Command(LoggingOptions):
 
     @classmethod
     def parser(cls, base: _SubParsersAction) -> _SubParsersAction:
+        all_args = [cls.all_args()] if issubclass(cls, Options) else []
         base.add_parser(
             name=cls.name(),
             help=cls.help_str(),
-            parents=[cls.all_args()],
+            parents=all_args,
         )
         return base
 
 
-class JsonToKoreCommand(Command):
+class JsonToKoreCommand(Command, LoggingOptions):
     @staticmethod
     def name() -> str:
         return 'json-to-kore'
@@ -117,7 +131,7 @@ class JsonToKoreCommand(Command):
         sys.stdout.write('\n')
 
 
-class KoreToJsonCommand(Command):
+class KoreToJsonCommand(Command, LoggingOptions):
     @staticmethod
     def name() -> str:
         return 'kore-to-json'
@@ -132,7 +146,7 @@ class KoreToJsonCommand(Command):
         print(kore.json)
 
 
-class CoverageCommand(Command, DefinitionOptions, OutputFileOptions):
+class CoverageCommand(Command, DefinitionOptions, OutputFileOptions, LoggingOptions):
     coverage_file: IO[Any]
 
     @staticmethod
@@ -160,7 +174,7 @@ class CoverageCommand(Command, DefinitionOptions, OutputFileOptions):
         _LOGGER.info(f'Wrote file: {self.output_file.name}')
 
 
-class GraphImportsCommand(Command, DefinitionOptions):
+class GraphImportsCommand(Command, DefinitionOptions, LoggingOptions):
     @staticmethod
     def name() -> str:
         return 'graph-imports'
@@ -184,7 +198,7 @@ class GraphImportsCommand(Command, DefinitionOptions):
         _LOGGER.info(f'Wrote file: {graph_file}')
 
 
-class RPCKastCommand(Command, OutputFileOptions):
+class RPCKastCommand(Command, OutputFileOptions, LoggingOptions):
     reference_request_file: IO[Any]
     response_file: IO[Any]
 
@@ -231,7 +245,7 @@ class RPCKastCommand(Command, OutputFileOptions):
         self.output_file.write(json.dumps(request))
 
 
-class RPCPrintCommand(Command, DefinitionOptions, OutputFileOptions):
+class RPCPrintCommand(Command, DefinitionOptions, OutputFileOptions, LoggingOptions):
     input_file: IO[Any]
 
     @staticmethod
@@ -332,7 +346,7 @@ class RPCPrintCommand(Command, DefinitionOptions, OutputFileOptions):
             exit(1)
 
 
-class PrintCommand(Command, DefinitionOptions, OutputFileOptions, DisplayOptions):
+class PrintCommand(Command, DefinitionOptions, OutputFileOptions, DisplayOptions, LoggingOptions):
     term: IO[Any]
     input: PrintInput
     minimize: bool
@@ -403,7 +417,7 @@ class PrintCommand(Command, DefinitionOptions, OutputFileOptions, DisplayOptions
             _LOGGER.info(f'Wrote file: {self.output_file.name}')
 
 
-class ProveCommand(Command, DefinitionOptions, OutputFileOptions):
+class ProveCommand(Command, DefinitionOptions, OutputFileOptions, LoggingOptions):
     main_file: Path
     spec_file: Path
     spec_module: str

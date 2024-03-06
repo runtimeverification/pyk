@@ -4,7 +4,8 @@ import fnmatch
 import logging
 from typing import TYPE_CHECKING, Any
 
-from pyk.cli.cli import CLI, Command, LoggingOptions
+from pyk.cli.args import LoggingOptions, Options
+from pyk.cli.cli import CLI, Command
 
 from ..kdist import kdist, target_ids
 
@@ -18,12 +19,10 @@ _LOG_FORMAT: Final = '%(levelname)s %(asctime)s %(name)s - %(message)s'
 
 
 def main() -> None:
-    kdist_cli = CLI({KDistBuildCommand, KDistCleanCommand, KDistWhichCommand, KDistListCommand})
-    parser = kdist_cli.create_argument_parser(top_level_args=[LoggingOptions])
-    parser.parse_args()
-    args = parser.parse_args()
-    command = kdist_cli.generate_command({key: val for (key, val) in vars(args).items() if val is not None})
-    command.exec()
+    kdist_cli = CLI(
+        {KDistBuildCommand, KDistCleanCommand, KDistWhichCommand, KDistListCommand}, top_level_args=[LoggingOptions]
+    )
+    kdist_cli.get_and_exec_command()
 
 
 def _process_targets(targets: list[str]) -> list[str]:
@@ -48,7 +47,7 @@ def _process_args(args: list[str]) -> dict[str, str]:
     return res
 
 
-class KDistBuildCommand(Command):
+class KDistBuildCommand(Command, LoggingOptions):
     targets: list[str]
     force: bool
     jobs: int
@@ -95,7 +94,7 @@ class KDistBuildCommand(Command):
         )
 
 
-class KDistCleanCommand(Command):
+class KDistCleanCommand(Command, Options):
     target: str
 
     @staticmethod
@@ -120,7 +119,7 @@ class KDistCleanCommand(Command):
         print(res)
 
 
-class KDistWhichCommand(Command):
+class KDistWhichCommand(Command, Options):
     target: str
 
     @staticmethod
@@ -145,7 +144,7 @@ class KDistWhichCommand(Command):
         print(res)
 
 
-class KDistListCommand(Command):
+class KDistListCommand(Command, Options):
     @staticmethod
     def name() -> str:
         return 'list'
