@@ -142,9 +142,8 @@ class NonTerminal(ProductionItem):
 
 @final
 @dataclass
-class Lexical(ProductionLike):
+class Lexical(ProductionItem):
     regex: str
-    att: Att = field(default=EMPTY_ATT)
 
 
 @final
