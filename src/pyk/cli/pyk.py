@@ -360,6 +360,11 @@ class ProveCommand(Command, DefinitionOptions, OutputFileOptions, LoggingOptions
     def help_str() -> str:
         return 'Prove an input specification (using kprovex).'
 
+    def default() -> dict[str, Any]:
+        return {
+            'k_args': [],
+        }
+
     @staticmethod
     def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('main_file', type=str, help='Main file used for kompilation.')
