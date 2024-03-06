@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, NamedTuple
 
 from ..cterm import CSubst, CTerm
@@ -22,7 +23,7 @@ from ..prelude.k import GENERATED_TOP_CELL
 from ..prelude.ml import is_top, mlEquals, mlTop
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Iterator
     from pathlib import Path
     from typing import Final
 
@@ -242,20 +243,8 @@ class CTermSymbolic:
         return cterm.add_constraint(kast_simplified)
 
 
+@contextmanager
 def cterm_symbolic(
-    definition: KDefinition,
-    kompiled_kore: KompiledKore,
-    port: int,
-    id: str | None = None,
-    bug_report: BugReport | None = None,
-    dispatch: dict[str, list[tuple[str, int, TransportType]]] | None = None,
-    trace_rewrites: bool = False,
-) -> CTermSymbolic:
-    with KoreClient('localhost', port, bug_report=bug_report, bug_report_id=id, dispatch=dispatch) as client:
-        return CTermSymbolic(client, definition, kompiled_kore, trace_rewrites=trace_rewrites)
-
-
-def cterm_symbolic_with_server(
     definition: KDefinition,
     kompiled_kore: KompiledKore,
     definition_dir: Path,
@@ -277,7 +266,7 @@ def cterm_symbolic_with_server(
     fallback_on: Iterable[FallbackReason] | None = None,
     interim_simplification: int | None = None,
     no_post_exec_simplify: bool = False,
-) -> CTermSymbolic:
+) -> Iterator[CTermSymbolic]:
     if start_server:
         # Old way of handling KoreServer, to be removed
         with kore_server(
@@ -297,14 +286,8 @@ def cterm_symbolic_with_server(
             interim_simplification=interim_simplification,
             no_post_exec_simplify=no_post_exec_simplify,
         ) as server:
-            return cterm_symbolic(
-                definition,
-                kompiled_kore,
-                server.port,
-                id=id,
-                bug_report=bug_report,
-                trace_rewrites=trace_rewrites,
-            )
+            with KoreClient('localhost', server.port, bug_report=bug_report, bug_report_id=id) as client:
+                yield CTermSymbolic(client, definition, kompiled_kore, trace_rewrites=trace_rewrites)
     else:
         if port is None:
             raise ValueError('Missing port with start_server=False')
@@ -319,12 +302,5 @@ def cterm_symbolic_with_server(
                     ('localhost', port, TransportType.SINGLE_SOCKET),
                 ],
             }
-        return cterm_symbolic(
-            definition,
-            kompiled_kore,
-            port,
-            id=id,
-            bug_report=bug_report,
-            dispatch=dispatch,
-            trace_rewrites=trace_rewrites,
-        )
+        with KoreClient('localhost', port, bug_report=bug_report, bug_report_id=id, dispatch=dispatch) as client:
+            yield CTermSymbolic(client, definition, kompiled_kore, trace_rewrites=trace_rewrites)

@@ -6,14 +6,13 @@ import os
 import re
 from contextlib import contextmanager
 from enum import Enum
-from functools import cached_property
 from itertools import chain
 from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from ..cli.utils import check_dir_path, check_file_path
-from ..cterm import CTerm, cterm_symbolic_with_server
+from ..cterm import CTerm, cterm_symbolic
 from ..kast import Atts, kast_term
 from ..kast.inner import KInner
 from ..kast.manip import extract_lhs, flatten_label
@@ -33,6 +32,7 @@ if TYPE_CHECKING:
 
     from ..kast.outer import KClaim, KRule, KRuleLike
     from ..kast.pretty import SymbolTable
+    from ..kcfg.semantics import KCFGSemantics
     from ..proof import Proof, Prover
     from ..utils import BugReport
 
@@ -167,6 +167,7 @@ class KProve(KPrint):
     main_file: Path | None
     prover: list[str]
     prover_args: list[str]
+    _kcfg_explore: KCFGExplore | None
 
     def __init__(
         self,
@@ -189,11 +190,7 @@ class KProve(KPrint):
         self.main_file = main_file
         self.prover = [command]
         self.prover_args = []
-
-    @cached_property
-    def kcfg_explore(self) -> KCFGExplore:
-        cterm_symbolic = cterm_symbolic_with_server(self.definition, self.kompiled_kore, self.definition_dir)
-        return KCFGExplore(cterm_symbolic)
+        self._kcfg_explore = None
 
     def prove(
         self,
@@ -265,27 +262,29 @@ class KProve(KPrint):
                 depth=depth,
             )
 
-    def prove_claim_rpc(self, claim: KClaim) -> Proof:
-        proof: Proof
-        prover: Prover
-        lhs_top = extract_lhs(claim.body)
-        if (
-            type(lhs_top) is KApply
-            and self.definition.production_for_klabel(lhs_top.label) in self.definition.functions
-        ):
-            proof = EqualityProof.from_claim(claim, self.definition)
-            prover = ImpliesProver(proof, self.kcfg_explore)
-        else:
-            proof = APRProof.from_claim(self.definition, claim, {})
-            prover = APRProver(proof, self.kcfg_explore)
-        prover.advance_proof()
-        if proof.passed:
-            _LOGGER.info(f'Proof passed: {proof.id}')
-        elif proof.failed:
-            _LOGGER.info(f'Proof failed: {proof.id}')
-        else:
-            _LOGGER.info(f'Proof pending: {proof.id}')
-        return proof
+    def prove_claim_rpc(self, claim: KClaim, kcfg_semantics: KCFGSemantics | None = None) -> Proof:
+        with cterm_symbolic(self.definition, self.kompiled_kore, self.definition_dir) as cts:
+            kcfg_explore = KCFGExplore(cts, kcfg_semantics=kcfg_semantics)
+            proof: Proof
+            prover: Prover
+            lhs_top = extract_lhs(claim.body)
+            if (
+                type(lhs_top) is KApply
+                and self.definition.production_for_klabel(lhs_top.label) in self.definition.functions
+            ):
+                proof = EqualityProof.from_claim(claim, self.definition)
+                prover = ImpliesProver(proof, kcfg_explore)
+            else:
+                proof = APRProof.from_claim(self.definition, claim, {})
+                prover = APRProver(proof, kcfg_explore)
+            prover.advance_proof()
+            if proof.passed:
+                _LOGGER.info(f'Proof passed: {proof.id}')
+            elif proof.failed:
+                _LOGGER.info(f'Proof failed: {proof.id}')
+            else:
+                _LOGGER.info(f'Proof pending: {proof.id}')
+            return proof
 
     def prove_rpc(
         self,
@@ -293,6 +292,7 @@ class KProve(KPrint):
         spec_module_name: str,
         claim_labels: Iterable[str] | None = None,
         exclude_claim_labels: Iterable[str] | None = None,
+        kcfg_semantics: KCFGSemantics | None = None,
     ) -> list[Proof]:
         all_claims = self.get_claims(
             spec_file,
@@ -302,7 +302,7 @@ class KProve(KPrint):
         )
         if all_claims is None:
             raise ValueError(f'No claims found in file: {spec_file}')
-        return [self.prove_claim_rpc(claim) for claim in all_claims]
+        return [self.prove_claim_rpc(claim, kcfg_semantics=kcfg_semantics) for claim in all_claims]
 
     def get_claim_modules(
         self,
