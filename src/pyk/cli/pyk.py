@@ -360,6 +360,7 @@ class ProveCommand(Command, DefinitionOptions, OutputFileOptions, LoggingOptions
     def help_str() -> str:
         return 'Prove an input specification (using kprovex).'
 
+    @staticmethod
     def default() -> dict[str, Any]:
         return {
             'k_args': [],
