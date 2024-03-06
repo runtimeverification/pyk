@@ -4,8 +4,9 @@ import fnmatch
 import logging
 from typing import TYPE_CHECKING, Any
 
-from pyk.cli.args import LoggingOptions, Options
+from pyk.cli.args import LoggingOptions
 from pyk.cli.cli import CLI, Command
+from pyk.cli.utils import loglevel
 
 from ..kdist import kdist, target_ids
 
@@ -22,7 +23,11 @@ def main() -> None:
     kdist_cli = CLI(
         {KDistBuildCommand, KDistCleanCommand, KDistWhichCommand, KDistListCommand}, top_level_args=[LoggingOptions]
     )
-    kdist_cli.get_and_exec_command()
+    cmd = kdist_cli.get_command()
+    assert isinstance(cmd, LoggingOptions)
+    print(vars(cmd))
+    logging.basicConfig(level=loglevel(cmd), format=_LOG_FORMAT)
+    cmd.exec()
 
 
 def _process_targets(targets: list[str]) -> list[str]:
@@ -66,7 +71,7 @@ class KDistBuildCommand(Command, LoggingOptions):
         return {
             'force': False,
             'jobs': 1,
-            'targets': [],
+            'targets': ['*'],
             'args': [],
         }
 
@@ -85,6 +90,8 @@ class KDistBuildCommand(Command, LoggingOptions):
         parser.add_argument('-j', '--jobs', metavar='N', type=int, help='maximal number of build jobs')
 
     def exec(self) -> None:
+        print(self.verbose)
+        print(self.debug)
         kdist.build(
             target_ids=_process_targets(self.targets),
             args=_process_args(self.args),
@@ -94,7 +101,7 @@ class KDistBuildCommand(Command, LoggingOptions):
         )
 
 
-class KDistCleanCommand(Command, Options):
+class KDistCleanCommand(Command, LoggingOptions):
     target: str
 
     @staticmethod
@@ -104,6 +111,12 @@ class KDistCleanCommand(Command, Options):
     @staticmethod
     def help_str() -> str:
         return 'clean targets'
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'target': None,
+        }
 
     @staticmethod
     def update_args(parser: ArgumentParser) -> None:
@@ -119,7 +132,7 @@ class KDistCleanCommand(Command, Options):
         print(res)
 
 
-class KDistWhichCommand(Command, Options):
+class KDistWhichCommand(Command, LoggingOptions):
     target: str
 
     @staticmethod
@@ -129,6 +142,12 @@ class KDistWhichCommand(Command, Options):
     @staticmethod
     def help_str() -> str:
         return 'print target location'
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'target': None,
+        }
 
     @staticmethod
     def update_args(parser: ArgumentParser) -> None:
@@ -144,7 +163,7 @@ class KDistWhichCommand(Command, Options):
         print(res)
 
 
-class KDistListCommand(Command, Options):
+class KDistListCommand(Command, LoggingOptions):
     @staticmethod
     def name() -> str:
         return 'list'

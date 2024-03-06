@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from argparse import ArgumentParser
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
 from pyk.cli.args import Options
 
 if TYPE_CHECKING:
     from argparse import _SubParsersAction
-    from collections.abc import Iterable
 
 
 class CLI:
@@ -48,7 +48,12 @@ class CLI:
     def get_command(self) -> Command:
         parser = self.create_argument_parser()
         args = parser.parse_args()
-        return self.generate_command({key: val for (key, val) in vars(args).items() if val is not None})
+        stripped_args = {
+            key: val
+            for (key, val) in vars(args).items()
+            if val is not None and not (isinstance(val, Iterable) and not val)
+        }
+        return self.generate_command(stripped_args)
 
     def get_and_exec_command(self) -> None:
         cmd = self.get_command()
