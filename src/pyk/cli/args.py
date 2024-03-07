@@ -201,7 +201,7 @@ class KompileOptions(Options):
             'o1': False,
             'o2': False,
             'o3': False,
-            'ccopt': [],
+            'ccopts': [],
         }
 
     @staticmethod
