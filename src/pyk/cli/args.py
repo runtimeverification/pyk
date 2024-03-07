@@ -70,7 +70,9 @@ class DisplayOptions(Options):
     @staticmethod
     def update_args(parser: ArgumentParser) -> None:
         parser.add_argument('--minimize', dest='minimize', default=None, action='store_true', help='Minimize output.')
-        parser.add_argument('--no-minimize', dest='minimize', default=None, action='store_false', help='Do not minimize output.')
+        parser.add_argument(
+            '--no-minimize', dest='minimize', default=None, action='store_false', help='Do not minimize output.'
+        )
 
 
 class KDefinitionOptions(Options):
@@ -190,7 +192,11 @@ class KompileOptions(Options):
             help='Emit JSON definition after compilation.',
         )
         parser.add_argument(
-            '--no-emit-json', dest='emit_json', default=None, action='store_false', help='Do not JSON definition after compilation.'
+            '--no-emit-json',
+            dest='emit_json',
+            default=None,
+            action='store_false',
+            help='Do not JSON definition after compilation.',
         )
         parser.add_argument(
             '-ccopt',
