@@ -80,6 +80,7 @@ class APRProof(Proof, KCFGExploration):
     circularity: bool
     _exec_time: float
     error_info: Exception | None
+    prior_loops_cache: list[set[NodeIdLike]]
 
     def __init__(
         self,
@@ -98,6 +99,7 @@ class APRProof(Proof, KCFGExploration):
         admitted: bool = False,
         _exec_time: float = 0,
         error_info: Exception | None = None,
+        prior_loops_cache: list[set[NodeIdLike]] | None = None,
     ):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
@@ -110,6 +112,7 @@ class APRProof(Proof, KCFGExploration):
         self.logs = logs
         self.circularity = circularity
         self.node_refutations = {}
+        self.prior_loops_cache = prior_loops_cache if prior_loops_cache is not None else []
         self.kcfg._kcfg_store = KCFGStore(self.proof_subdir / 'kcfg') if self.proof_subdir else None
         self._exec_time = _exec_time
         self.error_info = error_info
@@ -480,6 +483,9 @@ class APRProof(Proof, KCFGExploration):
         node_refutations = {
             kcfg._resolve(int(node_id)): proof_id for node_id, proof_id in proof_dict['node_refutations'].items()
         }
+        prior_loops_cache = (
+            [set(same_loops) for same_loops in proof_dict['loops_cache']] if 'loops_cache' in proof_dict.keys() else []
+        )
 
         return APRProof(
             id=id,
@@ -495,6 +501,7 @@ class APRProof(Proof, KCFGExploration):
             proof_dir=proof_dir,
             subproof_ids=subproof_ids,
             node_refutations=node_refutations,
+            prior_loops_cache=prior_loops_cache,
             _exec_time=exec_time,
         )
 
@@ -525,6 +532,10 @@ class APRProof(Proof, KCFGExploration):
         dct['bounded'] = sorted(self._bounded)
         if self.bmc_depth is not None:
             dct['bmc_depth'] = self.bmc_depth
+
+        dct['loops_cache'] = [
+            [self.kcfg._resolve(node_id) for node_id in same_loops] for same_loops in self.prior_loops_cache
+        ]
 
         proof_json.write_text(json.dumps(dct))
         _LOGGER.info(f'Wrote proof data for {self.id}: {proof_json}')
@@ -710,6 +721,25 @@ class APRProver(Prover):
         return csubst
 
     def step_proof(self) -> Iterable[StepResult]:
+        def check_cache(node_1: NodeIdLike, node_2: NodeIdLike) -> bool:
+            for eq_set in self.proof.prior_loops_cache:
+                if node_1 in eq_set and node_2 in eq_set:
+                    return True
+            return False
+
+        def extend_cache(node: NodeIdLike, new_node: NodeIdLike) -> None:
+            for eq_set in self.proof.prior_loops_cache:
+                if node in eq_set:
+                    eq_set.add(new_node)
+                    return
+            self.proof.prior_loops_cache.append({node, new_node})
+
+        def retrieve_from_cache(node: NodeIdLike) -> list[NodeIdLike]:
+            for eq_set in self.proof.prior_loops_cache:
+                if node in eq_set:
+                    return [a_node for a_node in sorted(eq_set, reverse=True) if int(a_node) < int(node)]
+            return []
+
         if not self.proof.pending:
             return []
         curr_node = self.proof.pending[0]
@@ -717,18 +747,17 @@ class APRProver(Prover):
         if self.proof.bmc_depth is not None and curr_node.id not in self._checked_for_bounded:
             _LOGGER.info(f'Checking bmc depth for node {self.proof.id}: {curr_node.id}')
             self._checked_for_bounded.add(curr_node.id)
-            _prior_loops = [
-                succ.source.id
-                for succ in self.proof.shortest_path_to(curr_node.id)
-                if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, curr_node.cterm)
-            ]
-            prior_loops: list[NodeIdLike] = []
-            for _pl in _prior_loops:
-                if not (
-                    self.proof.kcfg.zero_depth_between(_pl, curr_node.id)
-                    or any(self.proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+
+            for succ in self.proof.shortest_path_to(curr_node.id):
+                if (
+                    not check_cache(curr_node.id, succ.source.id)
+                    and self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, curr_node.cterm)
+                    and not self.proof.kcfg.zero_depth_between(succ.source.id, curr_node.id)
                 ):
-                    prior_loops.append(_pl)
+                    extend_cache(succ.source.id, curr_node.id)
+
+            prior_loops = retrieve_from_cache(curr_node.id)
+
             _LOGGER.info(f'Prior loop heads for node {self.proof.id}: {(curr_node.id, prior_loops)}')
             if len(prior_loops) > self.proof.bmc_depth:
                 _LOGGER.warning(f'Bounded node {self.proof.id}: {curr_node.id} at bmc depth {self.proof.bmc_depth}')
