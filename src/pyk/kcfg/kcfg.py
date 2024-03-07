@@ -332,7 +332,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _lock: RLock
 
     _kcfg_store: KCFGStore | None
-    _shortest_paths_cache: dict[tuple[NodeIdLike, NodeIdLike], tuple[Successor, ...]]
 
     def __init__(self, cfg_dir: Path | None = None, optimize_memory: bool = True) -> None:
         self._node_id = 1
@@ -352,7 +351,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._stuck = set()
         self._aliases = {}
         self._lock = RLock()
-        self._shortest_paths_cache = {}
         if cfg_dir is not None:
             self._kcfg_store = KCFGStore(cfg_dir)
 
@@ -909,16 +907,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def shortest_path_between(
         self, source_node_id: NodeIdLike, target_node_id: NodeIdLike
     ) -> tuple[Successor, ...] | None:
-        if (source_node_id, target_node_id) in self._shortest_paths_cache.keys():
-            return self._shortest_paths_cache[(source_node_id, target_node_id)]
         paths = self.paths_between(source_node_id, target_node_id)
         if len(paths) == 0:
             return None
-
-        self._shortest_paths_cache[(source_node_id, target_node_id)] = sorted(
-            paths, key=(lambda path: KCFG.path_length(path))
-        )[0]
-        return self._shortest_paths_cache[(source_node_id, target_node_id)]
+        return sorted(paths, key=(lambda path: KCFG.path_length(path)))[0]
 
     def shortest_distance_between(self, node_1_id: NodeIdLike, node_2_id: NodeIdLike) -> int | None:
         path_1 = self.shortest_path_between(node_1_id, node_2_id)
