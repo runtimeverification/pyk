@@ -80,7 +80,7 @@ class APRProof(Proof, KCFGExploration):
     circularity: bool
     _exec_time: float
     error_info: Exception | None
-    prior_loops_cache: dict[NodeIdLike, list[NodeIdLike]]
+    prior_loops_cache: dict[int, list[int]]
 
     def __init__(
         self,
@@ -99,7 +99,7 @@ class APRProof(Proof, KCFGExploration):
         admitted: bool = False,
         _exec_time: float = 0,
         error_info: Exception | None = None,
-        prior_loops_cache: dict[NodeIdLike, list[NodeIdLike]] | None = None,
+        prior_loops_cache: dict[int, list[int]] | None = None,
     ):
         Proof.__init__(self, id, proof_dir=proof_dir, subproof_ids=subproof_ids, admitted=admitted)
         KCFGExploration.__init__(self, kcfg, terminal)
@@ -204,6 +204,12 @@ class APRProof(Proof, KCFGExploration):
         pruned_nodes = super().prune(node_id, keep_nodes=list(keep_nodes) + [self.init, self.target])
         for nid in pruned_nodes:
             self._bounded.discard(nid)
+            for k, v in self.prior_loops_cache.items():
+                if k == nid:
+                    self.prior_loops_cache.pop(k)
+                elif nid in v:
+                    self.prior_loops_cache[k].remove(nid)
+
         return pruned_nodes
 
     @property
