@@ -1,46 +1,22 @@
 from __future__ import annotations
 
 import sys
-from argparse import ArgumentParser, FileType
+from argparse import FileType
 from typing import IO, TYPE_CHECKING, Any
 
 from pyk.utils import ensure_dir_path
 
+from .cli import Options
 from .utils import bug_report_arg, dir_path, file_path
 
 if TYPE_CHECKING:
+    from argparse import ArgumentParser
     from pathlib import Path
     from typing import TypeVar
 
     from ..utils import BugReport
 
     T = TypeVar('T')
-
-
-class Options:
-    def __init__(self, args: dict[str, Any]) -> None:
-        # Get defaults from this and all superclasses that define them, preferring the most specific class
-        defaults: dict[str, Any] = {}
-        for cl in reversed(type(self).mro()):
-            if hasattr(cl, 'default'):
-                defaults = defaults | cl.default()
-
-        # Overwrite defaults with args from command line
-        _args = defaults | args
-
-        for attr, val in _args.items():
-            self.__setattr__(attr, val)
-
-    @classmethod
-    def all_args(cls: type[Options]) -> ArgumentParser:
-        # Collect args from this and all superclasses
-        parser = ArgumentParser(add_help=False)
-        mro = cls.mro()
-        mro.reverse()
-        for cl in mro:
-            if hasattr(cl, 'update_args') and 'update_args' in cl.__dict__:
-                cl.update_args(parser)
-        return parser
 
 
 class LoggingOptions(Options):

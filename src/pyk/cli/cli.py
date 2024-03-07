@@ -5,8 +5,6 @@ from argparse import ArgumentParser
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
-from pyk.cli.args import Options
-
 if TYPE_CHECKING:
     from argparse import _SubParsersAction
 
@@ -84,3 +82,29 @@ class Command(ABC):
             parents=all_args,
         )
         return base
+
+
+class Options:
+    def __init__(self, args: dict[str, Any]) -> None:
+        # Get defaults from this and all superclasses that define them, preferring the most specific class
+        defaults: dict[str, Any] = {}
+        for cl in reversed(type(self).mro()):
+            if hasattr(cl, 'default'):
+                defaults = defaults | cl.default()
+
+        # Overwrite defaults with args from command line
+        _args = defaults | args
+
+        for attr, val in _args.items():
+            self.__setattr__(attr, val)
+
+    @classmethod
+    def all_args(cls: type[Options]) -> ArgumentParser:
+        # Collect args from this and all superclasses
+        parser = ArgumentParser(add_help=False)
+        mro = cls.mro()
+        mro.reverse()
+        for cl in mro:
+            if hasattr(cl, 'update_args') and 'update_args' in cl.__dict__:
+                cl.update_args(parser)
+        return parser
