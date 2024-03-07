@@ -60,7 +60,7 @@ class CLI:
         cmd.exec()
 
 
-class Command:
+class Command(ABC):
     @staticmethod
     @abstractmethod
     def name() -> str:
