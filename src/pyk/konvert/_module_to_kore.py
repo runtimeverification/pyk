@@ -635,6 +635,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_symbol_atts(module, Atts.FUNCTIONAL, _is_functional)
     module = _add_symbol_atts(module, Atts.INJECTIVE, _is_injective)
     module = _add_symbol_atts(module, Atts.CONSTRUCTOR, _is_constructor)
+    module = _add_default_format_atts(module)
 
     return module
 
@@ -989,3 +990,22 @@ def _is_overloaded_by(defn: KDefinition, prod1: KProduction, prod2: KProduction)
     if any(sort1 not in defn.subsorts(sort2) for sort1, sort2 in zip(arg_sorts1, arg_sorts2, strict=True)):
         return False
     return prod1 != prod2
+
+
+def _add_default_format_atts(module: KFlatModule) -> KFlatModule:
+    """Add a default format attribute value to each symbol profuction missing one."""
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        if Atts.FORMAT in sentence.att:
+            return sentence
+
+        return sentence.let(att=sentence.att.update([Atts.FORMAT(sentence.default_format)]))
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)

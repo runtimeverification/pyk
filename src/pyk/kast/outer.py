@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, final
 from ..prelude.kbool import TRUE
 from ..prelude.ml import ML_QUANTIFIERS
 from ..utils import filter_none, single, unique
-from .att import EMPTY_ATT, Atts, KAst, KAtt, WithKAtt
+from .att import EMPTY_ATT, Atts, Format, KAst, KAtt, WithKAtt
 from .inner import (
     KApply,
     KInner,
@@ -292,6 +292,11 @@ class KProduction(KSentence):
     def argument_sorts(self) -> list[KSort]:
         """Return the sorts of the non-terminal positions of the productions."""
         return [knt.sort for knt in self.non_terminals]
+
+    @property
+    def default_format(self) -> Format:
+        format_str = ' '.join(f'%{i}' for i in range(1, len(self.items) + 1))
+        return Format.parse(format_str)
 
 
 @final
