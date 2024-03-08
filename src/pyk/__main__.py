@@ -34,6 +34,7 @@ from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
+from .utils import single
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -219,8 +220,15 @@ def exec_prove_legacy(args: Namespace) -> None:
 
 
 def exec_prove(args: Namespace) -> None:
-    kompiled_dir: Path = args.definition_dir
-    kprove = KProve(kompiled_dir, args.main_file)
+    kompiled_directory: Path
+    if 'definition_dir' not in args:
+        kompiled_directory = single(
+            Path().glob('*-kompiled'),
+            'Searching for kompiled directories with glob `*-kompiled`, supply --definition to specify one.',
+        )
+    else:
+        kompiled_directory = args.definition_dir
+    kprove = KProve(kompiled_directory)
     proofs = kprove.prove_rpc(args.spec_file, args.spec_module)
     failed_proofs = [p.id for p in proofs if not p.passed]
     _LOGGER.info(f'Failed proofs: {failed_proofs}')
@@ -335,10 +343,9 @@ def create_argument_parser() -> ArgumentParser:
         help='Prove an input specification (using RPC based prover).',
         parents=[k_cli_args.logging_args],
     )
-    prove_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
-    prove_args.add_argument('main_file', type=str, help='Main file used for kompilation.')
     prove_args.add_argument('spec_file', type=str, help='File with the specification module.')
-    prove_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
+    prove_args.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
+    prove_args.add_argument('--spec-module', dest='spec_module', type=str, help='Module with claims to be proven.')
 
     graph_imports_args = pyk_args_command.add_parser(
         'graph-imports',
