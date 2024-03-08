@@ -258,18 +258,24 @@ def unique(iterable: Iterable[H]) -> Iterator[H]:
             yield elem
 
 
-def single(iterable: Iterable[T]) -> T:
+def single(iterable: Iterable[T], err: str | None = None) -> T:
     it = iter(iterable)
     sentinel = object()
 
     fst = next(it, sentinel)
     if fst is sentinel:
-        raise ValueError('Expected a single element, found none')
+        err_str = 'Expected a single element, found none'
+        if err is not None:
+            err_str = f'{err_str}\n{err}'
+        raise ValueError(err_str)
     fst = cast('T', fst)
 
     snd = next(it, sentinel)
     if snd is not sentinel:
-        raise ValueError('Expected a single element, found more', fst, snd)
+        err_str = f'Expected a single element, found more: ({str(fst)}, {str(snd)}, ...)'
+        if err is not None:
+            err_str = f'{err_str}\n{err}'
+        raise ValueError(err_str)
 
     return fst
 
