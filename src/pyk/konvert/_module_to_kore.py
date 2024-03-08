@@ -8,7 +8,7 @@ from ..kast import EMPTY_ATT, Atts, KInner
 from ..kast.att import Format
 from ..kast.inner import KApply, KRewrite, KSort
 from ..kast.manip import extract_lhs, extract_rhs
-from ..kast.outer import KDefinition, KNonTerminal, KProduction, KRule, KSyntaxSort, KTerminal
+from ..kast.outer import KDefinition, KNonTerminal, KProduction, KRegexTerminal, KRule, KSyntaxSort, KTerminal
 from ..kore.prelude import inj
 from ..kore.syntax import (
     And,
@@ -29,7 +29,7 @@ from ..kore.syntax import (
     SymbolDecl,
 )
 from ..prelude.k import K_ITEM, K
-from ..utils import FrozenDict
+from ..utils import FrozenDict, intersperse
 from ._kast_to_kore import _kast_to_kore
 from ._utils import munge
 
@@ -636,6 +636,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_symbol_atts(module, Atts.INJECTIVE, _is_injective)
     module = _add_symbol_atts(module, Atts.CONSTRUCTOR, _is_constructor)
     module = _add_default_format_atts(module)
+    module = _inline_terminals_in_format_atts(module)
 
     return module
 
@@ -1006,6 +1007,63 @@ def _add_default_format_atts(module: KFlatModule) -> KFlatModule:
             return sentence
 
         return sentence.let(att=sentence.att.update([Atts.FORMAT(sentence.default_format)]))
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _inline_terminals_in_format_atts(module: KFlatModule) -> KFlatModule:
+    """For a terminal `"foo"` change `%i` to `%cfoo%r`. For a non-terminal, decrease the index."""
+
+    def inline_terminals(formatt: Format, production: KProduction) -> Format:
+        nt_indexes: dict[int, int] = {}
+        nt_index = 1
+        for i, item in enumerate(production.items):
+            if isinstance(item, KNonTerminal):
+                nt_indexes[i] = nt_index
+                nt_index += 1
+
+        tokens: list[str] = []
+        for token in formatt.tokens:
+            if len(token) > 1 and token[0] == '%' and token[1].isdigit():
+                index = int(token[1:])
+                if index > len(production.items):  # Note: index is 1-based
+                    raise ValueError(r'Format index out of bounds: {token}')
+                item_index = index - 1
+                item = production.items[item_index]
+
+                match item:
+                    case KTerminal(value):
+                        escaped = value.replace('\\', r'\\').replace('$', r'\$')
+                        interspersed = intersperse(escaped.split('%'), '%%')
+                        new_tokens = [s for s in interspersed if s]
+                        tokens += ['%c']
+                        tokens += new_tokens
+                        tokens += ['%r']
+                    case KNonTerminal():
+                        new_index = nt_indexes[item_index]
+                        tokens.append(f'%{new_index}')
+                    case _:
+                        assert isinstance(item, KRegexTerminal)
+                        raise ValueError(r'Invalid reference to regex terminal: {token}')
+            else:
+                tokens.append(token)
+        return Format(tokens)
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        if Atts.FORMAT not in sentence.att:
+            return sentence
+
+        formatt = sentence.att[Atts.FORMAT]
+        formatt = inline_terminals(formatt, sentence)
+
+        return sentence.let(att=sentence.att.update([Atts.FORMAT(formatt)]))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
