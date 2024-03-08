@@ -271,17 +271,15 @@ def exec_json_to_kore(args: dict[str, Any]) -> None:
 def create_argument_parser() -> ArgumentParser:
     k_cli_args = KCLIArgs()
 
-    definition_args = ArgumentParser(add_help=False)
-    definition_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
-
     pyk_args = ArgumentParser()
     pyk_args_command = pyk_args.add_subparsers(dest='command', required=True)
 
     print_args = pyk_args_command.add_parser(
         'print',
         help='Pretty print a term.',
-        parents=[k_cli_args.logging_args, definition_args, k_cli_args.display_args],
+        parents=[k_cli_args.logging_args, k_cli_args.display_args],
     )
+    print_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
     print_args.add_argument('term', type=FileType('r'), help='Input term (in format specified with --input).')
     print_args.add_argument('--input', default=PrintInput.KAST_JSON, type=PrintInput, choices=list(PrintInput))
     print_args.add_argument('--omit-labels', default='', nargs='?', help='List of labels to omit from output.')
@@ -293,8 +291,9 @@ def create_argument_parser() -> ArgumentParser:
     rpc_print_args = pyk_args_command.add_parser(
         'rpc-print',
         help='Pretty-print an RPC request/response',
-        parents=[k_cli_args.logging_args, definition_args],
+        parents=[k_cli_args.logging_args],
     )
+    rpc_print_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
     rpc_print_args.add_argument(
         'input_file',
         type=FileType('r'),
@@ -322,8 +321,9 @@ def create_argument_parser() -> ArgumentParser:
     prove_legacy_args = pyk_args_command.add_parser(
         'prove-legacy',
         help='Prove an input specification (using kprovex).',
-        parents=[k_cli_args.logging_args, definition_args],
+        parents=[k_cli_args.logging_args],
     )
+    prove_legacy_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
     prove_legacy_args.add_argument('main_file', type=str, help='Main file used for kompilation.')
     prove_legacy_args.add_argument('spec_file', type=str, help='File with the specification module.')
     prove_legacy_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
@@ -333,23 +333,26 @@ def create_argument_parser() -> ArgumentParser:
     prove_args = pyk_args_command.add_parser(
         'prove',
         help='Prove an input specification (using RPC based prover).',
-        parents=[k_cli_args.logging_args, definition_args],
+        parents=[k_cli_args.logging_args],
     )
+    prove_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
     prove_args.add_argument('main_file', type=str, help='Main file used for kompilation.')
     prove_args.add_argument('spec_file', type=str, help='File with the specification module.')
     prove_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
 
-    pyk_args_command.add_parser(
+    graph_imports_args = pyk_args_command.add_parser(
         'graph-imports',
         help='Graph the imports of a given definition.',
-        parents=[k_cli_args.logging_args, definition_args],
+        parents=[k_cli_args.logging_args],
     )
+    graph_imports_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
 
     coverage_args = pyk_args_command.add_parser(
         'coverage',
         help='Convert coverage file to human readable log.',
-        parents=[k_cli_args.logging_args, definition_args],
+        parents=[k_cli_args.logging_args],
     )
+    coverage_args.add_argument('definition_dir', type=dir_path, help='Path to definition directory.')
     coverage_args.add_argument('coverage_file', type=FileType('r'), help='Coverage file to build log for.')
     coverage_args.add_argument('-o', '--output', type=FileType('w'), default='-')
 
