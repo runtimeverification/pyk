@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.kast import KInner
+from pyk.kast.att import Format
 from pyk.kast.inner import KApply, KLabel, KSequence, KSort, KVariable, build_assoc
 from pyk.kast.outer import KDefinition, KFlatModule, KImport, KNonTerminal, KProduction, KRegexTerminal, KTerminal
 from pyk.prelude.kbool import BOOL
@@ -338,6 +339,51 @@ IS_PREFIX_TEST_DATA: Final = (
 def test_production_is_prefix(production: KProduction, expected: bool) -> None:
     # When
     actual = production.is_prefix
+
+    # Then
+    assert actual == expected
+
+
+S = KSort('S')
+DEFAULT_FORMAT_TEST_DATA: Final = (
+    (KProduction(S), ''),
+    (KProduction(S, (KTerminal('foo'),)), '%1'),
+    (KProduction(S, (KTerminal('foo'), KTerminal('bar'))), '%1 %2'),
+    (KProduction(S, (KTerminal('foo'), KTerminal('bar'), KTerminal('baz'))), '%1 %2 %3'),
+    (KProduction(S, (KTerminal('foo'), KNonTerminal(S), KTerminal('baz'))), '%1 %2 %3'),
+    (KProduction(S, (KTerminal('foo'), KTerminal('('), KTerminal(')'))), '%1 %2 %3'),
+    (KProduction(S, (KTerminal('foo'), KTerminal('('), KNonTerminal(S), KTerminal(')'))), '%1 %2 %3 %4'),
+    (KProduction(S, (KTerminal('foo'), KTerminal('('), KNonTerminal(S, 'x'), KTerminal(')'))), '%1 %2... x: %3 %4'),
+    (
+        KProduction(
+            S, (KTerminal('foo'), KTerminal('('), KNonTerminal(S, 'x'), KTerminal(','), KNonTerminal(S), KTerminal(')'))
+        ),
+        '%1 %2 %3 %4 %5 %6',
+    ),
+    (
+        KProduction(
+            S,
+            (
+                KTerminal('foo'),
+                KTerminal('('),
+                KNonTerminal(S, 'x'),
+                KTerminal(','),
+                KNonTerminal(S, 'y'),
+                KTerminal(')'),
+            ),
+        ),
+        '%1 %2... x: %3 %4 y: %5 %6',
+    ),
+)
+
+
+@pytest.mark.parametrize('production,format_str', DEFAULT_FORMAT_TEST_DATA, ids=count())
+def test_default_format(production: KProduction, format_str: str) -> None:
+    # Given
+    expected = Format.parse(format_str)
+
+    # When
+    actual = production.default_format
 
     # Then
     assert actual == expected

@@ -320,9 +320,34 @@ class KProduction(KSentence):
         pattern = r't*\((n(,n)*)?\)'
         return bool(re.fullmatch(pattern, string))
 
+    @cached_property
+    def is_record(self) -> bool:
+        """The production is prefix with labelled nonterminals"""
+        return bool(self.is_prefix and self.non_terminals and all(item.name is not None for item in self.non_terminals))
+
     @property
     def default_format(self) -> Format:
-        format_str = ' '.join(f'%{i}' for i in range(1, len(self.items) + 1))
+        format_str: str
+        if self.is_record:
+            tokens = []
+            for i, item in enumerate(self.items):
+                match item:
+                    case KTerminal('('):
+                        tokens.append(f'%{i + 1}...')
+                    case KTerminal(_):
+                        tokens.append(f'%{i + 1}')
+                    case KNonTerminal(_, name):
+                        assert name is not None
+                        tokens.append(f'{name}:')
+                        tokens.append(f'%{i + 1}')
+                    case KRegexTerminal():
+                        raise ValueError('Default format is not supported for productions with regex terminals')
+                    case _:
+                        raise AssertionError()
+            format_str = ' '.join(tokens)
+        else:
+            format_str = ' '.join(f'%{i}' for i in range(1, len(self.items) + 1))
+
         return Format.parse(format_str)
 
 
