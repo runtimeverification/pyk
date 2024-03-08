@@ -489,9 +489,8 @@ class APRProof(Proof, KCFGExploration):
         node_refutations = {
             kcfg._resolve(int(node_id)): proof_id for node_id, proof_id in proof_dict['node_refutations'].items()
         }
-        prior_loops_cache = {
-            loop_node_id: list(same_loops) for (loop_node_id, same_loops) in proof_dict['loops_cache'].items()
-        }
+
+        prior_loops_cache = {int(k): v for k, v in proof_dict.get('loops_cache', {}).items()}
 
         return APRProof(
             id=id,
@@ -539,10 +538,7 @@ class APRProof(Proof, KCFGExploration):
         if self.bmc_depth is not None:
             dct['bmc_depth'] = self.bmc_depth
 
-        dct['loops_cache'] = {
-            self.kcfg._resolve(loop_node_id): [self.kcfg._resolve(node_id) for node_id in same_loops]
-            for (loop_node_id, same_loops) in self.prior_loops_cache.items()
-        }
+        dct['loops_cache'] = self.prior_loops_cache
 
         proof_json.write_text(json.dumps(dct))
         _LOGGER.info(f'Wrote proof data for {self.id}: {proof_json}')
@@ -739,7 +735,7 @@ class APRProver(Prover):
             prior_loops = []
             for succ in reversed(self.proof.shortest_path_to(curr_node.id)):
                 if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, curr_node.cterm):
-                    if succ.source.id in self.proof.prior_loops_cache.keys():
+                    if succ.source.id in self.proof.prior_loops_cache:
                         if self.proof.kcfg.zero_depth_between(succ.source.id, curr_node.id):
                             prior_loops = self.proof.prior_loops_cache[succ.source.id]
                         else:
