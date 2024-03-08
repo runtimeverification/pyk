@@ -12,7 +12,7 @@ from .cli.pyk import (
     JsonToKoreCommand,
     KoreToJsonCommand,
     PrintCommand,
-    ProveCommand,
+    ProveLegacyCommand,
     RPCKastCommand,
     RPCPrintCommand,
 )
@@ -38,7 +38,7 @@ def main() -> None:
             JsonToKoreCommand,
             KoreToJsonCommand,
             PrintCommand,
-            ProveCommand,
+            ProveLegacyCommand,
             RPCKastCommand,
             RPCPrintCommand,
         ]
@@ -47,6 +47,7 @@ def main() -> None:
     assert isinstance(command, LoggingOptions)
     logging.basicConfig(level=loglevel(command), format=LOG_FORMAT)
     command.exec()
+
 
 if __name__ == '__main__':
     main()
