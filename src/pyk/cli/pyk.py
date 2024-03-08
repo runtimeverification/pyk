@@ -346,7 +346,7 @@ class PrintCommand(Command, DefinitionOptions, OutputFileOptions, DisplayOptions
             _LOGGER.info(f'Wrote file: {self.output_file.name}')
 
 
-class ProveCommand(Command, DefinitionOptions, OutputFileOptions, LoggingOptions):
+class ProveLegacyCommand(Command, DefinitionOptions, OutputFileOptions, LoggingOptions):
     main_file: Path
     spec_file: Path
     spec_module: str
@@ -354,7 +354,7 @@ class ProveCommand(Command, DefinitionOptions, OutputFileOptions, LoggingOptions
 
     @staticmethod
     def name() -> str:
-        return 'prove'
+        return 'prove-legacy'
 
     @staticmethod
     def help_str() -> str:

@@ -48,6 +48,5 @@ def main() -> None:
     logging.basicConfig(level=loglevel(command), format=LOG_FORMAT)
     command.exec()
 
-
 if __name__ == '__main__':
     main()
