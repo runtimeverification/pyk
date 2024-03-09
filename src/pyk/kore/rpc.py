@@ -967,8 +967,11 @@ class KoreClient(ContextManager['KoreClient']):
                 'log-timing': log_timing,
             }
         )
+        print(params)
 
         result = self._request('execute', **params)
+        print(result)
+        exit(2)
         return ExecuteResult.from_dict(result)
 
     def implies(
