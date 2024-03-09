@@ -301,31 +301,34 @@ class FailureInfo:
 
 class Prover:
     kcfg_explore: KCFGExplore
-    proof: Proof
 
     def __init__(self, kcfg_explore: KCFGExplore):
         self.kcfg_explore = kcfg_explore
 
     @abstractmethod
-    def failure_info(self) -> FailureInfo:
+    def failure_info(self, proof: Proof) -> FailureInfo:
         ...
 
     @abstractmethod
-    def step_proof(self) -> Iterable[StepResult]:
+    def step_proof(self, proof: Proof) -> Iterable[StepResult]:
         ...
 
-    def advance_proof(self, max_iterations: int | None = None, fail_fast: bool = False) -> None:
+    def init_proof(self, proof: Proof) -> None:
+        ...
+
+    def advance_proof(self, proof: Proof, max_iterations: int | None = None, fail_fast: bool = False) -> None:
         iterations = 0
-        while self.proof.can_progress:
-            if fail_fast and self.proof.failed:
-                _LOGGER.warning(f'Terminating proof early because fail_fast is set: {self.proof.id}')
+        self.init_proof(proof)
+        while proof.can_progress:
+            if fail_fast and proof.failed:
+                _LOGGER.warning(f'Terminating proof early because fail_fast is set: {proof.id}')
                 return
             if max_iterations is not None and max_iterations <= iterations:
                 return
             iterations += 1
-            results = self.step_proof()
+            results = self.step_proof(proof)
             for result in results:
-                self.proof.commit(result)
-            self.proof.write_proof_data()
-        if self.proof.failed:
-            self.proof.failure_info = self.failure_info()
+                proof.commit(result)
+            proof.write_proof_data()
+        if proof.failed:
+            proof.failure_info = self.failure_info(proof)
