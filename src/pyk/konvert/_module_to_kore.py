@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from itertools import repeat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -612,7 +613,6 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
             Atts.CELL_FRAGMENT,
             Atts.CELL_NAME,
             Atts.CELL_OPT_ABSENT,
-            Atts.COLOR,
             Atts.GROUP,
             Atts.IMPURE,
             Atts.INDEX,
@@ -637,6 +637,8 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_symbol_atts(module, Atts.CONSTRUCTOR, _is_constructor)
     module = _add_default_format_atts(module)
     module = _inline_terminals_in_format_atts(module)
+    module = _add_colors_atts(module)
+    module = _discard_symbol_atts(module, [Atts.COLOR])
 
     return module
 
@@ -1064,6 +1066,31 @@ def _inline_terminals_in_format_atts(module: KFlatModule) -> KFlatModule:
         formatt = inline_terminals(formatt, sentence)
 
         return sentence.let(att=sentence.att.update([Atts.FORMAT(formatt)]))
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _add_colors_atts(module: KFlatModule) -> KFlatModule:
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        if Atts.FORMAT not in sentence.att:
+            return sentence
+
+        if Atts.COLOR not in sentence.att:
+            return sentence
+
+        formatt = sentence.att[Atts.FORMAT]
+        ncolors = sum(1 for token in formatt.tokens if token == '%c')
+        color = sentence.att[Atts.COLOR]
+        colors = ','.join(repeat(color, ncolors))
+
+        return sentence.let(att=sentence.att.update([Atts.COLORS(colors)]))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
