@@ -94,7 +94,7 @@ class TestSimpleProof(KCFGExploreTest, KProveTest):
         for pred in proof.kcfg.predecessors(proof.target):
             assert proof.is_terminal(pred.source.id)
 
-    def test_multiple_proofs_one_prover(
+    def test_response_checking(
         self,
         kprove: KProve,
         kcfg_explore: KCFGExplore,
@@ -111,18 +111,16 @@ class TestSimpleProof(KCFGExploreTest, KProveTest):
                 logs={},
                 proof_dir=proof_dir,
             )
-            prover = APRProver(kcfg_explore=kcfg_explore)
 
-#              for claim_label in ['use-deps1', 'use-deps2']:
-            for claim_label in ['use-deps2']:
-                spec_label = f'{spec_module}.{claim_label}'
+            spec_label = f'{spec_module}.use-deps1'
 
-                proof = single([p for p in proofs if p.id == spec_label])
-                for subproof in proof.subproofs:
-                    subproof.admit()
-                    subproof.write_proof_data()
+            proof = single([p for p in proofs if p.id == spec_label])
+            for subproof in proof.subproofs:
+                subproof.admit()
+                subproof.write_proof_data()
+            prover = APRProver(proof, kcfg_explore=kcfg_explore)
 
-                prover.advance_proof(proof)
+            prover.advance_proof()
 
-                assert proof.status == ProofStatus.PASSED
-                assert leaf_number(proof) == 1
+            assert proof.status == ProofStatus.PASSED
+            assert leaf_number(proof) == 1
