@@ -111,7 +111,7 @@ class TestSimpleProof(KCFGExploreTest, KProveTest):
             )
             prover = APRProver(kcfg_explore=kcfg_explore)
 
-#              for claim_label in ['use-deps1', 'use-deps2']:
+            #              for claim_label in ['use-deps1', 'use-deps2']:
             for claim_label in ['use-deps2']:
                 spec_label = f'{spec_module}.{claim_label}'
 
