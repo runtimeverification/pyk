@@ -50,6 +50,7 @@ def leaf_number(proof: APRProof) -> int:
 
 class TestSimpleProof(KCFGExploreTest, KProveTest):
     KOMPILE_MAIN_FILE = K_FILES / 'simple-proofs.k'
+    DISABLE_BOOSTER = True
 
     def semantics(self, definition: KDefinition) -> KCFGSemantics:
         return SimpleSemantics()
@@ -97,10 +98,7 @@ class TestSimpleProof(KCFGExploreTest, KProveTest):
         kprove: KProve,
         kcfg_explore: KCFGExplore,
         tmp_path_factory: TempPathFactory,
-        use_server: bool,
     ) -> None:
-        if use_booster:
-            pytest.skip() # TODO skipping this on booster due to https://github.com/runtimeverification/hs-backend-booster/issues/547
         spec_file = K_FILES / 'simple-proofs-spec.k'
         spec_module = 'SIMPLE-PROOFS-SPEC'
 
