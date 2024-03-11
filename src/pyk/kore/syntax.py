@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class Id:
     value: str
 
-    _PATTERN_STR: ClassVar = "[a-zA-Z][0-9a-zA-Z#'-]*"
+    _PATTERN_STR: ClassVar = "[a-zA-Z][0-9a-zA-Z'-]*"
     _PATTERN: ClassVar = re.compile(_PATTERN_STR)
 
     def __init__(self, value: str):
