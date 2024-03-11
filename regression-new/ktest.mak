@@ -9,7 +9,7 @@ MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # path to the kompile binary of this distribuition
 KOMPILE=$(POETRY_RUN) pyk kompile
 # and kprove
-KPROVE=$(POETRY RUN) pyk kprove
+KPROVE=$(POETRY_RUN) pyk prove
 # path relative to current definition of test programs
 TESTDIR?=tests
 # path to put -kompiled directory in
@@ -26,12 +26,14 @@ KOMPILE_BACKEND?=haskell
 # if not, default to .k to give error message
 SOURCE_EXT?=$(or $(and $(wildcard $(DEF).k), k), $(or $(and $(wildcard $(DEF).md), md), k))
 
+VERBOSITY?=
+
 ifeq ($(UNAME), Darwin)
 	KOMPILE_FLAGS+=--no-haskell-binary
 endif
 
-KOMPILE_FLAGS+=--no-exc-wrap --type-inference-mode checked
-KPROVE_FLAGS+=--no-exc-wrap --type-inference-mode checked
+KOMPILE_FLAGS+=--type-inference-mode checked $(VERBOSITY)
+KPROVE_FLAGS+=--type-inference-mode checked $(VERBOSITY)
 
 CHECK?=| diff -
 REMOVE_PATHS=| sed 's!'`pwd`'/\(\./\)\{0,2\}!!g'

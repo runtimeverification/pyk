@@ -1,2 +1,2 @@
 SUBDIRS=$(filter-out Makefile, $(wildcard *))
-include ktest-group.mak
+include ./ktest-group.mak
