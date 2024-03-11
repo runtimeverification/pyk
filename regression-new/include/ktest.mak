@@ -83,10 +83,6 @@ ifeq ($(KOMPILE_BACKEND),kore)
 	rm -f $(DEF).kore
 endif
 
-.depend:
-	@$(KDEP) $(KDEP_FLAGS) $(DEF).$(SOURCE_EXT) > .depend-tmp
-	@mv .depend-tmp .depend
-
 ifneq ($(MAKECMDGOALS),clean)
 -include .depend
 endif
