@@ -639,6 +639,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _inline_terminals_in_format_atts(module)
     module = _add_colors_atts(module)
     module = _discard_symbol_atts(module, [Atts.COLOR])
+    module = _add_terminals_atts(module)
 
     return module
 
@@ -1091,6 +1092,21 @@ def _add_colors_atts(module: KFlatModule) -> KFlatModule:
         colors = ','.join(repeat(color, ncolors))
 
         return sentence.let(att=sentence.att.update([Atts.COLORS(colors)]))
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _add_terminals_atts(module: KFlatModule) -> KFlatModule:
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        terminals = ''.join('0' if isinstance(item, KNonTerminal) else '1' for item in sentence.items)
+        return sentence.let(att=sentence.att.update([Atts.TERMINALS(terminals)]))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
