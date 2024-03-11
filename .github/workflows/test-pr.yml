@@ -236,7 +236,7 @@ jobs:
       - name: 'Set Python version'
         run: docker exec --user user pyk-ci poetry env use ${{ matrix.python-version }}
       - name: 'Build and run integration tests'
-        run: docker exec --user user pyk-ci make -C regression-new -j8
+        run: docker exec --user user pyk-ci make test-regression-new -j8
       - name: 'Tear down Docker container'
         if: always()
         run: |
