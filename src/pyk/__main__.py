@@ -34,6 +34,7 @@ from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
+from .proof.reachability import APRFailureInfo
 from .utils import check_file_path, ensure_dir_path, single
 
 if TYPE_CHECKING:
@@ -230,13 +231,13 @@ def exec_prove(args: Namespace) -> None:
         kompiled_directory = args.definition_dir
     kprove = KProve(kompiled_directory)
     proofs = kprove.prove_rpc(Path(args.spec_file), args.spec_module, type_inference_mode=args.type_inference_mode)
-    passed_proofs = [p.id for p in proofs if p.passed]
-    failed_proofs = [p.id for p in proofs if p.failed]
-    pending_proofs = [p.id for p in proofs if not (p.passed or p.failed)]
-    _LOGGER.info(f'Passed proofs: {passed_proofs}')
-    _LOGGER.info(f'Failed proofs: {failed_proofs}')
-    _LOGGER.info(f'Pending proofs: {pending_proofs}')
-    sys.exit(len(failed_proofs))
+    for proof in proofs:
+        print('\n'.join(proof.summary.lines))
+        if proof.failed and args.failure_info:
+            failure_info = proof.failure_info
+            if type(failure_info) is APRFailureInfo:
+                print('\n'.join(failure_info.print()))
+    sys.exit(len([p.id for p in proofs if not p.passed]))
 
 
 def exec_kompile(args: Namespace) -> None:
@@ -395,6 +396,12 @@ def create_argument_parser() -> ArgumentParser:
     prove_args.add_argument('--spec-module', dest='spec_module', type=str, help='Module with claims to be proven.')
     prove_args.add_argument(
         '--type-inference-mode', type=TypeInferenceMode, help='Mode for doing K rule type inference in.'
+    )
+    prove_args.add_argument(
+        '--failure-info',
+        default=False,
+        action='store_true',
+        help='Print out more information about proof failures.',
     )
 
     graph_imports_args = pyk_args_command.add_parser(
