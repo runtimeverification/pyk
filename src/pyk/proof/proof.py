@@ -319,16 +319,18 @@ class Prover:
     def advance_proof(self, proof: Proof, max_iterations: int | None = None, fail_fast: bool = False) -> None:
         iterations = 0
         self.init_proof(proof)
-        while proof.can_progress:
-            if fail_fast and proof.failed:
-                _LOGGER.warning(f'Terminating proof early because fail_fast is set: {proof.id}')
-                return
-            if max_iterations is not None and max_iterations <= iterations:
-                return
-            iterations += 1
-            results = self.step_proof(proof)
-            for result in results:
-                proof.commit(result)
-            proof.write_proof_data()
-        if proof.failed:
-            proof.failure_info = self.failure_info(proof)
+        try:
+            while proof.can_progress:
+                if fail_fast and proof.failed:
+                    _LOGGER.warning(f'Terminating proof early because fail_fast is set: {proof.id}')
+                    return
+                if max_iterations is not None and max_iterations <= iterations:
+                    return
+                iterations += 1
+                results = self.step_proof(proof)
+                for result in results:
+                    proof.commit(result)
+                proof.write_proof_data()
+        finally:
+            if proof.failed:
+                proof.failure_info = self.failure_info(proof)

@@ -708,7 +708,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
-FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInner]]] = (
+FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInner], bool]] = (
     (
         'failing-if',
         K_FILES / 'imp-simple-spec.k',
@@ -717,6 +717,7 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         0,
         1,
         (mlEqualsTrue(notBool(KVariable('_B', 'Bool'))),),
+        False,
     ),
     (
         'fail-branch',
@@ -726,6 +727,17 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         0,
         1,
         (mlEqualsTrue(notBool(KApply('_<=Int_', [KVariable('_S', 'Int'), KToken('123', '')]))),),
+        False,
+    ),
+    (
+        'fail-fast',
+        K_FILES / 'imp-simple-spec.k',
+        'IMP-SIMPLE-SPEC',
+        'fail-early',
+        1,
+        1,
+        (mlEqualsTrue(KApply('_<=Int_', [KVariable('N', 'Int'), KToken('1', '')])),),
+        True,
     ),
 )
 
@@ -1008,7 +1020,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert leaf_number(proof) == expected_leaf_number
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,expected_pending,expected_failing,path_conditions',
+        'test_id,spec_file,spec_module,claim_id,expected_pending,expected_failing,path_conditions,fail_fast',
         FAILURE_INFO_TEST_DATA,
         ids=[test_id for test_id, *_ in FAILURE_INFO_TEST_DATA],
     )
@@ -1023,6 +1035,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         expected_pending: int,
         expected_failing: int,
         path_conditions: tuple[KInner],
+        fail_fast: bool,
     ) -> None:
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
@@ -1031,7 +1044,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         proof = APRProof.from_claim(kprove.definition, claim, logs={})
         kcfg_explore.simplify(proof.kcfg, {})
         prover = APRProver(kcfg_explore=kcfg_explore)
-        prover.advance_proof(proof)
+        prover.advance_proof(proof, fail_fast=fail_fast)
 
         failure_info = prover.failure_info(proof)
         assert isinstance(failure_info, APRFailureInfo)
@@ -1048,7 +1061,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         assert actual_path_conds == expected_path_conds
 
     @pytest.mark.parametrize(
-        'test_id,spec_file,spec_module,claim_id,expected_pending,expected_failing,path_conditions',
+        'test_id,spec_file,spec_module,claim_id,expected_pending,expected_failing,path_conditions,fail_fast',
         FAILURE_INFO_TEST_DATA,
         ids=[test_id for test_id, *_ in FAILURE_INFO_TEST_DATA],
     )
@@ -1064,7 +1077,11 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         expected_failing: int,
         path_conditions: tuple[KInner],
         proof_dir: Path,
+        fail_fast: bool,
     ) -> None:
+        if fail_fast:
+            pytest.skip()
+
         claim = single(
             kprove.get_claims(Path(spec_file), spec_module_name=spec_module, claim_labels=[f'{spec_module}.{claim_id}'])
         )
