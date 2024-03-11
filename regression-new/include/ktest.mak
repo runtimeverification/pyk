@@ -2,7 +2,7 @@ SHELL=/bin/bash
 
 UNAME := $(shell uname)
 
-ROOT=$(abspath $(MAKEFILE_PATH)/..)
+ROOT=$(abspath $(MAKEFILE_PATH)/../..)
 POETRY_RUN?=poetry run -C $(ROOT)
 # path to the current makefile
 MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
