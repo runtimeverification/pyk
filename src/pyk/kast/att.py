@@ -241,6 +241,7 @@ class Atts:
     DIGEST: Final = AttKey('digest', type=_ANY)
     ELEMENT: Final = AttKey('element', type=_ANY)
     FORMAT: Final = AttKey('format', type=_FORMAT)
+    FRESH_GENERATOR: Final = AttKey('freshGenerator', type=_NONE)
     FUNCTION: Final = AttKey('function', type=_NONE)
     FUNCTIONAL: Final = AttKey('functional', type=_NONE)
     GROUP: Final = AttKey('group', type=_STR)

@@ -39,7 +39,6 @@ def imp_kore(imp_dir: Path) -> Module:
 
 
 IGNORED_SYMBOL_ATTRS: Final = {
-    'freshGenerator',
     'left',
     'priorities',
     'right',
