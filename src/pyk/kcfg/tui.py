@@ -352,6 +352,8 @@ class KCFGViewer(App):
         self._minimize = minimize
         self._hidden_chunks = []
         self._selected_chunk = None
+        if self._custom_view is not None:
+            self.bind('v', 'keystroke("custom")', description='Toggle custom.')
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -409,7 +411,6 @@ class KCFGViewer(App):
         ('H', 'keystroke("H")', 'Unhide all nodes.'),
         ('t', 'keystroke("term")', 'Toggle term.'),
         ('c', 'keystroke("constraint")', 'Toggle constraint.'),
-        ('v', 'keystroke("custom")', 'Toggle custom.'),
         ('m', 'keystroke("minimize")', 'Toggle minimization.'),
         Binding('q', 'quit', priority=True),
     ]
