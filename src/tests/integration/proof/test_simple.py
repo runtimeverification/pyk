@@ -97,7 +97,10 @@ class TestSimpleProof(KCFGExploreTest, KProveTest):
         kprove: KProve,
         kcfg_explore: KCFGExplore,
         tmp_path_factory: TempPathFactory,
+        use_server: bool,
     ) -> None:
+        if use_booster:
+            pytest.skip() # TODO skipping this on booster due to https://github.com/runtimeverification/hs-backend-booster/issues/547
         spec_file = K_FILES / 'simple-proofs-spec.k'
         spec_module = 'SIMPLE-PROOFS-SPEC'
 
@@ -111,8 +114,7 @@ class TestSimpleProof(KCFGExploreTest, KProveTest):
             )
             prover = APRProver(kcfg_explore=kcfg_explore)
 
-            #              for claim_label in ['use-deps1', 'use-deps2']:
-            for claim_label in ['use-deps2']:
+            for claim_label in ['use-deps1', 'use-deps2']:
                 spec_label = f'{spec_module}.{claim_label}'
 
                 proof = single([p for p in proofs if p.id == spec_label])
