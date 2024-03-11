@@ -10,6 +10,7 @@ all: check cov
 clean: docs-clean
 	rm -rf dist .coverage cov-* .mypy_cache .pytest_cache
 	find -type d -name __pycache__ -prune -exec rm -rf {} \;
+	$(MAKE) -C regression-new clean
 
 .PHONY: build
 build:
@@ -35,6 +36,8 @@ test-unit: poetry-install
 test-integration: poetry-install
 	$(POETRY_RUN) pytest src/tests/integration --maxfail=1 --verbose --durations=0 --numprocesses=4 --dist=worksteal $(TEST_ARGS)
 
+test-regression-new: poetry-install
+	$(MAKE) -C regression-new
 
 # Coverage
 
