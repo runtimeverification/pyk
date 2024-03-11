@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, NamedTuple, final
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
 from ..kast.manip import (
-    abstract_term_safely,
     bottom_up,
     extract_lhs,
     extract_rhs,
@@ -211,17 +210,6 @@ class KCFGExplore:
         return CSubst(subst=Subst(_subst), constraints=ml_preds)
 
     def implication_failure_reason(self, antecedent: CTerm, consequent: CTerm) -> tuple[bool, str]:
-        def no_cell_rewrite_to_dots(term: KInner) -> KInner:
-            def _no_cell_rewrite_to_dots(_term: KInner) -> KInner:
-                if type(_term) is KApply and _term.is_cell:
-                    lhs = extract_lhs(_term)
-                    rhs = extract_rhs(_term)
-                    if lhs == rhs:
-                        return KApply(_term.label, [abstract_term_safely(lhs, base_name=_term.label.name)])
-                return _term
-
-            return bottom_up(_no_cell_rewrite_to_dots, term)
-
         def _is_cell_subst(csubst: KInner) -> bool:
             if type(csubst) is KApply and csubst.label.name == '_==K_':
                 csubst_arg = csubst.args[0]
