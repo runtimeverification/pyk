@@ -19,6 +19,9 @@ from typing import TYPE_CHECKING, ContextManager, NamedTuple, TypedDict, final
 from psutil import Process
 
 from ..utils import check_dir_path, check_file_path, filter_none, run_process
+from ..kast.pretty import PrettyPrinter
+from ..ktool.kprint import KPrint
+
 from .syntax import And, SortApp, kore_term
 
 if TYPE_CHECKING:
@@ -423,10 +426,11 @@ class ImplicationError(KoreClientError):
 @dataclass
 class SmtSolverError(KoreClientError):
     pattern: Pattern
-
-    def __init__(self, pattern: Pattern):
+    definition_dir : Path
+    def __init__(self, pattern: Pattern, definition_dir: Path):
         self.pattern = pattern
-        super().__init__(f'Smt solver error: {self.pattern.text}')
+        printer = KPrint(definition_dir)
+        super().__init__(f'Smt solver error: {printer.kore_to_pretty(self.pattern)}')
 
 
 @final
@@ -866,11 +870,13 @@ class KoreClient(ContextManager['KoreClient']):
     _KORE_JSON_VERSION: Final = 1
 
     _client: JsonRpcClientFacade
+    definition_dir: Path
 
     def __init__(
         self,
         host: str,
         port: int,
+        definition_dir: Path,
         *,
         timeout: int | None = None,
         bug_report: BugReport | None = None,
@@ -889,6 +895,7 @@ class KoreClient(ContextManager['KoreClient']):
             bug_report_id=bug_report_id,
             dispatch=dispatch,
         )
+        self.definition_dir = definition_dir
 
     def __enter__(self) -> KoreClient:
         return self
@@ -917,7 +924,7 @@ class KoreClient(ContextManager['KoreClient']):
             case 4:
                 return ImplicationError(error=err.data['error'], context=err.data['context'])
             case 5:
-                return SmtSolverError(pattern=kore_term(err.data))
+                return SmtSolverError(pattern=kore_term(err.data), definition_dir=self.definition_dir)
             case 8:
                 return InvalidModuleError(error=err.data['error'], context=err.data.get('context'))
             case 9:
