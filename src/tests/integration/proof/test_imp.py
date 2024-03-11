@@ -708,7 +708,7 @@ APRBMC_PROVE_TEST_DATA: Iterable[
     ),
 )
 
-FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInner]]] = (
+FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInner], bool]] = (
     (
         'failing-if',
         K_FILES / 'imp-simple-spec.k',
@@ -717,7 +717,7 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         0,
         1,
         (mlEqualsTrue(notBool(KVariable('_B', 'Bool'))),),
-        False
+        False,
     ),
     (
         'fail-branch',
@@ -727,7 +727,7 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         0,
         1,
         (mlEqualsTrue(notBool(KApply('_<=Int_', [KVariable('_S', 'Int'), KToken('123', '')]))),),
-        False
+        False,
     ),
     (
         'fail-fast',
@@ -737,7 +737,7 @@ FAILURE_INFO_TEST_DATA: Iterable[tuple[str, Path, str, str, int, int, tuple[KInn
         1,
         1,
         (mlEqualsTrue(KApply('_<=Int_', [KVariable('N', 'Int'), KToken('1', '')])),),
-        True
+        True,
     ),
 )
 
@@ -1079,7 +1079,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         expected_failing: int,
         path_conditions: tuple[KInner],
         proof_dir: Path,
-        fail_fast: bool
+        fail_fast: bool,
     ) -> None:
         if fail_fast:
             pytest.skip()
