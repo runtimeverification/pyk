@@ -50,4 +50,8 @@ module SIMPLE-PROOFS
 
     syntax Foo ::= abcd(K) [symbol(abcd)]
 
+    syntax Step ::= "start1" | "start2" | "mid" |  "end"
+
+    rule [test-rule1]: <k> mid => end ... </k>
+
 endmodule
