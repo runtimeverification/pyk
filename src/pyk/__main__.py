@@ -28,11 +28,13 @@ from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
 from .kore.rpc import ExecuteResult, StopReason
 from .kore.syntax import Pattern, kore_term
+from .ktool import TypeInferenceMode
+from .ktool.kompile import Kompile, KompileBackend
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
-from .utils import single
+from .utils import check_file_path, ensure_dir_path, single
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -237,6 +239,25 @@ def exec_prove(args: Namespace) -> None:
     sys.exit(len(failed_proofs))
 
 
+def exec_kompile(args: Namespace) -> None:
+    main_file = Path(args.main_file)
+    check_file_path(main_file)
+    kompiled_directory: Path
+    if 'definition_dir' not in args:
+        kompiled_directory = Path(f'{main_file.stem}-kompiled')
+        ensure_dir_path(kompiled_directory)
+    else:
+        kompiled_directory = args.definition_dir
+    kompile_dict = {
+        'main_file': main_file,
+        'backend': args.backend.value,
+    }
+    Kompile.from_dict(kompile_dict)(
+        output_dir=kompiled_directory,
+        type_inference_mode=args.type_inference_mode,
+    )
+
+
 def exec_graph_imports(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     kprinter = KPrint(kompiled_dir)
@@ -339,6 +360,30 @@ def create_argument_parser() -> ArgumentParser:
     prove_legacy_args.add_argument('spec_module', type=str, help='Module with claims to be proven.')
     prove_legacy_args.add_argument('--output-file', type=FileType('w'), default='-')
     prove_legacy_args.add_argument('kArgs', nargs='*', help='Arguments to pass through to K invocation.')
+
+    kompile_args = pyk_args_command.add_parser(
+        'kompile',
+        help='Kompile the K specification.',
+        parents=[k_cli_args.logging_args],
+    )
+    kompile_args.add_argument('main_file', type=str, help='File with the specification module.')
+    kompile_args.add_argument(
+        '--output-definition',
+        '--definition',
+        type=ensure_dir_path,
+        dest='definition_dir',
+        help='Path to kompile definition to.',
+    )
+    kompile_args.add_argument(
+        '--backend',
+        type=KompileBackend,
+        dest='backend',
+        default=KompileBackend.LLVM,
+        help='K backend to target with compilation.',
+    )
+    kompile_args.add_argument(
+        '--type-inference-mode', type=TypeInferenceMode, help='Mode for doing K rule type inference in.'
+    )
 
     prove_args = pyk_args_command.add_parser(
         'prove',
