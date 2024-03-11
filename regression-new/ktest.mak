@@ -33,7 +33,7 @@ ifeq ($(UNAME), Darwin)
 endif
 
 KOMPILE_FLAGS+=--type-inference-mode checked $(VERBOSITY)
-KPROVE_FLAGS+=--type-inference-mode checked $(VERBOSITY)
+KPROVE_FLAGS+=--type-inference-mode checked --failure-info $(VERBOSITY)
 
 CHECK?=| diff -
 REMOVE_PATHS=| sed 's!'`pwd`'/\(\./\)\{0,2\}!!g'
