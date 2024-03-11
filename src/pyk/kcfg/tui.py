@@ -195,7 +195,7 @@ class NodeView(Widget):
     def _info_text(self) -> str:
         term_str = '✅' if self._term_on else '❌'
         constraint_str = '✅' if self._constraint_on else '❌'
-        custom_str = '' if self._custom_view is None else f'{"✅" if self._constraint_on else "❌"} Custom View.'
+        custom_str = '' if self._custom_view is None else f'{"✅" if self._custom_on else "❌"} Custom View.'
         minimize_str = '✅' if self._minimize else '❌'
         element_str = 'NOTHING'
         if type(self._element) is KCFG.Node:
@@ -429,7 +429,7 @@ class KCFGViewer(App):
             self._hidden_chunks = []
         elif key in ['term', 'constraint']:
             self.query_one('#node-view', NodeView).toggle_view(key)
-        elif key in ['custom'] and self._custom_view is not None:
+        elif key == 'custom' and self._custom_view is not None:
             self.query_one('#node-view', NodeView).toggle_view(key)
         elif key in ['minimize']:
             self.query_one('#node-view', NodeView).toggle_option(key)
