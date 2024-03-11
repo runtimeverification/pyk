@@ -10,13 +10,11 @@ from typing import TYPE_CHECKING
 
 from graphviz import Digraph
 
-from pyk.kast.inner import KInner
-from pyk.kore.rpc import ExecuteResult
-
 from .cli.args import KCLIArgs
 from .cli.utils import LOG_FORMAT, dir_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import CTerm
+from .kast.inner import KInner
 from .kast.manip import (
     flatten_label,
     minimize_rule,
@@ -28,7 +26,7 @@ from .kast.manip import (
 from .kast.outer import read_kast_definition
 from .kast.pretty import PrettyPrinter
 from .kore.parser import KoreParser
-from .kore.rpc import StopReason
+from .kore.rpc import ExecuteResult, StopReason
 from .kore.syntax import Pattern, kore_term
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
@@ -229,9 +227,13 @@ def exec_prove(args: Namespace) -> None:
     else:
         kompiled_directory = args.definition_dir
     kprove = KProve(kompiled_directory)
-    proofs = kprove.prove_rpc(args.spec_file, args.spec_module)
-    failed_proofs = [p.id for p in proofs if not p.passed]
+    proofs = kprove.prove_rpc(Path(args.spec_file), args.spec_module, type_inference_mode=args.type_inference_mode)
+    passed_proofs = [p.id for p in proofs if p.passed]
+    failed_proofs = [p.id for p in proofs if p.failed]
+    pending_proofs = [p.id for p in proofs if not (p.passed or p.failed)]
+    _LOGGER.info(f'Passed proofs: {passed_proofs}')
     _LOGGER.info(f'Failed proofs: {failed_proofs}')
+    _LOGGER.info(f'Pending proofs: {pending_proofs}')
     sys.exit(len(failed_proofs))
 
 
@@ -346,6 +348,9 @@ def create_argument_parser() -> ArgumentParser:
     prove_args.add_argument('spec_file', type=str, help='File with the specification module.')
     prove_args.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
     prove_args.add_argument('--spec-module', dest='spec_module', type=str, help='Module with claims to be proven.')
+    prove_args.add_argument(
+        '--type-inference-mode', type=TypeInferenceMode, help='Mode for doing K rule type inference in.'
+    )
 
     graph_imports_args = pyk_args_command.add_parser(
         'graph-imports',
