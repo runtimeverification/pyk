@@ -66,7 +66,7 @@ class ImpliesProof(Proof):
             raise ValueError(f'Incorrect result type, expected ImpliesProofResult: {result}')
 
     @property
-    def status(self) -> ProofStatus:
+    def own_status(self) -> ProofStatus:
         if self.admitted:
             return ProofStatus.PASSED
         if self.simplified_antecedent is None or self.simplified_consequent is None:
