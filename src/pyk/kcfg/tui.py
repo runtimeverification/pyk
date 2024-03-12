@@ -229,10 +229,8 @@ class NodeView(Widget):
         return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {status_str} Status View. {custom_str}'
 
     def _status_text(self) -> str:
-        proof_name, proof_version = self._proof_id.split(':')
-        proof_name = proof_name.replace('%', '/')
         exec_time = str(round(self._exec_time, 2))
-        return f'Name: {proof_name}. Version: {proof_version}. Status: {self._proof_status}. Exec Time: {exec_time}s.'
+        return f'Proof ID: {self._proof_id}. Status: {self._proof_status}. Exec Time: {exec_time}s.'
 
     def compose(self) -> ComposeResult:
         yield Info()
