@@ -18,10 +18,8 @@ from typing import TYPE_CHECKING, ContextManager, NamedTuple, TypedDict, final
 
 from psutil import Process
 
-from ..utils import check_dir_path, check_file_path, filter_none, run_process
-from ..kast.pretty import PrettyPrinter
 from ..ktool.kprint import KPrint
-
+from ..utils import check_dir_path, check_file_path, filter_none, run_process
 from .syntax import And, SortApp, kore_term
 
 if TYPE_CHECKING:
@@ -426,11 +424,16 @@ class ImplicationError(KoreClientError):
 @dataclass
 class SmtSolverError(KoreClientError):
     pattern: Pattern
-    definition_dir : Path
-    def __init__(self, pattern: Pattern, definition_dir: Path):
+    definition_dir: Path | None
+
+    def __init__(self, pattern: Pattern, definition_dir: Path | None = None):
         self.pattern = pattern
-        printer = KPrint(definition_dir)
-        super().__init__(f'Smt solver error: {printer.kore_to_pretty(self.pattern)}')
+        self.definition_dir = definition_dir
+        if self.definition_dir is not None:
+            printer = KPrint(self.definition_dir)
+            super().__init__(f'Smt solver error: {printer.kore_to_pretty(self.pattern)}')
+        else:
+            super().__init__(f'Smt solver error: {self.pattern.text}')
 
 
 @final
@@ -870,14 +873,14 @@ class KoreClient(ContextManager['KoreClient']):
     _KORE_JSON_VERSION: Final = 1
 
     _client: JsonRpcClientFacade
-    definition_dir: Path
+    definition_dir: Path | None
 
     def __init__(
         self,
         host: str,
         port: int,
-        definition_dir: Path,
         *,
+        definition_dir: Path | None = None,
         timeout: int | None = None,
         bug_report: BugReport | None = None,
         bug_report_id: str | None = None,
