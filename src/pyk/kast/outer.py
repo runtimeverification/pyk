@@ -243,11 +243,6 @@ class KProduction(KSentence):
         object.__setattr__(self, 'att', att)
 
     @property
-    def arity(self) -> int:
-        """Return the total number of _all_ production items."""
-        return len(self.items)
-
-    @property
     def argument_sorts(self) -> list[KSort]:
         """Return the sorts of the non-terminal positions of the productions."""
         return [knt.sort for knt in self.items if type(knt) is KNonTerminal]
