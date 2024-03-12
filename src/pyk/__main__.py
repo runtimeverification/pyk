@@ -222,11 +222,18 @@ def exec_prove_legacy(args: Namespace) -> None:
 
 def exec_prove(args: Namespace) -> None:
     kompiled_directory: Path
-    if 'definition_dir' not in args:
-        kompiled_directory = single(
-            Path().glob('*-kompiled'),
-            'Searching for kompiled directories with glob `*-kompiled`, supply --definition to specify one.',
-        )
+    if args.definition_dir is None:
+        try:
+            kompiled_directory = single(Path().glob('*-kompiled'))
+        except ValueError as err:
+            if len(err.args) == 1:
+                raise ValueError('Could not find `*-kompiled` directory, use --definition to specify one.') from err
+            else:
+                _, fst, snd = err.args
+                raise ValueError(
+                    f'More than one `*-kompiled` directory found ({fst}, {snd}, ...), use `--definition` to specify one.'
+                ) from err
+        _LOGGER.info(f'Using kompiled directory: {kompiled_directory}.')
     else:
         kompiled_directory = args.definition_dir
     kprove = KProve(kompiled_directory)
