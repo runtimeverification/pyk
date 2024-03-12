@@ -99,6 +99,7 @@ def module_to_kore(definition: KDefinition) -> Module:
     sentences += _subsort_axioms(module)
     sentences += _assoc_axioms(defn)
     sentences += _idem_axioms(module)
+    sentences += _unit_axioms(module)
 
     return Module(name=name, sentences=sentences, attrs=attrs)
 
@@ -360,6 +361,60 @@ def _idem_axioms(module: KFlatModule) -> list[Axiom]:
         if not Atts.IDEM in sentence.att:
             continue
         res.append(idem_axiom(sentence))
+    return res
+
+
+def _unit_axioms(module: KFlatModule) -> list[Axiom]:
+    def unit_axioms(production: KProduction) -> tuple[Axiom, Axiom]:
+        assert production.klabel
+
+        try:
+            left, right = production.non_terminals
+        except ValueError as err:
+            raise ValueError(f'Illegal use of the unit attribute on non-binary production: {production}') from err
+
+        def check_is_prod_sort(sort: KSort) -> None:
+            if sort == production.sort:
+                return
+            raise ValueError(
+                f'Sort {sort.name} is not {production.sort.name}, unit production is not well-sorted: {production}'
+            )
+
+        check_is_prod_sort(left.sort)
+        check_is_prod_sort(right.sort)
+
+        symbol = _label_name(production.klabel.name)
+        sort_params = tuple(SortVar(param.name) for param in production.klabel.params)
+        sort = sort_to_kore(production.sort)
+        unit = App(_label_name(production.att[Atts.UNIT]))
+        R = SortVar('R')  # noqa: N806
+        K = EVar('K', sort)  # noqa: N806
+
+        left_unit = Axiom(
+            (R,) + sort_params,
+            Equals(sort, R, App(symbol, sort_params, (K, unit)), K),
+            attrs=(App('unit'),),
+        )
+        right_unit = Axiom(
+            (R,) + sort_params,
+            Equals(sort, R, App(symbol, sort_params, (unit, K)), K),
+            attrs=(App('unit'),),
+        )
+        return left_unit, right_unit
+
+    res: list[Axiom] = []
+    for sentence in module.sentences:
+        if not isinstance(sentence, KProduction):
+            continue
+        if not sentence.klabel:
+            continue
+        if sentence.klabel.name in BUILTIN_LABELS:
+            continue
+        if not Atts.FUNCTION in sentence.att:
+            continue
+        if not Atts.UNIT in sentence.att:
+            continue
+        res.extend(unit_axioms(sentence))
     return res
 
 
