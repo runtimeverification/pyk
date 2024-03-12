@@ -28,6 +28,10 @@ class ProofStatus(Enum):
     PENDING = 'pending'
 
 
+class ProofStep(ABC):
+    ...
+
+
 class Proof(ABC):
     _PROOF_TYPES: Final = {'APRProof', 'EqualityProof', 'RefutationProof'}
 
@@ -66,6 +70,10 @@ class Proof(ABC):
 
     @abstractmethod
     def commit(self, result: StepResult) -> None:
+        ...
+
+    @abstractmethod
+    def get_steps(self) -> list[ProofStep]:
         ...
 
     def admit(self) -> None:
@@ -310,7 +318,7 @@ class Prover:
         ...
 
     @abstractmethod
-    def step_proof(self, proof: Proof) -> Iterable[StepResult]:
+    def step_proof(self, step: ProofStep) -> Iterable[StepResult]:
         ...
 
     def init_proof(self, proof: Proof) -> None:
@@ -321,16 +329,17 @@ class Prover:
         self.init_proof(proof)
         try:
             while proof.can_progress:
-                if fail_fast and proof.failed:
-                    _LOGGER.warning(f'Terminating proof early because fail_fast is set: {proof.id}')
-                    return
-                if max_iterations is not None and max_iterations <= iterations:
-                    return
-                iterations += 1
-                results = self.step_proof(proof)
-                for result in results:
-                    proof.commit(result)
-                proof.write_proof_data()
+                for step in proof.get_steps():
+                    if fail_fast and proof.failed:
+                        _LOGGER.warning(f'Terminating proof early because fail_fast is set: {proof.id}')
+                        return
+                    if max_iterations is not None and max_iterations <= iterations:
+                        return
+                    iterations += 1
+                    results = self.step_proof(step)
+                    for result in results:
+                        proof.commit(result)
+                    proof.write_proof_data()
         finally:
             if proof.failed:
                 proof.failure_info = self.failure_info(proof)

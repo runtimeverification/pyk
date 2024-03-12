@@ -19,7 +19,7 @@ from ..konvert import kflatmodule_to_kore
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
 from .implies import ProofSummary, Prover, RefutationProof
-from .proof import CompositeSummary, FailureInfo, Proof, ProofStatus, StepResult
+from .proof import CompositeSummary, FailureInfo, Proof, ProofStatus, ProofStep, StepResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -59,6 +59,18 @@ class APRProofTerminalResult(APRProofResult):
 @dataclass
 class APRProofBoundedResult(APRProofResult):
     ...
+
+
+@dataclass
+class APRProofStep(ProofStep):
+    bmc_depth: int | None
+    proof_id: str
+    node: KCFG.Node
+    target_node: KCFG.Node
+    shortest_path_to_node: Iterable[KCFG.Successor]
+#      bounded: bool
+    target_is_terminal: bool
+    module_name: str
 
 
 class APRProof(Proof, KCFGExploration):
@@ -145,6 +157,45 @@ class APRProof(Proof, KCFGExploration):
             self.add_bounded(result.node_id)
         else:
             raise ValueError(f'Incorrect result type, expected APRProofResult: {result}')
+
+
+    def nonzero_depth(self, node: KCFG.Node) -> bool:
+        return not self.kcfg.zero_depth_between(self.init, node.id)
+
+    def check_extendable(self, node: KCFG.Node) -> None:
+        if not self.kcfg.is_leaf(node.id):
+            raise ValueError(f'Cannot extend non-leaf node {self.id}: {node.id}')
+        if self.kcfg.is_stuck(node.id):
+            raise ValueError(f'Cannot extend stuck node {self.id}: {node.id}')
+        if self.kcfg.is_vacuous(node.id):
+            raise ValueError(f'Cannot extend vacuous node {self.id}: {node.id}')
+        if self.is_terminal(node.id):
+            raise ValueError(f'Cannot extend terminal node {self.id}: {node.id}')
+
+    def get_steps(self) -> list[ProofStep]:
+        if not self.pending:
+            return []
+        steps = []
+        for curr_node in self.pending:
+            shortest_path_to_node = self.shortest_path_to(curr_node.id)
+            target_is_terminal = self.target in self._terminal
+            module_name = (
+                self.circularities_module_name if self.nonzero_depth(curr_node) else self.dependencies_module_name
+            )
+            self.check_extendable(curr_node)
+
+            steps.append(
+                APRProofStep(
+                    bmc_depth=self.bmc_depth,
+                    proof_id=self.id,
+                    target_node=self.kcfg.node(self.target),
+                    node=curr_node,
+                    target_is_terminal=target_is_terminal,
+                    shortest_path_to_node=shortest_path_to_node,
+                    module_name=module_name,
+                )
+            )
+        return steps
 
     @property
     def module_name(self) -> str:
@@ -666,9 +717,6 @@ class APRProver(Prover):
         _inject_module(proof.dependencies_module_name, self.main_module_name, dependencies_as_rules)
         _inject_module(proof.circularities_module_name, proof.dependencies_module_name, [circularity_rule])
 
-    def nonzero_depth(self, node: KCFG.Node, proof: APRProof) -> bool:
-        return not proof.kcfg.zero_depth_between(proof.init, node.id)
-
     def _check_terminal(self, node: KCFG.Node, proof: APRProof) -> None:
         if node.id not in proof._checked_for_terminal:
             _LOGGER.info(f'Checking terminal: {node.id}')
@@ -703,64 +751,56 @@ class APRProver(Prover):
             _LOGGER.info(f'Subsumed into target node {proof_id}: {shorten_hashes((node.id, target.id))}')
         return csubst
 
-    def step_proof(self, proof: Proof) -> Iterable[StepResult]:
-        assert isinstance(proof, APRProof)
+    def get_prior_loops(self, shortest_path_to_node: Iterable[KCFG.Successor], node: KCFG.Node) -> int:
+        _prior_loops = [
+            succ.source.id
+            for succ in shortest_path_to_node
+            if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, node.cterm)
+        ]
+        prior_loops: list[NodeIdLike] = []
+        for _pl in _prior_loops:
+            if not (
+                self.kcfg.zero_depth_between(_pl, node.id)
+                or any(self.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
+            ):
+                prior_loops.append(_pl)
+        _LOGGER.info(f'Prior loop heads for node {self.id}: {(node.id, prior_loops)}')
+        return len(prior_loops)
 
-        if not proof.pending:
-            return []
-        curr_node = proof.pending[0]
+    def step_proof(self, step: ProofStep) -> Iterable[StepResult]:
+        assert isinstance(step, APRProofStep)
 
-        if proof.bmc_depth is not None:
-            _LOGGER.info(f'Checking bmc depth for node {proof.id}: {curr_node.id}')
-            _prior_loops = [
-                succ.source.id
-                for succ in proof.shortest_path_to(curr_node.id)
-                if self.kcfg_explore.kcfg_semantics.same_loop(succ.source.cterm, curr_node.cterm)
-            ]
-            prior_loops: list[NodeIdLike] = []
-            for _pl in _prior_loops:
-                if not (
-                    proof.kcfg.zero_depth_between(_pl, curr_node.id)
-                    or any(proof.kcfg.zero_depth_between(_pl, pl) for pl in prior_loops)
-                ):
-                    prior_loops.append(_pl)
-            _LOGGER.info(f'Prior loop heads for node {proof.id}: {(curr_node.id, prior_loops)}')
-            if len(prior_loops) > proof.bmc_depth:
-                _LOGGER.warning(f'Bounded node {proof.id}: {curr_node.id} at bmc depth {proof.bmc_depth}')
-                return [APRProofBoundedResult(curr_node.id)]
+        bounded = self.bmc_depth is not None and self.get_prior_loops(step.shortest_path_to_node, step.node) > self.bmc_depth
+        if bounded:
+            _LOGGER.warning(f'Bounded node {step.proof_id}: {step.node.id} at bmc depth {step.bmc_depth}')
+            return [APRProofBoundedResult(step.node.id)]
 
         # Terminal checks for current node and target node
-        is_terminal = self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm)
-        target_is_terminal = proof.target in proof._terminal
+        is_terminal = self.kcfg_explore.kcfg_semantics.is_terminal(step.node.cterm)
 
-        terminal_result = [APRProofTerminalResult(node_id=curr_node.id)] if is_terminal else []
+        terminal_result = [APRProofTerminalResult(node_id=step.node.id)] if is_terminal else []
 
         # Subsumption should be checked if and only if the target node
         # and the current node are either both terminal or both not terminal
-        if is_terminal == target_is_terminal:
-            csubst = self._check_subsume(curr_node, proof.kcfg.node(proof.target), proof.id)
+        if is_terminal == step.target_is_terminal:
+            csubst = self._check_subsume(step.node, step.target_node, step.proof_id)
             if csubst is not None:
                 # Information about the subsumed node being terminal must be returned
                 # so that the set of terminal nodes is correctly updated
-                return terminal_result + [APRProofSubsumeResult(csubst=csubst, node_id=curr_node.id)]
+                return terminal_result + [APRProofSubsumeResult(csubst=csubst, node_id=step.node.id)]
 
         if is_terminal:
             return terminal_result
 
-        module_name = (
-            proof.circularities_module_name if self.nonzero_depth(curr_node, proof) else proof.dependencies_module_name
-        )
-
-        self.kcfg_explore.check_extendable(proof, curr_node)
         extend_result = self.kcfg_explore.extend_cterm(
-            curr_node.cterm,
+            step.node.cterm,
             execute_depth=self.execute_depth,
             cut_point_rules=self.cut_point_rules,
             terminal_rules=self.terminal_rules,
-            module_name=module_name,
-            node_id=curr_node.id,
+            module_name=step.module_name,
+            node_id=step.node.id,
         )
-        return [APRProofExtendResult(node_id=curr_node.id, extend_result=extend_result)]
+        return [APRProofExtendResult(node_id=step.node.id, extend_result=extend_result)]
 
     def failure_info(self, proof: Proof) -> FailureInfo:
         assert isinstance(proof, APRProof)
