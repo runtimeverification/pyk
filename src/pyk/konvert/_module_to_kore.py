@@ -75,6 +75,7 @@ def module_to_kore(definition: KDefinition) -> Module:
     """Convert the main module of a kompiled KAST definition to KORE format."""
 
     module = simplified_module(definition)
+    defn = KDefinition(module.name, (module,))  # for getting the sort lattice
 
     name = name_to_kore(module.name)
     attrs = atts_to_kore({key: value for key, value in module.att.items() if key != Atts.DIGEST})  # filter digest
@@ -90,10 +91,8 @@ def module_to_kore(definition: KDefinition) -> Module:
         for sentence in module.sentences
         if isinstance(sentence, KProduction) and sentence.klabel and sentence.klabel.name not in BUILTIN_LABELS
     ]
+
     subsort_axioms = _subsort_axioms(module)
-
-    defn = KDefinition(module.name, (module,))  # for getting the sort lattice
-
     assoc_axioms = _assoc_axioms(defn)
 
     sentences: list[Sentence] = []
