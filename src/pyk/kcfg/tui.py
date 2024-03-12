@@ -216,7 +216,7 @@ class NodeView(Widget):
     def _info_text(self) -> str:
         term_str = '✅' if self._term_on else '❌'
         constraint_str = '✅' if self._constraint_on else '❌'
-        custom_str = '✅' if self._custom_on else '❌'
+        custom_str = '' if self._custom_view is None else f'{"✅" if self._custom_on else "❌"} Custom View.'
         minimize_str = '✅' if self._minimize else '❌'
         status_on = '✅' if self._status_on else '❌'
         element_str = 'NOTHING'
@@ -239,7 +239,8 @@ class NodeView(Widget):
         yield Status()
         yield Term()
         yield Constraint()
-        yield Custom()
+        if self._custom_view is not None:
+            yield Custom()
 
     def toggle_option(self, field: str) -> bool:
         assert field in ['minimize', 'term_on', 'constraint_on', 'custom_on', 'status_on']
@@ -334,7 +335,8 @@ class NodeView(Widget):
         self.query_one('#info', Info).text = self._info_text()
         self.query_one('#term', Term).text = term_str
         self.query_one('#constraint', Constraint).text = constraint_str
-        self.query_one('#custom', Custom).text = custom_str
+        if self._custom_view is not None:
+            self.query_one('#custom', Custom).text = custom_str
         self.query_one('#status', Status).text = self._status_text()
 
     def on_behavior_view_selected(self) -> None:
@@ -383,6 +385,8 @@ class KCFGViewer(App):
         self._minimize = minimize
         self._hidden_chunks = []
         self._selected_chunk = None
+        if self._custom_view is not None:
+            self.bind('v', 'keystroke("custom")', description='Toggle custom.')
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -448,7 +452,6 @@ class KCFGViewer(App):
         ('H', 'keystroke("H")', 'Unhide all nodes.'),
         ('t', 'keystroke("term")', 'Toggle term.'),
         ('c', 'keystroke("constraint")', 'Toggle constraint.'),
-        ('v', 'keystroke("custom")', 'Toggle custom.'),
         ('m', 'keystroke("minimize")', 'Toggle minimization.'),
         ('s', 'keystroke("status")', 'Toggle status.'),
         Binding('q', 'quit', priority=True),
@@ -467,7 +470,9 @@ class KCFGViewer(App):
             node_ids = [nid[5:] for nid in self._hidden_chunks]
             self.query_one('#info', Info).text = f'UNHIDDEN: nodes({shorten_hashes(node_ids)})'
             self._hidden_chunks = []
-        elif key in ['term', 'constraint', 'custom', 'status']:
+        elif key in ['term', 'constraint', 'status']:
+            self.query_one('#node-view', NodeView).toggle_view(key)
+        elif key == 'custom' and self._custom_view is not None:
             self.query_one('#node-view', NodeView).toggle_view(key)
         elif key in ['minimize']:
             self.query_one('#node-view', NodeView).toggle_option(key)
