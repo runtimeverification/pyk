@@ -18,8 +18,6 @@ TESTDIR?=tests
 DEFDIR?=.
 # path to kompile output directory
 KOMPILED_DIR=$(DEFDIR)/$(notdir $(DEF))-kompiled
-# path relative to current definition of output/input files
-RESULTDIR?=$(TESTDIR)
 # all tests in test directory with matching file extension
 RUN_TESTS?=$(wildcard $(TESTDIR)/*.$(EXT))
 PROOF_TESTS?=$(wildcard $(TESTDIR)/*-spec.k) $(wildcard $(TESTDIR)/*-spec.md)
@@ -70,18 +68,10 @@ update-results: CHECK=>
 # if some programs should be run with different options their rule should be
 # specified in the makefile prior to including ktest.mak.
 %.$(EXT): kompile
-ifeq ($(TESTDIR),$(RESULTDIR))
 	$(PIPEFAIL) (cat $@.in 2>/dev/null || true) | $(KRUN) $@ $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
-else
-	$(PIPEFAIL) (cat $(RESULTDIR)/$(notdir $@).in 2>/dev/null || true) | $(KRUN) $@ $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $(RESULTDIR)/$(notdir $@).out
-endif
 
 %-spec.k %-spec.md: kompile
-ifeq ($(TESTDIR),$(RESULTDIR))
 	$(KPROVE) $@ $(KPROVE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CONSIDER_PROVER_ERRORS) $(REMOVE_PATHS) $(CHECK) $@.out
-else
-	$(KPROVE) $@ $(KPROVE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CONSIDER_PROVER_ERRORS) $(REMOVE_PATHS) $(CHECK) $(RESULTDIR)/$(notdir $@).out
-endif
 
 clean:
 	rm -rf $(KOMPILED_DIR) .depend-tmp .depend .kompile-* .krun-* .kprove-* kore-exec.tar.gz
