@@ -6,7 +6,8 @@ import sys
 from argparse import ArgumentParser, FileType
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
+from collections.abc import Iterable
 
 from graphviz import Digraph
 
