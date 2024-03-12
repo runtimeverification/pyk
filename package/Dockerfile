@@ -28,7 +28,7 @@ ENV K_VERSION=${K_VERSION} \
     force_color_prompt=yes
 
 # install poetry and pyk
-COPY --chown=1000:1000 LICENSE.md Makefile README.md deps docs poetry.lock pyproject.toml src regression-new pyk-${PYK_VERSION}/
+COPY --chown=1000:1000 LICENSE.md Makefile README.md deps docs poetry.lock pyproject.toml src pyk-${PYK_VERSION}/
 RUN pip install poetry && \
     cd pyk-${PYK_VERSION} && \
     make build && \

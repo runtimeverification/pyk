@@ -10,7 +10,6 @@ all: check cov
 clean: docs-clean
 	rm -rf dist .coverage cov-* .mypy_cache .pytest_cache
 	find -type d -name __pycache__ -prune -exec rm -rf {} \;
-	$(MAKE) -C regression-new clean
 
 .PHONY: build
 build:
