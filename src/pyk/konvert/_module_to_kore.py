@@ -92,15 +92,12 @@ def module_to_kore(definition: KDefinition) -> Module:
         if isinstance(sentence, KProduction) and sentence.klabel and sentence.klabel.name not in BUILTIN_LABELS
     ]
 
-    subsort_axioms = _subsort_axioms(module)
-    assoc_axioms = _assoc_axioms(defn)
-
     sentences: list[Sentence] = []
     sentences += imports
     sentences += sort_decls
     sentences += symbol_decls
-    sentences += subsort_axioms
-    sentences += assoc_axioms
+    sentences += _subsort_axioms(module)
+    sentences += _assoc_axioms(defn)
 
     return Module(name=name, sentences=sentences, attrs=attrs)
 
