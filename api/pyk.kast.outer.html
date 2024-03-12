@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyk.kast.outer module &#8212; pyk 0.1.698 documentation</title>
+    <title>pyk.kast.outer module &#8212; pyk 0.1.699 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <script src="../_static/documentation_options.js?v=04c61e08"></script>
+    <script src="../_static/documentation_options.js?v=a0be9a11"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -643,12 +643,6 @@
 <dd><p>Return the sorts of the non-terminal positions of the productions.</p>
 </dd></dl>
 
-<dl class="py property">
-<dt class="sig sig-object py" id="pyk.kast.outer.KProduction.arity">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">arity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#pyk.kast.outer.KProduction.arity" title="Link to this definition">¶</a></dt>
-<dd><p>Return the total number of _all_ production items.</p>
-</dd></dl>
-
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyk.kast.outer.KProduction.att">
 <span class="sig-name descname"><span class="pre">att</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="pyk.kast.att.html#pyk.kast.att.KAtt" title="pyk.kast.att.KAtt"><span class="pre">KAtt</span></a></em><a class="headerlink" href="#pyk.kast.outer.KProduction.att" title="Link to this definition">¶</a></dt>
@@ -673,6 +667,12 @@
 <dt class="sig sig-object py" id="pyk.kast.outer.KProduction.let_att">
 <span class="sig-name descname"><span class="pre">let_att</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">att</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="pyk.kast.att.html#pyk.kast.att.KAtt" title="pyk.kast.att.KAtt"><span class="pre">KAtt</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#pyk.kast.outer.KProduction" title="pyk.kast.outer.KProduction"><span class="pre">KProduction</span></a></span></span><a class="reference internal" href="../_modules/pyk/kast/outer.html#KProduction.let_att"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kast.outer.KProduction.let_att" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="pyk.kast.outer.KProduction.non_terminals">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">non_terminals</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pyk.kast.outer.KNonTerminal" title="pyk.kast.outer.KNonTerminal"><span class="pre">KNonTerminal</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pyk.kast.outer.KProduction.non_terminals" title="Link to this definition">¶</a></dt>
+<dd><p>Return the non-terminals of the production.</p>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="pyk.kast.outer.KProduction.params">
