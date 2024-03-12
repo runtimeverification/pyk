@@ -183,7 +183,6 @@ class Proof(ABC):
     def status(self) -> ProofStatus:
         if self.admitted:
             return ProofStatus.PASSED
-
         if self.own_status == ProofStatus.FAILED or self.subproofs_status == ProofStatus.FAILED:
             return ProofStatus.FAILED
         elif self.own_status == ProofStatus.PENDING or self.subproofs_status == ProofStatus.PENDING:
