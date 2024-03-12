@@ -250,6 +250,10 @@ def exec_kompile(args: Namespace) -> None:
     kompile_dict = {
         'main_file': main_file,
         'backend': args.backend.value,
+        'syntax_module': args.syntax_module,
+        'main_module': args.main_module,
+        'md_selector': args.md_selector,
+        'include_dirs': (Path(include) for include in args.includes),
     }
     Kompile.from_dict(kompile_dict)(
         output_dir=kompiled_directory,
@@ -363,7 +367,7 @@ def create_argument_parser() -> ArgumentParser:
     kompile_args = pyk_args_command.add_parser(
         'kompile',
         help='Kompile the K specification.',
-        parents=[k_cli_args.logging_args],
+        parents=[k_cli_args.logging_args, k_cli_args.definition_args],
     )
     kompile_args.add_argument('main_file', type=str, help='File with the specification module.')
     kompile_args.add_argument(
