@@ -218,7 +218,7 @@ class NodeView(Widget):
         constraint_str = '✅' if self._constraint_on else '❌'
         custom_str = '' if self._custom_view is None else f'{"✅" if self._custom_on else "❌"} Custom View.'
         minimize_str = '✅' if self._minimize else '❌'
-        status_on = '✅' if self._status_on else '❌'
+        status_str = '✅' if self._status_on else '❌'
         element_str = 'NOTHING'
         if type(self._element) is KCFG.Node:
             element_str = f'node({shorten_hashes(self._element.id)})'
