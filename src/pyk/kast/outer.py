@@ -283,10 +283,15 @@ class KProduction(KSentence):
     def let_att(self, att: KAtt) -> KProduction:
         return self.let(att=att)
 
+    @cached_property
+    def non_terminals(self) -> tuple[KNonTerminal, ...]:
+        """Return the non-terminals of the production."""
+        return tuple(item for item in self.items if isinstance(item, KNonTerminal))
+
     @property
     def argument_sorts(self) -> list[KSort]:
         """Return the sorts of the non-terminal positions of the productions."""
-        return [knt.sort for knt in self.items if type(knt) is KNonTerminal]
+        return [knt.sort for knt in self.non_terminals]
 
 
 @final
