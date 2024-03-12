@@ -242,11 +242,6 @@ class KProduction(KSentence):
         object.__setattr__(self, 'klabel', klabel)
         object.__setattr__(self, 'att', att)
 
-    @property
-    def argument_sorts(self) -> list[KSort]:
-        """Return the sorts of the non-terminal positions of the productions."""
-        return [knt.sort for knt in self.items if type(knt) is KNonTerminal]
-
     @classmethod
     def _from_dict(cls: type[KProduction], d: Mapping[str, Any]) -> KProduction:
         return KProduction(
@@ -287,6 +282,11 @@ class KProduction(KSentence):
 
     def let_att(self, att: KAtt) -> KProduction:
         return self.let(att=att)
+
+    @property
+    def argument_sorts(self) -> list[KSort]:
+        """Return the sorts of the non-terminal positions of the productions."""
+        return [knt.sort for knt in self.items if type(knt) is KNonTerminal]
 
 
 @final
