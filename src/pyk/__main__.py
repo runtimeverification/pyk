@@ -35,7 +35,7 @@ from .ktool.kprove import KProve
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
 from .proof.reachability import APRFailureInfo
-from .utils import check_file_path, ensure_dir_path, single
+from .utils import check_file_path, ensure_dir_path
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -223,16 +223,7 @@ def exec_prove_legacy(args: Namespace) -> None:
 def exec_prove(args: Namespace) -> None:
     kompiled_directory: Path
     if args.definition_dir is None:
-        try:
-            kompiled_directory = single(Path().glob('*-kompiled'))
-        except ValueError as err:
-            if len(err.args) == 1:
-                raise ValueError('Could not find `*-kompiled` directory, use --definition to specify one.') from err
-            else:
-                _, fst, snd = err.args
-                raise ValueError(
-                    f'More than one `*-kompiled` directory found ({fst}, {snd}, ...), use `--definition` to specify one.'
-                ) from err
+        kompiled_directory = Kompile.default_directory()
         _LOGGER.info(f'Using kompiled directory: {kompiled_directory}.')
     else:
         kompiled_directory = args.definition_dir
