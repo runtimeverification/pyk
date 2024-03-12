@@ -32,6 +32,7 @@ from .ktool import TypeInferenceMode
 from .ktool.kompile import Kompile, KompileBackend
 from .ktool.kprint import KPrint
 from .ktool.kprove import KProve
+from .ktool.krun import KRun
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
 from .proof.reachability import APRFailureInfo
@@ -261,6 +262,21 @@ def exec_kompile(args: Namespace) -> None:
     )
 
 
+def exec_run(args: Namespace) -> None:
+    pgm_file = Path(args.pgm_file)
+    check_file_path(pgm_file)
+    kompiled_directory: Path
+    if 'definition_dir' not in args:
+        kompiled_directory = Kompile.default_directory()
+        _LOGGER.info(f'Using kompiled directory: {kompiled_directory}.')
+    else:
+        kompiled_directory = args.definition_dir
+    krun = KRun(kompiled_directory)
+    rc, res = krun.krun(pgm_file)
+    print(krun.pretty_print(res))
+    sys.exit(rc)
+
+
 def exec_graph_imports(args: Namespace) -> None:
     kompiled_dir: Path = args.definition_dir
     kprinter = KPrint(kompiled_dir)
@@ -387,6 +403,14 @@ def create_argument_parser() -> ArgumentParser:
     kompile_args.add_argument(
         '--type-inference-mode', type=TypeInferenceMode, help='Mode for doing K rule type inference in.'
     )
+
+    run_args = pyk_args_command.add_parser(
+        'run',
+        help='Run a given program using the K definition.',
+        parents=[k_cli_args.logging_args],
+    )
+    run_args.add_argument('pgm_file', type=str, help='File program to run in it.')
+    run_args.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
 
     prove_args = pyk_args_command.add_parser(
         'prove',
