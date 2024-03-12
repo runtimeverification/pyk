@@ -226,7 +226,7 @@ class NodeView(Widget):
             element_str = f'edge({shorten_hashes(self._element.source.id)},{shorten_hashes(self._element.target.id)})'
         elif type(self._element) is KCFG.Cover:
             element_str = f'cover({shorten_hashes(self._element.source.id)},{shorten_hashes(self._element.target.id)})'
-        return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {custom_str} Custom View. {status_on} Status View.'
+        return f'{element_str} selected. {minimize_str} Minimize Output. {term_str} Term View. {constraint_str} Constraint View. {status_on} Status View. {custom_str}'
 
     def _status_text(self) -> str:
         proof_name, proof_version = self._proof_id.split(':')
