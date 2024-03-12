@@ -255,10 +255,9 @@ class APRProof(Proof, KCFGExploration):
             return ProofStatus.PASSED
         if len(self.failing) > 0:
             return ProofStatus.FAILED
-        elif len(self.pending) > 0:
+        if len(self.pending) > 0:
             return ProofStatus.PENDING
-        else:
-            return ProofStatus.PASSED
+        return ProofStatus.PASSED
 
     @property
     def can_progress(self) -> bool:

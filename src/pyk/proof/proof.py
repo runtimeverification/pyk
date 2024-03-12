@@ -185,10 +185,9 @@ class Proof(ABC):
             return ProofStatus.PASSED
         if self.own_status == ProofStatus.FAILED or self.subproofs_status == ProofStatus.FAILED:
             return ProofStatus.FAILED
-        elif self.own_status == ProofStatus.PENDING or self.subproofs_status == ProofStatus.PENDING:
+        if self.own_status == ProofStatus.PENDING or self.subproofs_status == ProofStatus.PENDING:
             return ProofStatus.PENDING
-        else:
-            return ProofStatus.PASSED
+        return ProofStatus.PASSED
 
     @property
     @abstractmethod
