@@ -286,7 +286,9 @@ def cterm_symbolic(
             interim_simplification=interim_simplification,
             no_post_exec_simplify=no_post_exec_simplify,
         ) as server:
-            with KoreClient('localhost', server.port, bug_report=bug_report, bug_report_id=id) as client:
+            with KoreClient(
+                'localhost', server.port, definition_dir=definition_dir, bug_report=bug_report, bug_report_id=id
+            ) as client:
                 yield CTermSymbolic(client, definition, kompiled_kore, trace_rewrites=trace_rewrites)
     else:
         if port is None:
@@ -302,5 +304,7 @@ def cterm_symbolic(
                     ('localhost', port, TransportType.SINGLE_SOCKET),
                 ],
             }
-        with KoreClient('localhost', port, bug_report=bug_report, bug_report_id=id, dispatch=dispatch) as client:
+        with KoreClient(
+            'localhost', port, definition_dir=definition_dir, bug_report=bug_report, bug_report_id=id, dispatch=dispatch
+        ) as client:
             yield CTermSymbolic(client, definition, kompiled_kore, trace_rewrites=trace_rewrites)

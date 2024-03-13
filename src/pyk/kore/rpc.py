@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, ContextManager, NamedTuple, TypedDict, final
 
 from psutil import Process
 
+from ..ktool.kprint import KPrint
 from ..utils import check_dir_path, check_file_path, filter_none, run_process
 from .syntax import And, SortApp, kore_term
 
@@ -423,10 +424,16 @@ class ImplicationError(KoreClientError):
 @dataclass
 class SmtSolverError(KoreClientError):
     pattern: Pattern
+    definition_dir: Path | None
 
-    def __init__(self, pattern: Pattern):
+    def __init__(self, pattern: Pattern, definition_dir: Path | None = None):
         self.pattern = pattern
-        super().__init__(f'Smt solver error: {self.pattern.text}')
+        self.definition_dir = definition_dir
+        if self.definition_dir is not None:
+            printer = KPrint(self.definition_dir)
+            super().__init__(f'Smt solver error: {printer.kore_to_pretty(self.pattern)}')
+        else:
+            super().__init__(f'Smt solver error: {self.pattern.text}')
 
 
 @final
@@ -866,12 +873,14 @@ class KoreClient(ContextManager['KoreClient']):
     _KORE_JSON_VERSION: Final = 1
 
     _client: JsonRpcClientFacade
+    definition_dir: Path | None
 
     def __init__(
         self,
         host: str,
         port: int,
         *,
+        definition_dir: Path | None = None,
         timeout: int | None = None,
         bug_report: BugReport | None = None,
         bug_report_id: str | None = None,
@@ -889,6 +898,7 @@ class KoreClient(ContextManager['KoreClient']):
             bug_report_id=bug_report_id,
             dispatch=dispatch,
         )
+        self.definition_dir = definition_dir
 
     def __enter__(self) -> KoreClient:
         return self
@@ -917,7 +927,7 @@ class KoreClient(ContextManager['KoreClient']):
             case 4:
                 return ImplicationError(error=err.data['error'], context=err.data['context'])
             case 5:
-                return SmtSolverError(pattern=kore_term(err.data))
+                return SmtSolverError(pattern=kore_term(err.data), definition_dir=self.definition_dir)
             case 8:
                 return InvalidModuleError(error=err.data['error'], context=err.data.get('context'))
             case 9:
