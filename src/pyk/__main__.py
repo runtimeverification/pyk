@@ -246,8 +246,6 @@ def exec_prove(options: ProveOptions) -> None:
         _LOGGER.info(f'Using kompiled directory: {kompiled_directory}.')
     else:
         kompiled_directory = options.definition_dir
-    if options.spec_module is None:
-        raise ValueError('You must specify a spec module with --spec-module.')
     kprove = KProve(kompiled_directory)
     proofs = kprove.prove_rpc(options=options)
     for proof in proofs:
