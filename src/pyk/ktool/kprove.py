@@ -378,7 +378,7 @@ class KProve(KPrint):
             )
 
         all_claims = self.get_claims(
-            options.spec_file,
+            Path(options.spec_file),
             spec_module_name=options.spec_module,
             claim_labels=claim_labels,
             exclude_claim_labels=exclude_claim_labels,
