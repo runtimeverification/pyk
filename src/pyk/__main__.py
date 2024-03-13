@@ -103,7 +103,7 @@ def exec_print(options: PrintOptions) -> None:
         _LOGGER.info(f'Wrote file: {options.output_file.name}')
     else:
         if options.minimize:
-            if options.omit_labels != '' and options.keep_cells != '':
+            if options.omit_labels is not None and options.keep_cells is not None:
                 raise ValueError('You cannot use both --omit-labels and --keep-cells.')
 
             abstract_labels = options.omit_labels.split(',') if options.omit_labels is not None else []
