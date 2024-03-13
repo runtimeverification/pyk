@@ -4,10 +4,10 @@ import json
 import logging
 import sys
 from argparse import ArgumentParser, FileType
+from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
-from collections.abc import Iterable
 
 from graphviz import Digraph
 
@@ -249,9 +249,7 @@ def exec_prove(options: ProveOptions) -> None:
     if options.spec_module is None:
         raise ValueError('You must specify a spec module with --spec-module.')
     kprove = KProve(kompiled_directory)
-    proofs = kprove.prove_rpc(
-        Path(options.spec_file), options.spec_module, type_inference_mode=options.type_inference_mode
-    )
+    proofs = kprove.prove_rpc(options=options)
     for proof in proofs:
         print('\n'.join(proof.summary.lines))
         if proof.failed and options.failure_info:
