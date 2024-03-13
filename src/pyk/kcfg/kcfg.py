@@ -558,9 +558,33 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         imports: Iterable[KImport] = (),
         priority: int = 20,
         att: KAtt = EMPTY_ATT,
+        summarize_with_target: NodeIdLike | None = None,
     ) -> KFlatModule:
         module_name = 'KCFG' if module_name is None else module_name
-        return KFlatModule(module_name, self.to_rules(priority=priority), imports=imports, att=att)
+        if summarize_with_target is None:
+            rules: list[KRuleLike] = self.to_rules(priority=priority)
+        else:
+            # The summary source is the root node of the KCFG, which must be unique.
+            assert len(self.root) == 1
+            source: KCFG.Node = self.root[0]
+
+            # The target node must be a leaf, and must be different from the source.
+            target: KCFG.Node = self.node(summarize_with_target)
+            assert self.is_leaf(target.id)
+            assert source != target
+
+            # Isolate the nodes subsumed into the target node; there must be at least one.
+            covered_leaves: set[KCFG.Node] = {cover.source for cover in set(self.covers(target_id=target.id))}
+            assert len(covered_leaves) > 0
+            # The summary targets are all of the nodes subsumed into the target node,
+            # plus all of the remaining leaves, minus the target itself
+            summary_targets: set[KCFG.Node] = set(self.leaves).union(covered_leaves)
+            summary_targets.remove(target)
+
+            edges: list[KCFG.Edge] = [KCFG.Edge(source, target, 1, ()) for target in summary_targets]
+            rules = [e.to_rule('SUMMARY', priority=priority) for e in edges]
+
+        return KFlatModule(module_name, rules, imports=imports, att=att)
 
     def _resolve_or_none(self, id_like: NodeIdLike) -> int | None:
         if type(id_like) is int:
