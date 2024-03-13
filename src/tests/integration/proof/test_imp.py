@@ -86,17 +86,6 @@ class ImpSemantics(KCFGSemantics):
         return False
 
 
-PROVE_CTERM_TEST_DATA: Final = (
-    ('step-1', ['--depth', '1'], 'int $n , $s ; $n = 3 ;', [('int $s , .Ids ; $n = 3 ;', '$n |-> 0')]),
-    ('step-2', ['--depth', '2'], 'int $n , $s ; $n = 3 ;', [('int .Ids ; $n = 3 ;', '$n |-> 0 $s |-> 0')]),
-    (
-        'branch',
-        ['--max-counterexamples', '2', '--depth', '4'],
-        'int $n ; if (_B:Bool) { $n = 1; } else { $n = 2; }',
-        [('$n = 1 ;', '$n |-> 0'), ('$n = 2 ;', '$n |-> 0')],
-    ),
-)
-
 EMPTY_STATES: Final[list[tuple[str, str]]] = []
 EXECUTE_TEST_DATA: Final = (
     (
