@@ -159,14 +159,14 @@ class KCLIArgs:
     @cached_property
     def logging_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
-        args.add_argument('--verbose', '-v', default=None, action='store_true', help='Verbose output.')
-        args.add_argument('--debug', default=None, action='store_true', help='Debug output.')
+        args.add_argument('--verbose', '-v', default=False, action='store_true', help='Verbose output.')
+        args.add_argument('--debug', default=False, action='store_true', help='Debug output.')
         return args
 
     @cached_property
     def parallel_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
-        args.add_argument('--workers', '-j', type=int, help='Number of processes to run in parallel.')
+        args.add_argument('--workers', '-j', default=1, type=int, help='Number of processes to run in parallel.')
         return args
 
     @cached_property
@@ -185,7 +185,7 @@ class KCLIArgs:
         args.add_argument(
             '--emit-json',
             dest='emit_json',
-            default=None,
+            default=True,
             action='store_true',
             help='Emit JSON definition after compilation.',
         )
@@ -195,41 +195,42 @@ class KCLIArgs:
         args.add_argument(
             '-ccopt',
             dest='ccopts',
+            default=[],
             action='append',
             help='Additional arguments to pass to llvm-kompile.',
         )
         args.add_argument(
             '--no-llvm-kompile',
             dest='llvm_kompile',
-            default=None,
+            default=True,
             action='store_false',
             help='Do not run llvm-kompile process.',
         )
         args.add_argument(
             '--with-llvm-library',
             dest='llvm_library',
-            default=None,
+            default=False,
             action='store_true',
             help='Make kompile generate a dynamic llvm library.',
         )
         args.add_argument(
             '--enable-llvm-debug',
             dest='enable_llvm_debug',
-            default=None,
+            default=False,
             action='store_true',
             help='Make kompile generate debug symbols for llvm.',
         )
         args.add_argument(
             '--read-only-kompiled-directory',
             dest='read_only',
-            default=None,
+            default=False,
             action='store_true',
             help='Generated a kompiled directory that K will not attempt to write to afterwards.',
         )
-        args.add_argument('-O0', dest='o0', default=None, action='store_true', help='Optimization level 0.')
-        args.add_argument('-O1', dest='o1', default=None, action='store_true', help='Optimization level 1.')
-        args.add_argument('-O2', dest='o2', default=None, action='store_true', help='Optimization level 2.')
-        args.add_argument('-O3', dest='o3', default=None, action='store_true', help='Optimization level 3.')
+        args.add_argument('-O0', dest='o0', default=False, action='store_true', help='Optimization level 0.')
+        args.add_argument('-O1', dest='o1', default=False, action='store_true', help='Optimization level 1.')
+        args.add_argument('-O2', dest='o2', default=False, action='store_true', help='Optimization level 2.')
+        args.add_argument('-O3', dest='o3', default=False, action='store_true', help='Optimization level 3.')
         return args
 
     @cached_property
@@ -253,7 +254,7 @@ class KCLIArgs:
     @cached_property
     def display_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
-        args.add_argument('--minimize', dest='minimize', default=None, action='store_true', help='Minimize output.')
+        args.add_argument('--minimize', dest='minimize', default=True, action='store_true', help='Minimize output.')
         args.add_argument('--no-minimize', dest='minimize', action='store_false', help='Do not minimize output.')
         return args
 
@@ -261,7 +262,7 @@ class KCLIArgs:
     def definition_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
         args.add_argument(
-            '-I', type=str, dest='includes', action='append', help='Directories to lookup K definitions in.'
+            '-I', type=str, dest='includes', default=[], action='append', help='Directories to lookup K definitions in.'
         )
         args.add_argument('--main-module', type=str, help='Name of the main module.')
         args.add_argument('--syntax-module', type=str, help='Name of the syntax module.')
