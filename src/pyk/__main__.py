@@ -250,7 +250,7 @@ def exec_prove(options: ProveOptions) -> None:
         kompiled_directory = options.definition_dir
     kprove = KProve(kompiled_directory)
     proofs = kprove.prove_rpc(options=options)
-    for proof in proofs:
+    for proof in sorted(proofs, key=lambda p: p.id):
         print('\n'.join(proof.summary.lines))
         if proof.failed and options.failure_info:
             failure_info = proof.failure_info
