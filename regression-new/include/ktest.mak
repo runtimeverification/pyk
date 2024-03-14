@@ -10,8 +10,22 @@ MAKEFILE_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 KOMPILE=$(POETRY_RUN) pyk kompile
 # ditto for krun
 KRUN=$(POETRY_RUN) pyk run
+# and kdep
+KDEP=$(POETRY_RUN) pyk kdep
 # and kprove
 KPROVE=$(POETRY_RUN) pyk prove
+# and kast
+KAST=$(POETRY_RUN) pyk parse
+# and kparse
+KPARSE=$(POETRY_RUN) pyk parse
+# and kserver
+KSERVER=$(POETRY_RUN) pyk kserver
+# and ksearch
+KSEARCH:=$(KRUN) --search-all
+# and kprint
+KPRINT=$(POETRY_RUN) pyk parse
+# and llvm-krun
+LLVM_KRUN=$(POETRY_RUN) pyk llvm-krun
 # path relative to current definition of test programs
 TESTDIR?=tests
 # path to put -kompiled directory in
@@ -21,6 +35,11 @@ KOMPILED_DIR=$(DEFDIR)/$(notdir $(DEF))-kompiled
 # all tests in test directory with matching file extension
 RUN_TESTS?=$(wildcard $(TESTDIR)/*.$(EXT))
 PROOF_TESTS?=$(wildcard $(TESTDIR)/*-spec.k) $(wildcard $(TESTDIR)/*-spec.md)
+SEARCH_TESTS?=$(wildcard $(TESTDIR)/*.$(EXT).search)
+STRAT_TESTS?=$(wildcard $(TESTDIR)/*.strat)
+KAST_TESTS?=$(wildcard $(TESTDIR)/*.kast)
+KPARSE_TESTS?=$(wildcard $(TESTDIR)/*.kparse)
+KAST_BISON_TESTS?=$(wildcard $(TESTDIR)/*.kast-bison)
 # default KOMPILE_BACKEND
 KOMPILE_BACKEND?=llvm
 # check if .k file exists, if not, check if .md file exists
@@ -45,10 +64,10 @@ PIPEFAIL?=set -o pipefail;
 # null by default, add CONSIDER_PROVER_ERRORS=2>&1 to the local Makefile to test kprove output
 #CONSIDER_PROVER_ERRORS=
 
-.PHONY: kompile all clean update-results proofs
+.PHONY: kompile all clean update-results proofs krun searches strat kast kast-bison kparse
 
 # run all tests
-all: kompile krun proofs
+all: kompile krun proofs searches strat kast kast-bison kparse
 
 # run only kompile
 kompile: $(KOMPILED_DIR)/timestamp
@@ -60,6 +79,16 @@ krun: $(RUN_TESTS)
 
 proofs: $(PROOF_TESTS)
 
+searches: $(SEARCH_TESTS)
+
+strat: $(STRAT_TESTS)
+
+kast: $(KAST_TESTS)
+
+kparse: $(KPARSE_TESTS)
+
+kast-bison: $(KAST_BISON_TESTS)
+
 # run all tests and regenerate output files
 update-results: all
 update-results: CHECK=>
@@ -70,14 +99,40 @@ update-results: CHECK=>
 %.$(EXT): kompile
 	$(PIPEFAIL) (cat $@.in 2>/dev/null || true) | $(KRUN) $@ $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
 
+krun.nopgm: kompile
+	$(PIPEFAIL) (cat $@.in 2>/dev/null || true) | $(KRUN) $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+
 %-spec.k %-spec.md: kompile
 	$(KPROVE) $@ $(KPROVE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CONSIDER_PROVER_ERRORS) $(REMOVE_PATHS) $(CHECK) $@.out
+
+%-broken-spec.k %-broken-spec.md: kompile
+	$(KPROVE) $@ $(KPROVE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CONSIDER_ERRORS) $(REMOVE_PATHS) $(CHECK) $@.out
+
+%.search: kompile
+	$(PIPEFAIL) $(KSEARCH) $@ $(KSEARCH_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+
+%.strat: kompile
+	$(PIPEFAIL) $(KRUN) $@.input $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) -cSTRATEGY="$(shell cat $@)" $(CHECK) $@.out
+
+%.kast: kompile
+	$(PIPEFAIL) $(KAST) $@ $(KAST_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+
+%.kparse: kompile
+	$(PIPEFAIL) $(KPARSE) $@ $(KPARSE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+
+%.kast-bison: kompile
+	$(KAST) $(KAST_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) bison_parser
+	$(PIPEFAIL) ./bison_parser $@ $(CHECK) $@.out
 
 clean:
 	rm -rf $(KOMPILED_DIR) .depend-tmp .depend .kompile-* .krun-* .kprove-* kore-exec.tar.gz
 ifeq ($(KOMPILE_BACKEND),kore)
 	rm -f $(DEF).kore
 endif
+
+.depend:
+	@$(KDEP) $(KDEP_FLAGS) $(DEF).$(SOURCE_EXT) > .depend-tmp
+	@mv .depend-tmp .depend
 
 ifneq ($(MAKECMDGOALS),clean)
 -include .depend
