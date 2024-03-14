@@ -28,6 +28,8 @@ KPRINT=$(POETRY_RUN) pyk parse
 LLVM_KRUN=$(POETRY_RUN) pyk llvm-krun
 # path relative to current definition of test programs
 TESTDIR?=tests
+# path relative to current definition of output/input files
+RESULTDIR?=$(TESTDIR)
 # path to put -kompiled directory in
 DEFDIR?=.
 # path to kompile output directory
@@ -97,32 +99,68 @@ update-results: CHECK=>
 # if some programs should be run with different options their rule should be
 # specified in the makefile prior to including ktest.mak.
 %.$(EXT): kompile
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(PIPEFAIL) (cat $@.in 2>/dev/null || true) | $(KRUN) $@ $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+else
+	$(PIPEFAIL) (cat $(RESULTDIR)/$(notdir $@).in 2>/dev/null || true) | $(KRUN) $@ $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $(RESULTDIR)/$(notdir $@).out
+endif
 
 krun.nopgm: kompile
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(PIPEFAIL) (cat $@.in 2>/dev/null || true) | $(KRUN) $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+else
+	$(PIPEFAIL) (cat $(RESULTDIR)/$(notdir $@).in 2>/dev/null || true) | $(KRUN) $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $(RESULTDIR)/$(notdir $@).out
+endif
 
 %-spec.k %-spec.md: kompile
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(KPROVE) $@ $(KPROVE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CONSIDER_PROVER_ERRORS) $(REMOVE_PATHS) $(CHECK) $@.out
+else
+	$(KPROVE) $@ $(KPROVE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CONSIDER_PROVER_ERRORS) $(REMOVE_PATHS) $(CHECK) $(RESULTDIR)/$(notdir $@).out
+endif
 
 %-broken-spec.k %-broken-spec.md: kompile
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(KPROVE) $@ $(KPROVE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CONSIDER_ERRORS) $(REMOVE_PATHS) $(CHECK) $@.out
+else
+	$(KPROVE) $@ $(KPROVE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CONSIDER_ERRORS) $(REMOVE_PATHS) $(CHECK) $(RESULTDIR)/$(notdir $@).out
+endif
 
 %.search: kompile
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(PIPEFAIL) $(KSEARCH) $@ $(KSEARCH_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+else
+	$(PIPEFAIL) $(KSEARCH) $@ $(KSEARCH_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $(RESULTDIR)/$(notdir $@).out
+endif
 
 %.strat: kompile
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(PIPEFAIL) $(KRUN) $@.input $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) -cSTRATEGY="$(shell cat $@)" $(CHECK) $@.out
+else
+	$(PIPEFAIL) $(KRUN) $@.input $(KRUN_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) -cSTRATEGY="$(shell cat $@)" $(CHECK) $(RESULT_DIR)/$(notdir $@).out
+endif
 
 %.kast: kompile
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(PIPEFAIL) $(KAST) $@ $(KAST_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+else
+	$(PIPEFAIL) $(KAST) $@ $(KAST_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $(RESULTDIR)/$(notdir $@).out
+endif
 
 %.kparse: kompile
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(PIPEFAIL) $(KPARSE) $@ $(KPARSE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $@.out
+else
+	$(PIPEFAIL) $(KPARSE) $@ $(KPARSE_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) $(CHECK) $(RESULTDIR)/$(notdir $@).out
+endif
 
 %.kast-bison: kompile
 	$(KAST) $(KAST_FLAGS) $(DEBUG) --definition $(KOMPILED_DIR) bison_parser
+ifeq ($(TESTDIR),$(RESULTDIR))
 	$(PIPEFAIL) ./bison_parser $@ $(CHECK) $@.out
+else
+	$(PIPEFAIL) ./bison_parser $@ $(CHECK) $(RESULTDIR)/$(notdir $@).out
+endif
 
 clean:
 	rm -rf $(KOMPILED_DIR) .depend-tmp .depend .kompile-* .krun-* .kprove-* kore-exec.tar.gz
