@@ -558,11 +558,31 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         imports: Iterable[KImport] = (),
         priority: int = 20,
         att: KAtt = EMPTY_ATT,
-        summarization_info: tuple[bool, NodeIdLike | None] = (False, None),
+        summarize: tuple[bool, NodeIdLike | None] = (False, None),
     ) -> KFlatModule:
+        """Create a K module capturing the behaviour of a given KCFG.
+
+        Input:
+
+            -   module_name: output module name
+            -   imports: output module imports
+            -   priority: priority of the generated rules (default value 20)
+            -   att: output module attribute
+            -   summarize: A pair (summarize, target), where summarize = True means that the
+                  constructed rules will capture direct transitions from the root to the leaves of
+                  the KCFG and, additionally, if a target node is provided, it will not be considered
+                  but any nodes subsumed into it will be considered instead.
+
+        Output:
+
+            A KFlatModule consisting of rules that describe the behaviour of the provided KCFG.
+            Each rule either corresponds to an edge of the KCFG if summarization is not activated,
+            or to a direct transition from the root to a leaf otherwise.
+        """
+
         module_name = 'KCFG' if module_name is None else module_name
-        (summary, target_to_remove) = summarization_info
-        if not summary:
+        (summarize_kcfg, target) = summarize
+        if not summarize:
             rules: list[KRuleLike] = self.to_rules(priority=priority)
         else:
             # The initial node of the summary is the root node of the KCFG,
@@ -574,15 +594,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             # The final nodes of the summary are at least the leaves
             final_nodes = set(self.leaves)
 
-            if target_to_remove is not None:
+            if target is not None:
                 # The target node must be a leaf, and must be different from the initial node.
-                assert self.is_leaf(target_to_remove) and init_node.id != target_to_remove
-                target_node: KCFG.Node = self.node(target_to_remove)
+                assert self.is_leaf(target) and init_node.id != target
+                target_node: KCFG.Node = self.node(target)
 
                 # Isolate the nodes subsumed into the target node; there must be at least one.
-                covered_leaves: set[KCFG.Node] = {
-                    cover.source for cover in set(self.covers(target_id=target_to_remove))
-                }
+                covered_leaves: set[KCFG.Node] = {cover.source for cover in set(self.covers(target_id=target))}
                 assert len(covered_leaves) > 0
                 # The summary targets are all of the nodes subsumed into the target node,
                 # plus all of the remaining leaves, minus the target node itself

@@ -72,7 +72,7 @@ class APRProofShow:
         nodes: Iterable[NodeIdLike] = (),
         node_deltas: Iterable[tuple[NodeIdLike, NodeIdLike]] = (),
         to_module: bool = False,
-        summarization_info: tuple[bool, NodeIdLike | None] = (False, None),
+        summarize_module: tuple[bool, NodeIdLike | None] = (False, None),
         minimize: bool = True,
         sort_collections: bool = False,
         omit_cells: Iterable[str] = (),
@@ -86,7 +86,7 @@ class APRProofShow:
             sort_collections=sort_collections,
             omit_cells=omit_cells,
             module_name=f'SUMMARY-{proof.id.upper().replace("_", "-")}',
-            summarization_info=summarization_info,
+            summarize=summarize_module,
         )
         return res_lines
 

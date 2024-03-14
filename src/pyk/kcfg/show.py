@@ -299,7 +299,7 @@ class KCFGShow:
         module_name: str | None = None,
         omit_cells: Iterable[str] = (),
         parseable_output: bool = True,
-        summarization_info: tuple[bool, NodeIdLike | None] = (False, None),
+        summarize: tuple[bool, NodeIdLike | None] = (False, None),
     ) -> KFlatModule:
         def _process_sentence(sent: KSentence) -> KSentence:
             if type(sent) is KRule:
@@ -309,7 +309,7 @@ class KCFGShow:
                     sent = minimize_rule(sent)
             return sent
 
-        module = cfg.to_module(module_name, summarization_info=summarization_info)
+        module = cfg.to_module(module_name, summarize=summarize)
         return module.let(sentences=[_process_sentence(sent) for sent in module.sentences])
 
     def show(
@@ -322,7 +322,7 @@ class KCFGShow:
         sort_collections: bool = False,
         omit_cells: Iterable[str] = (),
         module_name: str | None = None,
-        summarization_info: tuple[bool, NodeIdLike | None] = (False, None),
+        summarize: tuple[bool, NodeIdLike | None] = (False, None),
     ) -> list[str]:
         res_lines: list[str] = []
         res_lines += self.pretty(cfg, minimize=minimize)
@@ -362,7 +362,7 @@ class KCFGShow:
         res_lines.append('')
 
         if to_module:
-            module = self.to_module(cfg, module_name, omit_cells=omit_cells, summarization_info=summarization_info)
+            module = self.to_module(cfg, module_name, omit_cells=omit_cells, summarize=summarize)
             res_lines.append(self.kprint.pretty_print(module, sort_collections=sort_collections))
 
         return res_lines

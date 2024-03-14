@@ -199,6 +199,7 @@ class KDist:
         tmp_dir_prefix = f'kdist-{target_id.plugin_name}-{target_id.target_name}-'
         with TemporaryDirectory(prefix=tmp_dir_prefix) as build_dir_str:
             build_dir = Path(build_dir_str)
+            build_dir = Path('/Users/petarmax/Projects/RV/kontrol/plugin-compiled')
             yield build_dir
 
 
