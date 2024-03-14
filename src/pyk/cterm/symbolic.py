@@ -103,9 +103,7 @@ class CTermSymbolic:
                 log_failed_simplifications=self._trace_rewrites,
             )
         except SmtSolverError as err:
-            kast = self.kore_to_kast(err.pattern)
-            pretty_pattern = PrettyPrinter(self._definition).print(kast)
-            raise RuntimeError(f'\nSMT solver error:\n{pretty_pattern}') from err
+            raise self._smt_solver_error(err) from err
 
         if isinstance(response, AbortedResult):
             unknown_predicate = response.unknown_predicate.text if response.unknown_predicate else None
@@ -137,9 +135,7 @@ class CTermSymbolic:
         try:
             kore_simplified, logs = self._kore_client.simplify(kore, module_name=module_name)
         except SmtSolverError as err:
-            kast = self.kore_to_kast(err.pattern)
-            pretty_pattern = PrettyPrinter(self._definition).print(kast)
-            raise RuntimeError(f'\nSMT solver error:\n{pretty_pattern}') from err
+            raise self._smt_solver_error(err) from err
 
         kast_simplified = self.kore_to_kast(kore_simplified)
         return kast_simplified, logs
@@ -150,9 +146,7 @@ class CTermSymbolic:
         try:
             result = self._kore_client.get_model(kore, module_name=module_name)
         except SmtSolverError as err:
-            kast = self.kore_to_kast(err.pattern)
-            pretty_pattern = PrettyPrinter(self._definition).print(kast)
-            raise RuntimeError(f'\nSMT solver error:\n{pretty_pattern}') from err
+            raise self._smt_solver_error(err) from err
 
         if type(result) is UnknownResult:
             _LOGGER.debug('Result is Unknown')
@@ -197,9 +191,7 @@ class CTermSymbolic:
         try:
             result = self._kore_client.implies(antecedent_kore, consequent_kore, module_name=module_name)
         except SmtSolverError as err:
-            kast = self.kore_to_kast(err.pattern)
-            pretty_pattern = PrettyPrinter(self._definition).print(kast)
-            raise RuntimeError(f'\nSMT solver error:\n{pretty_pattern}') from err
+            raise self._smt_solver_error(err) from err
 
         if not result.satisfiable:
             if result.substitution is not None:
@@ -266,6 +258,11 @@ class CTermSymbolic:
         kast_simplified, logs = self.kast_simplify(kast, module_name=module_name)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
+
+    def _smt_solver_error(self, err: SmtSolverError) -> RuntimeError:
+        kast = self.kore_to_kast(err.pattern)
+        pretty_pattern = PrettyPrinter(self._definition).print(kast)
+        return RuntimeError(f'SMT solver error:\n{pretty_pattern}')
 
 
 @contextmanager
