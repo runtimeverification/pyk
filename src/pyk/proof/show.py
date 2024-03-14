@@ -72,12 +72,11 @@ class APRProofShow:
         nodes: Iterable[NodeIdLike] = (),
         node_deltas: Iterable[tuple[NodeIdLike, NodeIdLike]] = (),
         to_module: bool = False,
-        to_summary_module: bool = False,
+        summarization_info: tuple[bool, NodeIdLike | None] = (False, None),
         minimize: bool = True,
         sort_collections: bool = False,
         omit_cells: Iterable[str] = (),
     ) -> list[str]:
-        summarize_with_target = proof.target if to_summary_module else None
         res_lines = self.kcfg_show.show(
             proof.kcfg,
             nodes=nodes,
@@ -87,7 +86,7 @@ class APRProofShow:
             sort_collections=sort_collections,
             omit_cells=omit_cells,
             module_name=f'SUMMARY-{proof.id.upper().replace("_", "-")}',
-            summarize_with_target=summarize_with_target,
+            summarization_info=summarization_info,
         )
         return res_lines
 
