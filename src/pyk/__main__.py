@@ -13,7 +13,7 @@ from graphviz import Digraph
 
 from .cli.args import KCLIArgs
 from .cli.pyk import generate_options
-from .cli.utils import LOG_FORMAT, dir_path, loglevel
+from .cli.utils import LOG_FORMAT, dir_path, file_path, loglevel
 from .coverage import get_rule_by_id, strip_coverage_logger
 from .cterm import CTerm
 from .kast.inner import KInner
@@ -434,7 +434,7 @@ def create_argument_parser() -> ArgumentParser:
         help='Prove an input specification (using RPC based prover).',
         parents=[k_cli_args.logging_args],
     )
-    prove_args.add_argument('spec_file', type=FileType('r'), help='File with the specification module.')
+    prove_args.add_argument('spec_file', type=file_path, help='File with the specification module.')
     prove_args.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
     prove_args.add_argument('--spec-module', dest='spec_module', type=str, help='Module with claims to be proven.')
     prove_args.add_argument(
