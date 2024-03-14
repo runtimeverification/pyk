@@ -5,7 +5,7 @@ from typing import IO, TYPE_CHECKING, Any
 
 from pyk.ktool.kompile import KompileBackend
 
-from .args import DefinitionOptions, DisplayOptions, LoggingOptions, OutputFileOptions
+from .args import DefinitionOptions, DisplayOptions, KDefinitionOptions, LoggingOptions, OutputFileOptions
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -37,6 +37,8 @@ def generate_options(args: dict[str, Any]) -> LoggingOptions:
             return ProveOptions(args)
         case 'kompile':
             return KompileCommandOptions(args)
+        case 'run':
+            return RunOptions(args)
         case _:
             raise ValueError(f'Unrecognized command: {command}')
 
@@ -100,7 +102,7 @@ class ProveLegacyOptions(DefinitionOptions, OutputFileOptions, LoggingOptions):
         }
 
 
-class KompileCommandOptions(LoggingOptions):
+class KompileCommandOptions(LoggingOptions, KDefinitionOptions):
     definition_dir: Path | None
     main_file: str
     backend: KompileBackend
@@ -129,4 +131,15 @@ class ProveOptions(LoggingOptions):
             'spec_module': None,
             'type_inference_mode': None,
             'failure_info': False,
+        }
+
+
+class RunOptions(LoggingOptions):
+    pgm_file: str
+    definition_dir: Path | None
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'definition_dir': None,
         }

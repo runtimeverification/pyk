@@ -8,7 +8,7 @@ from typing import IO, TYPE_CHECKING, Any
 from pyk.utils import ensure_dir_path
 
 from .cli import Options
-from .utils import bug_report_arg, dir_path, file_path
+from .utils import bug_report_arg, file_path
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -57,7 +57,6 @@ class KDefinitionOptions(Options):
     main_module: str | None
     syntax_module: str | None
     spec_module: str | None
-    definition_dir: Path | None
     md_selector: str
 
     @staticmethod
@@ -66,7 +65,6 @@ class KDefinitionOptions(Options):
             'spec_module': None,
             'main_module': None,
             'syntax_module': None,
-            'definition_dir': None,
             'md_selector': 'k',
             'includes': [],
         }
@@ -266,7 +264,6 @@ class KCLIArgs:
         )
         args.add_argument('--main-module', type=str, help='Name of the main module.')
         args.add_argument('--syntax-module', type=str, help='Name of the syntax module.')
-        args.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
         args.add_argument(
             '--md-selector',
             type=str,
