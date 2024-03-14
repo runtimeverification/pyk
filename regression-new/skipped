@@ -119,4 +119,8 @@ set-symbolic-tests
 set_unification
 spec-rule-application
 star-multiplicity
+trace
+unification-lemmas
 useless
+werrorCategory
+withConfig2
