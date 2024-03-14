@@ -7,12 +7,14 @@ from typing import TYPE_CHECKING, NamedTuple
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
 from ..kast.manip import flatten_label, free_vars
+from ..kast.pretty import PrettyPrinter
 from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.rpc import (
     AbortedResult,
     KoreClient,
     KoreExecLogFormat,
     SatResult,
+    SmtSolverError,
     StopReason,
     TransportType,
     UnknownResult,
@@ -88,17 +90,22 @@ class CTermSymbolic:
     ) -> CTermExecute:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kast_to_kore(cterm.kast)
-        response = self._kore_client.execute(
-            kore,
-            max_depth=depth,
-            cut_point_rules=cut_point_rules,
-            terminal_rules=terminal_rules,
-            module_name=module_name,
-            log_successful_rewrites=True,
-            log_failed_rewrites=self._trace_rewrites,
-            log_successful_simplifications=self._trace_rewrites,
-            log_failed_simplifications=self._trace_rewrites,
-        )
+        try:
+            response = self._kore_client.execute(
+                kore,
+                max_depth=depth,
+                cut_point_rules=cut_point_rules,
+                terminal_rules=terminal_rules,
+                module_name=module_name,
+                log_successful_rewrites=True,
+                log_failed_rewrites=self._trace_rewrites,
+                log_successful_simplifications=self._trace_rewrites,
+                log_failed_simplifications=self._trace_rewrites,
+            )
+        except SmtSolverError as err:
+            kast = self.kore_to_kast(err.pattern)
+            pretty_pattern = PrettyPrinter(self._definition).print(kast)
+            raise RuntimeError(f'\nSMT solver error:\n{pretty_pattern}') from err
 
         if isinstance(response, AbortedResult):
             unknown_predicate = response.unknown_predicate.text if response.unknown_predicate else None
@@ -127,14 +134,26 @@ class CTermSymbolic:
     def kast_simplify(self, kast: KInner, module_name: str | None = None) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
         kore = self.kast_to_kore(kast)
-        kore_simplified, logs = self._kore_client.simplify(kore, module_name=module_name)
+        try:
+            kore_simplified, logs = self._kore_client.simplify(kore, module_name=module_name)
+        except SmtSolverError as err:
+            kast = self.kore_to_kast(err.pattern)
+            pretty_pattern = PrettyPrinter(self._definition).print(kast)
+            raise RuntimeError(f'\nSMT solver error:\n{pretty_pattern}') from err
+
         kast_simplified = self.kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
     def get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
         _LOGGER.info(f'Getting model: {cterm}')
         kore = self.kast_to_kore(cterm.kast)
-        result = self._kore_client.get_model(kore, module_name=module_name)
+        try:
+            result = self._kore_client.get_model(kore, module_name=module_name)
+        except SmtSolverError as err:
+            kast = self.kore_to_kast(err.pattern)
+            pretty_pattern = PrettyPrinter(self._definition).print(kast)
+            raise RuntimeError(f'\nSMT solver error:\n{pretty_pattern}') from err
+
         if type(result) is UnknownResult:
             _LOGGER.debug('Result is Unknown')
             return None
@@ -175,7 +194,13 @@ class CTermSymbolic:
                 _consequent = KApply(KLabel(bind_label, [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kast_to_kore(antecedent.kast)
         consequent_kore = self.kast_to_kore(_consequent)
-        result = self._kore_client.implies(antecedent_kore, consequent_kore, module_name=module_name)
+        try:
+            result = self._kore_client.implies(antecedent_kore, consequent_kore, module_name=module_name)
+        except SmtSolverError as err:
+            kast = self.kore_to_kast(err.pattern)
+            pretty_pattern = PrettyPrinter(self._definition).print(kast)
+            raise RuntimeError(f'\nSMT solver error:\n{pretty_pattern}') from err
+
         if not result.satisfiable:
             if result.substitution is not None:
                 _LOGGER.debug(f'Received a non-empty substitution for unsatisfiable implication: {result.substitution}')
@@ -286,9 +311,7 @@ def cterm_symbolic(
             interim_simplification=interim_simplification,
             no_post_exec_simplify=no_post_exec_simplify,
         ) as server:
-            with KoreClient(
-                'localhost', server.port, definition_dir=definition_dir, bug_report=bug_report, bug_report_id=id
-            ) as client:
+            with KoreClient('localhost', server.port, bug_report=bug_report, bug_report_id=id) as client:
                 yield CTermSymbolic(client, definition, kompiled_kore, trace_rewrites=trace_rewrites)
     else:
         if port is None:
@@ -304,7 +327,5 @@ def cterm_symbolic(
                     ('localhost', port, TransportType.SINGLE_SOCKET),
                 ],
             }
-        with KoreClient(
-            'localhost', port, definition_dir=definition_dir, bug_report=bug_report, bug_report_id=id, dispatch=dispatch
-        ) as client:
+        with KoreClient('localhost', port, bug_report=bug_report, bug_report_id=id, dispatch=dispatch) as client:
             yield CTermSymbolic(client, definition, kompiled_kore, trace_rewrites=trace_rewrites)
