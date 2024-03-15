@@ -280,6 +280,7 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'emit_json': options.emit_json,
         'enable_search': options.enable_search,
         'coverage': options.coverage,
+        'ccopts': options.ccopts,
     }
     Kompile.from_dict(kompile_dict)(
         output_dir=kompiled_directory,
