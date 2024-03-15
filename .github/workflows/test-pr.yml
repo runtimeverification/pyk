@@ -168,7 +168,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-13]
-        target: [pyk-python310, pyk-python311]
     runs-on: ${{ matrix.os }}
     steps:
       - name: 'Check out code'
@@ -184,7 +183,7 @@ jobs:
           name: k-framework
           authToken: '${{ secrets.CACHIX_PUBLIC_KEY }}'
       - name: 'Build pyk'
-        run: GC_DONT_GC=1 nix build --print-build-logs .#${{ matrix.target }}
+        run: GC_DONT_GC=1 nix build --print-build-logs .#pyk-python310
 
   build-docker:
     needs: integration-tests
