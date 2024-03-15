@@ -114,7 +114,7 @@ class KompileOptions(Options):
     @staticmethod
     def default() -> dict[str, Any]:
         return {
-            'emit_json': False,
+            'emit_json': True,
             'llvm_kompile': False,
             'llvm_library': False,
             'enable_llvm_debug': False,
@@ -213,7 +213,7 @@ class KCLIArgs:
         args.add_argument(
             '--emit-json',
             dest='emit_json',
-            default=False,
+            default=True,
             action='store_true',
             help='Emit JSON definition after compilation.',
         )
