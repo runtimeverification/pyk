@@ -283,6 +283,7 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'ccopts': options.ccopts,
         'llvm_kompile_type': options.llvm_kompile_type,
         'llvm_kompile_output': options.llvm_kompile_output,
+        'llvm_proof_hint_instrumentation': options.llvm_proof_hint_instrumentation,
         'gen_bison_parser': options.gen_bison_parser,
         'gen_glr_bison_parser': options.gen_glr_bison_parser,
         'bison_lists': options.bison_lists,

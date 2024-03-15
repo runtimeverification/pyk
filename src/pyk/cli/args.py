@@ -98,6 +98,7 @@ class KompileOptions(Options):
     enable_llvm_debug: bool
     llvm_kompile_type: LLVMKompileType | None
     llvm_kompile_output: Path | None
+    llvm_proof_hint_instrumentation: bool
     read_only: bool
     o0: bool
     o1: bool
@@ -119,6 +120,7 @@ class KompileOptions(Options):
             'enable_llvm_debug': False,
             'llvm_kompile_type': None,
             'llvm_kompile_output': None,
+            'llvm_proof_hint_instrumentation': False,
             'read_only': False,
             'o0': False,
             'o1': False,
@@ -290,6 +292,13 @@ class KCLIArgs:
             default=False,
             action='store_true',
             help='Disable List{Sort} parsing to make grammar LR(1) for Bison parser.',
+        )
+        args.add_argument(
+            '--llvm-proof-hint-instrumentation',
+            dest='llvm_proof_hint_instrumentation',
+            default=False,
+            action='store_true',
+            help='Enable proof hint generation in LLVM backend kompilation.',
         )
         return args
 
