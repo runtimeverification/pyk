@@ -262,15 +262,15 @@ def exec_prove(options: ProveOptions) -> None:
 def exec_kompile(options: KompileCommandOptions) -> None:
     main_file = Path(options.main_file)
     check_file_path(main_file)
+
     kompiled_directory: Path
     if options.definition_dir is None:
         kompiled_directory = Path(f'{main_file.stem}-kompiled')
         ensure_dir_path(kompiled_directory)
     else:
         kompiled_directory = options.definition_dir
-    if options.enable_search and not options.backend == KompileBackend.LLVM:
-        raise ValueError(f'Option `--enable-search` requires `--backend llvm`, not: --backend {options.backend.value}')
-    kompile_dict = {
+
+    kompile_dict: dict[str, Any] = {
         'main_file': main_file,
         'backend': options.backend.value,
         'syntax_module': options.syntax_module,
@@ -278,16 +278,34 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'md_selector': options.md_selector,
         'include_dirs': (Path(include) for include in options.includes),
         'emit_json': options.emit_json,
-        'enable_search': options.enable_search,
         'coverage': options.coverage,
-        'ccopts': options.ccopts,
-        'llvm_kompile_type': options.llvm_kompile_type,
-        'llvm_kompile_output': options.llvm_kompile_output,
-        'llvm_proof_hint_instrumentation': options.llvm_proof_hint_instrumentation,
         'gen_bison_parser': options.gen_bison_parser,
         'gen_glr_bison_parser': options.gen_glr_bison_parser,
         'bison_lists': options.bison_lists,
     }
+    if options.backend == KompileBackend.LLVM:
+        kompile_dict['ccopts'] = options.ccopts
+        kompile_dict['enable_search'] = options.enable_search
+        kompile_dict['llvm_kompile_type'] = options.llvm_kompile_type
+        kompile_dict['llvm_kompile_output'] = options.llvm_kompile_output
+        kompile_dict['llvm_proof_hint_instrumentation'] = options.llvm_proof_hint_instrumentation
+    elif len(options.ccopts) > 0:
+        raise ValueError(f'Option `-ccopt` requires `--backend llvm`, not: --backend {options.backend.value}')
+    elif options.enable_search:
+        raise ValueError(f'Option `--enable-search` requires `--backend llvm`, not: --backend {options.backend.value}')
+    elif options.llvm_kompile_type:
+        raise ValueError(
+            f'Option `--llvm-kompile-type` requires `--backend llvm`, not: --backend {options.backend.value}'
+        )
+    elif options.llvm_kompile_output:
+        raise ValueError(
+            f'Option `--llvm-kompile-output` requires `--backend llvm`, not: --backend {options.backend.value}'
+        )
+    elif options.llvm_proof_hint_instrumentation:
+        raise ValueError(
+            f'Option `--llvm-proof-hint-intrumentation` requires `--backend llvm`, not: --backend {options.backend.value}'
+        )
+
     Kompile.from_dict(kompile_dict)(
         output_dir=kompiled_directory,
         type_inference_mode=options.type_inference_mode,
