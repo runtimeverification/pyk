@@ -108,7 +108,7 @@ class KompileOptions(Options):
     @staticmethod
     def default() -> dict[str, Any]:
         return {
-            'emit_json': True,
+            'emit_json': False,
             'llvm_kompile': False,
             'llvm_library': False,
             'enable_llvm_debug': False,
