@@ -260,6 +260,7 @@ class LLVMKompile(Kompile):
     no_llvm_kompile: bool
     enable_search: bool
     enable_llvm_debug: bool
+    llvm_proof_hint_instrumentation: bool
 
     def __init__(
         self,
@@ -272,6 +273,7 @@ class LLVMKompile(Kompile):
         no_llvm_kompile: bool = False,
         enable_search: bool = False,
         enable_llvm_debug: bool = False,
+        llvm_proof_hint_instrumentation: bool = False,
     ):
         opt_level = opt_level or 0
         if not (0 <= opt_level <= 3):
@@ -287,6 +289,7 @@ class LLVMKompile(Kompile):
         object.__setattr__(self, 'no_llvm_kompile', no_llvm_kompile)
         object.__setattr__(self, 'enable_search', enable_search)
         object.__setattr__(self, 'enable_llvm_debug', enable_llvm_debug)
+        object.__setattr__(self, 'llvm_proof_hint_instrumentation', llvm_proof_hint_instrumentation)
 
     @property
     def backend(self) -> Literal[KompileBackend.LLVM]:
@@ -316,6 +319,9 @@ class LLVMKompile(Kompile):
 
         if self.enable_llvm_debug:
             args += ['--enable-llvm-debug']
+
+        if self.llvm_proof_hint_instrumentation:
+            args += ['--llvm-proof-hint-instrumentation']
 
         return args
 
