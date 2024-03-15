@@ -36,12 +36,8 @@ jobs:
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
-      - name: 'Install Python'
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
+      - name: 'Set up environment'
+        uses: ./.github/actions/setup-env
       - name: 'Run code quality checks'
         run: make check
       - name: 'Run pyupgrade'
@@ -54,12 +50,8 @@ jobs:
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
-      - name: 'Install Python'
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
+      - name: 'Set up environment'
+        uses: ./.github/actions/setup-env
       - name: 'Build documentation'
         run: make docs
 
@@ -75,12 +67,10 @@ jobs:
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
-      - name: 'Install Python'
-        uses: actions/setup-python@v4
+      - name: 'Set up environment'
+        uses: ./.github/actions/setup-env
         with:
           python-version: ${{ matrix.python-version }}
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
       - name: 'Run unit tests'
         run: make cov-unit
 
@@ -92,23 +82,10 @@ jobs:
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
-      - name: 'Install Python'
-        uses: actions/setup-python@v4
+      - name: 'Set up environment'
+        uses: ./.github/actions/setup-env
         with:
-          python-version: '3.10'
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
-      - name: 'Install K'
-        run: |
-          K_VERSION=$(cat deps/k_release)
-          DEB_PACKAGE_NAME=kframework_${K_VERSION}_amd64_ubuntu_jammy.deb
-          wget https://github.com/runtimeverification/k/releases/download/v${K_VERSION}/${DEB_PACKAGE_NAME}
-          sudo apt-get update
-          sudo apt-get -y install ./${DEB_PACKAGE_NAME}
-      - name: 'Set up Java'
-        run: |
-          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-          java --version
+          install-k: true
       - name: 'Run profiling'
         run: |
           make profile PROF_ARGS=-n4
@@ -122,23 +99,10 @@ jobs:
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
-      - name: 'Install Python'
-        uses: actions/setup-python@v4
+      - name: 'Set up environment'
+        uses: ./.github/actions/setup-env
         with:
-          python-version: '3.10'
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
-      - name: 'Install K'
-        run: |
-          K_VERSION=$(cat deps/k_release)
-          DEB_PACKAGE_NAME=kframework_${K_VERSION}_amd64_ubuntu_jammy.deb
-          wget https://github.com/runtimeverification/k/releases/download/v${K_VERSION}/${DEB_PACKAGE_NAME}
-          sudo apt-get update
-          sudo apt-get -y install graphviz ./${DEB_PACKAGE_NAME}
-      - name: 'Set up Java'
-        run: |
-          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-          java --version
+          install-k: true
       - name: 'Run integration tests'
         run: make cov-integration COV_ARGS='-n4 --timeout 500'
 
@@ -150,23 +114,10 @@ jobs:
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
-      - name: 'Install Python'
-        uses: actions/setup-python@v4
+      - name: 'Set up environment'
+        uses: ./.github/actions/setup-env
         with:
-          python-version: '3.10'
-      - name: 'Install Poetry'
-        uses: Gr1N/setup-poetry@v8
-      - name: 'Install K'
-        run: |
-          K_VERSION=$(cat deps/k_release)
-          DEB_PACKAGE_NAME=kframework_${K_VERSION}_amd64_ubuntu_jammy.deb
-          wget https://github.com/runtimeverification/k/releases/download/v${K_VERSION}/${DEB_PACKAGE_NAME}
-          sudo apt-get update
-          sudo apt-get -y install graphviz ./${DEB_PACKAGE_NAME}
-      - name: 'Set up Java'
-        run: |
-          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-          java --version
+          install-k: true
       - name: 'Run K regression tests'
         run: make test-regression-new -j4
 
