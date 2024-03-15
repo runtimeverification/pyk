@@ -406,25 +406,9 @@ def create_argument_parser() -> ArgumentParser:
     kompile_args = pyk_args_command.add_parser(
         'kompile',
         help='Kompile the K specification.',
-        parents=[k_cli_args.logging_args, k_cli_args.definition_args],
+        parents=[k_cli_args.logging_args, k_cli_args.definition_args, k_cli_args.kompile_args],
     )
     kompile_args.add_argument('main_file', type=str, help='File with the specification module.')
-    kompile_args.add_argument(
-        '--output-definition',
-        '--definition',
-        type=ensure_dir_path,
-        dest='definition_dir',
-        help='Path to kompile definition to.',
-    )
-    kompile_args.add_argument(
-        '--backend',
-        type=KompileBackend,
-        dest='backend',
-        help='K backend to target with compilation.',
-    )
-    kompile_args.add_argument(
-        '--type-inference-mode', type=TypeInferenceMode, help='Mode for doing K rule type inference in.'
-    )
 
     run_args = pyk_args_command.add_parser(
         'run',

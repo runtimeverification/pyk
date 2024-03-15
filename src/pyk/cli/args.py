@@ -5,10 +5,9 @@ from argparse import ArgumentParser
 from functools import cached_property
 from typing import IO, TYPE_CHECKING, Any
 
-from pyk.utils import ensure_dir_path
-
+from ..ktool.kompile import KompileBackend, TypeInferenceMode
 from .cli import Options
-from .utils import bug_report_arg, file_path
+from .utils import bug_report_arg, ensure_dir_path, file_path
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -184,6 +183,22 @@ class KCLIArgs:
     @cached_property
     def kompile_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
+        args.add_argument(
+            '--output-definition',
+            '--definition',
+            type=ensure_dir_path,
+            dest='definition_dir',
+            help='Path to kompile definition to.',
+        )
+        args.add_argument(
+            '--backend',
+            type=KompileBackend,
+            dest='backend',
+            help='K backend to target with compilation.',
+        )
+        args.add_argument(
+            '--type-inference-mode', type=TypeInferenceMode, help='Mode for doing K rule type inference in.'
+        )
         args.add_argument(
             '--emit-json',
             dest='emit_json',
