@@ -337,6 +337,7 @@ class KompileArgs:
     bison_parser_library: bool
     post_process: str | None
     read_only: bool
+    coverage: bool
 
     def __init__(
         self,
@@ -353,6 +354,7 @@ class KompileArgs:
         bison_parser_library: bool = False,
         post_process: str | None = None,
         read_only: bool = False,
+        coverage: bool = False,
     ):
         main_file = Path(main_file)
         include_dirs = tuple(sorted(Path(include_dir) for include_dir in include_dirs))
@@ -370,6 +372,7 @@ class KompileArgs:
         object.__setattr__(self, 'bison_parser_library', bison_parser_library)
         object.__setattr__(self, 'post_process', post_process)
         object.__setattr__(self, 'read_only', read_only)
+        object.__setattr__(self, 'coverage', coverage)
 
     def args(self) -> list[str]:
         args = [str(self.main_file)]
@@ -406,6 +409,9 @@ class KompileArgs:
 
         if self.read_only:
             args += ['--read-only-kompiled-directory']
+
+        if self.coverage:
+            args += ['--coverage']
 
         return args
 
