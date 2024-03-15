@@ -186,7 +186,7 @@ jobs:
         run: GC_DONT_GC=1 nix build --print-build-logs .#pyk-python310
 
   build-docker:
-    needs: integration-tests
+    needs: code-quality-checks
     name: 'Build Docker Image'
     runs-on: [self-hosted, linux, normal]
     timeout-minutes: 10
