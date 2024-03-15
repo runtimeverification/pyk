@@ -105,6 +105,7 @@ class KompileOptions(Options):
     o3: bool
     ccopts: list[str]
     enable_search: bool
+    coverage: bool
 
     @staticmethod
     def default() -> dict[str, Any]:
@@ -120,6 +121,7 @@ class KompileOptions(Options):
             'o3': False,
             'ccopts': [],
             'enable_search': False,
+            'coverage': False,
         }
 
 
@@ -237,6 +239,13 @@ class KCLIArgs:
             default=False,
             action='store_true',
             help='Enable search mode on LLVM backend krun.',
+        )
+        args.add_argument(
+            '--coverage',
+            dest='coverage',
+            default=False,
+            action='store_true',
+            help='Enable logging semantic rule coverage measurement.',
         )
         return args
 
