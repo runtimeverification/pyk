@@ -281,6 +281,8 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'enable_search': options.enable_search,
         'coverage': options.coverage,
         'ccopts': options.ccopts,
+        'llvm_kompile_type': options.llvm_kompile_type,
+        'llvm_kompile_output': options.llvm_kompile_output,
     }
     Kompile.from_dict(kompile_dict)(
         output_dir=kompiled_directory,

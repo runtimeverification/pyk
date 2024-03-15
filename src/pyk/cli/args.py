@@ -3,15 +3,14 @@ from __future__ import annotations
 import sys
 from argparse import ArgumentParser
 from functools import cached_property
+from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
 
-from ..ktool.kompile import KompileBackend, TypeInferenceMode
+from ..ktool.kompile import KompileBackend, LLVMKompileType, TypeInferenceMode
 from .cli import Options
 from .utils import bug_report_arg, ensure_dir_path, file_path
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from ..utils import BugReport
 
 
@@ -97,6 +96,8 @@ class KompileOptions(Options):
     llvm_kompile: bool
     llvm_library: bool
     enable_llvm_debug: bool
+    llvm_kompile_type: LLVMKompileType | None
+    llvm_kompile_output: Path | None
     read_only: bool
     o0: bool
     o1: bool
@@ -113,6 +114,8 @@ class KompileOptions(Options):
             'llvm_kompile': False,
             'llvm_library': False,
             'enable_llvm_debug': False,
+            'llvm_kompile_type': None,
+            'llvm_kompile_output': None,
             'read_only': False,
             'o0': False,
             'o1': False,
@@ -234,6 +237,8 @@ class KCLIArgs:
             action='store_true',
             help='Make kompile generate debug symbols for llvm.',
         )
+        args.add_argument('--llvm-kompile-type', type=LLVMKompileType, help='Mode to kompile LLVM backend in.')
+        args.add_argument('--llvm-kompile-output', type=Path, help='Location to put kompiled LLVM backend at.')
         args.add_argument(
             '--read-only-kompiled-directory',
             dest='read_only',
