@@ -275,6 +275,7 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'main_module': options.main_module,
         'md_selector': options.md_selector,
         'include_dirs': (Path(include) for include in options.includes),
+        'emit_json': options.emit_json,
     }
     Kompile.from_dict(kompile_dict)(
         output_dir=kompiled_directory,
