@@ -268,6 +268,8 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         ensure_dir_path(kompiled_directory)
     else:
         kompiled_directory = options.definition_dir
+    if options.enable_search and not options.backend == KompileBackend.LLVM:
+        raise ValueError(f'Option `--enable-search` requires `--backend llvm`, not: --backend {options.backend.value}')
     kompile_dict = {
         'main_file': main_file,
         'backend': options.backend.value,
@@ -276,6 +278,7 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'md_selector': options.md_selector,
         'include_dirs': (Path(include) for include in options.includes),
         'emit_json': options.emit_json,
+        'enable_search': options.enable_search,
     }
     Kompile.from_dict(kompile_dict)(
         output_dir=kompiled_directory,

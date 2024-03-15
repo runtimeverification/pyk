@@ -95,7 +95,6 @@ class SpecOptions(SaveDirOptions):
 
 class KompileOptions(Options):
     emit_json: bool
-    ccopts: list[str]
     llvm_kompile: bool
     llvm_library: bool
     enable_llvm_debug: bool
@@ -104,6 +103,8 @@ class KompileOptions(Options):
     o1: bool
     o2: bool
     o3: bool
+    ccopts: list[str]
+    enable_search: bool
 
     @staticmethod
     def default() -> dict[str, Any]:
@@ -118,6 +119,7 @@ class KompileOptions(Options):
             'o2': False,
             'o3': False,
             'ccopts': [],
+            'enable_search': False,
         }
 
 
@@ -229,6 +231,13 @@ class KCLIArgs:
         args.add_argument('-O1', dest='o1', default=False, action='store_true', help='Optimization level 1.')
         args.add_argument('-O2', dest='o2', default=False, action='store_true', help='Optimization level 2.')
         args.add_argument('-O3', dest='o3', default=False, action='store_true', help='Optimization level 3.')
+        args.add_argument(
+            '--enable-search',
+            dest='enable_search',
+            default=False,
+            action='store_true',
+            help='Enable search mode on LLVM backend krun.',
+        )
         return args
 
     @cached_property
