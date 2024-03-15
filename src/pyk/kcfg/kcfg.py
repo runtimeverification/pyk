@@ -574,25 +574,26 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         if not summarize:
             rules: list[KRuleLike] = [e.to_rule('BASIC-BLOCK', priority=priority) for e in self.edges()]
         else:
-            # The initial node of the summary is the root node of the KCFG,
-            # which needs to be unique, and not be a leaf.
+            # Identify the initial node of the summary, which correpsonds to the root node of the KCFG,
+            # asserting that this root node is unique modulo the provided target
             root_nodes: list[KCFG.Node] = self.root
-            assert len(root_nodes) == 1 and not self.is_leaf(root_nodes[0].id)
+            if target is not None:
+                target_node = self.node(target)
+                root_nodes.remove(target_node)
+            assert len(root_nodes) == 1
             init_node: KCFG.Node = root_nodes[0]
 
-            # The final nodes of the summary are at least the leaves
+            # The final nodes of the summary are at least the leaves, minus the initial node
             final_nodes = set(self.leaves)
+            final_nodes.remove(init_node)
 
             if target is not None:
-                # The target node must be a leaf, and must be different from the initial node.
-                assert self.is_leaf(target) and init_node.id != target
-                target_node: KCFG.Node = self.node(target)
-
-                # Isolate the nodes subsumed into the target node; there must be at least one.
+                # The target node must be a leaf
+                assert self.is_leaf(target)
+                # Nodes subsumed into the target node
                 covered_leaves: set[KCFG.Node] = {cover.source for cover in set(self.covers(target_id=target))}
-                assert len(covered_leaves) > 0
-                # The summary targets are all of the nodes subsumed into the target node,
-                # plus all of the remaining leaves, minus the target node itself
+                # The summary targets are all of the leaves plus all of the nodes
+                # subsumed into the target node, minus the target node itself
                 final_nodes = final_nodes.union(covered_leaves)
                 final_nodes.remove(target_node)
 
