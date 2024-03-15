@@ -202,12 +202,9 @@ class KCLIArgs:
         args.add_argument(
             '--emit-json',
             dest='emit_json',
-            default=True,
+            default=False,
             action='store_true',
             help='Emit JSON definition after compilation.',
-        )
-        args.add_argument(
-            '--no-emit-json', dest='emit_json', action='store_false', help='Do not JSON definition after compilation.'
         )
         args.add_argument(
             '-ccopt',

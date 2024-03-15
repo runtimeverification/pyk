@@ -348,7 +348,7 @@ class KompileArgs:
         include_dirs: Iterable[str | Path] = (),
         md_selector: str | None = None,
         hook_namespaces: Iterable[str] = (),
-        emit_json: bool = True,
+        emit_json: bool = False,
         gen_bison_parser: bool = False,
         gen_glr_bison_parser: bool = False,
         bison_parser_library: bool = False,
