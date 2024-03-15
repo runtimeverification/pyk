@@ -36,6 +36,10 @@ jobs:
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
+      - name: 'Install Python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
       - name: 'Install Poetry'
         uses: Gr1N/setup-poetry@v8
       - name: 'Run code quality checks'
@@ -50,6 +54,10 @@ jobs:
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
+      - name: 'Install Python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
       - name: 'Install Poetry'
         uses: Gr1N/setup-poetry@v8
       - name: 'Build documentation'
