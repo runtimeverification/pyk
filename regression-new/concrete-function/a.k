@@ -33,7 +33,7 @@ rule inc(I) => I +Num 1 [concrete]
 syntax Num ::= foo(Num) [function]
 rule foo(I) => I
 
-// for testing `--concrete-rules` option
+// for testing `[concrete]` attribute
 
 syntax Pgm ::= begin(Int) | end(Int)
 
@@ -43,7 +43,7 @@ syntax Int ::= barConcrete(Int) [function, smtlib(barConcrete)]
              | bar(Int)         [function, smtlib(bar)]
              | baz(Int)         [function, smtlib(baz), no-evaluators]
 
-rule [f1]: barConcrete(X) => baz(X) requires X >Int 0
+rule [f1]: barConcrete(X) => baz(X) requires X >Int 0 [concrete]
 rule [f2]: bar(X)         => baz(X) requires X <Int 0
 
 endmodule
