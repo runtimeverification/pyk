@@ -254,7 +254,7 @@ class LLVMKompileType(Enum):
 class LLVMKompile(Kompile):
     base_args: KompileArgs
     llvm_kompile_type: LLVMKompileType
-    llvm_kompile_output: str | None
+    llvm_kompile_output: Path | None
     opt_level: int
     ccopts: tuple[str, ...]
     no_llvm_kompile: bool
@@ -265,16 +265,14 @@ class LLVMKompile(Kompile):
         self,
         base_args: KompileArgs,
         *,
-        llvm_kompile_type: str | LLVMKompileType | None = None,
-        llvm_kompile_output: str | None = None,
+        llvm_kompile_type: LLVMKompileType | None = None,
+        llvm_kompile_output: Path | None = None,
         opt_level: int | None = None,
         ccopts: Iterable[str] = (),
         no_llvm_kompile: bool = False,
         enable_search: bool = False,
         enable_llvm_debug: bool = False,
     ):
-        llvm_kompile_type = LLVMKompileType(llvm_kompile_type) if llvm_kompile_type is not None else None
-
         opt_level = opt_level or 0
         if not (0 <= opt_level <= 3):
             raise ValueError('Invalid optimization level: {opt_level}')
@@ -302,7 +300,7 @@ class LLVMKompile(Kompile):
             args += ['--llvm-kompile-type', self.llvm_kompile_type.value]
 
         if self.llvm_kompile_output is not None:
-            args += ['--llvm-kompile-output', self.llvm_kompile_output]
+            args += ['--llvm-kompile-output', str(self.llvm_kompile_output)]
 
         if self.opt_level:
             args += [f'-O{self.opt_level}']
