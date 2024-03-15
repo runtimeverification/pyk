@@ -106,6 +106,9 @@ class KompileOptions(Options):
     ccopts: list[str]
     enable_search: bool
     coverage: bool
+    gen_bison_parser: bool
+    gen_glr_bison_parser: bool
+    bison_lists: bool
 
     @staticmethod
     def default() -> dict[str, Any]:
@@ -124,6 +127,9 @@ class KompileOptions(Options):
             'ccopts': [],
             'enable_search': False,
             'coverage': False,
+            'gen_bison_parser': False,
+            'gen_glr_bison_parser': False,
+            'bison_lists': False,
         }
 
 
@@ -263,6 +269,27 @@ class KCLIArgs:
             default=False,
             action='store_true',
             help='Enable logging semantic rule coverage measurement.',
+        )
+        args.add_argument(
+            '--gen-bison-parser',
+            dest='gen_bison_parser',
+            default=False,
+            action='store_true',
+            help='Generate standalone Bison parser for program sort.',
+        )
+        args.add_argument(
+            '--gen-glr-bison-parser',
+            dest='gen_glr_bison_parser',
+            default=False,
+            action='store_true',
+            help='Generate standalone GLR Bison parser for program sort.',
+        )
+        args.add_argument(
+            '--bison-lists',
+            dest='bison_lists',
+            default=False,
+            action='store_true',
+            help='Disable List{Sort} parsing to make grammar LR(1) for Bison parser.',
         )
         return args
 
