@@ -549,25 +549,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def from_json(s: str, optimize_memory: bool = True) -> KCFG:
         return KCFG.from_dict(json.loads(s), optimize_memory=optimize_memory)
 
-    def to_rules(self, priority: int = 20) -> list[KRuleLike]:
-        return [e.to_rule('BASIC-BLOCK', priority=priority) for e in self.edges()]
-
-    def to_module(
+    def to_rules(
         self,
-        module_name: str | None = None,
-        imports: Iterable[KImport] = (),
         priority: int = 20,
-        att: KAtt = EMPTY_ATT,
         summarize: tuple[bool, NodeIdLike | None] = (False, None),
-    ) -> KFlatModule:
-        """Create a K module capturing the behaviour of a given KCFG.
+    ) -> list[KRuleLike]:
+        """Create K rules capturing the behaviour of a given KCFG.
 
         Input:
 
-            -   module_name: output module name
-            -   imports: output module imports
             -   priority: priority of the generated rules (default value 20)
-            -   att: output module attribute
             -   summarize: A pair (summarize, target), where summarize = True means that the
                   constructed rules will capture direct transitions from the root to the leaves of
                   the KCFG and, additionally, if a target node is provided, it will not be considered
@@ -575,15 +566,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         Output:
 
-            A KFlatModule consisting of rules that describe the behaviour of the provided KCFG.
-            Each rule either corresponds to an edge of the KCFG if summarization is not activated,
+            A list of rules that describe the behaviour of the provided KCFG.
+            Each rule corresponds to either an edge of the KCFG if summarization is not activated,
             or to a direct transition from the root to a leaf otherwise.
         """
-
-        module_name = 'KCFG' if module_name is None else module_name
         (summarize_kcfg, target) = summarize
         if not summarize:
-            rules: list[KRuleLike] = self.to_rules(priority=priority)
+            rules: list[KRuleLike] = [e.to_rule('BASIC-BLOCK', priority=priority) for e in self.edges()]
         else:
             # The initial node of the summary is the root node of the KCFG,
             # which needs to be unique, and not be a leaf.
@@ -610,6 +599,31 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             edges: list[KCFG.Edge] = [KCFG.Edge(init_node, final_node, 1, ()) for final_node in final_nodes]
             rules = [e.to_rule('SUMMARY', priority=priority) for e in edges]
 
+        return rules
+
+    def to_module(
+        self,
+        module_name: str | None = None,
+        imports: Iterable[KImport] = (),
+        priority: int = 20,
+        att: KAtt = EMPTY_ATT,
+        summarize: tuple[bool, NodeIdLike | None] = (False, None),
+    ) -> KFlatModule:
+        """Create a K module capturing the behaviour of a given KCFG.
+
+        Input:
+
+            -   module_name: output module name
+            -   imports: output module imports
+            -   priority: priority of the generated rules (default value 20)
+            -   att: output module attribute
+            -   summarize: rule summarization strategy
+
+        Output: A KFlatModule consisting of rules that describe the behaviour of the provided KCFG.
+        """
+
+        module_name = 'KCFG' if module_name is None else module_name
+        rules: list[KRuleLike] = self.to_rules(priority=priority, summarize=summarize)
         return KFlatModule(module_name, rules, imports=imports, att=att)
 
     def _resolve_or_none(self, id_like: NodeIdLike) -> int | None:
