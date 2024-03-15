@@ -73,16 +73,13 @@ jobs:
     name: 'Profiling'
     runs-on: [ubuntu-latest]
     timeout-minutes: 10
-    strategy:
-      matrix:
-        python-version: ['3.10']
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
       - name: 'Install Python'
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.10'
       - name: 'Install Poetry'
         uses: Gr1N/setup-poetry@v8
       - name: 'Install K'
@@ -106,17 +103,13 @@ jobs:
     name: 'Integration Tests'
     runs-on: [ubuntu-latest]
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.10', '3.11']
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
       - name: 'Install Python'
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.10'
       - name: 'Install Poetry'
         uses: Gr1N/setup-poetry@v8
       - name: 'Install K'
@@ -138,17 +131,13 @@ jobs:
     name: 'K Regression Tests'
     runs-on: [ubuntu-latest]
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.11']
     steps:
       - name: 'Check out code'
         uses: actions/checkout@v3
       - name: 'Install Python'
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.10'
       - name: 'Install Poetry'
         uses: Gr1N/setup-poetry@v8
       - name: 'Install K'
