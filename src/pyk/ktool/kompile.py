@@ -253,7 +253,7 @@ class LLVMKompileType(Enum):
 @dataclass(frozen=True)
 class LLVMKompile(Kompile):
     base_args: KompileArgs
-    llvm_kompile_type: LLVMKompileType
+    llvm_kompile_type: LLVMKompileType | None
     llvm_kompile_output: Path | None
     opt_level: int
     ccopts: tuple[str, ...]
@@ -276,6 +276,7 @@ class LLVMKompile(Kompile):
         llvm_proof_hint_instrumentation: bool = False,
     ):
         llvm_kompile_type = LLVMKompileType(llvm_kompile_type) if llvm_kompile_type is not None else None
+        llvm_kompile_output = Path(llvm_kompile_output) if llvm_kompile_output is not None else None
 
         opt_level = opt_level or 0
         if not (0 <= opt_level <= 3):
