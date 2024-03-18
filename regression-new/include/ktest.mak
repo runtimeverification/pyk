@@ -55,7 +55,7 @@ ifeq ($(UNAME), Darwin)
 endif
 
 KOMPILE_FLAGS+=--type-inference-mode checked $(VERBOSITY)
-KRUN_FLAGS+=
+KRUN_FLAGS+=$(VERBOSITY)
 KPROVE_FLAGS+=--type-inference-mode checked --failure-info $(VERBOSITY)
 
 CHECK?=| diff -
