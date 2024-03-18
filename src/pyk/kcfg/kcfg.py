@@ -560,7 +560,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
             -   priority: Priority of the generated rules (default value 20).
             -   summarize: A pair of the form `(summarize_kcfg, target)`. If `target` is provided,
-                  it has to be the identifier of a leaf node.
+                  it has to correspond to a leaf node.
 
         Output:
 
