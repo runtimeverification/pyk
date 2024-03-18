@@ -287,6 +287,17 @@ class KProduction(KSentence):
         return self.let(att=att)
 
     @cached_property
+    def as_subsort(self) -> tuple[KSort, KSort] | None:
+        """Return a pair `(supersort, subsort)` if `self` is a subsort production, and `None` otherwise."""
+        if len(self.items) != 1:
+            return None
+        item = self.items[0]
+        if not isinstance(item, KNonTerminal):
+            return None
+        assert not self.klabel
+        return self.sort, item.sort
+
+    @cached_property
     def non_terminals(self) -> tuple[KNonTerminal, ...]:
         """Return the non-terminals of the production."""
         return tuple(item for item in self.items if isinstance(item, KNonTerminal))
@@ -1206,11 +1217,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
     @cached_property
     def subsort_table(self) -> FrozenDict[KSort, frozenset[KSort]]:
         """Return a mapping from sorts to all their proper subsorts."""
-        poset = POSet(
-            (prod.sort, prod.items[0].sort)
-            for prod in self.productions
-            if len(prod.items) == 1 and isinstance(prod.items[0], KNonTerminal)
-        )
+        poset = POSet(subsort for prod in self.productions if (subsort := prod.as_subsort) is not None)
         return poset.image
 
     def subsorts(self, sort: KSort) -> frozenset[KSort]:
