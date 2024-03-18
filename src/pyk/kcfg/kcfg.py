@@ -15,12 +15,14 @@ from ..kast.manip import (
     extract_lhs,
     extract_rhs,
     flatten_label,
+    free_vars,
     inline_cell_maps,
     rename_generated_vars,
     sort_ac_collections,
 )
 from ..kast.outer import KFlatModule
 from ..prelude.kbool import andBool
+from ..prelude.ml import mlAnd
 from ..utils import ensure_dir_path
 
 if TYPE_CHECKING:
@@ -853,6 +855,82 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
         self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids
+
+    def lift_edge(self, id: NodeIdLike) -> None:
+        """Lift an edge up another edge directly preceding it.
+
+        Input:
+
+            -   id: the identifier of the central node `B` of a sequence of edges `A --> B --> C`.
+
+        Output:
+
+            `A --M steps--> B --N steps--> C` becomes `A --(M + N) steps--> C`. Node `B` is removed.
+            The edges in question are assumed to be in place, otherwise an exception is thrown.
+        """
+        # Obtain edge `A -> B`
+        edges_to_b = self.edges(target_id=id)
+        assert len(edges_to_b) == 1
+        a_to_b = edges_to_b[0]
+
+        # Obtain edge `B -> C`
+        edges_from_b = self.edges(source_id=id)
+        assert len(edges_from_b) == 1
+        b_to_c = edges_from_b[0]
+
+        # Remove the node `B`, effectively removing the entire initial structure
+        self.remove_node(id)
+
+        # TODO: What is the correct way of handling the rules?
+        self.create_edge(a_to_b.source.id, b_to_c.target.id, a_to_b.depth + b_to_c.depth, a_to_b.rules + b_to_c.rules)
+
+    def lift_split(self, id: NodeIdLike) -> None:
+        """Lift a split up an edge directly preceding it.
+
+        Input:
+
+            -   id: the identifier of the central node `B` of the structure `A --> B --> [C_1, ..., C_N]`.
+
+        Output:
+
+            `A --M steps--> B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]` becomes
+            `A --[cond_1, ..., cond_N]--> [A #And cond_1 --M steps--> C_1, ..., A #And cond_N --M steps--> C_N]`.
+            Node `B` is removed. If any of the `cond_i` contain variables not present in `A`, an exeception is thrown.
+            The structure in question is assumed to be in place, otherwise an exception is thrown.
+        """
+        # Obtain edge `A -> B`
+        edges_to_b = self.edges(target_id=id)
+        assert len(edges_to_b) == 1
+        a_to_b = edges_to_b[0]
+        a = a_to_b.source
+
+        # Obtain split targets`[cond_I, C_I | I = 1..N ]`
+        splits_from_b = self.splits(source_id=id)
+        assert len(splits_from_b) == 1
+        b_to_ci_splits = splits_from_b[0].splits.items()
+
+        # If any of the `cond_I`` contains variables not present in `A`,
+        # the lift cannot be performed soundly.
+        fv_a = set(free_vars(a.cterm.kast))
+        for _, subst in b_to_ci_splits:
+            assert set(free_vars(mlAnd(subst.constraints))).issubset(fv_a)
+
+        # Remove the node `B`, effectively removing the entire initial structure
+        self.remove_node(id)
+
+        # Create the nodes `[ A #And cond_I | I = 1..N ]`
+        ai_with_splits: tuple[tuple[NodeIdLike, NodeIdLike, CSubst], ...] = tuple(
+            (self.create_node(a.cterm.add_constraint(mlAnd(subst.constraints))).id, id, subst)
+            for (id, subst) in b_to_ci_splits
+        )
+
+        # Create the edges `[A #And cond_1 --M steps--> C_1, ..., A #And cond_N --M steps--> C_N]`
+        # TODO: What is the correct way of handling the rules?
+        for ai, ci, _ in ai_with_splits:
+            self.create_edge(ai, ci, a_to_b.depth, a_to_b.rules)
+
+        # Create the split `A --[cond_1, ..., cond_N]--> [A #And cond_1, ..., A #And cond_N]
+        self.create_split(a.id, ((ai, subst) for (ai, _, subst) in ai_with_splits))
 
     def add_alias(self, alias: str, node_id: NodeIdLike) -> None:
         if '@' in alias:
