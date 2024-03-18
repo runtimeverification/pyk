@@ -907,30 +907,28 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # Obtain split targets`[cond_I, C_I | I = 1..N ]`
         splits_from_b = self.splits(source_id=id)
         assert len(splits_from_b) == 1
-        b_to_ci_splits = splits_from_b[0].splits.items()
+        ci, substs = list(splits_from_b[0].splits.keys()), list(splits_from_b[0].splits.values())
 
         # If any of the `cond_I`` contains variables not present in `A`,
         # the lift cannot be performed soundly.
         fv_a = set(free_vars(a.cterm.kast))
-        for _, subst in b_to_ci_splits:
+        for subst in substs:
             assert set(free_vars(mlAnd(subst.constraints))).issubset(fv_a)
 
         # Remove the node `B`, effectively removing the entire initial structure
         self.remove_node(id)
 
-        # Create the nodes `[ A #And cond_I | I = 1..N ]`
-        ai_with_splits: tuple[tuple[NodeIdLike, NodeIdLike, CSubst], ...] = tuple(
-            (self.create_node(a.cterm.add_constraint(mlAnd(subst.constraints))).id, id, subst)
-            for (id, subst) in b_to_ci_splits
-        )
+        # Create the nodes `[ A #And cond_I | I = 1..N ]`. Note that `A #And cond_I` is effectively
+        # a `CTerm` with the configuration of `A` and the constraints of `cond_I`.
+        ai: list[NodeIdLike] = [self.create_node(CTerm(a.cterm.config, subst.constraints)).id for subst in substs]
 
         # Create the edges `[A #And cond_1 --M steps--> C_1, ..., A #And cond_N --M steps--> C_N]`
         # TODO: What is the correct way of handling the rules?
-        for ai, ci, _ in ai_with_splits:
-            self.create_edge(ai, ci, a_to_b.depth, a_to_b.rules)
+        for i in range(len(ai)):
+            self.create_edge(ai[i], ci[i], a_to_b.depth, a_to_b.rules)
 
         # Create the split `A --[cond_1, ..., cond_N]--> [A #And cond_1, ..., A #And cond_N]
-        self.create_split(a.id, ((ai, subst) for (ai, _, subst) in ai_with_splits))
+        self.create_split(a.id, zip(ai, substs, strict=True))
 
     def add_alias(self, alias: str, node_id: NodeIdLike) -> None:
         if '@' in alias:
