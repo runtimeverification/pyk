@@ -592,8 +592,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             assert len(root_nodes) == 1
             init_node: KCFG.Node = root_nodes[0]
 
-            # The final nodes of the summary are at least the leaves, minus the initial node
+            # The final nodes of the summary are at least the non-vacuous leaves, minus the initial node
             final_nodes = set(self.leaves)
+            final_nodes = final_nodes.difference(self.vacuous)
             final_nodes.remove(init_node)
 
             if target is not None:
