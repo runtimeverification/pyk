@@ -352,7 +352,7 @@ class KompileArgs:
     coverage: bool
     bison_lists: bool
     warnings: Warnings
-    warning_to_errors: bool
+    warning_to_error: bool
 
     def __init__(
         self,
@@ -372,7 +372,7 @@ class KompileArgs:
         coverage: bool = False,
         bison_lists: bool = False,
         warnings: Warnings = Warnings.ALL,
-        warning_to_errors: bool = False,
+        warning_to_error: bool = False,
     ):
         main_file = Path(main_file)
         include_dirs = tuple(sorted(Path(include_dir) for include_dir in include_dirs))
@@ -393,7 +393,7 @@ class KompileArgs:
         object.__setattr__(self, 'coverage', coverage)
         object.__setattr__(self, 'bison_lists', bison_lists)
         object.__setattr__(self, 'warnings', warnings)
-        object.__setattr__(self, 'warning_to_errors', warning_to_errors)
+        object.__setattr__(self, 'warning_to_error', warning_to_error)
 
     def args(self) -> list[str]:
         args = [str(self.main_file)]
@@ -439,7 +439,7 @@ class KompileArgs:
 
         args += ['--warnings', self.warnings.value]
 
-        if self.warning_to_errors:
+        if self.warning_to_error:
             args += ['-w2e']
 
         return args

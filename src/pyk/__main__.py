@@ -283,7 +283,7 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'gen_glr_bison_parser': options.gen_glr_bison_parser,
         'bison_lists': options.bison_lists,
         'warnings': options.warnings,
-        'warning_to_errors': options.warning_to_errors,
+        'warning_to_error': options.warning_to_error,
     }
     if options.backend == KompileBackend.LLVM:
         kompile_dict['ccopts'] = options.ccopts
