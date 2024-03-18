@@ -266,8 +266,8 @@ class LLVMKompile(Kompile):
         self,
         base_args: KompileArgs,
         *,
-        llvm_kompile_type: LLVMKompileType | None = None,
-        llvm_kompile_output: Path | None = None,
+        llvm_kompile_type: str | LLVMKompileType | None = None,
+        llvm_kompile_output: str | Path | None = None,
         opt_level: int | None = None,
         ccopts: Iterable[str] = (),
         no_llvm_kompile: bool = False,
@@ -275,6 +275,8 @@ class LLVMKompile(Kompile):
         enable_llvm_debug: bool = False,
         llvm_proof_hint_instrumentation: bool = False,
     ):
+        llvm_kompile_type = LLVMKompileType(llvm_kompile_type) if llvm_kompile_type is not None else None
+
         opt_level = opt_level or 0
         if not (0 <= opt_level <= 3):
             raise ValueError('Invalid optimization level: {opt_level}')
