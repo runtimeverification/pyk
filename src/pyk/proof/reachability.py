@@ -639,6 +639,7 @@ class APRProver(Prover):
         counterexample_info: bool = False,
         always_check_subsumption: bool = True,
         fast_check_subsumption: bool = False,
+        summarize_subproofs: bool = False,
     ) -> None:
         def _inject_module(module_name: str, import_name: str, sentences: list[KRuleLike]) -> None:
             _module = KFlatModule(module_name, sentences, [KImport(import_name)])
@@ -665,7 +666,10 @@ class APRProver(Prover):
 
         dependencies_as_rules: list[KRuleLike] = []
         for apr_subproof in [pf for pf in subproofs if isinstance(pf, APRProof)]:
-            dependencies_as_rules.extend(apr_subproof.kcfg.to_rules(priority=20))
+            summarize: tuple[bool, NodeIdLike | None] = (
+                (True, apr_subproof.target) if summarize_subproofs else (False, None)
+            )
+            dependencies_as_rules.extend(apr_subproof.kcfg.to_rules(priority=20, summarize=summarize))
             if apr_subproof.admitted and len(apr_subproof.kcfg.predecessors(apr_subproof.target)) == 0:
                 dependencies_as_rules.append(apr_subproof.as_rule(priority=20))
         circularity_rule = proof.as_rule(priority=20)
