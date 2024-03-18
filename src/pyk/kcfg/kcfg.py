@@ -580,7 +580,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                   exploration of Kontrol.
         """
         (summarize_kcfg, target) = summarize
-        if not summarize:
+        if not summarize_kcfg:
             rules: list[KRuleLike] = [e.to_rule('BASIC-BLOCK', priority=priority) for e in self.edges()]
         else:
             # Identify the initial node of the summary, which correpsonds to the root node of the KCFG,
