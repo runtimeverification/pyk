@@ -558,17 +558,26 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         Input:
 
-            -   priority: priority of the generated rules (default value 20)
-            -   summarize: A pair (summarize, target), where summarize = True means that the
-                  constructed rules will capture direct transitions from the root to the leaves of
-                  the KCFG and, additionally, if a target node is provided, it will not be considered
-                  but any nodes subsumed into it will be considered instead.
+            -   priority: Priority of the generated rules (default value 20).
+            -   summarize: A pair of the form `(summarize_kcfg, target)`. If `target` is provided,
+                  it has to be the identifier of a leaf node.
 
         Output:
 
-            A list of rules that describe the behaviour of the provided KCFG.
-            Each rule corresponds to either an edge of the KCFG if summarization is not activated,
-            or to a direct transition from the root to a leaf otherwise.
+            A list of rules that describe the behaviour of the provided KCFG. Specifically:
+              a)  If `summarize == False`, the returned rules correspond to the edges of the KCFG.
+                    In this way, the part of the execution that corresponds to the branchings
+                    of the KCFG will be repeated when the rules are used.
+              b)  If `summarize == True` and `target == None`, the returned rules correspond to transitions
+                    from the root node to all of the leaf nodes of the KCFG. In this way, no part of the
+                    execution that resulted in the KCFG will be repeated when the rules are used.
+              c)  If `summarize == True` and `target != None`, the returned rules correspond to transitions
+                    from the root node to:
+                    1) all of the leaf nodes of the KCFG, except the `target` node; and
+                    2) all of the nodes that have been subsumed into the `target` node.
+                  This approach should be used in symbolic execution when the `target` node is too general
+                  and keeping it would result in losing relevant information. One such scenario is the symbolic
+                  exploration of Kontrol.
         """
         (summarize_kcfg, target) = summarize
         if not summarize:
@@ -618,7 +627,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             -   imports: output module imports
             -   priority: priority of the generated rules (default value 20)
             -   att: output module attribute
-            -   summarize: rule summarization strategy
+            -   summarize: rule summarization strategy (cf. to_rules above for more info)
 
         Output: A KFlatModule consisting of rules that describe the behaviour of the provided KCFG.
         """
