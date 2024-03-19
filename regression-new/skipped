@@ -1,4 +1,3 @@
-amb-rew
 append
 bad-bytes-literal
 bad-flags
@@ -39,7 +38,6 @@ issue-1098
 issue-1145
 issue-1169
 issue-1175
-issue-1193
 issue-1263
 issue-1384
 issue-1436
@@ -115,7 +113,6 @@ pedanticAttributes
 pl-tutorial
 poly-sort
 poly-unparsing
-prelude-warnings
 profile
 proof-instrumentation
 proof-tests
