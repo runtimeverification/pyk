@@ -511,12 +511,13 @@ def test_lifting_functions() -> None:
     assert single(cfg.edges(source_id=5)) == KCFG.Edge(node_5, node_10, 35, ('rule_6', 'rule_7', 'rule_8', 'rule_9'))
     assert single(cfg.edges(target_id=10)) == KCFG.Edge(node_5, node_10, 35, ('rule_6', 'rule_7', 'rule_8', 'rule_9'))
 
+    # Lift split `1 -> 3 -> [4, 5]` and check correctness
+    cfg.lift_split(3)
+    assert not cfg.contains_node(node_3)
+
     node_11 = KCFG.Node(11, CTerm(node_1.cterm.config, [x_ge_0]))
     node_12 = KCFG.Node(12, CTerm(node_1.cterm.config, [x_lt_0]))
 
-    # Lift split `1 -> 3 -> [4, 5]`
-    cfg.lift_split(3)
-    assert not cfg.contains_node(node_3)
     assert cfg.contains_node(node_11)
     assert cfg.contains_node(node_12)
     assert not cfg.get_node(13)
