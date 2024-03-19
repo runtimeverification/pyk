@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, final
 
 from ..prelude.kbool import TRUE
 from ..prelude.ml import ML_QUANTIFIERS
-from ..utils import POSet, filter_none, single, unique
+from ..utils import FrozenDict, POSet, filter_none, single, unique
 from .att import EMPTY_ATT, Atts, Format, KAst, KAtt, WithKAtt
 from .inner import (
     KApply,
@@ -36,8 +36,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
     from os import PathLike
     from typing import Any, Final, TypeVar
-
-    from ..utils import FrozenDict
 
     RL = TypeVar('RL', bound='KRuleLike')
 
@@ -1223,6 +1221,22 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
     def subsorts(self, sort: KSort) -> frozenset[KSort]:
         """Return all subsorts of a given `KSort` by inspecting the definition."""
         return self.subsort_table.get(sort, frozenset())
+
+    @cached_property
+    def symbols(self) -> FrozenDict[str, KProduction]:
+        symbols: dict[str, KProduction] = {}
+        for prod in self.productions:
+            if not prod.klabel:
+                continue
+            symbol = prod.klabel.name
+            if symbol in symbols:  # Check if duplicate
+                other = symbols[symbol]
+                if prod.let(att=prod.att.drop_source()) != other.let(att=prod.att.drop_source()):
+                    prods = [other, prod]
+                    raise AssertionError(f'Found multiple productions for {symbol}: {prods}')
+                continue
+            symbols[symbol] = prod
+        return FrozenDict(symbols)
 
     def sort(self, kast: KInner) -> KSort | None:
         """Computes the sort of a given term using best-effort simple sorting algorithm, returns `None` on algorithm failure."""
