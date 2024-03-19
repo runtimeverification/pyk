@@ -544,7 +544,6 @@ def test_lifting_functions_automatic() -> None:
 
     node_1 = KCFG.Node(1, CTerm(config, [mlTop()]))
     node_5 = KCFG.Node(5, CTerm(config, [mlTop()]))
-    node_6 = KCFG.Node(6, CTerm(config, [x_ge_0]))
     node_7 = KCFG.Node(7, CTerm(config, [x_lt_0]))
     node_10 = KCFG.Node(10, CTerm(config, [x_ge_0, y_ge_0]))
     node_11 = KCFG.Node(11, CTerm(config, [x_ge_0, y_lt_0]))
@@ -596,35 +595,40 @@ def test_lifting_functions_automatic() -> None:
     # Apply split lifting and check correctness
     cfg.lift_splits()
 
-    #                            /-- Y >=Int 0 --> 16 --> 10
-    #   /-- X >=Int 0 --> 14 -> 6
-    #  1                         \-- Y  <Int 0 --> 17 --> 11
+    #                       /-- Y >=Int 0 --> 18 -> 16 --> 10
+    #   /-- X >=Int 0 --> 14
+    #  1                    \-- Y  <Int 0 --> 19 -> 17 --> 11
     #   \
-    #    \-- X <Int 0 --> 15 -> 7 --> 13
+    #    \-- X <Int 0 --> 15 --> 7 --> 13
 
     # Nodes removed
-    assert cfg._deleted_nodes == {2, 3, 4, 5, 8, 9, 12}
+    assert cfg._deleted_nodes == {2, 3, 4, 5, 6, 8, 9, 12}
 
-    # Nodes added and still present
+    # Nodes added
     node_14 = KCFG.Node(14, CTerm(config, [x_ge_0]))
     node_15 = KCFG.Node(15, CTerm(config, [x_lt_0]))
     node_16 = KCFG.Node(16, CTerm(config, [x_ge_0, y_ge_0]))
     node_17 = KCFG.Node(17, CTerm(config, [x_ge_0, y_lt_0]))
+    node_18 = KCFG.Node(18, CTerm(config, [x_ge_0, y_ge_0]))
+    node_19 = KCFG.Node(19, CTerm(config, [x_ge_0, y_lt_0]))
     assert cfg.node(14) == node_14
     assert cfg.node(15) == node_15
     assert cfg.node(16) == node_16
     assert cfg.node(17) == node_17
-    assert cfg._node_id == 18
+    assert cfg.node(18) == node_18
+    assert cfg.node(19) == node_19
+    assert cfg._node_id == 20
 
     # Structure
     assert cfg.contains_split(
         KCFG.Split(node_1, [(node_14, CSubst(constraints=[x_ge_0])), (node_15, CSubst(constraints=[x_lt_0]))])
     )
-    assert cfg.contains_edge(KCFG.Edge(node_14, node_6, 50, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
     assert cfg.contains_split(
-        KCFG.Split(node_6, [(node_16, CSubst(constraints=[y_ge_0])), (node_17, CSubst(constraints=[y_lt_0]))])
+        KCFG.Split(node_14, [(node_18, CSubst(constraints=[y_ge_0])), (node_19, CSubst(constraints=[y_lt_0]))])
     )
+    assert cfg.contains_edge(KCFG.Edge(node_18, node_16, 50, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
     assert cfg.contains_edge(KCFG.Edge(node_16, node_10, 25, ('rule_5',)))
+    assert cfg.contains_edge(KCFG.Edge(node_19, node_17, 50, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
     assert cfg.contains_edge(KCFG.Edge(node_17, node_11, 25, ('rule_5',)))
     assert cfg.contains_edge(KCFG.Edge(node_15, node_7, 50, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
 

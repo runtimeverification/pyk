@@ -865,14 +865,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         """Lift an edge up another edge directly preceding it.
 
         Input:
-
             -   id: the identifier of the central node `B` of a sequence of edges `A --> B --> C`.
 
-        Output:
+        Effect: `A --M steps--> B --N steps--> C` becomes `A --(M + N) steps--> C`. Node `B` is removed.
 
-            `A --M steps--> B --N steps--> C` becomes `A --(M + N) steps--> C`. Node `B` is removed.
-            The edges in question are assumed to be in place, otherwise an exception is thrown.
+        Output: None
+
+        Raises: An `AssertionError` if the edges in question are not in place.
         """
+
         # Obtain edges `A -> B`, `B -> C`
         a_to_b = single(self.edges(target_id=id))
         b_to_c = single(self.edges(source_id=id))
@@ -884,33 +885,50 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self.create_edge(a_to_b.source.id, b_to_c.target.id, a_to_b.depth + b_to_c.depth, a_to_b.rules + b_to_c.rules)
 
     def lift_edges(self) -> bool:
-        """Perform all possible edge liftings"""
+        """Perform all possible edge lifts across the KCFG.
+
+        Given the KCFG design, it is not possible for one edge lift to either disallow another or
+        allow another that was not previously possible. Therefore, this function is guaranteed to
+        lift all possible edges without having to loop.
+
+        Input: None
+
+        Effect: The KCFG is transformed to an equivalent in which no further edge lifts are possible.
+
+        Output:
+            -   bool: An indicator of whether or not at least one edge lift was performed.
+        """
 
         edges_to_lift = [
             node.id
             for node in self.nodes
-            if self.edges(source_id=node.id) != [] and self.edges(target_id=node.id) != []
+            if len(self.edges(source_id=node.id)) > 0 and len(self.edges(target_id=node.id)) > 0
         ]
 
         for node_id in edges_to_lift:
             self.lift_edge(node_id)
 
+        # The lifting was successful
         return len(edges_to_lift) > 0
 
     def lift_split(self, id: NodeIdLike) -> None:
         """Lift a split up an edge directly preceding it.
 
         Input:
-
             -   id: the identifier of the central node `B` of the structure `A --> B --> [C_1, ..., C_N]`.
 
-        Output:
-
+        Effect:
             `A --M steps--> B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]` becomes
             `A --[cond_1, ..., cond_N]--> [A #And cond_1 --M steps--> C_1, ..., A #And cond_N --M steps--> C_N]`.
-            Node `B` is removed. If any of the `cond_i` contain variables not present in `A`, an exeception is thrown.
-            The structure in question is assumed to be in place, otherwise an exception is thrown.
+            Node `B` is removed.
+
+        Output: None
+
+        Raises:
+            -   `AssertionError`, if the structure in question is not in place.
+            -   `AssertionError`, if any of the `cond_i` contain variables not present in `A`.
         """
+
         # Obtain edge `A -> B`, split `[cond_I, C_I | I = 1..N ]`
         a_to_b = single(self.edges(target_id=id))
         a = a_to_b.source
@@ -941,30 +959,54 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self.create_split(a.id, zip(ai, substs, strict=True))
 
     def lift_splits(self) -> bool:
-        """Perform all possible split liftings"""
+        """Perform all possible split liftings.
+
+        Input: None
+
+        Effect: The KCFG is transformed to an equivalent in which no further split lifts are possible.
+
+        Output:
+            -   bool: An indicator of whether or not at least one split lift was performed.
+        """
 
         result = False
 
-        splits_to_lift = [
-            node.id
-            for node in self.nodes
-            if self.splits(source_id=node.id) != [] and self.edges(target_id=node.id) != []
-        ]
+        while True:
+            splits_to_lift = [
+                node.id
+                for node in self.nodes
+                if self.splits(source_id=node.id) != [] and self.edges(target_id=node.id) != []
+            ]
 
-        for node_id in splits_to_lift:
-            try:
-                self.lift_split(node_id)
-                result = True
-            except AssertionError as err:
-                _LOGGER.warning(str(err))
+            if len(splits_to_lift) == 0:
+                break
+
+            for node_id in splits_to_lift:
+                try:
+                    self.lift_split(node_id)
+                    result = True
+                except AssertionError as err:
+                    _LOGGER.warning(str(err))
 
         return result
 
     def minimize(self) -> None:
-        """Minimize KCFG by performing all of the lifting operations"""
+        """Minimize KCFG by repeatedly performing the lifting transformations.
 
-        while self.lift_edges() or self.lift_splits():
-            pass
+        The loop is designed so that each transformation is performed once in each iteration.
+
+        Input: None
+
+        Effect: The KCFG is transformed to an equivalent in which no further lifting transformations are possible.
+
+        Output: None
+        """
+
+        repeat = True
+
+        while repeat:
+            repeat = self.lift_edges()
+            repeat = self.lift_splits() or repeat
 
     def add_alias(self, alias: str, node_id: NodeIdLike) -> None:
         if '@' in alias:
