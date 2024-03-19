@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass, field
 from threading import RLock
-from typing import TYPE_CHECKING, List, Union, cast, final
+from typing import TYPE_CHECKING, Final, List, Union, cast, final
 
 from ..cterm import CSubst, CTerm, cterm_build_claim, cterm_build_rule
 from ..kast import EMPTY_ATT
@@ -36,6 +37,10 @@ if TYPE_CHECKING:
     from ..kast import KAtt
     from ..kast.inner import KInner
     from ..kast.outer import KClaim, KDefinition, KImport, KRuleLike
+
+
+_LOGGER: Final = logging.getLogger(__name__)
+
 
 NodeIdLike = int | str
 
@@ -878,6 +883,20 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # Create edge `A -> C`
         self.create_edge(a_to_b.source.id, b_to_c.target.id, a_to_b.depth + b_to_c.depth, a_to_b.rules + b_to_c.rules)
 
+    def lift_edges(self) -> bool:
+        """Perform all possible edge liftings"""
+
+        edges_to_lift = [
+            node.id
+            for node in self.nodes
+            if self.edges(source_id=node.id) != [] and self.edges(target_id=node.id) != []
+        ]
+
+        for node_id in edges_to_lift:
+            self.lift_edge(node_id)
+
+        return len(edges_to_lift) > 0
+
     def lift_split(self, id: NodeIdLike) -> None:
         """Lift a split up an edge directly preceding it.
 
@@ -898,27 +917,54 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         split_from_b = single(self.splits(source_id=id))
         ci, substs = list(split_from_b.splits.keys()), list(split_from_b.splits.values())
 
-        # If any of the `cond_I`` contains variables not present in `A`,
+        # If any of the `cond_I` contains variables not present in `A`,
         # the lift cannot be performed soundly.
         fv_a = set(free_vars(a.cterm.kast))
         for subst in substs:
             assert set(free_vars(mlAnd(subst.constraints))).issubset(
                 fv_a
-            ), 'Cannot lift split due to branching on freshly introduced variables'
+            ), f'Cannot lift split at node {id} due to branching on freshly introduced variables'
 
         # Remove the node `B`, effectively removing the entire initial structure
         self.remove_node(id)
 
-        # Create the nodes `[ A #And cond_I | I = 1..N ]`. Note that `A #And cond_I` is effectively
-        # a `CTerm` with the configuration of `A` and the constraints of `cond_I`.
-        ai: list[NodeIdLike] = [self.create_node(CTerm(a.cterm.config, subst.constraints)).id for subst in substs]
+        # Create the nodes `[ A #And cond_I | I = 1..N ]`.
+        ai: list[NodeIdLike] = [
+            self.create_node(CTerm(a.cterm.config, a.cterm.constraints + subst.constraints)).id for subst in substs
+        ]
 
-        # Create the edges `[A #And cond_1 --M steps--> C_1, ..., A #And cond_N --M steps--> C_N]`
+        # Create the edges `[A #And cond_1 --M steps--> C_I | I = 1..N ]`
         for i in range(len(ai)):
             self.create_edge(ai[i], ci[i], a_to_b.depth, a_to_b.rules)
 
         # Create the split `A --[cond_1, ..., cond_N]--> [A #And cond_1, ..., A #And cond_N]
         self.create_split(a.id, zip(ai, substs, strict=True))
+
+    def lift_splits(self) -> bool:
+        """Perform all possible split liftings"""
+
+        result = False
+
+        splits_to_lift = [
+            node.id
+            for node in self.nodes
+            if self.splits(source_id=node.id) != [] and self.edges(target_id=node.id) != []
+        ]
+
+        for node_id in splits_to_lift:
+            try:
+                self.lift_split(node_id)
+                result = True
+            except AssertionError as err:
+                _LOGGER.warning(str(err))
+
+        return result
+
+    def minimize(self) -> None:
+        """Minimize KCFG by performing all of the lifting operations"""
+
+        while self.lift_edges() or self.lift_splits():
+            pass
 
     def add_alias(self, alias: str, node_id: NodeIdLike) -> None:
         if '@' in alias:
