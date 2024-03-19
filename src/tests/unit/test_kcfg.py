@@ -4,11 +4,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.cterm import CTerm
-from pyk.kast.inner import KApply, KVariable
+from pyk.cterm import CSubst, CTerm
+from pyk.kast.inner import KApply, KSort, KVariable
 from pyk.kcfg import KCFG, KCFGShow
 from pyk.kcfg.show import NodePrinter
-from pyk.prelude.ml import mlEquals, mlTop
+from pyk.prelude.kint import geInt, intToken, ltInt
+from pyk.prelude.ml import mlEquals, mlEqualsTrue, mlTop
 from pyk.prelude.utils import token
 
 from .mock_kprint import MockKPrint
@@ -18,7 +19,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
 
-    from pyk.cterm import CSubst
     from pyk.kast import KInner
 
 
@@ -439,6 +439,288 @@ def test_aliases() -> None:
         cfg.add_alias('@buzz', 2)
     with pytest.raises(ValueError, match='Unknown node: 10'):
         cfg.add_alias('buzz', 10)
+
+
+def test_lifting_functions_manual() -> None:
+    #                                                                      /-- Y >=Int 0 -- 8
+    #                                   /-- X >=Int 0 --> 4 --10 steps--> 6
+    #  1 --25 steps--> 2 --30 steps--> 3                                   \-- Y  <Int 0 -- 9
+    #                                   \
+    #                                    \-- X <Int 0 --> 5 --20 steps--> 7 --15 steps--> 10
+
+    # Given
+    config = KApply('<top>', [KVariable('X', sort=KSort('Int'))])
+
+    x_ge_0 = mlEqualsTrue(geInt(KVariable('X'), intToken(0)))
+    x_lt_0 = mlEqualsTrue(ltInt(KVariable('X'), intToken(0)))
+    y_ge_0 = mlEqualsTrue(geInt(KVariable('Y'), intToken(0)))
+    y_lt_0 = mlEqualsTrue(ltInt(KVariable('Y'), intToken(0)))
+
+    node_1 = KCFG.Node(1, CTerm(config, [mlTop()]))
+    node_3 = KCFG.Node(3, CTerm(config, [mlTop()]))
+    node_4 = KCFG.Node(4, CTerm(config, [x_ge_0]))
+    node_5 = KCFG.Node(5, CTerm(config, [x_lt_0]))
+    node_10 = KCFG.Node(10, CTerm(config, [x_lt_0]))
+
+    cfg = KCFG()
+
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [x_ge_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_ge_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_ge_0, y_ge_0]))
+    cfg.create_node(CTerm(config, [x_ge_0, y_lt_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+
+    cfg.create_edge(1, 2, 25, ['rule_1', 'rule_2'])
+    cfg.create_edge(2, 3, 30, ['rule_3', 'rule_4'])
+    cfg.create_split(3, [(4, CSubst(constraints=[x_ge_0])), (5, CSubst(constraints=[x_lt_0]))])
+    cfg.create_edge(4, 6, 10, ['rule 5'])
+    cfg.create_edge(5, 7, 20, ['rule_6', 'rule_7', 'rule_8'])
+    cfg.create_split(6, [(8, CSubst(constraints=[y_ge_0])), (9, CSubst(constraints=[y_lt_0]))])
+    cfg.create_edge(7, 10, 15, ['rule_9'])
+
+    # Impossible edge lifts
+    for id in [1, 3, 4, 5, 6, 8, 9, 10]:
+        with pytest.raises(ValueError, match='Expected a single element, found none'):
+            cfg.lift_edge(id)
+
+    # Impossible split lifts
+    for id in [1, 2, 4, 5, 7, 8, 9, 10]:
+        with pytest.raises(ValueError, match='Expected a single element, found none'):
+            cfg.lift_split(id)
+    with pytest.raises(
+        AssertionError, match='Cannot lift split at node 6 due to branching on freshly introduced variables'
+    ):
+        cfg.lift_split(6)
+
+    # Lift edge `1 -> 2 -> 3` and check correctness
+    cfg.lift_edge(2)
+    assert not cfg.get_node(2)
+    assert cfg.contains_edge(KCFG.Edge(node_1, node_3, 55, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
+    assert cfg.contains_edge(KCFG.Edge(node_1, node_3, 55, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
+
+    # Lift edge `5 -> 7 -> 10` and check correctness
+    cfg.lift_edge(7)
+    assert not cfg.get_node(7)
+    assert cfg.contains_edge(KCFG.Edge(node_5, node_10, 35, ('rule_6', 'rule_7', 'rule_8', 'rule_9')))
+    assert cfg.contains_edge(KCFG.Edge(node_5, node_10, 35, ('rule_6', 'rule_7', 'rule_8', 'rule_9')))
+
+    # Lift split `1 -> 3 -> [4, 5]` and check correctness
+    cfg.lift_split(3)
+    assert not cfg.get_node(3)
+
+    node_11 = KCFG.Node(11, CTerm(config, [x_ge_0]))
+    node_12 = KCFG.Node(12, CTerm(config, [x_lt_0]))
+
+    assert cfg.node(11) == node_11
+    assert cfg.node(12) == node_12
+    assert cfg._node_id == 13
+
+    assert cfg.contains_edge(KCFG.Edge(node_11, node_4, 55, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
+    assert cfg.contains_edge(KCFG.Edge(node_12, node_5, 55, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
+    assert cfg.contains_split(
+        KCFG.Split(node_1, [(node_11, CSubst(constraints=[x_ge_0])), (node_12, CSubst(constraints=[x_lt_0]))])
+    )
+
+
+def test_lifting_functions_automatic() -> None:
+    #                                                    /-- Y >=Int 0 --> 10
+    #                           /-- X >=Int 0 --> 6 --> 8
+    #  1 --> 2 --> 3 --> 4 --> 5                         \-- Y  <Int 0 --> 11
+    #                           \
+    #                            \-- X <Int 0 --> 7 --> 9 --> 12 --> 13
+
+    # Given
+    config = KApply('<top>', [KApply('_+Int_', [KVariable('X', sort=KSort('Int')), KVariable('Y', sort=KSort('Int'))])])
+
+    x_ge_0 = mlEqualsTrue(geInt(KVariable('X'), intToken(0)))
+    x_lt_0 = mlEqualsTrue(ltInt(KVariable('X'), intToken(0)))
+    y_ge_0 = mlEqualsTrue(geInt(KVariable('Y'), intToken(0)))
+    y_lt_0 = mlEqualsTrue(ltInt(KVariable('Y'), intToken(0)))
+
+    node_1 = KCFG.Node(1, CTerm(config, [mlTop()]))
+    node_5 = KCFG.Node(5, CTerm(config, [mlTop()]))
+    node_7 = KCFG.Node(7, CTerm(config, [x_lt_0]))
+    node_10 = KCFG.Node(10, CTerm(config, [x_ge_0, y_ge_0]))
+    node_11 = KCFG.Node(11, CTerm(config, [x_ge_0, y_lt_0]))
+    node_13 = KCFG.Node(13, CTerm(config, [x_lt_0]))
+
+    cfg = KCFG()
+
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [x_ge_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_ge_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_ge_0, y_ge_0]))
+    cfg.create_node(CTerm(config, [x_ge_0, y_lt_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+
+    cfg.create_edge(1, 2, 5, ['rule_1'])
+    cfg.create_edge(2, 3, 10, ['rule_2'])
+    cfg.create_edge(3, 4, 15, ['rule_3'])
+    cfg.create_edge(4, 5, 20, ['rule_4'])
+    cfg.create_split(5, [(6, CSubst(constraints=[x_ge_0])), (7, CSubst(constraints=[x_lt_0]))])
+    cfg.create_edge(6, 8, 25, ['rule_5'])
+    cfg.create_edge(7, 9, 30, ['rule_6'])
+    cfg.create_split(8, [(10, CSubst(constraints=[y_ge_0])), (11, CSubst(constraints=[y_lt_0]))])
+    cfg.create_edge(9, 12, 35, ['rule_7'])
+    cfg.create_edge(12, 13, 40, ['rule_8'])
+
+    # Apply edge lifting and check correctness
+    cfg.lift_edges()
+
+    #                                 /-- Y >=Int 0 --> 10
+    #         /-- X >=Int 0 --> 6 --> 8
+    #  1 --> 5                         \-- Y  <Int 0 --> 11
+    #         \
+    #          \-- X <Int 0 --> 7 --> 13
+
+    # Nodes removed
+    assert cfg._deleted_nodes == {2, 3, 4, 9, 12}
+
+    # Structure
+    assert cfg.contains_edge(KCFG.Edge(node_1, node_5, 50, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
+    assert cfg.contains_edge(KCFG.Edge(node_7, node_13, 105, ('rule_6', 'rule_7', 'rule_8')))
+
+    # Apply split lifting and check correctness
+    cfg.lift_splits()
+
+    #                       /-- Y >=Int 0 --> 18 -> 16 --> 10
+    #   /-- X >=Int 0 --> 14
+    #  1                    \-- Y  <Int 0 --> 19 -> 17 --> 11
+    #   \
+    #    \-- X <Int 0 --> 15 --> 7 --> 13
+
+    # Nodes removed
+    assert cfg._deleted_nodes == {2, 3, 4, 5, 6, 8, 9, 12}
+
+    # Nodes added
+    node_14 = KCFG.Node(14, CTerm(config, [x_ge_0]))
+    node_15 = KCFG.Node(15, CTerm(config, [x_lt_0]))
+    node_16 = KCFG.Node(16, CTerm(config, [x_ge_0, y_ge_0]))
+    node_17 = KCFG.Node(17, CTerm(config, [x_ge_0, y_lt_0]))
+    node_18 = KCFG.Node(18, CTerm(config, [x_ge_0, y_ge_0]))
+    node_19 = KCFG.Node(19, CTerm(config, [x_ge_0, y_lt_0]))
+    assert cfg.node(14) == node_14
+    assert cfg.node(15) == node_15
+    assert cfg.node(16) == node_16
+    assert cfg.node(17) == node_17
+    assert cfg.node(18) == node_18
+    assert cfg.node(19) == node_19
+    assert cfg._node_id == 20
+
+    # Structure
+    assert cfg.contains_split(
+        KCFG.Split(node_1, [(node_14, CSubst(constraints=[x_ge_0])), (node_15, CSubst(constraints=[x_lt_0]))])
+    )
+    assert cfg.contains_split(
+        KCFG.Split(node_14, [(node_18, CSubst(constraints=[y_ge_0])), (node_19, CSubst(constraints=[y_lt_0]))])
+    )
+    assert cfg.contains_edge(KCFG.Edge(node_18, node_16, 50, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
+    assert cfg.contains_edge(KCFG.Edge(node_16, node_10, 25, ('rule_5',)))
+    assert cfg.contains_edge(KCFG.Edge(node_19, node_17, 50, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
+    assert cfg.contains_edge(KCFG.Edge(node_17, node_11, 25, ('rule_5',)))
+    assert cfg.contains_edge(KCFG.Edge(node_15, node_7, 50, ('rule_1', 'rule_2', 'rule_3', 'rule_4')))
+
+
+def test_minimize() -> None:
+    #                                                    /-- Y >=Int 0 --> 10
+    #                           /-- X >=Int 0 --> 6 --> 8
+    #  1 --> 2 --> 3 --> 4 --> 5                         \-- Y  <Int 0 --> 11
+    #                           \
+    #                            \-- X <Int 0 --> 7 --> 9 --> 12 --> 13
+
+    # Given
+    config = KApply('<top>', [KApply('_+Int_', [KVariable('X', sort=KSort('Int')), KVariable('Y', sort=KSort('Int'))])])
+
+    x_ge_0 = mlEqualsTrue(geInt(KVariable('X'), intToken(0)))
+    x_lt_0 = mlEqualsTrue(ltInt(KVariable('X'), intToken(0)))
+    y_ge_0 = mlEqualsTrue(geInt(KVariable('Y'), intToken(0)))
+    y_lt_0 = mlEqualsTrue(ltInt(KVariable('Y'), intToken(0)))
+
+    node_1 = KCFG.Node(1, CTerm(config, [mlTop()]))
+    node_10 = KCFG.Node(10, CTerm(config, [x_ge_0, y_ge_0]))
+    node_11 = KCFG.Node(11, CTerm(config, [x_ge_0, y_lt_0]))
+    node_13 = KCFG.Node(13, CTerm(config, [x_lt_0]))
+
+    cfg = KCFG()
+
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [x_ge_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_ge_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_ge_0, y_ge_0]))
+    cfg.create_node(CTerm(config, [x_ge_0, y_lt_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+
+    cfg.create_edge(1, 2, 5, ['rule_1'])
+    cfg.create_edge(2, 3, 10, ['rule_2'])
+    cfg.create_edge(3, 4, 15, ['rule_3'])
+    cfg.create_edge(4, 5, 20, ['rule_4'])
+    cfg.create_split(5, [(6, CSubst(constraints=[x_ge_0])), (7, CSubst(constraints=[x_lt_0]))])
+    cfg.create_edge(6, 8, 25, ['rule_5'])
+    cfg.create_edge(7, 9, 30, ['rule_6'])
+    cfg.create_split(8, [(10, CSubst(constraints=[y_ge_0])), (11, CSubst(constraints=[y_lt_0]))])
+    cfg.create_edge(9, 12, 35, ['rule_7'])
+    cfg.create_edge(12, 13, 40, ['rule_8'])
+
+    # Apply kcfg minimization and check correctness
+    cfg.minimize()
+
+    #                       /-- Y >=Int 0 --> 18 --> 10
+    #   /-- X >=Int 0 --> 14
+    #  1                    \-- Y  <Int 0 --> 19 --> 11
+    #   \
+    #    \-- X <Int 0 --> 15 --> 13
+
+    # Nodes still present
+    assert cfg.node(1) == node_1
+    assert cfg.node(10) == node_10
+    assert cfg.node(11) == node_11
+    assert cfg.node(13) == node_13
+
+    # Nodes removed
+    assert cfg._deleted_nodes == {2, 3, 4, 5, 6, 7, 8, 9, 12, 16, 17}
+
+    # Nodes added and still present
+    node_14 = KCFG.Node(14, CTerm(config, [x_ge_0]))
+    node_15 = KCFG.Node(15, CTerm(config, [x_lt_0]))
+    node_18 = KCFG.Node(18, CTerm(config, [x_ge_0, y_ge_0]))
+    node_19 = KCFG.Node(19, CTerm(config, [x_ge_0, y_lt_0]))
+    assert cfg.node(14) == node_14
+    assert cfg.node(15) == node_15
+    assert cfg.node(18) == node_18
+    assert cfg.node(19) == node_19
+    assert cfg._node_id == 20
+
+    # Structure
+    assert cfg.contains_split(
+        KCFG.Split(node_1, [(node_14, CSubst(constraints=[x_ge_0])), (node_15, CSubst(constraints=[x_lt_0]))])
+    )
+    assert cfg.contains_split(
+        KCFG.Split(node_14, [(node_18, CSubst(constraints=[y_ge_0])), (node_19, CSubst(constraints=[y_lt_0]))])
+    )
+    assert cfg.contains_edge(KCFG.Edge(node_18, node_10, 75, ('rule_1', 'rule_2', 'rule_3', 'rule_4', 'rule_5')))
+    assert cfg.contains_edge(KCFG.Edge(node_19, node_11, 75, ('rule_1', 'rule_2', 'rule_3', 'rule_4', 'rule_5')))
+    assert cfg.contains_edge(
+        KCFG.Edge(node_15, node_13, 155, ('rule_1', 'rule_2', 'rule_3', 'rule_4', 'rule_6', 'rule_7', 'rule_8'))
+    )
 
 
 def test_write_cfg_data(tmp_path: Path) -> None:
