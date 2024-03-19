@@ -878,8 +878,7 @@ def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
     """Add the anywhere attribute to all symbol productions that are overloads or have a corresponding anywhere rule."""
 
     rules = _rules_by_klabel(module)
-    productions_by_klabel_att = _productions_by_klabel_att(module.productions)
-    defn = KDefinition(module.name, (module,))  # for getting the sort lattice
+    defn = KDefinition(module.name, (module,))  # for getting the subsort and overload lattices
 
     def update(sentence: KSentence) -> KSentence:
         if not isinstance(sentence, KProduction):
@@ -892,11 +891,7 @@ def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
         if any(Atts.ANYWHERE in rule.att for rule in rules.get(klabel, [])):
             return sentence.let(att=sentence.att.update([Atts.ANYWHERE(None)]))
 
-        if Atts.KLABEL not in sentence.att:
-            return sentence
-
-        productions = productions_by_klabel_att.get(sentence.att[Atts.KLABEL], [])
-        if any(_is_overloaded_by(defn, production, sentence) for production in productions):
+        if klabel.name in defn.overloads:
             return sentence.let(att=sentence.att.update([Atts.ANYWHERE(None)]))
 
         return sentence
@@ -1035,39 +1030,6 @@ def _discard_symbol_atts(module: KFlatModule, atts: Container[AttKey]) -> KFlatM
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
-
-
-def _productions_by_klabel_att(productions: Iterable[KProduction]) -> dict[str, list[KProduction]]:
-    res: dict[str, list[KProduction]] = {}
-    for production in productions:
-        if not production.klabel:
-            continue
-        if Atts.KLABEL not in production.att:
-            continue
-        res.setdefault(production.att[Atts.KLABEL], []).append(production)
-    return res
-
-
-def _is_overloaded_by(defn: KDefinition, prod1: KProduction, prod2: KProduction) -> bool:
-    if not prod1.klabel:
-        raise ValueError(f'Expected symbol production, got: {prod1}')
-    if not prod2.klabel:
-        raise ValueError(f'Expected symbol production, got: {prod2}')
-    if Atts.KLABEL not in prod1.att:
-        return False
-    if Atts.KLABEL not in prod2.att:
-        return False
-    if prod1.att[Atts.KLABEL] != prod2.att[Atts.KLABEL]:
-        return False
-    arg_sorts1 = prod1.argument_sorts
-    arg_sorts2 = prod2.argument_sorts
-    if len(arg_sorts1) != len(arg_sorts2):
-        return False
-    if prod1.sort not in defn.subsorts(prod2.sort):
-        return False
-    if any(sort1 not in defn.subsorts(sort2) for sort1, sort2 in zip(arg_sorts1, arg_sorts2, strict=True)):
-        return False
-    return prod1 != prod2
 
 
 def _add_default_format_atts(module: KFlatModule) -> KFlatModule:
