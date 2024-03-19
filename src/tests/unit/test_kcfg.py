@@ -441,12 +441,56 @@ def test_aliases() -> None:
         cfg.add_alias('buzz', 10)
 
 
+def minimisation_test_kcfg() -> KCFG:
+    #                                               25   /-- Y >=Int 0 --> 10
+    #     5    10    15    20   /-- X >=Int 0 --> 6 --> 8
+    #  1 --> 2 --> 3 --> 4 --> 5                         \-- Y  <Int 0 --> 11
+    #                           \                   30    35     40
+    #                            \-- X <Int 0 --> 7 --> 9 --> 12 --> 13
+
+    config = KApply('<top>', [KApply('_+Int_', [KVariable('X', sort=KSort('Int')), KVariable('Y', sort=KSort('Int'))])])
+
+    x_ge_0 = mlEqualsTrue(geInt(KVariable('X'), intToken(0)))
+    x_lt_0 = mlEqualsTrue(ltInt(KVariable('X'), intToken(0)))
+    y_ge_0 = mlEqualsTrue(geInt(KVariable('Y'), intToken(0)))
+    y_lt_0 = mlEqualsTrue(ltInt(KVariable('Y'), intToken(0)))
+
+    cfg = KCFG()
+
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [mlTop()]))
+    cfg.create_node(CTerm(config, [x_ge_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_ge_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_ge_0, y_ge_0]))
+    cfg.create_node(CTerm(config, [x_ge_0, y_lt_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+    cfg.create_node(CTerm(config, [x_lt_0]))
+
+    cfg.create_edge(1, 2, 5, ['rule_1'])
+    cfg.create_edge(2, 3, 10, ['rule_2'])
+    cfg.create_edge(3, 4, 15, ['rule_3'])
+    cfg.create_edge(4, 5, 20, ['rule_4'])
+    cfg.create_split(5, [(6, CSubst(constraints=[x_ge_0])), (7, CSubst(constraints=[x_lt_0]))])
+    cfg.create_edge(6, 8, 25, ['rule_5'])
+    cfg.create_edge(7, 9, 30, ['rule_6'])
+    cfg.create_split(8, [(10, CSubst(constraints=[y_ge_0])), (11, CSubst(constraints=[y_lt_0]))])
+    cfg.create_edge(9, 12, 35, ['rule_7'])
+    cfg.create_edge(12, 13, 40, ['rule_8'])
+
+    return cfg
+
+
 def test_lifting_functions_manual() -> None:
-    #                                                                      /-- Y >=Int 0 -- 8
-    #                                   /-- X >=Int 0 --> 4 --10 steps--> 6
-    #  1 --25 steps--> 2 --30 steps--> 3                                   \-- Y  <Int 0 -- 9
-    #                                   \
-    #                                    \-- X <Int 0 --> 5 --20 steps--> 7 --15 steps--> 10
+    #                                   10   /-- Y >=Int 0 -- 8
+    #    25    30   /-- X >=Int 0 --> 4 --> 6
+    #  1 --> 2 --> 3                         \-- Y  <Int 0 -- 9
+    #               \                   20    15
+    #                \-- X <Int 0 --> 5 --> 7 --> 10
 
     # Given
     config = KApply('<top>', [KVariable('X', sort=KSort('Int'))])
@@ -528,13 +572,15 @@ def test_lifting_functions_manual() -> None:
 
 
 def test_lifting_functions_automatic() -> None:
-    #                                                    /-- Y >=Int 0 --> 10
-    #                           /-- X >=Int 0 --> 6 --> 8
+    #                                               25   /-- Y >=Int 0 --> 10
+    #     5    10    15    20   /-- X >=Int 0 --> 6 --> 8
     #  1 --> 2 --> 3 --> 4 --> 5                         \-- Y  <Int 0 --> 11
-    #                           \
+    #                           \                   30    35     40
     #                            \-- X <Int 0 --> 7 --> 9 --> 12 --> 13
 
     # Given
+    cfg = minimisation_test_kcfg()
+
     config = KApply('<top>', [KApply('_+Int_', [KVariable('X', sort=KSort('Int')), KVariable('Y', sort=KSort('Int'))])])
 
     x_ge_0 = mlEqualsTrue(geInt(KVariable('X'), intToken(0)))
@@ -549,40 +595,13 @@ def test_lifting_functions_automatic() -> None:
     node_11 = KCFG.Node(11, CTerm(config, [x_ge_0, y_lt_0]))
     node_13 = KCFG.Node(13, CTerm(config, [x_lt_0]))
 
-    cfg = KCFG()
-
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [x_ge_0]))
-    cfg.create_node(CTerm(config, [x_lt_0]))
-    cfg.create_node(CTerm(config, [x_ge_0]))
-    cfg.create_node(CTerm(config, [x_lt_0]))
-    cfg.create_node(CTerm(config, [x_ge_0, y_ge_0]))
-    cfg.create_node(CTerm(config, [x_ge_0, y_lt_0]))
-    cfg.create_node(CTerm(config, [x_lt_0]))
-    cfg.create_node(CTerm(config, [x_lt_0]))
-
-    cfg.create_edge(1, 2, 5, ['rule_1'])
-    cfg.create_edge(2, 3, 10, ['rule_2'])
-    cfg.create_edge(3, 4, 15, ['rule_3'])
-    cfg.create_edge(4, 5, 20, ['rule_4'])
-    cfg.create_split(5, [(6, CSubst(constraints=[x_ge_0])), (7, CSubst(constraints=[x_lt_0]))])
-    cfg.create_edge(6, 8, 25, ['rule_5'])
-    cfg.create_edge(7, 9, 30, ['rule_6'])
-    cfg.create_split(8, [(10, CSubst(constraints=[y_ge_0])), (11, CSubst(constraints=[y_lt_0]))])
-    cfg.create_edge(9, 12, 35, ['rule_7'])
-    cfg.create_edge(12, 13, 40, ['rule_8'])
-
     # Apply edge lifting and check correctness
     cfg.lift_edges()
 
-    #                                 /-- Y >=Int 0 --> 10
-    #         /-- X >=Int 0 --> 6 --> 8
+    #                                  /-- Y >=Int 0 --> 10
+    #    50   /-- X >=Int 0 --> 6 --> 8
     #  1 --> 5                         \-- Y  <Int 0 --> 11
-    #         \
+    #         \                   105
     #          \-- X <Int 0 --> 7 --> 13
 
     # Nodes removed
@@ -595,10 +614,11 @@ def test_lifting_functions_automatic() -> None:
     # Apply split lifting and check correctness
     cfg.lift_splits()
 
-    #                       /-- Y >=Int 0 --> 18 -> 16 --> 10
-    #   /-- X >=Int 0 --> 14
-    #  1                    \-- Y  <Int 0 --> 19 -> 17 --> 11
-    #   \
+    #                                            50     25
+    #                       /-- Y >=Int 0 --> 18 --> 16 --> 10
+    #   /-- X >=Int 0 --> 14                     50     25
+    #  1                    \-- Y  <Int 0 --> 19 --> 17 --> 11
+    #   \                    50    105
     #    \-- X <Int 0 --> 15 --> 7 --> 13
 
     # Nodes removed
@@ -634,13 +654,15 @@ def test_lifting_functions_automatic() -> None:
 
 
 def test_minimize() -> None:
-    #                                                    /-- Y >=Int 0 --> 10
-    #                           /-- X >=Int 0 --> 6 --> 8
+    #                                               25   /-- Y >=Int 0 --> 10
+    #     5    10    15    20   /-- X >=Int 0 --> 6 --> 8
     #  1 --> 2 --> 3 --> 4 --> 5                         \-- Y  <Int 0 --> 11
-    #                           \
+    #                           \                   30    35     40
     #                            \-- X <Int 0 --> 7 --> 9 --> 12 --> 13
 
     # Given
+    cfg = minimisation_test_kcfg()
+
     config = KApply('<top>', [KApply('_+Int_', [KVariable('X', sort=KSort('Int')), KVariable('Y', sort=KSort('Int'))])])
 
     x_ge_0 = mlEqualsTrue(geInt(KVariable('X'), intToken(0)))
@@ -653,40 +675,14 @@ def test_minimize() -> None:
     node_11 = KCFG.Node(11, CTerm(config, [x_ge_0, y_lt_0]))
     node_13 = KCFG.Node(13, CTerm(config, [x_lt_0]))
 
-    cfg = KCFG()
-
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [mlTop()]))
-    cfg.create_node(CTerm(config, [x_ge_0]))
-    cfg.create_node(CTerm(config, [x_lt_0]))
-    cfg.create_node(CTerm(config, [x_ge_0]))
-    cfg.create_node(CTerm(config, [x_lt_0]))
-    cfg.create_node(CTerm(config, [x_ge_0, y_ge_0]))
-    cfg.create_node(CTerm(config, [x_ge_0, y_lt_0]))
-    cfg.create_node(CTerm(config, [x_lt_0]))
-    cfg.create_node(CTerm(config, [x_lt_0]))
-
-    cfg.create_edge(1, 2, 5, ['rule_1'])
-    cfg.create_edge(2, 3, 10, ['rule_2'])
-    cfg.create_edge(3, 4, 15, ['rule_3'])
-    cfg.create_edge(4, 5, 20, ['rule_4'])
-    cfg.create_split(5, [(6, CSubst(constraints=[x_ge_0])), (7, CSubst(constraints=[x_lt_0]))])
-    cfg.create_edge(6, 8, 25, ['rule_5'])
-    cfg.create_edge(7, 9, 30, ['rule_6'])
-    cfg.create_split(8, [(10, CSubst(constraints=[y_ge_0])), (11, CSubst(constraints=[y_lt_0]))])
-    cfg.create_edge(9, 12, 35, ['rule_7'])
-    cfg.create_edge(12, 13, 40, ['rule_8'])
-
     # Apply kcfg minimization and check correctness
     cfg.minimize()
 
+    #                                            75
     #                       /-- Y >=Int 0 --> 18 --> 10
-    #   /-- X >=Int 0 --> 14
+    #   /-- X >=Int 0 --> 14                     75
     #  1                    \-- Y  <Int 0 --> 19 --> 11
-    #   \
+    #   \                    155
     #    \-- X <Int 0 --> 15 --> 13
 
     # Nodes still present
