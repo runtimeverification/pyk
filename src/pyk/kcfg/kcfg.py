@@ -23,7 +23,7 @@ from ..kast.manip import (
 from ..kast.outer import KFlatModule
 from ..prelude.kbool import andBool
 from ..prelude.ml import mlAnd
-from ..utils import ensure_dir_path
+from ..utils import ensure_dir_path, single
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
@@ -821,7 +821,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         ]
 
     def contains_split(self, split: Split) -> bool:
-        return split in self._splits
+        return split in self._splits.values()
 
     def create_split(self, source_id: NodeIdLike, splits: Iterable[tuple[NodeIdLike, CSubst]]) -> KCFG.Split:
         source_id = self._resolve(source_id)
@@ -868,20 +868,14 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             `A --M steps--> B --N steps--> C` becomes `A --(M + N) steps--> C`. Node `B` is removed.
             The edges in question are assumed to be in place, otherwise an exception is thrown.
         """
-        # Obtain edge `A -> B`
-        edges_to_b = self.edges(target_id=id)
-        assert len(edges_to_b) == 1
-        a_to_b = edges_to_b[0]
-
-        # Obtain edge `B -> C`
-        edges_from_b = self.edges(source_id=id)
-        assert len(edges_from_b) == 1
-        b_to_c = edges_from_b[0]
+        # Obtain edges `A -> B`, `B -> C`
+        a_to_b = single(self.edges(target_id=id))
+        b_to_c = single(self.edges(source_id=id))
 
         # Remove the node `B`, effectively removing the entire initial structure
         self.remove_node(id)
 
-        # TODO: What is the correct way of handling the rules?
+        # Create edge `A -> C`
         self.create_edge(a_to_b.source.id, b_to_c.target.id, a_to_b.depth + b_to_c.depth, a_to_b.rules + b_to_c.rules)
 
     def lift_split(self, id: NodeIdLike) -> None:
@@ -898,22 +892,19 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             Node `B` is removed. If any of the `cond_i` contain variables not present in `A`, an exeception is thrown.
             The structure in question is assumed to be in place, otherwise an exception is thrown.
         """
-        # Obtain edge `A -> B`
-        edges_to_b = self.edges(target_id=id)
-        assert len(edges_to_b) == 1
-        a_to_b = edges_to_b[0]
+        # Obtain edge `A -> B`, split `[cond_I, C_I | I = 1..N ]`
+        a_to_b = single(self.edges(target_id=id))
         a = a_to_b.source
-
-        # Obtain split targets`[cond_I, C_I | I = 1..N ]`
-        splits_from_b = self.splits(source_id=id)
-        assert len(splits_from_b) == 1
-        ci, substs = list(splits_from_b[0].splits.keys()), list(splits_from_b[0].splits.values())
+        split_from_b = single(self.splits(source_id=id))
+        ci, substs = list(split_from_b.splits.keys()), list(split_from_b.splits.values())
 
         # If any of the `cond_I`` contains variables not present in `A`,
         # the lift cannot be performed soundly.
         fv_a = set(free_vars(a.cterm.kast))
         for subst in substs:
-            assert set(free_vars(mlAnd(subst.constraints))).issubset(fv_a)
+            assert set(free_vars(mlAnd(subst.constraints))).issubset(
+                fv_a
+            ), 'Cannot lift split due to branching on freshly introduced variables'
 
         # Remove the node `B`, effectively removing the entire initial structure
         self.remove_node(id)
@@ -923,7 +914,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         ai: list[NodeIdLike] = [self.create_node(CTerm(a.cterm.config, subst.constraints)).id for subst in substs]
 
         # Create the edges `[A #And cond_1 --M steps--> C_1, ..., A #And cond_N --M steps--> C_N]`
-        # TODO: What is the correct way of handling the rules?
         for i in range(len(ai)):
             self.create_edge(ai[i], ci[i], a_to_b.depth, a_to_b.rules)
 
