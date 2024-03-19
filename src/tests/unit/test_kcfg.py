@@ -198,7 +198,7 @@ def test_create_node() -> None:
     cfg = KCFG()
 
     # When
-    new_node = cfg.create_node(term(1))
+    new_node = cfg.add_node(term(1))
 
     # Then
     assert new_node == node(1)
@@ -241,8 +241,8 @@ def test_cover_then_remove() -> None:
     cfg = KCFG()
 
     # When
-    node1 = cfg.create_node(CTerm(KApply('<top>', token(1))))
-    node2 = cfg.create_node(CTerm(KApply('<top>', KVariable('X'))))
+    node1 = cfg.add_node(CTerm(KApply('<top>', token(1))))
+    node2 = cfg.add_node(CTerm(KApply('<top>', KVariable('X'))))
     cover = cfg.create_cover(node1.id, node2.id)
 
     # Then
@@ -447,9 +447,9 @@ def test_write_cfg_data(tmp_path: Path) -> None:
 
     kcfg = KCFG(cfg_dir=tmp_path)
 
-    kcfg.add_node(node(1))
-    kcfg.add_node(node(2))
-    kcfg.add_node(node(3))
+    kcfg.add_node(node(1).cterm, node(1).id)
+    kcfg.add_node(node(2).cterm, node(2).id)
+    kcfg.add_node(node(3).cterm, node(3).id)
 
     assert _written_nodes() == set()
 
@@ -457,11 +457,11 @@ def test_write_cfg_data(tmp_path: Path) -> None:
 
     assert _written_nodes() == {'1.json', '2.json', '3.json'}
 
-    kcfg.add_node(node(4))
+    kcfg.add_node(node(4).cterm, node(4).id)
     kcfg.remove_node(1)
     kcfg.remove_node(2)
     kcfg.replace_node(3, node(3).cterm)
-    kcfg.add_node(node(2))
+    kcfg.add_node(node(2).cterm, node(2).id)
 
     assert _written_nodes() == {'1.json', '2.json', '3.json'}
 
