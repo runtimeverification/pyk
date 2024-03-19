@@ -999,7 +999,6 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     main_module: InitVar[KFlatModule]
 
-    _production_for_klabel: dict[KLabel, KProduction]
     _init_config: dict[KSort, KInner]
     _empty_config: dict[KSort, KInner]
 
@@ -1025,7 +1024,6 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         object.__setattr__(self, 'requires', tuple(requires))
         object.__setattr__(self, 'att', att)
         object.__setattr__(self, 'main_module', main_module)
-        object.__setattr__(self, '_production_for_klabel', {})
         object.__setattr__(self, '_init_config', {})
         object.__setattr__(self, '_empty_config', {})
 
@@ -1160,28 +1158,6 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                     unique_id_map[unique_id] = sent
         return unique_id_map
 
-    def production_for_klabel(self, klabel: KLabel) -> KProduction:
-        """Returns the original production for a given `KLabel` (failing if 0 or >1 are returned)."""
-        if klabel not in self._production_for_klabel:
-            prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
-            _prods = [prod for prod in prods if Atts.UNPARSE_AVOID not in prod.att]
-            if len(_prods) < len(prods):
-                _LOGGER.warning(
-                    f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}'
-                )
-                prods = _prods
-            # Automatically defined symbols like isInt may get multiple
-            # definitions in different modules.
-            _prods = list({prod.let_att(prod.att.drop_source()) for prod in prods})
-            if len(_prods) < len(prods):
-                _LOGGER.warning(f'Discarding {len(prods) - len(_prods)} equivalent productions')
-                prods = _prods
-            try:
-                self._production_for_klabel[klabel] = single(prods)
-            except ValueError as err:
-                raise ValueError(f'Expected a single production for label {klabel}, not: {prods}') from err
-        return self._production_for_klabel[klabel]
-
     def production_for_cell_sort(self, sort: KSort) -> KProduction:
         """Returns the production for a given cell-declaration syntax from the cell's declared sort."""
         # Typical cell production has 3 productions:
@@ -1206,11 +1182,11 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     def return_sort(self, label: KLabel) -> KSort:
         """Returns the return sort of a given `KLabel` by looking up the production."""
-        return self.production_for_klabel(label).sort
+        return self.symbols[label.name].sort
 
     def argument_sorts(self, label: KLabel) -> list[KSort]:
         """Returns the argument sorts of a given `KLabel` by looking up the production."""
-        return self.production_for_klabel(label).argument_sorts
+        return self.symbols[label.name].argument_sorts
 
     @cached_property
     def subsort_table(self) -> FrozenDict[KSort, frozenset[KSort]]:
@@ -1252,7 +1228,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             case KSequence(_):
                 return KSort('K')
             case KApply(label, _):
-                prod = self.production_for_klabel(label)
+                prod = self.symbols[label.name]
                 if prod.sort not in prod.params:
                     return prod.sort
                 elif len(prod.params) == len(label.params):
@@ -1307,7 +1283,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             if type(_kast) is not KApply:
                 return _kast
 
-            prod = self.production_for_klabel(_kast.label)
+            prod = self.symbols[_kast.label.name]
             return KApply(
                 _kast.label,
                 [
@@ -1372,7 +1348,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                     del occurrences[var.name]
                     return (Subst(subst)(term), occurrences)
                 else:
-                    prod = self.production_for_klabel(term.label)
+                    prod = self.symbols[term.label.name]
                     if len(prod.params) == 0:
                         for t, a in zip(prod.argument_sorts, term.args, strict=True):
                             if type(a) is KVariable:
@@ -1400,7 +1376,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         def _add_sort_params(_k: KInner) -> KInner:
             if type(_k) is KApply:
-                prod = self.production_for_klabel(_k.label)
+                prod = self.symbols[_k.label.name]
                 if len(_k.label.params) == 0 and len(prod.params) > 0:
                     sort_dict: dict[KSort, KSort] = {}
                     for psort, asort in zip(prod.argument_sorts, map(self.sort, _k.args), strict=True):
@@ -1481,7 +1457,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             cell_prod = self.production_for_cell_sort(_sort)
             cell_klabel = cell_prod.klabel
             assert cell_klabel is not None
-            production = self.production_for_klabel(cell_klabel)
+            production = self.symbols[cell_klabel.name]
             args: list[KInner] = []
             num_nonterminals = 0
             num_freshvars = 0
@@ -1504,8 +1480,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         def _cell_vars_to_labels(_kast: KInner) -> KInner:
             if type(_kast) is KApply and _kast.is_cell:
-                production = self.production_for_klabel(_kast.label)
-                production_arity = [prod_item.sort for prod_item in production.items if type(prod_item) is KNonTerminal]
+                production = self.symbols[_kast.label.name]
+                production_arity = [item.sort for item in production.non_terminals]
                 new_args = []
                 for sort, arg in zip(production_arity, _kast.args, strict=True):
                     if sort.name.endswith('Cell') and type(arg) is KVariable:
