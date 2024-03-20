@@ -5,8 +5,9 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass, field
+from enum import Enum
 from threading import RLock
-from typing import TYPE_CHECKING, Callable, List, Union, cast, final
+from typing import TYPE_CHECKING, List, Union, cast, final
 
 from ..cterm import CSubst, CTerm, cterm_build_claim, cterm_build_rule
 from ..kast import EMPTY_ATT
@@ -39,6 +40,14 @@ if TYPE_CHECKING:
 NodeIdLike = int | str
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class NodeAttr(Enum):
+    ROOT = 'root'
+    VACUOUS = 'vacuous'
+    STUCK = 'stuck'
+    LEAF = 'leaf'
+    SPLIT = 'split'
 
 
 class KCFGStore:
@@ -79,21 +88,20 @@ class KCFGStore:
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
-    checkers: dict[str, Callable[[NodeIdLike], bool]]
-
-    def add_node_attr(self, attr_name: str, checker: Callable[[NodeIdLike], bool]) -> None:
-        if attr_name in self.checkers:
-            _LOGGER.warning(f'overriding attribute checking hook for {attr_name}.')
-        self.checkers[attr_name] = checker
-
     def compute_attrs(self, node_id: int) -> None:
+        def check_root(_node_id: int) -> bool:
+            return len(self.predecessors(_node_id)) == 0
+
         node = self.node(node_id)
-        node.attrs = [attr_name for attr_name, checker in self.checkers.items() if checker(node.id)]
+        node.clear_attrs()
+
+        if check_root(node_id):
+            node.add_attr(NodeAttr.ROOT)
 
     class Node:
         id: int
         cterm: CTerm
-        attrs: list[str]
+        attrs: set[NodeAttr]
 
         def __lt__(self, other: Any) -> bool:
             if not isinstance(other, KCFG.Node):
@@ -106,6 +114,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         def to_dict(self) -> dict[str, Any]:
             return {'id': self.id, 'cterm': self.cterm.to_dict()}
+
+        def add_attr(self, attr: NodeAttr) -> None:
+            self.attrs.add(attr)
+
+        def remove_attr(self, attr: NodeAttr) -> None:
+            self.attrs.remove(attr)
+
+        def clear_attrs(self) -> None:
+            self.attrs.clear()
 
     class Successor(ABC):
         source: KCFG.Node
@@ -371,12 +388,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._lock = RLock()
         if cfg_dir is not None:
             self._kcfg_store = KCFGStore(cfg_dir)
-
-        self.add_node_attr('root', self.is_root)
-        self.add_node_attr('vacious', self.is_vacuous)
-        self.add_node_attr('stuck', self.is_stuck)
-        self.add_node_attr('leaf', self.is_leaf)
-        self.add_node_attr('split', self.is_split)
 
     def __contains__(self, item: object) -> bool:
         if type(item) is KCFG.Node:
@@ -893,8 +904,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._aliases.pop(alias)
 
     def is_root(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return len(self.predecessors(node_id)) == 0
+        return NodeAttr.ROOT in self.node(node_id).attrs
 
     def is_vacuous(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
