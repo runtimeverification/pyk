@@ -54,7 +54,6 @@ def kore_module(definition_dir: Path, definition_info: DefinitionInfo) -> Module
 
 IGNORED_SYMBOL_ATTRS: Final = {
     'left',
-    'priorities',
     'right',
     "symbol'Kywd'",
 }

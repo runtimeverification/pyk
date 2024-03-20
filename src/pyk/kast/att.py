@@ -265,6 +265,7 @@ class Atts:
     PREDICATE: Final = AttKey('predicate', type=_ANY)
     PREFER: Final = AttKey('prefer', type=_NONE)
     PRIORITY: Final = AttKey('priority', type=_ANY)
+    PRIORITIES: Final = AttKey('priorities', type=_ANY)  # only in KORE output
     PRIVATE: Final = AttKey('private', type=_NONE)
     PRODUCTION: Final = AttKey('org.kframework.definition.Production', type=_ANY)
     PROJECTION: Final = AttKey('projection', type=_NONE)

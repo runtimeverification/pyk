@@ -155,6 +155,9 @@ def _att_value_to_kore(value: Any) -> tuple[Pattern, ...]:
     if isinstance(value, str):
         return (String(value),)
 
+    if isinstance(value, (list, tuple)):
+        return tuple(arg for elem in value for arg in _att_value_to_kore(elem))
+
     if isinstance(value, (dict, FrozenDict)) and 'node' in value:
         if value['node'] == 'KSort':
             sort_name = name_to_kore(KSort.from_dict(value).name)  # 'Sort' is not prepended by ModuleToKORE
@@ -769,6 +772,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _add_colors_atts(module)
     module = _discard_symbol_atts(module, [Atts.COLOR])
     module = _add_terminals_atts(module)
+    module = _add_priorities_atts(module)
 
     return module
 
@@ -1201,6 +1205,29 @@ def _add_terminals_atts(module: KFlatModule) -> KFlatModule:
 
         terminals = ''.join('0' if isinstance(item, KNonTerminal) else '1' for item in sentence.items)
         return sentence.let(att=sentence.att.update([Atts.TERMINALS(terminals)]))
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _add_priorities_atts(module: KFlatModule) -> KFlatModule:
+    defn = KDefinition(module.name, (module,))
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        if Atts.FORMAT not in sentence.att:
+            return sentence
+
+        tags = sorted(defn.priorities.get(sentence.klabel.name, []))
+        priorities = tuple(
+            KApply(tag).to_dict() for tag in tags if tag not in BUILTIN_LABELS
+        )  # TODO Add KType to pyk.kast.att
+        return sentence.let(att=sentence.att.update([Atts.PRIORITIES(priorities)]))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)
