@@ -351,7 +351,7 @@ class KompileArgs:
     read_only: bool
     coverage: bool
     bison_lists: bool
-    warnings: Warnings
+    warnings: Warnings | None
     warning_to_error: bool
 
     def __init__(
@@ -371,7 +371,7 @@ class KompileArgs:
         read_only: bool = False,
         coverage: bool = False,
         bison_lists: bool = False,
-        warnings: Warnings = Warnings.ALL,
+        warnings: Warnings | None = None,
         warning_to_error: bool = False,
     ):
         main_file = Path(main_file)
@@ -437,7 +437,8 @@ class KompileArgs:
         if self.bison_lists:
             args += ['--bison-lists']
 
-        args += ['--warnings', self.warnings.value]
+        if self.warnings is not None:
+            args += ['--warnings', self.warnings.value]
 
         if self.warning_to_error:
             args += ['-w2e']

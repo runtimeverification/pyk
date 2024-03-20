@@ -27,13 +27,13 @@ class LoggingOptions(Options):
 
 
 class WarningOptions(Options):
-    warnings: Warnings
+    warnings: Warnings | None
     warning_to_error: bool
 
     @staticmethod
     def default() -> dict[str, Any]:
         return {
-            'warnings': Warnings.ALL,
+            'warnings': None,
             'warning_to_error': False,
         }
 
@@ -195,7 +195,7 @@ class KCLIArgs:
             '-w',
             dest='warnings',
             type=Warnings,
-            default=Warnings.ALL,
+            default=None,
             help='Warnings to print about (no effect on pyk, only subcommands).',
         )
         args.add_argument(
