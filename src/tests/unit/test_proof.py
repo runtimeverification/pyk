@@ -12,7 +12,7 @@ from pyk.proof.implies import EqualitySummary
 from pyk.proof.proof import CompositeSummary, Proof, ProofStatus
 from pyk.proof.reachability import APRFailureInfo, APRProof, APRSummary
 
-from .test_kcfg import minimisation_test_kcfg, node, node_dicts, term
+from .test_kcfg import minimization_test_kcfg, node, node_dicts, term
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -210,30 +210,24 @@ def test_apr_proof_from_dict_heterogeneous_subproofs(proof_dir: Path) -> None:
 
 
 def test_apr_proof_minimization_and_terminals() -> None:
-    #                                               25   /-- Y >=Int 0 --> 10
-    #     5    10    15    20   /-- X >=Int 0 --> 6 --> 8                  T
-    #  1 --> 2 --> 3 --> 4 --> 5                         \-- Y  <Int 0 --> 11
-    #              T            \                   30    35     40
-    #                            \-- X <Int 0 --> 7 --> 9 --> 12 --> 13
-    #                                                   T
+    #                                                     25    /-- X >=Int 5 --> 20
+    #      5     10     15     20    /-- X >=Int 0 --> 16 --> 18
+    #  11 --> 12 --> 13 --> 14 --> 15                           \-- X  <Int 5 --> 21
+    #                 T             \                     30     35     40         T
+    #                                \-- X  <Int 0 --> 17 --> 19 --> 22 --> 23
+    #                                                          T
     proof = APRProof(
         id='apr_min_proof',
-        kcfg=minimisation_test_kcfg(),
-        terminal=[3, 9, 11],
-        init=1,
-        target=11,
+        kcfg=minimization_test_kcfg(),
+        terminal=[13, 19, 21],
+        init=11,
+        target=21,
         logs={},
     )
 
-    assert proof._terminal == {3, 9, 11}
+    assert proof._terminal == {13, 19, 21}
     proof.minimize_kcfg()
-    #                                            75
-    #                       /-- Y >=Int 0 --> 18 --> 10
-    #   /-- X >=Int 0 --> 14                     75  T
-    #  1                    \-- Y  <Int 0 --> 19 --> 11
-    #   \                    155
-    #    \-- X <Int 0 --> 15 --> 13
-    assert proof._terminal == {11}
+    assert proof._terminal == {21}
 
 
 MODULE_NAME_TEST_DATA: Final = (
