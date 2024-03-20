@@ -24,7 +24,7 @@ from ..kast.manip import (
 from ..kast.outer import KFlatModule
 from ..prelude.kbool import andBool
 from ..prelude.ml import mlAnd
-from ..utils import ensure_dir_path, single
+from ..utils import ensure_dir_path, not_none, single
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
@@ -935,17 +935,24 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             assert set(free_vars(mlAnd(subst.constraints))).issubset(
                 fv_a
             ), f'Cannot lift split at node {id} due to branching on freshly introduced variables'
+        # Create CTerms and CSubsts corresponding to the new targets of the split
+        new_cterms_with_constraints = [
+            (CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints), csubst.constraint) for csubst in csubsts
+        ]
+        # Generate substitutions for new targets, which all exist by construction
+        new_csubsts = [
+            not_none(a.cterm.match_with_constraint(cterm)).add_constraint(constraint)
+            for (cterm, constraint) in new_cterms_with_constraints
+        ]
         # Remove the node `B`, effectively removing the entire initial structure
         self.remove_node(id)
         # Create the nodes `[ A #And cond_I | I = 1..N ]`.
-        ai: list[NodeIdLike] = [
-            self.create_node(CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints)).id for csubst in csubsts
-        ]
+        ai: list[NodeIdLike] = [self.create_node(cterm).id for (cterm, _) in new_cterms_with_constraints]
         # Create the edges `[A #And cond_1 --M steps--> C_I | I = 1..N ]`
         for i in range(len(ai)):
             self.create_edge(ai[i], ci[i], a_to_b.depth, a_to_b.rules)
         # Create the split `A --[cond_1, ..., cond_N]--> [A #And cond_1, ..., A #And cond_N]
-        self.create_split(a.id, zip(ai, csubsts, strict=True))
+        self.create_split(a.id, zip(ai, new_csubsts, strict=True))
 
     def lift_splits(self) -> bool:
         """Perform all possible split liftings.
