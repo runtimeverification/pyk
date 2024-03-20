@@ -1,6 +1,5 @@
 append
 bad-bytes-literal
-bad-flags
 bison-parser-library
 boundary-cells-opt
 cell-bag-sort-llvm
@@ -18,7 +17,6 @@ context-labels
 domains-lemmas-no-smt
 doubleinj
 equals-formatting
-equals-pattern
 excludedModuleAtts
 fatalWarnings
 fresh1
@@ -50,9 +48,7 @@ issue-1676-koreBytes
 issue-1682-korePrettyPrint
 issue-1683-cfgVarsWarns
 issue-1760
-issue-1789-rhsOr
 issue-1844-noPGM
-issue-1879-kproveTrans
 issue-2075-2
 issue-2142-markConcrete
 issue-2146-duplicateModules
@@ -63,7 +59,6 @@ issue-2321-kprovexCrash
 issue-2356-koreDecode
 issue-2812-kprove-filter-claims
 issue-2909-allow-anywhere-haskell
-issue-3035-antileft
 issue-313
 issue-3385
 issue-3446
@@ -82,14 +77,12 @@ kast-input
 kast-kore-input
 kast-rule
 kdep-options
-kompiled-directory
 kore-brackets
 kprove-append
 kprove-branchingAllowed
 kprove-error-status
 kprove-java
 kprove-markdown
-kprove-smt-lemma
 kprove-var-equals
 krun-deserialize
 llvm-kompile-type
