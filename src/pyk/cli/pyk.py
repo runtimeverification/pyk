@@ -7,8 +7,7 @@ from typing import IO, TYPE_CHECKING, Any
 
 import tomli
 
-from pyk.ktool.kompile import KompileBackend
-
+from ..ktool.kompile import KompileBackend
 from ..ktool import TypeInferenceMode
 from .args import (
     ConfigArgs,
@@ -19,6 +18,7 @@ from .args import (
     KompileOptions,
     LoggingOptions,
     OutputFileOptions,
+    WarningOptions,
 )
 from .utils import dir_path, file_path
 
@@ -192,7 +192,7 @@ class ProveLegacyOptions(DefinitionOptions, OutputFileOptions, LoggingOptions):
         )
 
 
-class KompileCommandOptions(LoggingOptions, KDefinitionOptions, KompileOptions):
+class KompileCommandOptions(LoggingOptions, WarningOptions, KDefinitionOptions, KompileOptions):
     definition_dir: Path | None
     main_file: str
     backend: KompileBackend
