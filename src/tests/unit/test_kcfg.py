@@ -6,8 +6,9 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KVariable
-from pyk.kcfg import KCFG, KCFGShow
-from pyk.kcfg.show import NodePrinter
+from pyk.kcfg import KCFG
+from pyk.kcfg.kcfg import NodeAttr
+from pyk.kcfg.show import NodePrinter, KCFGShow
 from pyk.prelude.kint import geInt, intToken, ltInt
 from pyk.prelude.ml import mlEquals, mlEqualsTrue, mlTop
 from pyk.prelude.utils import token
@@ -44,8 +45,8 @@ def to_csubst(source_id: int, target_id: int, constraint: KInner) -> CSubst:
     return csubst
 
 
-def node(i: int, with_cond: bool = False) -> KCFG.Node:
-    return KCFG.Node(i, term(i, with_cond))
+def node(i: int, with_cond: bool = False, attrs: Iterable[NodeAttr] = ()) -> KCFG.Node:
+    return KCFG.Node(i, term(i, with_cond), attrs)
 
 
 def edge(i: int, j: int) -> KCFG.Edge:
@@ -130,7 +131,7 @@ def test_from_dict_single_node() -> None:
     cfg = KCFG.from_dict(d)
 
     # Then
-    assert set(cfg.nodes) == {node(1)}
+    assert set(cfg.nodes) == {node(1, attrs=[NodeAttr.ROOT])}
     assert cfg.to_dict() == d
 
 
@@ -142,7 +143,7 @@ def test_from_dict_two_nodes() -> None:
     cfg = KCFG.from_dict(d)
 
     # Then
-    assert set(cfg.nodes) == {node(1), node(2)}
+    assert set(cfg.nodes) == {node(1, attrs=[NodeAttr.ROOT]), node(2, attrs=[NodeAttr.ROOT])}
     assert cfg.to_dict() == d
 
 
@@ -917,6 +918,8 @@ def test_pretty_print() -> None:
     kcfg_show_full_printer = KCFGShow(MockKPrint(), node_printer=NodePrinter(MockKPrint(), full_printer=True))
     actual = '\n'.join(kcfg_show.pretty(cfg)) + '\n'
     actual_full_printer = '\n'.join(kcfg_show_full_printer.pretty(cfg)) + '\n'
+
+    print(actual)
 
     # Then
     assert actual == expected

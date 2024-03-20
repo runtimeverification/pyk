@@ -93,39 +93,35 @@ class KCFGStore:
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def compute_attrs(self, node_id: int) -> None:
         def check_root(_node_id: int) -> bool:
+            print(f'in check_root, {node_id}, {len(self.predecessors(_node_id)) == 0}')
             return len(self.predecessors(_node_id)) == 0
 
         node = self.node(node_id)
-        node.clear_attrs()
 
+        attrs = []
         if check_root(node_id):
-            node.add_attr(NodeAttr.ROOT)
+            attrs.append(NodeAttr.ROOT)
 
+        node = KCFG.Node(node_id, node.cterm, attrs=attrs)
+
+        self._nodes[node_id] = node
+#          print(self._nodes[node_id])
+#          print(node)
+
+    @final
+    @dataclass(frozen=True, order=True)
     class Node:
         id: int
         cterm: CTerm
-        attrs: set[NodeAttr]
+        attrs: tuple[NodeAttr]
 
-        def __lt__(self, other: Any) -> bool:
-            if not isinstance(other, KCFG.Node):
-                return NotImplemented
-            return self.id < other.id
-
-        def __init__(self, id: int, cterm: CTerm) -> None:
-            self.id = id
-            self.cterm = cterm
+        def __init__(self, id: int, cterm: CTerm, attrs: Iterable[NodeAttr] = ()) -> None:
+            object.__setattr__(self, 'id', id)
+            object.__setattr__(self, 'cterm', cterm)
+            object.__setattr__(self, 'attrs', tuple(attrs))
 
         def to_dict(self) -> dict[str, Any]:
             return {'id': self.id, 'cterm': self.cterm.to_dict()}
-
-        def add_attr(self, attr: NodeAttr) -> None:
-            self.attrs.add(attr)
-
-        def remove_attr(self, attr: NodeAttr) -> None:
-            self.attrs.remove(attr)
-
-        def clear_attrs(self) -> None:
-            self.attrs.clear()
 
     class Successor(ABC):
         source: KCFG.Node
@@ -572,6 +568,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         for alias, node_id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=node_id)
+
+        for node in cfg.nodes:
+            cfg.compute_attrs(node.id)
 
         return cfg
 
