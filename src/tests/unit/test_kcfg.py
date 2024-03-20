@@ -503,87 +503,82 @@ def test_lifting_functions_manual() -> None:
     csubst: CSubst = CSubst(Subst({'X': KVariable('X')}))
 
     d = {
-        'next': 23,
-        'nodes': node_dicts(12, 11, config=config),
+        'next': 13,
+        'nodes': node_dicts(12, config=config),
         'edges': edge_dicts(
-            (11, 12, 25, ('r1',)),
-            (12, 13, 30, ('r2',)),
-            (14, 16, 10, ('r3',)),
-            (15, 17, 20, ('r4',)),
-            (17, 20, 15, ('r5',)),
+            (1, 2, 25, ('r1',)),
+            (2, 3, 30, ('r2',)),
+            (4, 6, 10, ('r3',)),
+            (5, 7, 20, ('r4',)),
+            (7, 10, 15, ('r5',)),
         ),
         'splits': split_dicts(
-            (13, [(14, x_ge_0), (15, x_lt_0)]),
-            (16, [(18, y_ge_0), (19, y_lt_0)]),
-            (19, [(21, x_ge_5), (22, x_lt_5)]),
+            (3, [(4, x_ge_0), (5, x_lt_0)]),
+            (6, [(8, y_ge_0), (9, y_lt_0)]),
+            (9, [(11, x_ge_5), (12, x_lt_5)]),
             csubst=csubst,
         ),
     }
     cfg = KCFG.from_dict(d)
-    #                                       10    /-- Y >=Int 0 -- 18
-    #     25     30    /-- X >=Int 0 --> 14 --> 16                   /-- X >=Int 5 --> 21
-    #  11 --> 12 --> 13                           \-- Y  <Int 0 -- 19
-    #                 \                    20     15                 \-- X <=Int 5 --> 22
-    #                  \-- X <Int 0 --> 15 --> 17 --> 20
+    #                                   10   /-- Y >=Int 0 -- 8
+    #    25    30   /-- X >=Int 0 --> 4 --> 6                  /-- X >=Int 5 --> 11
+    #  1 --> 2 --> 3                         \-- Y  <Int 0 -- 9
+    #               \                   20    15               \-- X <=Int 5 --> 12
+    #                \-- X <Int 0 --> 5 --> 7 --> 10
 
-    for id in [11, 13, 14, 15, 16, 18, 19, 20, 21, 22]:
+    for id in [1, 3, 4, 5, 6, 8, 9, 10, 11, 12]:
         with pytest.raises(ValueError, match='Expected a single element, found none'):
             cfg.lift_edge(id)
 
-    for id in [11, 12, 14, 15, 17, 18, 19, 20, 21, 22]:
+    for id in [1, 2, 4, 5, 7, 8, 9, 10, 11, 12]:
         with pytest.raises(ValueError, match='Expected a single element, found none'):
             cfg.lift_split_edge(id)
     with pytest.raises(
-        AssertionError, match='Cannot lift split at node 16 due to branching on freshly introduced variables'
+        AssertionError, match='Cannot lift split at node 6 due to branching on freshly introduced variables'
     ):
-        cfg.lift_split_edge(16)
+        cfg.lift_split_edge(6)
 
-    cfg.lift_edge(12)
-    cfg.lift_edge(17)
-    assert cfg._deleted_nodes == {12, 17}
-    assert cfg.contains_edge(KCFG.Edge(_node(11), _node(13), 55, ('r1', 'r2')))
-    assert cfg.contains_edge(KCFG.Edge(_node(15), _node(20), 35, ('r4', 'r5')))
+    cfg.lift_edge(2)
+    cfg.lift_edge(7)
+    assert cfg._deleted_nodes == {2, 7}
+    assert cfg.contains_edge(KCFG.Edge(_node(1), _node(3), 55, ('r1', 'r2')))
+    assert cfg.contains_edge(KCFG.Edge(_node(5), _node(10), 35, ('r4', 'r5')))
 
-    cfg.lift_split_edge(13)
-    assert cfg._deleted_nodes == {12, 13, 17}
+    cfg.lift_split_edge(3)
+    assert cfg._deleted_nodes == {2, 3, 7}
 
-    node_23 = KCFG.Node(23, _node(11).cterm.add_constraint(x_ge_0))
-    node_24 = KCFG.Node(24, _node(11).cterm.add_constraint(x_lt_0))
-    assert cfg.node(23) == node_23
-    assert cfg.node(24) == node_24
-    assert cfg._node_id == 25
+    node_13 = KCFG.Node(13, _node(11).cterm.add_constraint(x_ge_0))
+    node_14 = KCFG.Node(14, _node(11).cterm.add_constraint(x_lt_0))
+    assert cfg.node(13) == node_13
+    assert cfg.node(14) == node_14
+    assert cfg._node_id == 15
 
-    assert cfg.contains_edge(KCFG.Edge(node_23, _node(14), 55, ('r1', 'r2')))
-    assert cfg.contains_edge(KCFG.Edge(node_24, _node(15), 55, ('r1', 'r2')))
+    assert cfg.contains_edge(KCFG.Edge(node_13, _node(4), 55, ('r1', 'r2')))
+    assert cfg.contains_edge(KCFG.Edge(node_14, _node(5), 55, ('r1', 'r2')))
     assert cfg.contains_split(
         KCFG.Split(
-            _node(11),
+            _node(1),
             [
-                (node_23, to_csubst_node(_node(11), node_23, [x_ge_0])),
-                (node_24, to_csubst_node(_node(11), node_24, [x_lt_0])),
+                (node_13, to_csubst_node(_node(1), node_13, [x_ge_0])),
+                (node_14, to_csubst_node(_node(1), node_14, [x_lt_0])),
             ],
         )
     )
 
-    assert cfg.splits(source_id=16)[0] == KCFG.Split(
-        _node(16),
-        [
-            (_node(18), to_csubst_node(_node(16), _node(18), [y_ge_0])),
-            (_node(19), to_csubst_node(_node(16), _node(21), [y_lt_0])),
-        ],
-    )
-    cfg.lift_split_split(19)
-    assert cfg.splits(source_id=16)[0] == KCFG.Split(
-        _node(16),
-        [
-            (_node(18), to_csubst_node(_node(16), _node(18), [y_ge_0])),
-            (_node(21), to_csubst_node(_node(16), _node(21), [x_ge_5, y_lt_0])),
-            (_node(22), to_csubst_node(_node(16), _node(22), [x_lt_5, y_lt_0])),
-        ],
+    cfg.lift_split_split(9)
+    assert cfg.contains_split(
+        KCFG.Split(
+            _node(6),
+            [
+                (_node(8), to_csubst_node(_node(6), _node(8), [y_ge_0])),
+                (_node(11), to_csubst_node(_node(6), _node(11), [x_ge_5, y_lt_0])),
+                (_node(12), to_csubst_node(_node(6), _node(12), [x_lt_5, y_lt_0])),
+            ],
+        )
     )
 
-    cfg.lift_edge(14)
-    cfg.lift_edge(15)
+    cfg.lift_edge(4)
+    cfg.lift_edge(5)
     assert not cfg.lift_edges()
     assert not cfg.lift_splits()
 
