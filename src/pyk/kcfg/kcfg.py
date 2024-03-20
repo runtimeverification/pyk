@@ -877,10 +877,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # Obtain edges `A -> B`, `B -> C`
         a_to_b = single(self.edges(target_id=id))
         b_to_c = single(self.edges(source_id=id))
-
         # Remove the node `B`, effectively removing the entire initial structure
         self.remove_node(id)
-
         # Create edge `A -> C`
         self.create_edge(a_to_b.source.id, b_to_c.target.id, a_to_b.depth + b_to_c.depth, a_to_b.rules + b_to_c.rules)
 
@@ -904,11 +902,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             for node in self.nodes
             if len(self.edges(source_id=node.id)) > 0 and len(self.edges(target_id=node.id)) > 0
         ]
-
         for node_id in edges_to_lift:
             self.lift_edge(node_id)
-
-        # The lifting was successful
         return len(edges_to_lift) > 0
 
     def lift_split(self, id: NodeIdLike) -> None:
@@ -934,27 +929,21 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         a = a_to_b.source
         split_from_b = single(self.splits(source_id=id))
         ci, csubsts = list(split_from_b.splits.keys()), list(split_from_b.splits.values())
-
-        # If any of the `cond_I` contains variables not present in `A`,
-        # the lift cannot be performed soundly.
+        # If any of the `cond_I` contains variables not present in `A`, the lift cannot be performed soundly.
         fv_a = set(free_vars(a.cterm.kast))
         for subst in csubsts:
             assert set(free_vars(mlAnd(subst.constraints))).issubset(
                 fv_a
             ), f'Cannot lift split at node {id} due to branching on freshly introduced variables'
-
         # Remove the node `B`, effectively removing the entire initial structure
         self.remove_node(id)
-
         # Create the nodes `[ A #And cond_I | I = 1..N ]`.
         ai: list[NodeIdLike] = [
             self.create_node(CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints)).id for csubst in csubsts
         ]
-
         # Create the edges `[A #And cond_1 --M steps--> C_I | I = 1..N ]`
         for i in range(len(ai)):
             self.create_edge(ai[i], ci[i], a_to_b.depth, a_to_b.rules)
-
         # Create the split `A --[cond_1, ..., cond_N]--> [A #And cond_1, ..., A #And cond_N]
         self.create_split(a.id, zip(ai, csubsts, strict=True))
 
@@ -970,24 +959,20 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         """
 
         result = False
-
         while True:
             splits_to_lift = [
                 node.id
                 for node in self.nodes
                 if self.splits(source_id=node.id) != [] and self.edges(target_id=node.id) != []
             ]
-
             if len(splits_to_lift) == 0:
                 break
-
             for node_id in splits_to_lift:
                 try:
                     self.lift_split(node_id)
                     result = True
                 except AssertionError as err:
                     _LOGGER.warning(str(err))
-
         return result
 
     def minimize(self) -> None:
@@ -1003,7 +988,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         """
 
         repeat = True
-
         while repeat:
             repeat = self.lift_edges()
             repeat = self.lift_splits() or repeat
