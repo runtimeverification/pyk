@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>pyk.kcfg.kcfg module &#8212; pyk 0.1.724 documentation</title>
+    <title>pyk.kcfg.kcfg module &#8212; pyk 0.1.725 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
-    <script src="../_static/documentation_options.js?v=973d8397"></script>
+    <script src="../_static/documentation_options.js?v=3345078e"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../genindex.html" />
@@ -547,6 +547,86 @@
 <dt class="sig sig-object py" id="pyk.kcfg.kcfg.KCFG.leaves">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">leaves</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pyk.kcfg.kcfg.KCFG.Node" title="pyk.kcfg.kcfg.KCFG.Node"><span class="pre">Node</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#pyk.kcfg.kcfg.KCFG.leaves" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyk.kcfg.kcfg.KCFG.lift_edge">
+<span class="sig-name descname"><span class="pre">lift_edge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/pyk/kcfg/kcfg.html#KCFG.lift_edge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kcfg.kcfg.KCFG.lift_edge" title="Link to this definition">¶</a></dt>
+<dd><p>Lift an edge up another edge directly preceding it.</p>
+<dl class="simple">
+<dt>Input:</dt><dd><ul class="simple">
+<li><p>id: the identifier of the central node <cite>B</cite> of a sequence of edges <cite>A –&gt; B –&gt; C</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Effect: <cite>A –M steps–&gt; B –N steps–&gt; C</cite> becomes <cite>A –(M + N) steps–&gt; C</cite>. Node <cite>B</cite> is removed.</p>
+<p>Output: None</p>
+<p>Raises: An <cite>AssertionError</cite> if the edges in question are not in place.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyk.kcfg.kcfg.KCFG.lift_edges">
+<span class="sig-name descname"><span class="pre">lift_edges</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/pyk/kcfg/kcfg.html#KCFG.lift_edges"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kcfg.kcfg.KCFG.lift_edges" title="Link to this definition">¶</a></dt>
+<dd><p>Perform all possible edge lifts across the KCFG.</p>
+<p>Given the KCFG design, it is not possible for one edge lift to either disallow another or
+allow another that was not previously possible. Therefore, this function is guaranteed to
+lift all possible edges without having to loop.</p>
+<p>Input: None</p>
+<p>Effect: The KCFG is transformed to an equivalent in which no further edge lifts are possible.</p>
+<dl class="simple">
+<dt>Output:</dt><dd><ul class="simple">
+<li><p>bool: An indicator of whether or not at least one edge lift was performed.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyk.kcfg.kcfg.KCFG.lift_split">
+<span class="sig-name descname"><span class="pre">lift_split</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/pyk/kcfg/kcfg.html#KCFG.lift_split"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kcfg.kcfg.KCFG.lift_split" title="Link to this definition">¶</a></dt>
+<dd><p>Lift a split up an edge directly preceding it.</p>
+<dl class="simple">
+<dt>Input:</dt><dd><ul class="simple">
+<li><p>id: the identifier of the central node <cite>B</cite> of the structure <cite>A –&gt; B –&gt; [C_1, …, C_N]</cite>.</p></li>
+</ul>
+</dd>
+<dt>Effect:</dt><dd><p><cite>A –M steps–&gt; B –[cond_1, …, cond_N]–&gt; [C_1, …, C_N]</cite> becomes
+<cite>A –[cond_1, …, cond_N]–&gt; [A #And cond_1 –M steps–&gt; C_1, …, A #And cond_N –M steps–&gt; C_N]</cite>.
+Node <cite>B</cite> is removed.</p>
+</dd>
+</dl>
+<p>Output: None</p>
+<dl class="simple">
+<dt>Raises:</dt><dd><ul class="simple">
+<li><p><cite>AssertionError</cite>, if the structure in question is not in place.</p></li>
+<li><p><cite>AssertionError</cite>, if any of the <cite>cond_i</cite> contain variables not present in <cite>A</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyk.kcfg.kcfg.KCFG.lift_splits">
+<span class="sig-name descname"><span class="pre">lift_splits</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="reference internal" href="../_modules/pyk/kcfg/kcfg.html#KCFG.lift_splits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kcfg.kcfg.KCFG.lift_splits" title="Link to this definition">¶</a></dt>
+<dd><p>Perform all possible split liftings.</p>
+<p>Input: None</p>
+<p>Effect: The KCFG is transformed to an equivalent in which no further split lifts are possible.</p>
+<dl class="simple">
+<dt>Output:</dt><dd><ul class="simple">
+<li><p>bool: An indicator of whether or not at least one split lift was performed.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pyk.kcfg.kcfg.KCFG.minimize">
+<span class="sig-name descname"><span class="pre">minimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/pyk/kcfg/kcfg.html#KCFG.minimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pyk.kcfg.kcfg.KCFG.minimize" title="Link to this definition">¶</a></dt>
+<dd><p>Minimize KCFG by repeatedly performing the lifting transformations.</p>
+<p>The loop is designed so that each transformation is performed once in each iteration.</p>
+<p>Input: None</p>
+<p>Effect: The KCFG is transformed to an equivalent in which no further lifting transformations are possible.</p>
+<p>Output: None</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="pyk.kcfg.kcfg.KCFG.ndbranches">
