@@ -28,7 +28,7 @@ def term(i: int, with_cond: bool = False) -> CTerm:
     if i > 10:
         inside = KVariable('V' + str(i))
     term: KInner = KApply('<top>', [inside])
-    conds = (mlEquals(KVariable('x'), token(i)),) if with_cond else ()
+    conds = (mlEquals(KVariable('X'), token(i)),) if with_cond else ()
     return CTerm(term, conds)
 
 
@@ -750,7 +750,7 @@ def test_write_cfg_data(tmp_path: Path) -> None:
 
 def test_pretty_print() -> None:
     def _x_equals(i: int) -> KInner:
-        return mlEquals(KVariable('x'), token(i))
+        return mlEquals(KVariable('X'), token(i))
 
     d = {
         'nodes': node_dicts(15, start=10) + predicate_node_dicts(1, start=25),
@@ -791,7 +791,7 @@ def test_pretty_print() -> None:
         '├─ 14 (split, @bar, @foo)\n'
         '┃\n'
         '┃ (branch)\n'
-        '┣━━┓ constraint: _==K_ ( x , 15 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 15 )\n'
         '┃  ┃ subst: V14 <- V15\n'
         '┃  │\n'
         '┃  ├─ 15\n'
@@ -803,18 +803,18 @@ def test_pretty_print() -> None:
         '┃  └─ 13\n'
         '┃     (looped back)\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 16 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 16 )\n'
         '┃  ┃ subst: V14 <- V16\n'
         '┃  │\n'
         '┃  └─ 16\n'
         '┃     (continues as previously)\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 17 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 17 )\n'
         '┃  ┃ subst: V14 <- V17\n'
         '┃  │\n'
         '┃  └─ 17 (vacuous, leaf)\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 18 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 18 )\n'
         '┃  ┃ subst: V14 <- V18\n'
         '┃  │\n'
         '┃  ├─ 18\n'
@@ -822,7 +822,7 @@ def test_pretty_print() -> None:
         '┃  │  (1 step)\n'
         '┃  └─ 17 (vacuous, leaf)\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 20 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 20 )\n'
         '┃  ┃ subst: V14 <- V20\n'
         '┃  │\n'
         '┃  ├─ 20\n'
@@ -836,12 +836,12 @@ def test_pretty_print() -> None:
         '┃     │\n'
         '┃     └─ 25 (leaf)\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 23 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 23 )\n'
         '┃  ┃ subst: V14 <- V23\n'
         '┃  │\n'
         '┃  └─ 23 (stuck, leaf)\n'
         '┃\n'
-        '┗━━┓ constraint: _==K_ ( x , 22 )\n'
+        '┗━━┓ constraint: _==K_ ( X , 22 )\n'
         '   ┃ subst: V14 <- V22\n'
         '   │\n'
         '   ├─ 22\n'
@@ -886,7 +886,7 @@ def test_pretty_print() -> None:
         '│     </top>\n'
         '┃\n'
         '┃ (branch)\n'
-        '┣━━┓ constraint: _==K_ ( x , 15 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 15 )\n'
         '┃  ┃ subst: V14 <- V15\n'
         '┃  │\n'
         '┃  ├─ 15\n'
@@ -907,7 +907,7 @@ def test_pretty_print() -> None:
         '┃        </top>\n'
         '┃     (looped back)\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 16 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 16 )\n'
         '┃  ┃ subst: V14 <- V16\n'
         '┃  │\n'
         '┃  └─ 16\n'
@@ -916,7 +916,7 @@ def test_pretty_print() -> None:
         '┃        </top>\n'
         '┃     (continues as previously)\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 17 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 17 )\n'
         '┃  ┃ subst: V14 <- V17\n'
         '┃  │\n'
         '┃  └─ 17 (vacuous, leaf)\n'
@@ -924,7 +924,7 @@ def test_pretty_print() -> None:
         '┃          V17\n'
         '┃        </top>\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 18 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 18 )\n'
         '┃  ┃ subst: V14 <- V18\n'
         '┃  │\n'
         '┃  ├─ 18\n'
@@ -938,7 +938,7 @@ def test_pretty_print() -> None:
         '┃          V17\n'
         '┃        </top>\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 20 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 20 )\n'
         '┃  ┃ subst: V14 <- V20\n'
         '┃  │\n'
         '┃  ├─ 20\n'
@@ -960,9 +960,9 @@ def test_pretty_print() -> None:
         '┃           <top>\n'
         '┃             V25\n'
         '┃           </top>\n'
-        '┃           #And #Equals ( x , 25 )\n'
+        '┃           #And #Equals ( X , 25 )\n'
         '┃\n'
-        '┣━━┓ constraint: _==K_ ( x , 23 )\n'
+        '┣━━┓ constraint: _==K_ ( X , 23 )\n'
         '┃  ┃ subst: V14 <- V23\n'
         '┃  │\n'
         '┃  └─ 23 (stuck, leaf)\n'
@@ -970,7 +970,7 @@ def test_pretty_print() -> None:
         '┃          V23\n'
         '┃        </top>\n'
         '┃\n'
-        '┗━━┓ constraint: _==K_ ( x , 22 )\n'
+        '┗━━┓ constraint: _==K_ ( X , 22 )\n'
         '   ┃ subst: V14 <- V22\n'
         '   │\n'
         '   ├─ 22\n'
