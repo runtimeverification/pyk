@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.cterm import CSubst, CTerm
+from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KVariable
 from pyk.kcfg import KCFG, KCFGShow
 from pyk.kcfg.show import NodePrinter
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any
 
+    from pyk.cterm import CSubst
     from pyk.kast import KInner
 
 
@@ -34,6 +35,13 @@ def term(i: int, with_cond: bool = False) -> CTerm:
     term: KInner = KApply('<top>', [inside])
     conds = (x_equals(i),) if with_cond else ()
     return CTerm(term, conds)
+
+
+def to_csubst(source_id: int, target_id: int, constraint: KInner) -> CSubst:
+    csubst = term(source_id).match_with_constraint(term(target_id))
+    assert csubst is not None
+    csubst = csubst.add_constraint(constraint)
+    return csubst
 
 
 def node(i: int, with_cond: bool = False) -> KCFG.Node:
@@ -87,13 +95,7 @@ def cover_dicts(*edges: tuple[int, int]) -> list[dict[str, Any]]:
     return covers
 
 
-def split_dicts(*edges: tuple[int, Iterable[tuple[int, KInner]]], substs: bool = True) -> list[dict[str, Any]]:
-    def to_csubst(source_id: int, target_id: int, constraint: KInner) -> CSubst:
-        csubst = term(source_id).match_with_constraint(term(target_id)) if substs else CSubst()
-        assert csubst is not None
-        csubst = csubst.add_constraint(constraint)
-        return csubst
-
+def split_dicts(*edges: tuple[int, Iterable[tuple[int, KInner]]]) -> list[dict[str, Any]]:
     return [
         {
             'source': source_id,
@@ -470,7 +472,7 @@ def minimization_test_kcfg() -> KCFG:
             (19, 22, 35, ('r7',)),
             (22, 23, 40, ('r8',)),
         ),
-        'splits': split_dicts((15, [(16, x_ge_0), (17, x_lt_0)]), (18, [(20, x_ge_5), (21, x_lt_5)]), substs=False),
+        'splits': split_dicts((15, [(16, x_ge_0), (17, x_lt_0)]), (18, [(20, x_ge_5), (21, x_lt_5)])),
     }
     return KCFG.from_dict(d)
 
@@ -491,7 +493,7 @@ def test_lifting_functions_manual() -> None:
             (15, 17, 20, ('r4',)),
             (17, 20, 15, ('r5',)),
         ),
-        'splits': split_dicts((13, [(14, x_ge_0), (15, x_lt_0)]), (16, [(18, y_ge_0), (19, y_lt_0)]), substs=False),
+        'splits': split_dicts((13, [(14, x_ge_0), (15, x_lt_0)]), (16, [(18, y_ge_0), (19, y_lt_0)])),
     }
     cfg = KCFG.from_dict(d)
     #                                       10    /-- Y >=Int 0 -- 18
@@ -532,7 +534,7 @@ def test_lifting_functions_manual() -> None:
     assert cfg.contains_split(
         KCFG.Split(
             node(11, True),
-            [(node_21, CSubst(constraints=[x_ge_0])), (node_22, CSubst(constraints=[x_lt_0]))],
+            [(node_21, to_csubst(13, 14, x_ge_0)), (node_22, to_csubst(13, 15, x_lt_0))],
         )
     )
 
@@ -579,10 +581,10 @@ def test_lifting_functions_automatic() -> None:
     assert cfg._node_id == 30
 
     assert cfg.contains_split(
-        KCFG.Split(node(11, True), [(node_24, CSubst(constraints=[x_ge_0])), (node_25, CSubst(constraints=[x_lt_0]))])
+        KCFG.Split(node(11, True), [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))])
     )
     assert cfg.contains_split(
-        KCFG.Split(node_24, [(node_28, CSubst(constraints=[x_ge_5])), (node_29, CSubst(constraints=[x_lt_5]))])
+        KCFG.Split(node_24, [(node_28, to_csubst(18, 20, x_ge_5)), (node_29, to_csubst(18, 21, x_lt_5))])
     )
     assert cfg.contains_edge(KCFG.Edge(node_28, node_26, 50, ('r1', 'r2', 'r3', 'r4')))
     assert cfg.contains_edge(KCFG.Edge(node_26, node(20, True), 25, ('r5',)))
@@ -618,10 +620,10 @@ def test_minimize() -> None:
     assert cfg._node_id == 30
 
     assert cfg.contains_split(
-        KCFG.Split(node(11, True), [(node_24, CSubst(constraints=[x_ge_0])), (node_25, CSubst(constraints=[x_lt_0]))])
+        KCFG.Split(node(11, True), [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))])
     )
     assert cfg.contains_split(
-        KCFG.Split(node_24, [(node_28, CSubst(constraints=[x_ge_5])), (node_29, CSubst(constraints=[x_lt_5]))])
+        KCFG.Split(node_24, [(node_28, to_csubst(18, 20, x_ge_5)), (node_29, to_csubst(18, 21, x_lt_5))])
     )
     assert cfg.contains_edge(KCFG.Edge(node_28, node(20, True), 75, ('r1', 'r2', 'r3', 'r4', 'r5')))
     assert cfg.contains_edge(KCFG.Edge(node_29, node(21, True), 75, ('r1', 'r2', 'r3', 'r4', 'r5')))
