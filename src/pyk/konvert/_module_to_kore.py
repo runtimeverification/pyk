@@ -147,22 +147,27 @@ def att_to_kore(key: AttKey, value: Any) -> App:
         sorts, args = parse_res
         return App(symbol, sorts, args)
 
+    args = _att_value_to_kore(value)
+    return App(symbol, (), args)
+
+
+def _att_value_to_kore(value: Any) -> tuple[Pattern, ...]:
     if isinstance(value, str):
-        return App(symbol, (), (String(value),))
+        return (String(value),)
 
     if isinstance(value, (dict, FrozenDict)) and 'node' in value:
         if value['node'] == 'KSort':
             sort_name = name_to_kore(KSort.from_dict(value).name)  # 'Sort' is not prepended by ModuleToKORE
-            return App(symbol, (), (String(sort_name),))
+            return (String(sort_name),)
 
         # TODO Should be kast_to_kore, but we do not have a KompiledKore.
         # TODO We should be able to add injections based on info in KDefinition.
         pattern = _kast_to_kore(KInner.from_dict(value))
         if not isinstance(pattern, App):
             raise ValueError('Expected application as attribure, got: {pattern.text}')
-        return App(symbol, (), (pattern,))
+        return (pattern,)
 
-    raise ValueError(f'Attribute conversion is not implemented for: {key}: {value}')
+    raise ValueError(f'Value conversion is not implemented: {value}')
 
 
 def _parse_special_att_value(key: AttKey, value: Any) -> tuple[tuple[Sort, ...], tuple[Pattern, ...]] | None:
