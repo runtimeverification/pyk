@@ -105,6 +105,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         node = KCFG.Node(node_id, node.cterm, attrs=attrs)
 
         self._nodes[node_id] = node
+        self.update_refs(node_id)
 #          print(self._nodes[node_id])
 #          print(node)
 
@@ -666,12 +667,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for alias in [alias for alias, id in self._aliases.items() if id == node_id]:
             self.remove_alias(alias)
 
-    def replace_node(self, node_id: NodeIdLike, cterm: CTerm) -> None:
-        node_id = self._resolve(node_id)
-        node = KCFG.Node(node_id, cterm)
-        self._nodes[node_id] = node
-        self._created_nodes.add(node.id)
-
+    def update_refs(self, node_id) -> None:
+        node = self.node(node_id)
         for succ in self.successors(node_id):
             new_succ = succ.replace_source(node)
             if type(new_succ) is KCFG.Edge:
@@ -694,6 +691,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             if type(new_pred) is KCFG.NDBranch:
                 self._ndbranches[new_pred.source.id] = new_pred
 
+    def replace_node(self, node_id: NodeIdLike, cterm: CTerm) -> None:
+        node_id = self._resolve(node_id)
+        node = KCFG.Node(node_id, cterm)
+        self._nodes[node_id] = node
+        self._created_nodes.add(node.id)
+        self.update_refs(node_id)
         self.compute_attrs(node_id)
 
     def successors(self, source_id: NodeIdLike) -> list[Successor]:
