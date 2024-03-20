@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from functools import reduce
-from itertools import repeat
+from itertools import product, repeat
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -10,7 +10,17 @@ from ..kast import EMPTY_ATT, Atts, KInner
 from ..kast.att import Format
 from ..kast.inner import KApply, KRewrite, KSort
 from ..kast.manip import extract_lhs, extract_rhs
-from ..kast.outer import KDefinition, KNonTerminal, KProduction, KRegexTerminal, KRule, KSyntaxSort, KTerminal
+from ..kast.outer import (
+    KAssoc,
+    KDefinition,
+    KNonTerminal,
+    KProduction,
+    KRegexTerminal,
+    KRule,
+    KSyntaxAssociativity,
+    KSyntaxSort,
+    KTerminal,
+)
 from ..kore.prelude import inj
 from ..kore.syntax import (
     And,
@@ -773,6 +783,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _discard_symbol_atts(module, [Atts.COLOR])
     module = _add_terminals_atts(module)
     module = _add_priorities_atts(module)
+    module = _add_assoc_atts(module)
 
     return module
 
@@ -1228,6 +1239,42 @@ def _add_priorities_atts(module: KFlatModule) -> KFlatModule:
             KApply(tag).to_dict() for tag in tags if tag not in BUILTIN_LABELS
         )  # TODO Add KType to pyk.kast.att
         return sentence.let(att=sentence.att.update([Atts.PRIORITIES(priorities)]))
+
+    sentences = tuple(update(sent) for sent in module)
+    return module.let(sentences=sentences)
+
+
+def _add_assoc_atts(module: KFlatModule) -> KFlatModule:
+    def assocs(assoc: KAssoc) -> dict[str, set[str]]:
+        sents = (
+            sent
+            for sent in module.sentences
+            if isinstance(sent, KSyntaxAssociativity) and sent.assoc in (assoc, KAssoc.NON_ASSOC)
+        )
+        pairs = (pair for sent in sents for pair in product(sent.tags, sent.tags))
+
+        def insert(dct: dict[str, set[str]], *, key: str, value: str) -> dict[str, set[str]]:
+            dct.setdefault(key, set()).add(value)
+            return dct
+
+        return reduce(lambda res, pair: insert(res, key=pair[0], value=pair[1]), pairs, {})
+
+    left_assocs = assocs(KAssoc.LEFT)
+    right_assocs = assocs(KAssoc.RIGHT)
+
+    def update(sentence: KSentence) -> KSentence:
+        if not isinstance(sentence, KProduction):
+            return sentence
+
+        if not sentence.klabel:
+            return sentence
+
+        if Atts.FORMAT not in sentence.att:
+            return sentence
+
+        left = tuple(KApply(tag).to_dict() for tag in sorted(left_assocs.get(sentence.klabel.name, [])))
+        right = tuple(KApply(tag).to_dict() for tag in sorted(right_assocs.get(sentence.klabel.name, [])))
+        return sentence.let(att=sentence.att.update([Atts.LEFT(left), Atts.RIGHT(right)]))
 
     sentences = tuple(update(sent) for sent in module)
     return module.let(sentences=sentences)

@@ -255,7 +255,7 @@ class Atts:
     INJECTIVE: Final = AttKey('injective', type=_NONE)
     KLABEL: Final = AttKey('klabel', type=_ANY)
     LABEL: Final = AttKey('label', type=_ANY)
-    LEFT: Final = AttKey('left', type=_NONE)
+    LEFT: Final = AttKey('left', type=_ANY)  # LEFT and LEFT_INTERNAL on the Frontend
     LOCATION: Final = AttKey('org.kframework.attributes.Location', type=_LOCATION)
     MACRO: Final = AttKey('macro', type=_NONE)
     MACRO_REC: Final = AttKey('macro-rec', type=_NONE)
@@ -269,7 +269,7 @@ class Atts:
     PRIVATE: Final = AttKey('private', type=_NONE)
     PRODUCTION: Final = AttKey('org.kframework.definition.Production', type=_ANY)
     PROJECTION: Final = AttKey('projection', type=_NONE)
-    RIGHT: Final = AttKey('right', type=_NONE)
+    RIGHT: Final = AttKey('right', type=_ANY)  # RIGHT and RIGHT_INTERNAL on the Frontend
     SIMPLIFICATION: Final = AttKey('simplification', type=_ANY)
     SEQSTRICT: Final = AttKey('seqstrict', type=_NONE)
     SORT: Final = AttKey('org.kframework.kore.Sort', type=_ANY)
