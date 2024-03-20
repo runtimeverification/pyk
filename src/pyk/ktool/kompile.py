@@ -371,12 +371,13 @@ class KompileArgs:
         read_only: bool = False,
         coverage: bool = False,
         bison_lists: bool = False,
-        warnings: Warnings | None = None,
+        warnings: str | Warnings | None = None,
         warning_to_error: bool = False,
     ):
         main_file = Path(main_file)
         include_dirs = tuple(sorted(Path(include_dir) for include_dir in include_dirs))
         hook_namespaces = tuple(hook_namespaces)
+        warnings = Warnings(warnings) if warnings is not None else warnings
 
         object.__setattr__(self, 'main_file', main_file)
         object.__setattr__(self, 'main_module', main_module)
