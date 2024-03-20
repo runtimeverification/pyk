@@ -538,6 +538,11 @@ def test_lifting_functions_manual() -> None:
         )
     )
 
+    cfg.lift_edge(14)
+    cfg.lift_edge(15)
+    assert not cfg.lift_edges()
+    assert not cfg.lift_splits()
+
 
 def test_lifting_functions_automatic() -> None:
     cfg = minimization_test_kcfg()

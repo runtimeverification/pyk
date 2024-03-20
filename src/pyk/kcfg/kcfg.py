@@ -958,21 +958,21 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             -   bool: An indicator of whether or not at least one split lift was performed.
         """
 
-        result = False
         while True:
+            result = False
             splits_to_lift = [
                 node.id
                 for node in self.nodes
                 if self.splits(source_id=node.id) != [] and self.edges(target_id=node.id) != []
             ]
-            if len(splits_to_lift) == 0:
-                break
             for node_id in splits_to_lift:
                 try:
                     self.lift_split(node_id)
                     result = True
                 except AssertionError as err:
                     _LOGGER.warning(str(err))
+            if not result or len(splits_to_lift) == 0:
+                break
         return result
 
     def minimize(self) -> None:
