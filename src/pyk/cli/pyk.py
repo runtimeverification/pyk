@@ -106,15 +106,20 @@ class KoreToJsonOptions(LoggingOptions): ...
 
 class CoverageOptions(DefinitionOptions, OutputFileOptions, LoggingOptions):
     coverage_file: IO[Any]
-    
+
     @staticmethod
     def from_option_string() -> dict[str, str]:
-        return DefinitionOptions.from_option_string() | OutputFileOptions.from_option_string() | LoggingOptions.from_option_string()
+        return (
+            DefinitionOptions.from_option_string()
+            | OutputFileOptions.from_option_string()
+            | LoggingOptions.from_option_string()
+        )
+
 
 class GraphImportsOptions(DefinitionOptions, LoggingOptions):
     @staticmethod
     def from_option_string() -> dict[str, str]:
-        return DefinitionOptions.from_option_string() | LoggingOptions.from_option_string() 
+        return DefinitionOptions.from_option_string() | LoggingOptions.from_option_string()
 
 
 class RPCKastOptions(OutputFileOptions, LoggingOptions):
@@ -131,7 +136,12 @@ class RPCPrintOptions(DefinitionOptions, OutputFileOptions, LoggingOptions):
 
     @staticmethod
     def from_option_string() -> dict[str, str]:
-        return DefinitionOptions.from_option_string() | OutputFileOptions.from_option_string() | LoggingOptions.from_option_string() 
+        return (
+            DefinitionOptions.from_option_string()
+            | OutputFileOptions.from_option_string()
+            | LoggingOptions.from_option_string()
+        )
+
 
 class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions, LoggingOptions):
     term: IO[Any]
@@ -150,7 +160,13 @@ class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions, Logging
 
     @staticmethod
     def from_option_string() -> dict[str, str]:
-        return DefinitionOptions.from_option_string() | OutputFileOptions.from_option_string() | DisplayOptions.from_option_string() | LoggingOptions.from_option_string() 
+        return (
+            DefinitionOptions.from_option_string()
+            | OutputFileOptions.from_option_string()
+            | DisplayOptions.from_option_string()
+            | LoggingOptions.from_option_string()
+        )
+
 
 class ProveLegacyOptions(DefinitionOptions, OutputFileOptions, LoggingOptions):
     main_file: Path
@@ -163,10 +179,15 @@ class ProveLegacyOptions(DefinitionOptions, OutputFileOptions, LoggingOptions):
         return {
             'k_args': [],
         }
-    
+
     @staticmethod
     def from_option_string() -> dict[str, str]:
-        return DefinitionOptions.from_option_string() | OutputFileOptions.from_option_string() | LoggingOptions.from_option_string() | {'kArgs': 'k_args'}
+        return (
+            DefinitionOptions.from_option_string()
+            | OutputFileOptions.from_option_string()
+            | LoggingOptions.from_option_string()
+            | {'kArgs': 'k_args'}
+        )
 
 
 class KompileCommandOptions(LoggingOptions, WarningOptions, KDefinitionOptions, KompileOptions):
@@ -185,7 +206,13 @@ class KompileCommandOptions(LoggingOptions, WarningOptions, KDefinitionOptions, 
 
     @staticmethod
     def from_option_string() -> dict[str, str]:
-        return KDefinitionOptions.from_option_string() | KompileOptions.from_option_string() | LoggingOptions.from_option_string() | {'definition': 'definition_dir'}
+        return (
+            KDefinitionOptions.from_option_string()
+            | KompileOptions.from_option_string()
+            | LoggingOptions.from_option_string()
+            | {'definition': 'definition_dir'}
+        )
+
 
 class ProveOptions(LoggingOptions):
     spec_file: Path
@@ -205,7 +232,12 @@ class ProveOptions(LoggingOptions):
 
     @staticmethod
     def from_option_string() -> dict[str, str]:
-        return KDefinitionOptions.from_option_string() | KompileOptions.from_option_string() | LoggingOptions.from_option_string() | {'definition': 'definition_dir'}
+        return (
+            KDefinitionOptions.from_option_string()
+            | KompileOptions.from_option_string()
+            | LoggingOptions.from_option_string()
+            | {'definition': 'definition_dir'}
+        )
 
 
 class RunOptions(LoggingOptions):
