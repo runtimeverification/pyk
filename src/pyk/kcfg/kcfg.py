@@ -906,7 +906,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             self.lift_edge(node_id)
         return len(edges_to_lift) > 0
 
-    def lift_split(self, id: NodeIdLike) -> None:
+    def lift_split_edge(self, id: NodeIdLike) -> None:
         """Lift a split up an edge directly preceding it.
 
         Input:
@@ -929,7 +929,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         a = a_to_b.source
         split_from_b = single(self.splits(source_id=id))
         ci, csubsts = list(split_from_b.splits.keys()), list(split_from_b.splits.values())
-        # If any of the `cond_I` contains variables not present in `A`, the lift cannot be performed soundly.
+        # If any of the `cond_I` contains variables not present in `A`, the lift cannot be performed soundly
         fv_a = set(free_vars(a.cterm.kast))
         for subst in csubsts:
             assert set(free_vars(mlAnd(subst.constraints))).issubset(
@@ -954,6 +954,55 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # Create the split `A --[cond_1, ..., cond_N]--> [A #And cond_1, ..., A #And cond_N]
         self.create_split(a.id, zip(ai, new_csubsts, strict=True))
 
+    def lift_split_split(self, id: NodeIdLike) -> None:
+        """Lift a split up a split directly preceding it, joining them into a single split.
+
+        Input:
+            -   id: the identifier of the node `B` of the structure
+                `A --[..., cond_B, ...]--> [..., B, ...]` with `B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]`
+
+        Effect:
+            `A --[..., cond_B, ...]--> [..., B, ...]` with `B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]` becomes
+            `A --[..., cond_B #And cond_1, ..., cond_B #And cond_N, ...]--> [..., C_1, ..., C_N, ...]`.
+            Node `B` is removed.
+
+        Output: None
+
+        Raises:
+            -   `AssertionError`, if the structure in question is not in place.
+        """
+        # Obtain splits `A --[..., cond_B, ...]--> [..., B, ...]` and
+        # `B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]-> [C_1, ..., C_N]`
+        split_from_a, split_from_b = single(self.splits(target_id=id)), single(self.splits(source_id=id))
+        splits_from_a, splits_from_b = split_from_a.splits, split_from_b.splits
+        ci, csubsts = list(splits_from_b.keys()), list(splits_from_b.values())
+        a = split_from_a.source
+        # If any of the `cond_I` contains variables not present in `A`, the lift cannot be performed soundly
+        fv_a = set(free_vars(a.cterm.kast))
+        for subst in csubsts:
+            assert set(free_vars(mlAnd(subst.constraints))).issubset(
+                fv_a
+            ), f'Cannot lift split at node {id} due to branching on freshly introduced variables'
+        # Get the substitution for `B`, at the same time removing 'B' from the targets of `A`.
+        csubst_b = splits_from_a.pop(self._resolve(id))
+        print(not_none(a.cterm.match_with_constraint(self.node(ci[0]).cterm)))
+        # Generate substitutions for additional targets `C_I`, which all exist by construction;
+        # the constraints are cumulative, resulting in `cond_B #And cond_I`
+        additional_csubsts = [
+            not_none(a.cterm.match_with_constraint(self.node(ci).cterm))
+            .add_constraint(csubst.constraint)
+            .add_constraint(csubst_b.constraint)
+            for ci, csubst in splits_from_b.items()
+        ]
+        # Create the targets of the new split
+        new_splits = zip(
+            list(splits_from_a.keys()) + ci, list(splits_from_a.values()) + additional_csubsts, strict=True
+        )
+        # Remove the node `B`, thereby removing the two splits as well
+        self.remove_node(id)
+        # Create the new split `A --[..., cond_B #And cond_1, ..., cond_B #And cond_N, ...]--> [..., C_1, ..., C_N, ...]`
+        self.create_split(a.id, new_splits)
+
     def lift_splits(self) -> bool:
         """Perform all possible split liftings.
 
@@ -974,7 +1023,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             ]
             for node_id in splits_to_lift:
                 try:
-                    self.lift_split(node_id)
+                    self.lift_split_edge(node_id)
                     result = True
                 except AssertionError as err:
                     _LOGGER.warning(str(err))
