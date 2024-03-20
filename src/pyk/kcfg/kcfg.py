@@ -31,16 +31,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
     from pathlib import Path
     from types import TracebackType
-    from typing import Any, Final
+    from typing import Any
 
     from pyk.kore.rpc import LogEntry
 
     from ..kast import KAtt
     from ..kast.inner import KInner
     from ..kast.outer import KClaim, KDefinition, KImport, KRuleLike
-
-
-_LOGGER: Final = logging.getLogger(__name__)
 
 
 NodeIdLike = int | str
@@ -974,7 +971,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self.remove_node(id)
         # Create the nodes `[ A #And cond_I | I = 1..N ]`.
         ai: list[NodeIdLike] = [
-            self.create_node(CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints)).id for csubst in csubsts
+            self.add_node(CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints)).id for csubst in csubsts
         ]
         # Create the edges `[A #And cond_1 --M steps--> C_I | I = 1..N ]`
         for i in range(len(ai)):
