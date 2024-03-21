@@ -739,9 +739,9 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     # sorts
     definition = AddSyntaxSorts().execute(definition)
     definition = AddCollectionAtts().execute(definition)
+    definition = AddDomainValueAtts().execute(definition)
 
     module = definition.modules[0]
-    module = _add_domain_value_atts(module)
 
     # symbols
     module = _pull_up_rewrites(module)
@@ -918,43 +918,39 @@ class AddCollectionAtts(SingleModulePass):
         )
 
 
-def _add_domain_value_atts(module: KFlatModule) -> KFlatModule:
-    """Return a module where attribute "hasDomainValues" is added to all sort declarations that apply.
+@dataclass
+class AddDomainValueAtts(SingleModulePass):
+    """Return a definition where attribute "hasDomainValues" is added to all sort declarations that apply.
 
     The requirement on a sort declaration is to either have the "token" attribute directly
     or on a corresponding production.
     """
 
-    token_sorts = _token_sorts(module)
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        token_sorts = self._token_sorts(module)
+        sentences = tuple(
+            self._update(sent) if sent.sort in token_sorts else sent for sent in module if isinstance(sent, KSyntaxSort)
+        )
+        return module.let(sentences=sentences)
 
-    def update_att(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KSyntaxSort):
-            return sentence
-
-        syntax_sort: KSyntaxSort = sentence
-
-        if syntax_sort.sort not in token_sorts:
-            return syntax_sort
-
+    @staticmethod
+    def _update(syntax_sort: KSyntaxSort) -> KSyntaxSort:
         return syntax_sort.let(att=syntax_sort.att.update([Atts.HAS_DOMAIN_VALUES(None)]))
 
-    sentences = tuple(update_att(sent) for sent in module)
-    return module.let(sentences=sentences)
+    @staticmethod
+    def _token_sorts(module: KFlatModule) -> set[KSort]:
+        res: set[KSort] = set()
 
+        # TODO "token" should be an attribute of only productions
+        for syntax_sort in module.syntax_sorts:
+            if Atts.TOKEN in syntax_sort.att:
+                res.add(syntax_sort.sort)
 
-def _token_sorts(module: KFlatModule) -> set[KSort]:
-    res: set[KSort] = set()
+        for production in module.productions:
+            if Atts.TOKEN in production.att:
+                res.add(production.sort)
 
-    # TODO "token" should be an attribute of only productions
-    for syntax_sort in module.syntax_sorts:
-        if Atts.TOKEN in syntax_sort.att:
-            res.add(syntax_sort.sort)
-
-    for production in module.productions:
-        if Atts.TOKEN in production.att:
-            res.add(production.sort)
-
-    return res
+        return res
 
 
 def _pull_up_rewrites(module: KFlatModule) -> KFlatModule:
