@@ -415,7 +415,7 @@ class APRProof(Proof, KCFGExploration):
             if type(edge) is KCFG.Split:
                 assert len(edge.targets) == 1
                 csubst = edge.splits[edge.targets[0].id]
-                curr_constraint = mlAnd([csubst.subst.ml_pred, csubst.constraint, curr_constraint])
+                curr_constraint = mlAnd([csubst.subst.minimize().ml_pred, csubst.constraint, curr_constraint])
             if type(edge) is KCFG.Cover:
                 curr_constraint = mlAnd([edge.csubst.constraint, edge.csubst.subst.apply(curr_constraint)])
         return mlAnd(flatten_label('#And', curr_constraint))
