@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import reduce
 from itertools import product, repeat
 from pathlib import Path
+from typing import ClassVar  # noqa: TC003
 from typing import TYPE_CHECKING, NamedTuple, final
 
 from ..kast import EMPTY_ATT, Atts, KInner
@@ -716,14 +717,6 @@ HOOK_NAMESPACES: Final = {
 }
 
 
-COLLECTION_HOOKS: Final = {
-    'SET.Set',
-    'MAP.Map',
-    'LIST.List',
-    'RANGEMAP.RangeMap',
-}
-
-
 def simplified_module(definition: KDefinition, module_name: str | None = None) -> KFlatModule:
     """
     In ModuleToKORE.java, there are some implicit KAST-to-KAST kompilation
@@ -745,10 +738,9 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
 
     # sorts
     definition = AddSyntaxSorts().execute(definition)
+    definition = AddCollectionAtts().execute(definition)
 
     module = definition.modules[0]
-
-    module = _add_collection_atts(module)
     module = _add_domain_value_atts(module)
 
     # symbols
@@ -881,41 +873,49 @@ class AddSyntaxSorts(SingleModulePass):
         return [KSyntaxSort(sort, att=att) for sort, att in declarations.items()]
 
 
-def _add_collection_atts(module: KFlatModule) -> KFlatModule:
-    """Return a module where concat, element and unit attributes are added to collection sort declarations."""
+@dataclass
+class AddCollectionAtts(SingleModulePass):
+    """Return a definition where concat, element and unit attributes are added to collection sort declarations."""
 
-    # Example: syntax Map ::= Map Map [..., klabel(_Map_), element(_|->_), unit(.Map), ...]
-    concat_prods = {prod.sort: prod for prod in module.productions if Atts.ELEMENT in prod.att}
+    COLLECTION_HOOKS: ClassVar[frozenset[str]] = frozenset(
+        [
+            'SET.Set',
+            'MAP.Map',
+            'LIST.List',
+            'RANGEMAP.RangeMap',
+        ],
+    )
 
-    assert all(
-        Atts.UNIT in prod.att for _, prod in concat_prods.items()
-    )  # TODO Could be saved with a different attribute structure: concat(Element, Unit)
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        # Example: syntax Map ::= Map Map [..., klabel(_Map_), element(_|->_), unit(.Map), ...]
+        concat_atts = {prod.sort: prod.att for prod in module.productions if Atts.ELEMENT in prod.att}
 
-    def update_att(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KSyntaxSort):
-            return sentence
+        assert all(
+            Atts.UNIT in att for _, att in concat_atts.items()
+        )  # TODO Could be saved with a different attribute structure: concat(Element, Unit)
 
-        syntax_sort: KSyntaxSort = sentence
+        sentences = tuple(self._update(sent, concat_atts) if isinstance(sent, KSyntaxSort) else sent for sent in module)
+        return module.let(sentences=sentences)
 
-        if syntax_sort.att.get(Atts.HOOK) not in COLLECTION_HOOKS:
+    @staticmethod
+    def _update(syntax_sort: KSyntaxSort, concat_atts: Mapping[KSort, KAtt]) -> KSyntaxSort:
+        if syntax_sort.att.get(Atts.HOOK) not in AddCollectionAtts.COLLECTION_HOOKS:
             return syntax_sort
 
-        prod_att = concat_prods[syntax_sort.sort].att
+        assert syntax_sort.sort in concat_atts
+        concat_att = concat_atts[syntax_sort.sort]
 
         return syntax_sort.let(
             att=syntax_sort.att.update(
                 [
                     # TODO Here, the attriubte is stored as dict, but ultimately we should parse known attributes in KAtt.from_dict
-                    Atts.CONCAT(KApply(prod_att[Atts.KLABEL]).to_dict()),
+                    Atts.CONCAT(KApply(concat_att[Atts.KLABEL]).to_dict()),
                     # TODO Here, we keep the format from the frontend so that the attributes on SyntaxSort and Production are of the same type.
-                    Atts.ELEMENT(prod_att[Atts.ELEMENT]),
-                    Atts.UNIT(prod_att[Atts.UNIT]),
+                    Atts.ELEMENT(concat_att[Atts.ELEMENT]),
+                    Atts.UNIT(concat_att[Atts.UNIT]),
                 ]
             )
         )
-
-    sentences = tuple(update_att(sent) for sent in module)
-    return module.let(sentences=sentences)
 
 
 def _add_domain_value_atts(module: KFlatModule) -> KFlatModule:
