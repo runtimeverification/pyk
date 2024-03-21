@@ -741,10 +741,11 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     definition = AddCollectionAtts().execute(definition)
     definition = AddDomainValueAtts().execute(definition)
 
+    # symbols
+    definition = PullUpRewrites().execute(definition)
+
     module = definition.modules[0]
 
-    # symbols
-    module = _pull_up_rewrites(module)
     module = _discard_symbol_atts(
         module,
         {
@@ -801,6 +802,16 @@ class SingleModulePass(KompilerPass, ABC):
 
     @abstractmethod
     def _transform_module(self, module: KFlatModule) -> KFlatModule: ...
+
+
+class RulePass(SingleModulePass, ABC):
+    @final
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        sentences = tuple(self._transform_rule(sent) if isinstance(sent, KRule) else sent for sent in module.sentences)
+        return module.let(sentences=sentences)
+
+    @abstractmethod
+    def _transform_rule(self, rule: KRule) -> KRule: ...
 
 
 @dataclass
@@ -953,22 +964,16 @@ class AddDomainValueAtts(SingleModulePass):
         return res
 
 
-def _pull_up_rewrites(module: KFlatModule) -> KFlatModule:
+@dataclass
+class PullUpRewrites(RulePass):
     """Ensure that each rule is of the form X => Y."""
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KRule):
-            return sentence
-        if isinstance(sentence.body, KRewrite):
-            return sentence
-        rewrite = KRewrite(
-            lhs=extract_lhs(sentence.body),
-            rhs=extract_rhs(sentence.body),
-        )
-        return sentence.let(body=rewrite)
+    def _transform_rule(self, rule: KRule) -> KRule:
+        if isinstance(rule.body, KRewrite):
+            return rule
 
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+        rewrite = KRewrite(lhs=extract_lhs(rule.body), rhs=extract_rhs(rule.body))
+        return rule.let(body=rewrite)
 
 
 def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
