@@ -31,7 +31,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
     from pathlib import Path
     from types import TracebackType
-    from typing import Any, Callable
+    from typing import Any
+    from collections.abc import Callable
 
     from pyk.kore.rpc import LogEntry
 
