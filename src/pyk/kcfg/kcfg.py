@@ -1016,7 +1016,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             -   bool: An indicator of whether or not at least one split lift was performed.
         """
 
-        def lift_split(finder: Callable, lifter: Callable) -> bool:
+        def _lift_split(finder: Callable, lifter: Callable) -> bool:
             while True:
                 result = False
                 splits_to_lift = [
@@ -1034,10 +1034,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                     break
             return result
 
-        def fold_lift(result: bool, finder_lifter: tuple[Callable, Callable]) -> bool:
-            return lift_split(finder_lifter[0], finder_lifter[1]) or result
+        def _fold_lift(result: bool, finder_lifter: tuple[Callable, Callable]) -> bool:
+            return _lift_split(finder_lifter[0], finder_lifter[1]) or result
 
-        return reduce(fold_lift, [(self.edges, self.lift_split_edge), (self.splits, self.lift_split_split)], False)
+        return reduce(_fold_lift, [(self.edges, self.lift_split_edge), (self.splits, self.lift_split_split)], False)
 
     def minimize(self) -> None:
         """Minimize KCFG by repeatedly performing the lifting transformations.
