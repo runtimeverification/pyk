@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyk.cterm import CSubst, CTerm
-from pyk.kast.inner import KApply, KVariable, Subst
+from pyk.kast.inner import KApply, KVariable
 from pyk.kcfg import KCFG, KCFGShow
 from pyk.kcfg.show import NodePrinter
 from pyk.prelude.kint import geInt, intToken, ltInt
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 def to_csubst_cterm(term_1: CTerm, term_2: CTerm, constraints: Iterable[KInner]) -> CSubst:
-    csubst = term_1.match_with_constraint(term_2)
+    csubst = term_1.match_with_constraint(term_2, True)
     assert csubst is not None
     for constraint in constraints:
         csubst = csubst.add_constraint(constraint)
@@ -45,10 +45,6 @@ def x_equals(i: int) -> KInner:
 
 def x_config() -> KInner:
     return KApply('<top>', KVariable('X'))
-
-
-def x_csubst() -> CSubst:
-    return CSubst(Subst({'X': KVariable('X')}))
 
 
 def x_node(i: int) -> KCFG.Node:
@@ -75,7 +71,7 @@ def edge(i: int, j: int) -> KCFG.Edge:
 
 
 def cover(i: int, j: int) -> KCFG.Cover:
-    csubst = term(j).match_with_constraint(term(i))
+    csubst = term(j).match_with_constraint(term(i), True)
     assert csubst is not None
     return KCFG.Cover(node(i), node(j), csubst)
 
@@ -83,7 +79,7 @@ def cover(i: int, j: int) -> KCFG.Cover:
 def split(i: int, js: Iterable[int], config: KInner | None = None) -> KCFG.Split:
     split_substs = []
     for j in js:
-        csubst = term(i, config=config).match_with_constraint(term(j, config=config))
+        csubst = term(i, config=config).match_with_constraint(term(j, config=config), True)
         assert csubst is not None
         split_substs.append(csubst)
     return KCFG.Split(node(i, config=config), zip((node(j, config=config) for j in js), split_substs, strict=True))
@@ -107,7 +103,7 @@ def edge_dicts(*edges: Iterable) -> list[dict[str, Any]]:
 def cover_dicts(*edges: tuple[int, int]) -> list[dict[str, Any]]:
     covers = []
     for i, j in edges:
-        csubst = term(j).match_with_constraint(term(i))
+        csubst = term(j).match_with_constraint(term(i), True)
         assert csubst is not None
         covers.append({'source': i, 'target': j, 'csubst': csubst.to_dict()})
     return covers
@@ -494,7 +490,7 @@ def minimization_test_kcfg() -> KCFG:
             (9, 12, 35, ('r7',)),
             (12, 13, 40, ('r8',)),
         ),
-        'splits': split_dicts((5, [(6, x_ge_0), (7, x_lt_0)]), (8, [(10, x_ge_5), (11, x_lt_5)]), csubst=x_csubst()),
+        'splits': split_dicts((5, [(6, x_ge_0), (7, x_lt_0)]), (8, [(10, x_ge_5), (11, x_lt_5)]), csubst=CSubst()),
     }
     return KCFG.from_dict(d)
 
@@ -521,7 +517,7 @@ def test_lifting_functions_manual() -> None:
             (3, [(4, x_ge_0), (5, x_lt_0)]),
             (6, [(8, y_ge_0), (9, y_lt_0)]),
             (9, [(11, x_ge_5), (12, x_lt_5)]),
-            csubst=x_csubst(),
+            csubst=CSubst(),
         ),
     }
     cfg = KCFG.from_dict(d)
@@ -575,6 +571,7 @@ def test_lifting_functions_manual() -> None:
     )
 
     cfg.lift_split_split(9)
+
     assert cfg.contains_split(
         KCFG.Split(
             x_node(6),

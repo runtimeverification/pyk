@@ -942,7 +942,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         ]
         # Generate substitutions for new targets, which all exist by construction
         new_csubsts = [
-            not_none(a.cterm.match_with_constraint(cterm)).add_constraint(constraint)
+            not_none(a.cterm.match_with_constraint(cterm, True)).add_constraint(constraint)
             for (cterm, constraint) in new_cterms_with_constraints
         ]
         # Remove the node `B`, effectively removing the entire initial structure
@@ -986,11 +986,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             ), f'Cannot lift split at node {id} due to branching on freshly introduced variables'
         # Get the substitution for `B`, at the same time removing 'B' from the targets of `A`.
         csubst_b = splits_from_a.pop(self._resolve(id))
-        print(not_none(a.cterm.match_with_constraint(self.node(ci[0]).cterm)))
         # Generate substitutions for additional targets `C_I`, which all exist by construction;
         # the constraints are cumulative, resulting in `cond_B #And cond_I`
         additional_csubsts = [
-            not_none(a.cterm.match_with_constraint(self.node(ci).cterm))
+            not_none(a.cterm.match_with_constraint(self.node(ci).cterm, True))
             .add_constraint(csubst.constraint)
             .add_constraint(csubst_b.constraint)
             for ci, csubst in splits_from_b.items()
