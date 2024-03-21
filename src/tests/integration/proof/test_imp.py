@@ -1049,9 +1049,6 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         actual_path_conds = set({path_condition for _, path_condition in failure_info.path_conditions.items()})
         expected_path_conds = set({kprove.pretty_print(condition) for condition in path_conditions})
 
-        print(actual_path_conds)
-        print(expected_path_conds)
-
         assert actual_path_conds == expected_path_conds
 
     @pytest.mark.parametrize(
