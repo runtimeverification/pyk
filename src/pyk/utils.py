@@ -452,8 +452,10 @@ def run_process(
     delta_time = time.time() - start_time
     logger.info(f'Completed in {delta_time:.3f}s with status {res.returncode}: {command}')
 
-    if check:
-        res.check_returncode()
+    if check and res.returncode != 0:
+        sys.stderr.write(f'[ERROR] Running process failed with returncode {res.returncode}:\n    {shlex.join(args)}\n')
+        sys.stderr.flush()
+        sys.exit(res.returncode)
 
     return res
 
