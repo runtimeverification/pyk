@@ -28,11 +28,10 @@ from ..prelude.ml import mlAnd
 from ..utils import ensure_dir_path, not_none, single
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, MutableMapping
+    from collections.abc import Callable, Iterable, Mapping, MutableMapping
     from pathlib import Path
     from types import TracebackType
     from typing import Any
-    from collections.abc import Callable
 
     from pyk.kore.rpc import LogEntry
 
