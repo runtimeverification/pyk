@@ -93,7 +93,6 @@ class KCFGStore:
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def compute_attrs(self, node_id: int) -> None:
         def check_root(_node_id: int) -> bool:
-            print(f'in check_root, {node_id}, {len(self.predecessors(_node_id)) == 0}')
             return len(self.predecessors(_node_id)) == 0
 
         node = self.node(node_id)
@@ -106,9 +105,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         self._nodes[node_id] = node
         self.update_refs(node_id)
-
-    #          print(self._nodes[node_id])
-    #          print(node)
 
     @final
     @dataclass(frozen=True, order=True)
@@ -765,10 +761,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def contains_edge(self, edge: Edge) -> bool:
         if other := self.edge(source_id=edge.source.id, target_id=edge.target.id):
-            print(edge)
-
-            print(other)
-
             return edge == other
         return False
 
