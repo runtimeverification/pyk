@@ -355,8 +355,24 @@ def test_reachable_nodes() -> None:
 
     # Then
     assert nodes_2 == {node(12), node(13), node(15)}
-    assert nodes_3 == {node(16, attrs=[NodeAttr.ROOT]), node(12), node(13), node(17), node(18), node(15), node(19), node(20)}
-    assert nodes_4 == {node(13), node(16, attrs=[NodeAttr.ROOT]), node(12), node(15), node(17), node(14, attrs=[NodeAttr.ROOT])}
+    assert nodes_3 == {
+        node(16, attrs=[NodeAttr.ROOT]),
+        node(12),
+        node(13),
+        node(17),
+        node(18),
+        node(15),
+        node(19),
+        node(20),
+    }
+    assert nodes_4 == {
+        node(13),
+        node(16, attrs=[NodeAttr.ROOT]),
+        node(12),
+        node(15),
+        node(17),
+        node(14, attrs=[NodeAttr.ROOT]),
+    }
     assert nodes_5 == {node(19), node(18), node(17), node(16, attrs=[NodeAttr.ROOT])}
 
 
@@ -576,7 +592,9 @@ def test_lifting_functions_automatic() -> None:
     #            \-- X <Int 0 --> 17 --> 23
     assert cfg._deleted_nodes == {12, 13, 14, 19, 22}
 
-    assert cfg.contains_edge(KCFG.Edge(node(11, True, attrs=[NodeAttr.ROOT]), node(15, True), 50, ('r1', 'r2', 'r3', 'r4')))
+    assert cfg.contains_edge(
+        KCFG.Edge(node(11, True, attrs=[NodeAttr.ROOT]), node(15, True), 50, ('r1', 'r2', 'r3', 'r4'))
+    )
     assert cfg.contains_edge(KCFG.Edge(node(17, True), node(23, True), 105, ('r6', 'r7', 'r8')))
 
     cfg.lift_splits()
@@ -607,7 +625,10 @@ def test_lifting_functions_automatic() -> None:
     assert cfg._node_id == 30
 
     assert cfg.contains_split(
-        KCFG.Split(node(11, True, attrs=[NodeAttr.ROOT]), [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))])
+        KCFG.Split(
+            node(11, True, attrs=[NodeAttr.ROOT]),
+            [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))],
+        )
     )
     assert cfg.contains_split(
         KCFG.Split(node_24, [(node_28, to_csubst(18, 20, x_ge_5)), (node_29, to_csubst(18, 21, x_lt_5))])
@@ -646,7 +667,10 @@ def test_minimize() -> None:
     assert cfg._node_id == 30
 
     assert cfg.contains_split(
-        KCFG.Split(node(11, True, attrs=[NodeAttr.ROOT]), [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))])
+        KCFG.Split(
+            node(11, True, attrs=[NodeAttr.ROOT]),
+            [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))],
+        )
     )
     assert cfg.contains_split(
         KCFG.Split(node_24, [(node_28, to_csubst(18, 20, x_ge_5)), (node_29, to_csubst(18, 21, x_lt_5))])
