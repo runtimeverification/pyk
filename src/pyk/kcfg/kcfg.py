@@ -5,6 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass, field
+from functools import reduce
 from threading import RLock
 from typing import TYPE_CHECKING, Final, List, Union, cast, final
 
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
     from pathlib import Path
     from types import TracebackType
-    from typing import Any
+    from typing import Any, Callable
 
     from pyk.kore.rpc import LogEntry
 
@@ -1014,22 +1015,28 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             -   bool: An indicator of whether or not at least one split lift was performed.
         """
 
-        while True:
-            result = False
-            splits_to_lift = [
-                node.id
-                for node in self.nodes
-                if self.splits(source_id=node.id) != [] and self.edges(target_id=node.id) != []
-            ]
-            for node_id in splits_to_lift:
-                try:
-                    self.lift_split_edge(node_id)
-                    result = True
-                except AssertionError as err:
-                    _LOGGER.warning(str(err))
-            if not result or len(splits_to_lift) == 0:
-                break
-        return result
+        def lift_split(finder: Callable, lifter: Callable) -> bool:
+            while True:
+                result = False
+                splits_to_lift = [
+                    node.id
+                    for node in self.nodes
+                    if self.splits(source_id=node.id) != [] and finder(target_id=node.id) != []
+                ]
+                for node_id in splits_to_lift:
+                    try:
+                        lifter(node_id)
+                        result = True
+                    except AssertionError as err:
+                        _LOGGER.warning(str(err))
+                if not result or len(splits_to_lift) == 0:
+                    break
+            return result
+
+        def fold_lift(result: bool, finder_lifter: tuple[Callable, Callable]) -> bool:
+            return lift_split(finder_lifter[0], finder_lifter[1]) or result
+
+        return reduce(fold_lift, [(self.edges, self.lift_split_edge), (self.splits, self.lift_split_split)], False)
 
     def minimize(self) -> None:
         """Minimize KCFG by repeatedly performing the lifting transformations.
