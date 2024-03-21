@@ -581,9 +581,9 @@ class APRProof(Proof, KCFGExploration):
         assert type(closest_branch) is KCFG.Split
         refuted_branch_root = closest_branch.targets[0]
         csubst = closest_branch.splits[refuted_branch_root.id]
-        if len(csubst.subst) > 0:
+        if len(csubst.subst.minimize()) > 0:
             _LOGGER.error(
-                f'Cannot refute node {node.id}: unexpected non-empty substitution {csubst.subst} in Split from {closest_branch.source.id}'
+                f'Cannot refute node {node.id}: unexpected non-identity substitution {csubst.subst} in Split from {closest_branch.source.id}'
             )
             return None
         if len(csubst.constraints) > 1:
