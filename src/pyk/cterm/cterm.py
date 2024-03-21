@@ -179,15 +179,12 @@ class CTerm:
 
         return csubst.subst
 
-    def match_with_constraint(self, cterm: CTerm, minimize: bool = False) -> CSubst | None:
+    def match_with_constraint(self, cterm: CTerm) -> CSubst | None:
         """Find `CSubst` instantiating this `CTerm` to the other, return `None` if no such `CSubst` exists."""
         subst = self.config.match(cterm.config)
 
         if subst is None:
             return None
-
-        if minimize:
-            subst = subst.minimize()
 
         constraint = self._ml_impl(cterm.constraints, map(subst, self.constraints))
 
