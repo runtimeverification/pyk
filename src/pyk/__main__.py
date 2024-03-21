@@ -38,6 +38,7 @@ from .ktool.krun import KRun
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
 from .proof.reachability import APRFailureInfo
+from .rpc.rpc import ExampleJsonRpcServer
 from .utils import check_file_path, ensure_dir_path
 
 if TYPE_CHECKING:
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
         RPCKastOptions,
         RPCPrintOptions,
         RunOptions,
+        ServeRpcOptions,
     )
 
 
@@ -127,6 +129,11 @@ def exec_print(options: PrintOptions) -> None:
 
         options.output_file.write(printer.pretty_print(term))
         _LOGGER.info(f'Wrote file: {options.output_file.name}')
+
+
+def exec_serve_rpc(options: ServeRpcOptions) -> None:
+    server = ExampleJsonRpcServer(options)
+    server.serve()
 
 
 def exec_rpc_print(options: RPCPrintOptions) -> None:
@@ -400,6 +407,14 @@ def create_argument_parser() -> ArgumentParser:
         help='An input file containing the JSON RPC request or response with KoreJSON payload.',
     )
     rpc_print_args.add_argument('--output-file', type=FileType('w'))
+
+    server_rpc_args = pyk_args_command.add_parser(
+        'serve-rpc',
+        help='Start JSON-RPC server for pyk',
+        parents=[k_cli_args.logging_args],
+    )
+    server_rpc_args.add_argument('--addr', type=str, help='Address to listen for HTTP JSON-RPC requests')
+    server_rpc_args.add_argument('--port', type=int, help='Port to listen for HTTP JSON-RPC requests')
 
     rpc_kast_args = pyk_args_command.add_parser(
         'rpc-kast',
