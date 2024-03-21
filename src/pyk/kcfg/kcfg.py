@@ -106,8 +106,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         self._nodes[node_id] = node
         self.update_refs(node_id)
-#          print(self._nodes[node_id])
-#          print(node)
+
+    #          print(self._nodes[node_id])
+    #          print(node)
 
     @final
     @dataclass(frozen=True, order=True)
@@ -646,7 +647,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._nodes[node_id] = node
         self._created_nodes.add(node_id)
         self.compute_attrs(node_id)
-        return node
+        return self.node(node_id)
 
     def remove_node(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
@@ -667,7 +668,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for alias in [alias for alias, id in self._aliases.items() if id == node_id]:
             self.remove_alias(alias)
 
-    def update_refs(self, node_id) -> None:
+    def update_refs(self, node_id: int) -> None:
         node = self.node(node_id)
         for succ in self.successors(node_id):
             new_succ = succ.replace_source(node)
@@ -728,6 +729,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def add_successor(self, succ: KCFG.Successor) -> None:
         self._check_no_successors(succ.source.id)
         self._check_no_zero_loops(succ.source.id, succ.target_ids)
+
         if type(succ) is KCFG.Edge:
             self._edges[succ.source.id] = succ
         elif type(succ) is KCFG.Cover:
@@ -741,6 +743,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 self._splits[succ.source.id] = succ
             elif type(succ) is KCFG.NDBranch:
                 self._ndbranches[succ.source.id] = succ
+
+        self.compute_attrs(succ.source.id)
+        for target_id in succ.target_ids:
+            self.compute_attrs(target_id)
 
     def edge(self, source_id: NodeIdLike, target_id: NodeIdLike) -> Edge | None:
         source_id = self._resolve(source_id)
@@ -759,6 +765,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def contains_edge(self, edge: Edge) -> bool:
         if other := self.edge(source_id=edge.source.id, target_id=edge.target.id):
+            print(edge)
+
+            print(other)
+
             return edge == other
         return False
 
@@ -769,7 +779,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         target = self.node(target_id)
         edge = KCFG.Edge(source, target, depth, tuple(rules))
         self.add_successor(edge)
-        return edge
+        _edge = self.edge(source_id=source_id, target_id=target_id)
+        assert _edge is not None
+        return _edge
 
     def remove_edge(self, source_id: NodeIdLike, target_id: NodeIdLike) -> None:
         source_id = self._resolve(source_id)
@@ -809,7 +821,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 raise ValueError(f'No matching between: {source.id} and {target.id}')
         cover = KCFG.Cover(source, target, csubst=csubst)
         self.add_successor(cover)
-        return cover
+        _cover = self.cover(source_id=source_id, target_id=target_id)
+        assert _cover is not None
+        return _cover
 
     def remove_cover(self, source_id: NodeIdLike, target_id: NodeIdLike) -> None:
         source_id = self._resolve(source_id)
@@ -866,7 +880,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         source_id = self._resolve(source_id)
         split = KCFG.Split(self.node(source_id), tuple((self.node(nid), csubst) for nid, csubst in list(splits)))
         self.add_successor(split)
-        return split
+        return self._splits[source_id]
 
     def ndbranches(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[NDBranch]:
         source_id = self._resolve(source_id) if source_id is not None else None
@@ -886,7 +900,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         source_id = self._resolve(source_id)
         ndbranch = KCFG.NDBranch(self.node(source_id), tuple(self.node(nid) for nid in list(ndbranches)), tuple(rules))
         self.add_successor(ndbranch)
-        return ndbranch
+        return self._ndbranches[source_id]
 
     def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
         source = self.node(source_id)

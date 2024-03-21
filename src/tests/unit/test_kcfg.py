@@ -8,7 +8,7 @@ from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KVariable
 from pyk.kcfg import KCFG
 from pyk.kcfg.kcfg import NodeAttr
-from pyk.kcfg.show import NodePrinter, KCFGShow
+from pyk.kcfg.show import KCFGShow, NodePrinter
 from pyk.prelude.kint import geInt, intToken, ltInt
 from pyk.prelude.ml import mlEquals, mlEqualsTrue, mlTop
 from pyk.prelude.utils import token
@@ -49,27 +49,27 @@ def node(i: int, with_cond: bool = False, attrs: Iterable[NodeAttr] = ()) -> KCF
     return KCFG.Node(i, term(i, with_cond), attrs)
 
 
-def edge(i: int, j: int) -> KCFG.Edge:
-    return KCFG.Edge(node(i), node(j), 1, ())
+def edge(i: KCFG.Node, j: KCFG.Node) -> KCFG.Edge:
+    return KCFG.Edge(i, j, 1, ())
 
 
-def cover(i: int, j: int) -> KCFG.Cover:
-    csubst = term(j).match_with_constraint(term(i))
+def cover(i: KCFG.Node, j: KCFG.Node) -> KCFG.Cover:
+    csubst = term(j.id).match_with_constraint(term(i.id))
     assert csubst is not None
-    return KCFG.Cover(node(i), node(j), csubst)
+    return KCFG.Cover(i, j, csubst)
 
 
-def split(i: int, js: Iterable[int]) -> KCFG.Split:
+def split(i: KCFG.Node, js: Iterable[KCFG.Node]) -> KCFG.Split:
     split_substs = []
     for j in js:
-        csubst = term(i).match_with_constraint(term(j))
+        csubst = term(i.id).match_with_constraint(term(j.id))
         assert csubst is not None
         split_substs.append(csubst)
-    return KCFG.Split(node(i), zip((node(j) for j in js), split_substs, strict=True))
+    return KCFG.Split(i, zip((j for j in js), split_substs, strict=True))
 
 
-def ndbranch(i: int, js: Iterable[int]) -> KCFG.NDBranch:
-    return KCFG.NDBranch(node(i), tuple(node(j) for j in js), ())
+def ndbranch(i: KCFG.Node, js: Iterable[KCFG.Node]) -> KCFG.NDBranch:
+    return KCFG.NDBranch(i, tuple(j for j in js), ())
 
 
 def node_dicts(n: int, start: int = 1) -> list[dict[str, Any]]:
@@ -155,10 +155,12 @@ def test_from_dict_loop_edge() -> None:
     cfg = KCFG.from_dict(d)
 
     # Then
-    assert set(cfg.nodes) == {node(1), node(2)}
-    assert set(cfg.edges()) == {edge(1, 2), edge(2, 1)}
-    assert cfg.edge(1, 2) == edge(1, 2)
-    assert cfg.edge(2, 1) == edge(2, 1)
+    node_1 = node(1)
+    node_2 = node(2)
+    assert set(cfg.nodes) == {node_1, node_2}
+    assert set(cfg.edges()) == {edge(node_1, node_2), edge(node_2, node_1)}
+    assert cfg.edge(1, 2) == edge(node_1, node_2)
+    assert cfg.edge(2, 1) == edge(node_2, node_1)
     assert cfg.to_dict() == d
 
 
@@ -170,9 +172,11 @@ def test_from_dict_simple_edge() -> None:
     cfg = KCFG.from_dict(d)
 
     # Then
-    assert set(cfg.nodes) == {node(1), node(2)}
-    assert set(cfg.edges()) == {edge(1, 2)}
-    assert cfg.edge(1, 2) == edge(1, 2)
+    node_1 = node(1, attrs=[NodeAttr.ROOT])
+    node_2 = node(2)
+    assert set(cfg.nodes) == {node_1, node_2}
+    assert set(cfg.edges()) == {edge(node_1, node_2)}
+    assert cfg.edge(1, 2) == edge(node_1, node_2)
 
 
 def test_to_dict() -> None:
@@ -207,9 +211,11 @@ def test_create_node() -> None:
     # When
     new_node = cfg.add_node(term(1))
 
+    node_1 = node(1, attrs=[NodeAttr.ROOT])
+
     # Then
-    assert new_node == node(1)
-    assert set(cfg.nodes) == {node(1)}
+    assert new_node == node_1
+    assert set(cfg.nodes) == {node_1}
     assert not cfg.is_stuck(new_node.id)
 
 
@@ -232,7 +238,7 @@ def test_remove_node() -> None:
     cfg.remove_node(2)
 
     # Then
-    assert set(cfg.nodes) == {node(1), node(3)}
+    assert set(cfg.nodes) == {node(1, attrs=[NodeAttr.ROOT]), node(3)}
     assert set(cfg.edges()) == set()
     assert not cfg.is_stuck(1)
     with pytest.raises(ValueError):
@@ -276,9 +282,11 @@ def test_insert_simple_edge() -> None:
     new_edge = cfg.create_edge(1, 2, 1)
 
     # Then
-    assert new_edge == edge(1, 2)
-    assert set(cfg.nodes) == {node(1), node(2)}
-    assert set(cfg.edges()) == {edge(1, 2)}
+    node_1 = node(1, attrs=[NodeAttr.ROOT])
+    node_2 = node(2)
+    assert new_edge == edge(node_1, node_2)
+    assert set(cfg.nodes) == {node_1, node_2}
+    assert set(cfg.edges()) == {edge(node_1, node_2)}
 
 
 def test_get_successors() -> None:
@@ -299,10 +307,16 @@ def test_get_successors() -> None:
     ndbranches = set(cfg.ndbranches(source_id=13))
 
     # Then
-    assert edges == {edge(11, 12)}
-    assert covers == {cover(14, 11)}
-    assert splits == [split(12, [13, 14])]
-    assert ndbranches == {ndbranch(13, [16, 17])}
+    node_11 = node(11)
+    node_12 = node(12)
+    node_13 = node(13)
+    node_14 = node(14)
+    node_16 = node(16)
+    node_17 = node(17)
+    assert edges == {edge(node_11, node_12)}
+    assert covers == {cover(node_14, node_11)}
+    assert splits == [split(node_12, [node_13, node_14])]
+    assert ndbranches == {ndbranch(node_13, [node_16, node_17])}
     assert cfg.to_dict() == d
 
 
@@ -314,7 +328,10 @@ def test_get_predecessors() -> None:
     preds = set(cfg.edges(target_id=3))
 
     # Then
-    assert preds == {edge(1, 3), edge(2, 3)}
+    node_1 = node(1, attrs=[NodeAttr.ROOT])
+    node_2 = node(2, attrs=[NodeAttr.ROOT])
+    node_3 = node(3)
+    assert preds == {edge(node_1, node_3), edge(node_2, node_3)}
 
 
 def test_reachable_nodes() -> None:
@@ -338,9 +355,9 @@ def test_reachable_nodes() -> None:
 
     # Then
     assert nodes_2 == {node(12), node(13), node(15)}
-    assert nodes_3 == {node(16), node(12), node(13), node(17), node(18), node(15), node(19), node(20)}
-    assert nodes_4 == {node(13), node(16), node(12), node(15), node(17), node(14)}
-    assert nodes_5 == {node(19), node(18), node(17), node(16)}
+    assert nodes_3 == {node(16, attrs=[NodeAttr.ROOT]), node(12), node(13), node(17), node(18), node(15), node(19), node(20)}
+    assert nodes_4 == {node(13), node(16, attrs=[NodeAttr.ROOT]), node(12), node(15), node(17), node(14, attrs=[NodeAttr.ROOT])}
+    assert nodes_5 == {node(19), node(18), node(17), node(16, attrs=[NodeAttr.ROOT])}
 
 
 def test_paths_between() -> None:
@@ -359,11 +376,19 @@ def test_paths_between() -> None:
     # When
     paths = sorted(cfg.paths_between(16, 15))
 
+    nodes = {i: node(i) for i in range(12, 21)}
+    nodes[16] = node(16, attrs=[NodeAttr.ROOT])
+
     # Then
     assert paths == [
-        (split(16, [12]), cover(12, 13), edge(13, 15)),
-        (split(16, [13]), edge(13, 15)),
-        (split(16, [17]), split(17, [12]), cover(12, 13), edge(13, 15)),
+        (split(nodes[16], [nodes[12]]), cover(nodes[12], nodes[13]), edge(nodes[13], nodes[15])),
+        (split(nodes[16], [nodes[13]]), edge(nodes[13], nodes[15])),
+        (
+            split(nodes[16], [nodes[17]]),
+            split(nodes[17], [nodes[12]]),
+            cover(nodes[12], nodes[13]),
+            edge(nodes[13], nodes[15]),
+        ),
     ]
 
     # When
@@ -371,7 +396,7 @@ def test_paths_between() -> None:
 
     # Then
     assert paths == [
-        (split(17, [18]), ndbranch(18, [20])),
+        (split(nodes[17], [nodes[18]]), ndbranch(nodes[18], [nodes[20]])),
     ]
 
 
@@ -382,7 +407,7 @@ def test_resolve() -> None:
     }
     cfg = KCFG.from_dict(d)
 
-    assert node(1) == cfg.node(1)
+    assert node(1, attrs=[NodeAttr.ROOT]) == cfg.node(1)
 
 
 def test_vacuous() -> None:
@@ -518,7 +543,7 @@ def test_lifting_functions_manual() -> None:
     cfg.lift_edge(12)
     cfg.lift_edge(17)
     assert cfg._deleted_nodes == {12, 17}
-    assert cfg.contains_edge(KCFG.Edge(node(11, True), node(13, True), 55, ('r1', 'r2')))
+    assert cfg.contains_edge(KCFG.Edge(node(11, True, attrs=[NodeAttr.ROOT]), node(13, True), 55, ('r1', 'r2')))
     assert cfg.contains_edge(KCFG.Edge(node(15, True), node(20, True), 35, ('r4', 'r5')))
 
     cfg.lift_split(13)
@@ -534,7 +559,7 @@ def test_lifting_functions_manual() -> None:
     assert cfg.contains_edge(KCFG.Edge(node_22, node(15, True), 55, ('r1', 'r2')))
     assert cfg.contains_split(
         KCFG.Split(
-            node(11, True),
+            node(11, True, attrs=[NodeAttr.ROOT]),
             [(node_21, to_csubst(13, 14, x_ge_0)), (node_22, to_csubst(13, 15, x_lt_0))],
         )
     )
@@ -551,7 +576,7 @@ def test_lifting_functions_automatic() -> None:
     #            \-- X <Int 0 --> 17 --> 23
     assert cfg._deleted_nodes == {12, 13, 14, 19, 22}
 
-    assert cfg.contains_edge(KCFG.Edge(node(11, True), node(15, True), 50, ('r1', 'r2', 'r3', 'r4')))
+    assert cfg.contains_edge(KCFG.Edge(node(11, True, attrs=[NodeAttr.ROOT]), node(15, True), 50, ('r1', 'r2', 'r3', 'r4')))
     assert cfg.contains_edge(KCFG.Edge(node(17, True), node(23, True), 105, ('r6', 'r7', 'r8')))
 
     cfg.lift_splits()
@@ -582,7 +607,7 @@ def test_lifting_functions_automatic() -> None:
     assert cfg._node_id == 30
 
     assert cfg.contains_split(
-        KCFG.Split(node(11, True), [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))])
+        KCFG.Split(node(11, True, attrs=[NodeAttr.ROOT]), [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))])
     )
     assert cfg.contains_split(
         KCFG.Split(node_24, [(node_28, to_csubst(18, 20, x_ge_5)), (node_29, to_csubst(18, 21, x_lt_5))])
@@ -621,7 +646,7 @@ def test_minimize() -> None:
     assert cfg._node_id == 30
 
     assert cfg.contains_split(
-        KCFG.Split(node(11, True), [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))])
+        KCFG.Split(node(11, True, attrs=[NodeAttr.ROOT]), [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))])
     )
     assert cfg.contains_split(
         KCFG.Split(node_24, [(node_28, to_csubst(18, 20, x_ge_5)), (node_29, to_csubst(18, 21, x_lt_5))])
