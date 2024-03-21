@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from functools import reduce
 from itertools import product, repeat
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, final
 
 from ..kast import EMPTY_ATT, Atts, KInner
 from ..kast.att import Format
@@ -743,10 +743,11 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module_name = module_name or definition.main_module_name
     definition = FlattenDefinition(module_name).execute(definition)
 
+    # sorts
+    definition = AddSyntaxSorts().execute(definition)
+
     module = definition.modules[0]
 
-    # sorts
-    module = _add_syntax_sorts(module)
     module = _add_collection_atts(module)
     module = _add_domain_value_atts(module)
 
@@ -797,6 +798,19 @@ class KompilerPass(ABC):
     def execute(self, definition: KDefinition) -> KDefinition: ...
 
 
+class SingleModulePass(KompilerPass, ABC):
+    @final
+    def execute(self, definition: KDefinition) -> KDefinition:
+        if len(definition.modules) > 1:
+            raise ValueError('Expected a single module')
+        module = definition.modules[0]
+        module = self._transform_module(module)
+        return KDefinition(module.name, (module,))
+
+    @abstractmethod
+    def _transform_module(self, module: KFlatModule) -> KFlatModule: ...
+
+
 @dataclass
 class FlattenDefinition(KompilerPass):
     """Return a definition with a single flat module without imports."""
@@ -828,40 +842,43 @@ class FlattenDefinition(KompilerPass):
         return res
 
 
-def _add_syntax_sorts(module: KFlatModule) -> KFlatModule:
-    """Return a module with explicit syntax declarations: each sort is declared with the union of its attributes."""
-    sentences = [sentence for sentence in module if not isinstance(sentence, KSyntaxSort)]
-    sentences += _syntax_sorts(module)
-    return module.let(sentences=sentences)
+@dataclass
+class AddSyntaxSorts(SingleModulePass):
+    """Return a definition with explicit syntax declarations: each sort is declared with the union of its attributes."""
 
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        sentences = [sentence for sentence in module if not isinstance(sentence, KSyntaxSort)]
+        sentences += self._syntax_sorts(module)
+        return module.let(sentences=sentences)
 
-def _syntax_sorts(module: KFlatModule) -> list[KSyntaxSort]:
-    """Return a declaration for each sort in the module."""
-    declarations: dict[KSort, KAtt] = {}
+    @staticmethod
+    def _syntax_sorts(module: KFlatModule) -> list[KSyntaxSort]:
+        """Return a declaration for each sort in the module."""
+        declarations: dict[KSort, KAtt] = {}
 
-    def is_higher_order(production: KProduction) -> bool:
-        # Example: syntax {Sort} Sort ::= Sort "#as" Sort
-        return production.sort in production.params
+        def is_higher_order(production: KProduction) -> bool:
+            # Example: syntax {Sort} Sort ::= Sort "#as" Sort
+            return production.sort in production.params
 
-    # Merge attributes from KSyntaxSort instances
-    for syntax_sort in module.syntax_sorts:
-        sort = syntax_sort.sort
-        if sort not in declarations:
-            declarations[sort] = syntax_sort.att
-        else:
-            assert declarations[sort].keys().isdisjoint(syntax_sort.att)
-            declarations[sort] = declarations[sort].update(syntax_sort.att.entries())
+        # Merge attributes from KSyntaxSort instances
+        for syntax_sort in module.syntax_sorts:
+            sort = syntax_sort.sort
+            if sort not in declarations:
+                declarations[sort] = syntax_sort.att
+            else:
+                assert declarations[sort].keys().isdisjoint(syntax_sort.att)
+                declarations[sort] = declarations[sort].update(syntax_sort.att.entries())
 
-    # Also consider production sorts
-    for production in module.productions:
-        if is_higher_order(production):
-            continue
+        # Also consider production sorts
+        for production in module.productions:
+            if is_higher_order(production):
+                continue
 
-        sort = production.sort
-        if sort not in declarations:
-            declarations[sort] = EMPTY_ATT
+            sort = production.sort
+            if sort not in declarations:
+                declarations[sort] = EMPTY_ATT
 
-    return [KSyntaxSort(sort, att=att) for sort, att in declarations.items()]
+        return [KSyntaxSort(sort, att=att) for sort, att in declarations.items()]
 
 
 def _add_collection_atts(module: KFlatModule) -> KFlatModule:
