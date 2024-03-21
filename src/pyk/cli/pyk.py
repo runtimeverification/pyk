@@ -46,6 +46,8 @@ def generate_options(args: dict[str, Any]) -> LoggingOptions:
             return KompileCommandOptions(args)
         case 'run':
             return RunOptions(args)
+        case 'serve-rpc':
+            return ServeRpcOptions(args)
         case _:
             raise ValueError(f'Unrecognized command: {command}')
 
@@ -93,6 +95,18 @@ class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions, Logging
             'input': PrintInput.KAST_JSON,
             'omit_labels': None,
             'keep_cells': None,
+        }
+
+
+class ServeRpcOptions(LoggingOptions):
+    addr: str
+    port: int
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'addr': 'localhost',
+            'port': 56601,
         }
 
 
