@@ -228,7 +228,6 @@ class KCLIArgs:
         args = ArgumentParser(add_help=False)
         args.add_argument(
             '--output-definition',
-            '--definition',
             type=ensure_dir_path,
             dest='definition_dir',
             help='Path to kompile definition to.',
@@ -371,6 +370,12 @@ class KCLIArgs:
             '--md-selector',
             type=str,
             help='Code selector expression to use when reading markdown.',
+        )
+        args.add_argument(
+            '--definition',
+            type=ensure_dir_path,
+            dest='definition_dir',
+            help='Path to kompiled definition.',
         )
         return args
 
