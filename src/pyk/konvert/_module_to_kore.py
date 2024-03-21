@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from functools import reduce
 from itertools import product, repeat
 from pathlib import Path
@@ -739,7 +741,9 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     output. These discrepancies should be analyzed and fixed.
     """
     module_name = module_name or definition.main_module_name
-    module = _flatten_module(definition, module_name)  # TODO KORE supports imports, why is definition.kore flat?
+    definition = FlattenDefinition(module_name).execute(definition)
+
+    module = definition.modules[0]
 
     # sorts
     module = _add_syntax_sorts(module)
@@ -788,30 +792,40 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     return module
 
 
-def _flatten_module(definition: KDefinition, module_name: str) -> KFlatModule:
-    """Return a flat module with all sentences included and without imports"""
-    module = definition.module(module_name)
-    sentences = _imported_sentences(definition, module_name)
-    return module.let(sentences=sentences, imports=())
+class KompilerPass(ABC):
+    @abstractmethod
+    def execute(self, definition: KDefinition) -> KDefinition: ...
 
 
-def _imported_sentences(definition: KDefinition, module_name: str) -> list[KSentence]:
-    """Return all sentences from imported modules, including the module itself."""
+@dataclass
+class FlattenDefinition(KompilerPass):
+    """Return a definition with a single flat module without imports."""
 
-    pending: list[str] = [module_name]
-    imported: set[str] = set()
+    module_name: str
 
-    res: list[KSentence] = []
-    while pending:
-        module_name = pending.pop()
-        if module_name in imported:
-            continue
-        module = definition.module(module_name)
-        res += module.sentences
-        pending += (importt.name for importt in module.imports)
-        imported.add(module_name)
+    def execute(self, definition: KDefinition) -> KDefinition:
+        sentences = self._imported_sentences(definition, self.module_name)
+        module = definition.module(self.module_name)
+        module = module.let(sentences=sentences, imports=())
+        return KDefinition(module.name, (module,))
 
-    return res
+    @staticmethod
+    def _imported_sentences(definition: KDefinition, module_name: str) -> list[KSentence]:
+        """Return all sentences from imported modules, including the module itself."""
+        pending: list[str] = [module_name]
+        imported: set[str] = set()
+
+        res: list[KSentence] = []
+        while pending:
+            module_name = pending.pop()
+            if module_name in imported:
+                continue
+            module = definition.module(module_name)
+            res += module.sentences
+            pending += (importt.name for importt in module.imports)
+            imported.add(module_name)
+
+        return res
 
 
 def _add_syntax_sorts(module: KFlatModule) -> KFlatModule:
