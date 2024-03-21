@@ -42,7 +42,13 @@ class WarningOptions(Options):
             'warnings': None,
             'warning_to_error': False,
         }
-
+    
+    @staticmethod
+    def from_option_string() -> dict[str, Any]:
+        return {
+            'w': 'warnings',
+            'w2e': 'warning_to_error',
+        }
 
 class OutputFileOptions(Options):
     output_file: IO[Any]
