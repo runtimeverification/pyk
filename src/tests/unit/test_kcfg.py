@@ -528,19 +528,19 @@ def test_lifting_functions_manual() -> None:
     #                \-- X <Int 0 --> 5 --> 7 --> 10
 
     for id in [1, 3, 4, 5, 6, 8, 9, 10, 11, 12]:
-        with pytest.raises(ValueError, match='Expected a single element, found none'):
+        with pytest.raises(ValueError, match='^Expected a single element, found none$'):
             cfg.lift_edge(id)
 
     for id in [1, 2, 4, 5, 7, 8, 9, 10, 11, 12]:
-        with pytest.raises(ValueError, match='Expected a single element, found none'):
+        with pytest.raises(ValueError, match='^Expected a single element, found none$'):
             cfg.lift_split_edge(id)
     with pytest.raises(
-        AssertionError, match='Cannot lift split at node 6 due to branching on freshly introduced variables'
+        AssertionError, match="^Cannot lift split at node 6 due to branching on freshly introduced variables: {'Y'}$"
     ):
         cfg.lift_split_edge(6)
 
     for id in [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12]:
-        with pytest.raises(ValueError, match='Expected a single element, found none'):
+        with pytest.raises(ValueError, match='^Expected a single element, found none$'):
             cfg.lift_split_split(id)
 
     cfg.lift_edge(2)

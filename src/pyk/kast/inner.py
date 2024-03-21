@@ -707,7 +707,7 @@ class Subst(Mapping[str, KInner]):
 
     def minimize(self) -> Subst:
         """Return a new substitution with any identity items removed."""
-        return Subst({k: v for k, v in self.items() if v != KVariable(k)})
+        return Subst({k: v for k, v in self.items() if not (type(v) is KVariable and v.name == k)})
 
     def compose(self, other: Subst) -> Subst:
         """Union two substitutions together, preferring the assignments in `self` if present in both."""

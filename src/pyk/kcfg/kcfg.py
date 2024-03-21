@@ -933,9 +933,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # If any of the `cond_I` contains variables not present in `A`, the lift cannot be performed soundly
         fv_a = set(free_vars(a.cterm.kast))
         for subst in csubsts:
-            assert set(free_vars(mlAnd(subst.constraints))).issubset(
-                fv_a
-            ), f'Cannot lift split at node {id} due to branching on freshly introduced variables'
+            fresh_vars = set(free_vars(mlAnd(subst.constraints))).difference(fv_a)
+            assert (
+                len(fresh_vars) == 0
+            ), f'Cannot lift split at node {id} due to branching on freshly introduced variables: {fresh_vars}'
         # Create CTerms and CSubsts corresponding to the new targets of the split
         new_cterms_with_constraints = [
             (CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints), csubst.constraint) for csubst in csubsts
@@ -981,9 +982,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # If any of the `cond_I` contains variables not present in `A`, the lift cannot be performed soundly
         fv_a = set(free_vars(a.cterm.kast))
         for subst in csubsts:
-            assert set(free_vars(mlAnd(subst.constraints))).issubset(
-                fv_a
-            ), f'Cannot lift split at node {id} due to branching on freshly introduced variables'
+            fresh_vars = set(free_vars(mlAnd(subst.constraints))).difference(fv_a)
+            assert (
+                len(fresh_vars) == 0
+            ), f'Cannot lift split at node {id} due to branching on freshly introduced variables: {fresh_vars}'
         # Get the substitution for `B`, at the same time removing 'B' from the targets of `A`.
         csubst_b = splits_from_a.pop(self._resolve(id))
         # Generate substitutions for additional targets `C_I`, which all exist by construction;
