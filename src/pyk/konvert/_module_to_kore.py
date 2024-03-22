@@ -695,28 +695,6 @@ def _overload_axioms(defn: KDefinition) -> list[Axiom]:
 # ----------------------------------
 
 
-HOOK_NAMESPACES: Final = {
-    'BOOL',
-    'BUFFER',
-    'BYTES',
-    'FFI',
-    'FLOAT',
-    'INT',
-    'IO',
-    'JSON',
-    'KEQUAL',
-    'KREFLECTION',
-    'LIST',
-    'MAP',
-    'MINT',
-    'RANGEMAP',
-    'SET',
-    'STRING',
-    'SUBSTITUTION',
-    'UNIFICATION',
-}
-
-
 def simplified_module(definition: KDefinition, module_name: str | None = None) -> KFlatModule:
     """
     In ModuleToKORE.java, there are some implicit KAST-to-KAST kompilation
@@ -764,10 +742,10 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
             Atts.USER_LIST,
         ],
     ).execute(definition)
+    definition = DiscardHookAtts().execute(definition)
 
     module = definition.modules[0]
 
-    module = _discard_hook_atts(module)
     module = _add_anywhere_atts(module)
     module = _add_symbol_atts(module, Atts.MACRO, _is_macro)
     module = _add_symbol_atts(module, Atts.FUNCTIONAL, _is_functional)
@@ -1076,31 +1054,56 @@ def _is_constructor(att: KAtt) -> bool:
     )
 
 
-def _discard_hook_atts(module: KFlatModule, *, hook_namespaces: Iterable[str] = ()) -> KFlatModule:
+@dataclass
+class DiscardHookAtts(SingleModulePass):
     """Remove hook attributes from symbol productions that are not built-in and not activated."""
 
-    def is_active(hook: str) -> bool:
-        namespaces = (*hook_namespaces, *HOOK_NAMESPACES)
-        return hook.startswith(tuple(f'{namespace}.' for namespace in namespaces))
+    active_prefixes: tuple[str, ...]
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+    HOOK_NAMESPACES: ClassVar[tuple[str, ...]] = (
+        'BOOL',
+        'BUFFER',
+        'BYTES',
+        'FFI',
+        'FLOAT',
+        'INT',
+        'IO',
+        'JSON',
+        'KEQUAL',
+        'KREFLECTION',
+        'LIST',
+        'MAP',
+        'MINT',
+        'RANGEMAP',
+        'SET',
+        'STRING',
+        'SUBSTITUTION',
+        'UNIFICATION',
+    )
 
-        if not sentence.klabel:
-            return sentence
+    def __init__(self, hook_namespaces: Iterable[str] = ()):
+        namespaces = (*hook_namespaces, *self.HOOK_NAMESPACES)
+        self.active_prefixes = tuple(f'{namespace}.' for namespace in namespaces)
 
-        if not Atts.HOOK in sentence.att:
-            return sentence
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
+        return module.let(sentences=sentences)
 
-        hook = sentence.att[Atts.HOOK]
-        if not is_active(hook):
-            return sentence.let(att=sentence.att.discard([Atts.HOOK]))
+    def _update(self, production: KProduction) -> KProduction:
+        if not production.klabel:
+            return production
 
-        return sentence
+        if not Atts.HOOK in production.att:
+            return production
 
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+        hook = production.att[Atts.HOOK]
+        if not self._is_active(hook):
+            return production.let(att=production.att.discard([Atts.HOOK]))
+
+        return production
+
+    def _is_active(self, hook: str) -> bool:
+        return hook.startswith(self.active_prefixes)
 
 
 def _discard_format_atts(module: KFlatModule) -> KFlatModule:
