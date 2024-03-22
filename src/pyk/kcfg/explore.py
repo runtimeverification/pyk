@@ -137,7 +137,7 @@ class KCFGExplore:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
             new_term, next_node_logs = self.cterm_symbolic.simplify(node.cterm)
             if new_term != node.cterm:
-                cfg.replace_node(node.id, new_term)
+                cfg.update_node_cterm(node.id, new_term)
                 if node.id in logs:
                     logs[node.id] += next_node_logs
                 else:
