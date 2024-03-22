@@ -743,10 +743,10 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
         ],
     ).execute(definition)
     definition = DiscardHookAtts().execute(definition)
+    definition = AddAnywhereAtts().execute(definition)
 
     module = definition.modules[0]
 
-    module = _add_anywhere_atts(module)
     module = _add_symbol_atts(module, Atts.MACRO, _is_macro)
     module = _add_symbol_atts(module, Atts.FUNCTIONAL, _is_functional)
     module = _add_symbol_atts(module, Atts.INJECTIVE, _is_injective)
@@ -958,46 +958,53 @@ class PullUpRewrites(RulePass):
         return rule.let(body=rewrite)
 
 
-def _add_anywhere_atts(module: KFlatModule) -> KFlatModule:
+@dataclass
+class AddAnywhereAtts(KompilerPass):
     """Add the anywhere attribute to all symbol productions that are overloads or have a corresponding anywhere rule."""
 
-    rules = _rules_by_klabel(module)
-    defn = KDefinition(module.name, (module,))  # for getting the subsort and overload lattices
+    def execute(self, definition: KDefinition) -> KDefinition:
+        if len(definition.modules) > 1:
+            raise ValueError('Expected a single module')
+        module = definition.modules[0]
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+        rules = self._rules_by_klabel(module)
 
-        if not sentence.klabel:
-            return sentence
+        sentences = tuple(
+            self._update(sent, definition, rules) if isinstance(sent, KProduction) else sent for sent in module
+        )
+        module = module.let(sentences=sentences)
+        return KDefinition(module.name, (module,))
 
-        klabel = sentence.klabel
+    @staticmethod
+    def _rules_by_klabel(module: KFlatModule) -> dict[KLabel, list[KRule]]:
+        """Return a dict that maps a label l to the list of all rules l => X.
+
+        If a label does not have a matching rule, it will be not contained in the dict.
+        The function expects that all rules have a rewrite on top.
+        """
+        res: dict[KLabel, list[KRule]] = {}
+        for rule in module.rules:
+            assert isinstance(rule.body, KRewrite)
+            if not isinstance(rule.body.lhs, KApply):
+                continue
+            label = rule.body.lhs.label
+            res.setdefault(label, []).append(rule)
+        return res
+
+    @staticmethod
+    def _update(production: KProduction, definition: KDefinition, rules: Mapping[KLabel, list[KRule]]) -> KProduction:
+        if not production.klabel:
+            return production
+
+        klabel = production.klabel
+
         if any(Atts.ANYWHERE in rule.att for rule in rules.get(klabel, [])):
-            return sentence.let(att=sentence.att.update([Atts.ANYWHERE(None)]))
+            return production.let(att=production.att.update([Atts.ANYWHERE(None)]))
 
-        if klabel.name in defn.overloads:
-            return sentence.let(att=sentence.att.update([Atts.ANYWHERE(None)]))
+        if klabel.name in definition.overloads:
+            return production.let(att=production.att.update([Atts.ANYWHERE(None)]))
 
-        return sentence
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
-
-
-def _rules_by_klabel(module: KFlatModule) -> dict[KLabel, list[KRule]]:
-    """Return a dict that maps a label l to the list of all rules l => X.
-
-    If a label does not have a matching rule, it will be not contained in the dict.
-    The function expects that all rules have a rewrite on top.
-    """
-    res: dict[KLabel, list[KRule]] = {}
-    for rule in module.rules:
-        assert isinstance(rule.body, KRewrite)
-        if not isinstance(rule.body.lhs, KApply):
-            continue
-        label = rule.body.lhs.label
-        res.setdefault(label, []).append(rule)
-    return res
+        return production
 
 
 def _add_symbol_atts(module: KFlatModule, att: AttKey[None], pred: Callable[[KAtt], bool]) -> KFlatModule:
