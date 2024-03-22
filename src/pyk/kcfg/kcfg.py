@@ -95,6 +95,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def check_root(_node_id: int) -> bool:
             return len(self.predecessors(_node_id)) == 0
 
+        def check_leaf(_node_id: int) -> bool:
+            return len(self.successors(_node_id)) == 0
+
         node = self.node(node_id)
 
         attrs = set(node.attrs)
@@ -102,6 +105,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             attrs.add(NodeAttr.ROOT)
         else:
             attrs.discard(NodeAttr.ROOT)
+        if check_leaf(node_id):
+            attrs.add(NodeAttr.LEAF)
+        else:
+            attrs.discard(NodeAttr.LEAF)
 
         node = KCFG.Node(node_id, node.cterm, attrs=attrs)
 
@@ -113,12 +120,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     class Node:
         id: int
         cterm: CTerm
-        attrs: tuple[NodeAttr]
+        attrs: frozenset[NodeAttr]
 
         def __init__(self, id: int, cterm: CTerm, attrs: Iterable[NodeAttr] = ()) -> None:
             object.__setattr__(self, 'id', id)
             object.__setattr__(self, 'cterm', cterm)
-            object.__setattr__(self, 'attrs', tuple(attrs))
+            object.__setattr__(self, 'attrs', frozenset(attrs))
 
         def to_dict(self) -> dict[str, Any]:
             return {'id': self.id, 'cterm': self.cterm.to_dict()}
@@ -422,11 +429,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     @property
     def vacuous(self) -> list[Node]:
-        return [node for node in self.nodes if NodeAttr.VACUOUS in node.attrs]
+        return [node for node in self.nodes if self.is_vacuous(node.id)]
 
     @property
     def stuck(self) -> list[Node]:
-        return [node for node in self.nodes if NodeAttr.STUCK in node.attrs]
+        return [node for node in self.nodes if self.is_stuck(node.id)]
 
     @property
     def leaves(self) -> list[Node]:
@@ -658,6 +665,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         for alias in [alias for alias, id in self._aliases.items() if id == node_id]:
             self.remove_alias(alias)
+
+        for node in self.nodes:
+            self.compute_attrs(node.id)
 
     def update_refs(self, node_id: int) -> None:
         node = self.node(node_id)
@@ -1074,7 +1084,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return node_id in self._ndbranches
 
     def is_leaf(self, node_id: NodeIdLike) -> bool:
-        return len(self.successors(node_id)) == 0
+        return NodeAttr.LEAF in self.node(node_id).attrs
 
     def is_covered(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
