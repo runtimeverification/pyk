@@ -52,7 +52,7 @@ from ._kast_to_kore import _kast_to_kore
 from ._utils import munge
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Container, Iterable, Mapping
+    from collections.abc import Callable, Iterable, Mapping
     from typing import Any, Final
 
     from ..kast import AttKey, KAtt
@@ -743,12 +743,8 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
 
     # symbols
     definition = PullUpRewrites().execute(definition)
-
-    module = definition.modules[0]
-
-    module = _discard_symbol_atts(
-        module,
-        {
+    definition = DiscardSymbolAtts(
+        [
             Atts.CELL,
             Atts.CELL_FRAGMENT,
             Atts.CELL_NAME,
@@ -766,8 +762,11 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
             Atts.SEQSTRICT,
             Atts.STRICT,
             Atts.USER_LIST,
-        },
-    )
+        ],
+    ).execute(definition)
+
+    module = definition.modules[0]
+
     module = _discard_hook_atts(module)
     module = _add_anywhere_atts(module)
     module = _add_symbol_atts(module, Atts.MACRO, _is_macro)
@@ -778,7 +777,12 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     module = _discard_format_atts(module)
     module = _inline_terminals_in_format_atts(module)
     module = _add_colors_atts(module)
-    module = _discard_symbol_atts(module, [Atts.COLOR])
+
+    definition = KDefinition(module.name, (module,))
+    definition = DiscardSymbolAtts([Atts.COLOR]).execute(definition)
+
+    module = definition.modules[0]
+
     module = _add_terminals_atts(module)
     module = _add_priorities_atts(module)
     module = _add_assoc_atts(module)
@@ -1118,20 +1122,24 @@ def _discard_format_atts(module: KFlatModule) -> KFlatModule:
     return module.let(sentences=sentences)
 
 
-def _discard_symbol_atts(module: KFlatModule, atts: Container[AttKey]) -> KFlatModule:
+@dataclass
+class DiscardSymbolAtts(SingleModulePass):
     """Remove certain attributes from symbol productions."""
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+    keys: frozenset[AttKey]
 
-        if not sentence.klabel:
-            return sentence
+    def __init__(self, keys: Iterable[AttKey]):
+        self.keys = frozenset(keys)
 
-        return sentence.let(att=sentence.att.discard(atts))
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
+        return module.let(sentences=sentences)
 
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+    def _update(self, production: KProduction) -> KProduction:
+        if not production.klabel:
+            return production
+
+        return production.let(att=production.att.discard(self.keys))
 
 
 def _add_default_format_atts(module: KFlatModule) -> KFlatModule:
