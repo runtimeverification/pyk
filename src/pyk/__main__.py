@@ -284,6 +284,7 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'bison_lists': options.bison_lists,
         'warnings': options.warnings,
         'warning_to_error': options.warning_to_error,
+        'no_exc_wrap': options.no_exc_wrap,
     }
     if options.backend == KompileBackend.LLVM:
         kompile_dict['ccopts'] = options.ccopts
