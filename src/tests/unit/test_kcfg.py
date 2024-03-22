@@ -439,7 +439,7 @@ def test_vacuous() -> None:
     assert cfg.vacuous, node(3)
 
 
-def test_replace_node() -> None:
+def test_update_node_cterm() -> None:
     # Given
     d = {
         'nodes': node_dicts(4),
@@ -447,7 +447,7 @@ def test_replace_node() -> None:
     }
 
     cfg = KCFG.from_dict(d)
-    cfg.replace_node(2, term(5))
+    cfg.update_node_cterm(2, term(5))
 
     node = cfg.node(2)
     assert node is not None
@@ -699,7 +699,7 @@ def test_write_cfg_data(tmp_path: Path) -> None:
     kcfg.add_node(node(4).cterm, node(4).id)
     kcfg.remove_node(1)
     kcfg.remove_node(2)
-    kcfg.replace_node(3, node(3).cterm)
+    kcfg.update_node_cterm(3, node(3).cterm)
     kcfg.add_node(node(2).cterm, node(2).id)
 
     assert _written_nodes() == {'1.json', '2.json', '3.json'}

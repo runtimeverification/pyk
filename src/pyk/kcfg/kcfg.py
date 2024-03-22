@@ -360,8 +360,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _covers: dict[int, Cover]
     _splits: dict[int, Split]
     _ndbranches: dict[int, NDBranch]
-    _vacuous: set[int]
-    _stuck: set[int]
     _aliases: dict[str, int]
     _lock: RLock
 
@@ -381,7 +379,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._covers = {}
         self._splits = {}
         self._ndbranches = {}
-        self._stuck = set()
         self._aliases = {}
         self._lock = RLock()
         if cfg_dir is not None:
@@ -429,7 +426,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     @property
     def stuck(self) -> list[Node]:
-        return [node for node in self.nodes if node.id in self._stuck]
+        return [node for node in self.nodes if NodeAttr.STUCK in node.attrs]
 
     @property
     def leaves(self) -> list[Node]:
@@ -517,7 +514,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
         vacuous = sorted([node.id for node in self.nodes if NodeAttr.VACUOUS in node.attrs])
-        stuck = sorted(self._stuck)
+        stuck = sorted([node.id for node in self.nodes if NodeAttr.STUCK in node.attrs])
         aliases = dict(sorted(self._aliases.items()))
 
         res = {
@@ -658,8 +655,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         self._splits = {k: s for k, s in self._splits.items() if k != node_id and node_id not in s.target_ids}
         self._ndbranches = {k: b for k, b in self._ndbranches.items() if k != node_id and node_id not in b.target_ids}
-
-        self._stuck.discard(node_id)
 
         for alias in [alias for alias, id in self._aliases.items() if id == node_id]:
             self.remove_alias(alias)
@@ -861,17 +856,16 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self.remove_attr(node_id, NodeAttr.VACUOUS)
 
     def add_stuck(self, node_id: NodeIdLike) -> None:
-        self._stuck.add(self._resolve(node_id))
+        self.add_attr(node_id, NodeAttr.STUCK)
 
     def remove_stuck(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        if node_id not in self._stuck:
+        node = self.node(node_id)
+        if NodeAttr.STUCK not in node.attrs:
             raise ValueError(f'Node is not stuck: {node_id}')
-        self._stuck.remove(node_id)
+        self.remove_attr(node_id, NodeAttr.STUCK)
 
     def discard_stuck(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._stuck.discard(node_id)
+        self.remove_attr(node_id, NodeAttr.STUCK)
 
     def splits(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[Split]:
         source_id = self._resolve(source_id) if source_id is not None else None
@@ -1069,8 +1063,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return NodeAttr.VACUOUS in self.node(node_id).attrs
 
     def is_stuck(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return node_id in self._stuck
+        return NodeAttr.STUCK in self.node(node_id).attrs
 
     def is_split(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
