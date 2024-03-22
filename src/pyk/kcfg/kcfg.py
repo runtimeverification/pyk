@@ -81,6 +81,9 @@ class KCFGStore:
         dct['nodes'] = nodes
         return dct
 
+    def read_node_data(self, node_id: int) -> dict[str, Any]:
+        return json.loads(self.kcfg_node_path(node_id).read_text())
+
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     @final
@@ -1162,6 +1165,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         cfg = KCFG.from_dict(store.read_cfg_data())
         cfg._kcfg_store = store
         return cfg
+
+    @staticmethod
+    def read_node_data(cfg_dir: Path, node_id: int) -> KCFG.Node:
+        store = KCFGStore(cfg_dir)
+        return KCFG.Node.from_dict(store.read_node_data(node_id))
 
 
 class KCFGExtendResult(ABC):
