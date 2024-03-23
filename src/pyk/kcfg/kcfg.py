@@ -760,6 +760,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 )
             if type(succ) is KCFG.Split:
                 self._splits[succ.source.id] = succ
+                self.add_attr(succ.source.id, NodeAttr.SPLIT)
             elif type(succ) is KCFG.NDBranch:
                 self._ndbranches[succ.source.id] = succ
 
@@ -1076,8 +1077,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return NodeAttr.STUCK in self.node(node_id).attrs
 
     def is_split(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return node_id in self._splits
+        return NodeAttr.SPLIT in self.node(node_id).attrs
 
     def is_ndbranch(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)

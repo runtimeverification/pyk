@@ -315,7 +315,7 @@ def test_get_successors() -> None:
 
     # Then
     node_11 = node(11)
-    node_12 = node(12)
+    node_12 = node(12, attrs=[NodeAttr.SPLIT])
     node_13 = node(13)
     node_14 = node(14)
     node_16 = node(16, attrs=[NodeAttr.LEAF])
@@ -363,10 +363,10 @@ def test_reachable_nodes() -> None:
     # Then
     assert nodes_2 == {node(12), node(13), node(15)}
     assert nodes_3 == {
-        node(16, attrs=[NodeAttr.ROOT]),
+        node(16, attrs=[NodeAttr.ROOT, NodeAttr.SPLIT]),
         node(12),
         node(13),
-        node(17),
+        node(17, attrs=[NodeAttr.SPLIT]),
         node(18),
         node(15),
         node(19, attrs=[NodeAttr.LEAF]),
@@ -374,13 +374,18 @@ def test_reachable_nodes() -> None:
     }
     assert nodes_4 == {
         node(13),
-        node(16, attrs=[NodeAttr.ROOT]),
+        node(16, attrs=[NodeAttr.ROOT, NodeAttr.SPLIT]),
         node(12),
         node(15),
-        node(17),
+        node(17, attrs=[NodeAttr.SPLIT]),
         node(14, attrs=[NodeAttr.ROOT]),
     }
-    assert nodes_5 == {node(19, attrs=[NodeAttr.LEAF]), node(18), node(17), node(16, attrs=[NodeAttr.ROOT])}
+    assert nodes_5 == {
+        node(19, attrs=[NodeAttr.LEAF]),
+        node(18),
+        node(17, attrs=[NodeAttr.SPLIT]),
+        node(16, attrs=[NodeAttr.ROOT, NodeAttr.SPLIT]),
+    }
 
 
 def test_paths_between() -> None:
@@ -400,7 +405,8 @@ def test_paths_between() -> None:
     paths = sorted(cfg.paths_between(16, 15))
 
     nodes = {i: node(i) for i in range(12, 21)}
-    nodes[16] = node(16, attrs=[NodeAttr.ROOT])
+    nodes[16] = node(16, attrs=[NodeAttr.ROOT, NodeAttr.SPLIT])
+    nodes[17] = node(17, attrs=[NodeAttr.SPLIT])
     nodes[20] = node(20, attrs=[NodeAttr.LEAF])
 
     # Then
@@ -567,7 +573,9 @@ def test_lifting_functions_manual() -> None:
     cfg.lift_edge(12)
     cfg.lift_edge(17)
     assert cfg._deleted_nodes == {12, 17}
-    assert cfg.contains_edge(KCFG.Edge(node(11, True, attrs=[NodeAttr.ROOT]), node(13, True), 55, ('r1', 'r2')))
+    assert cfg.contains_edge(
+        KCFG.Edge(node(11, True, attrs=[NodeAttr.ROOT]), node(13, True, attrs=[NodeAttr.SPLIT]), 55, ('r1', 'r2'))
+    )
     assert cfg.contains_edge(KCFG.Edge(node(15, True), node(20, True, attrs=[NodeAttr.LEAF]), 35, ('r4', 'r5')))
 
     cfg.lift_split(13)
@@ -583,7 +591,7 @@ def test_lifting_functions_manual() -> None:
     assert cfg.contains_edge(KCFG.Edge(node_22, node(15, True), 55, ('r1', 'r2')))
     assert cfg.contains_split(
         KCFG.Split(
-            node(11, True, attrs=[NodeAttr.ROOT]),
+            node(11, True, attrs=[NodeAttr.ROOT, NodeAttr.SPLIT]),
             [(node_21, to_csubst(13, 14, x_ge_0)), (node_22, to_csubst(13, 15, x_lt_0))],
         )
     )
@@ -601,7 +609,9 @@ def test_lifting_functions_automatic() -> None:
     assert cfg._deleted_nodes == {12, 13, 14, 19, 22}
 
     assert cfg.contains_edge(
-        KCFG.Edge(node(11, True, attrs=[NodeAttr.ROOT]), node(15, True), 50, ('r1', 'r2', 'r3', 'r4'))
+        KCFG.Edge(
+            node(11, True, attrs=[NodeAttr.ROOT]), node(15, True, attrs=[NodeAttr.SPLIT]), 50, ('r1', 'r2', 'r3', 'r4')
+        )
     )
     assert cfg.contains_edge(KCFG.Edge(node(17, True), node(23, True, attrs=[NodeAttr.LEAF]), 105, ('r6', 'r7', 'r8')))
 
@@ -618,7 +628,7 @@ def test_lifting_functions_automatic() -> None:
     x_lt_0 = mlEqualsTrue(ltInt(KVariable('X'), intToken(0)))
     x_ge_5 = mlEqualsTrue(geInt(KVariable('X'), intToken(5)))
     x_lt_5 = mlEqualsTrue(ltInt(KVariable('X'), intToken(5)))
-    node_24 = KCFG.Node(24, node(11, True).cterm.add_constraint(x_ge_0))
+    node_24 = KCFG.Node(24, node(11, True).cterm.add_constraint(x_ge_0), attrs=[NodeAttr.SPLIT])
     node_25 = KCFG.Node(25, node(11, True).cterm.add_constraint(x_lt_0))
     node_26 = KCFG.Node(26, node(16, True).cterm.add_constraint(x_ge_5))
     node_27 = KCFG.Node(27, node(16, True).cterm.add_constraint(x_lt_5))
@@ -634,7 +644,7 @@ def test_lifting_functions_automatic() -> None:
 
     assert cfg.contains_split(
         KCFG.Split(
-            node(11, True, attrs=[NodeAttr.ROOT]),
+            node(11, True, attrs=[NodeAttr.ROOT, NodeAttr.SPLIT]),
             [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))],
         )
     )
@@ -664,7 +674,7 @@ def test_minimize() -> None:
     x_lt_0 = mlEqualsTrue(ltInt(KVariable('X'), intToken(0)))
     x_ge_5 = mlEqualsTrue(geInt(KVariable('X'), intToken(5)))
     x_lt_5 = mlEqualsTrue(ltInt(KVariable('X'), intToken(5)))
-    node_24 = KCFG.Node(24, node(11, True).cterm.add_constraint(x_ge_0))
+    node_24 = KCFG.Node(24, node(11, True).cterm.add_constraint(x_ge_0), attrs=[NodeAttr.SPLIT])
     node_25 = KCFG.Node(25, node(11, True).cterm.add_constraint(x_lt_0))
     node_28 = KCFG.Node(28, node_24.cterm.add_constraint(x_ge_5))
     node_29 = KCFG.Node(29, node_24.cterm.add_constraint(x_lt_5))
@@ -676,7 +686,7 @@ def test_minimize() -> None:
 
     assert cfg.contains_split(
         KCFG.Split(
-            node(11, True, attrs=[NodeAttr.ROOT]),
+            node(11, True, attrs=[NodeAttr.ROOT, NodeAttr.SPLIT]),
             [(node_24, to_csubst(15, 16, x_ge_0)), (node_25, to_csubst(15, 17, x_lt_0))],
         )
     )
