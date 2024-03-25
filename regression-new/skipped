@@ -27,6 +27,7 @@ imp-kore
 imp++-llvm
 imp-llvm
 io-llvm
+issue-946
 issue-1088
 issue-1098
 issue-1145
