@@ -262,7 +262,9 @@ class CTermSymbolic:
     def _smt_solver_error(self, err: SmtSolverError) -> RuntimeError:
         kast = self.kore_to_kast(err.pattern)
         pretty_pattern = PrettyPrinter(self._definition).print(kast)
-        return RuntimeError(f'SMT solver error; SMT timeout occured. Related KAST pattern provided below:\n{pretty_pattern}')
+        return RuntimeError(
+            f'SMT solver error; SMT timeout occured. Related KAST pattern provided below:\n{pretty_pattern}'
+        )
 
 
 @contextmanager
