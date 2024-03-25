@@ -751,12 +751,7 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     definition = AddDefaultFormatAtts().execute(definition)
     definition = DiscardFormatAtts().execute(definition)
     definition = InlineFormatTerminals().execute(definition)
-
-    module = definition.modules[0]
-
-    module = _add_colors_atts(module)
-
-    definition = KDefinition(module.name, (module,))
+    definition = AddColorAtts().execute(definition)
     definition = DiscardSymbolAtts([Atts.COLOR]).execute(definition)
 
     module = definition.modules[0]
@@ -1233,29 +1228,29 @@ class InlineFormatTerminals(SingleModulePass):
         return Format(tokens)
 
 
-def _add_colors_atts(module: KFlatModule) -> KFlatModule:
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+@dataclass
+class AddColorAtts(SingleModulePass):
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
+        return module.let(sentences=sentences)
 
-        if not sentence.klabel:
-            return sentence
+    @staticmethod
+    def _update(production: KProduction) -> KProduction:
+        if not production.klabel:
+            return production
 
-        if Atts.FORMAT not in sentence.att:
-            return sentence
+        if Atts.FORMAT not in production.att:
+            return production
 
-        if Atts.COLOR not in sentence.att:
-            return sentence
+        if Atts.COLOR not in production.att:
+            return production
 
-        formatt = sentence.att[Atts.FORMAT]
+        formatt = production.att[Atts.FORMAT]
         ncolors = sum(1 for token in formatt.tokens if token == '%c')
-        color = sentence.att[Atts.COLOR]
+        color = production.att[Atts.COLOR]
         colors = ','.join(repeat(color, ncolors))
 
-        return sentence.let(att=sentence.att.update([Atts.COLORS(colors)]))
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+        return production.let(att=production.att.update([Atts.COLORS(colors)]))
 
 
 def _add_terminals_atts(module: KFlatModule) -> KFlatModule:
