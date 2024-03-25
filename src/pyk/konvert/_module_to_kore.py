@@ -750,10 +750,10 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     definition = AddSymbolAtts(Atts.CONSTRUCTOR(None), _is_constructor).execute(definition)
     definition = AddDefaultFormatAtts().execute(definition)
     definition = DiscardFormatAtts().execute(definition)
+    definition = InlineFormatTerminals().execute(definition)
 
     module = definition.modules[0]
 
-    module = _inline_terminals_in_format_atts(module)
     module = _add_colors_atts(module)
 
     definition = KDefinition(module.name, (module,))
@@ -1175,10 +1175,29 @@ class DiscardFormatAtts(SingleModulePass):
         return production.let(att=production.att.discard([Atts.FORMAT]))
 
 
-def _inline_terminals_in_format_atts(module: KFlatModule) -> KFlatModule:
+@dataclass
+class InlineFormatTerminals(SingleModulePass):
     """For a terminal `"foo"` change `%i` to `%cfoo%r`. For a non-terminal, decrease the index."""
 
-    def inline_terminals(formatt: Format, production: KProduction) -> Format:
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
+        return module.let(sentences=sentences)
+
+    @staticmethod
+    def _update(production: KProduction) -> KProduction:
+        if not production.klabel:
+            return production
+
+        if Atts.FORMAT not in production.att:
+            return production
+
+        formatt = production.att[Atts.FORMAT]
+        formatt = InlineFormatTerminals._inline_terminals(formatt, production)
+
+        return production.let(att=production.att.update([Atts.FORMAT(formatt)]))
+
+    @staticmethod
+    def _inline_terminals(formatt: Format, production: KProduction) -> Format:
         nt_indexes: dict[int, int] = {}
         nt_index = 1
         for i, item in enumerate(production.items):
@@ -1212,24 +1231,6 @@ def _inline_terminals_in_format_atts(module: KFlatModule) -> KFlatModule:
             else:
                 tokens.append(token)
         return Format(tokens)
-
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
-
-        if not sentence.klabel:
-            return sentence
-
-        if Atts.FORMAT not in sentence.att:
-            return sentence
-
-        formatt = sentence.att[Atts.FORMAT]
-        formatt = inline_terminals(formatt, sentence)
-
-        return sentence.let(att=sentence.att.update([Atts.FORMAT(formatt)]))
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
 
 
 def _add_colors_atts(module: KFlatModule) -> KFlatModule:
