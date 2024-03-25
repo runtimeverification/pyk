@@ -137,7 +137,7 @@ class KCFGExplore:
             _LOGGER.info(f'Simplifying node {self.id}: {shorten_hashes(node.id)}')
             new_term, next_node_logs = self.cterm_symbolic.simplify(node.cterm)
             if new_term != node.cterm:
-                cfg.replace_node(node.id, new_term)
+                cfg.update_node_cterm(node.id, new_term)
                 if node.id in logs:
                     logs[node.id] += next_node_logs
                 else:
@@ -163,7 +163,7 @@ class KCFGExplore:
             raise ValueError(f'Unable to take {depth} steps from node, got {exec_res.depth} steps {self.id}: {node.id}')
         if len(exec_res.next_states) > 0:
             raise ValueError(f'Found branch within {depth} steps {self.id}: {node.id}')
-        new_node = cfg.create_node(exec_res.state)
+        new_node = cfg.add_node(exec_res.state)
         _LOGGER.info(f'Found new node at depth {depth} {self.id}: {shorten_hashes((node.id, new_node.id))}')
         logs[new_node.id] = exec_res.logs
         out_edges = cfg.edges(source_id=node.id)
