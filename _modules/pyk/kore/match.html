@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kore.match &#8212; pyk 0.1.734 documentation</title>
+    <title>pyk.kore.match &#8212; pyk 0.1.735 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=f3f253d3"></script>
+    <script src="../../../_static/documentation_options.js?v=578ad7ca"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -202,179 +202,166 @@
 <span class="linenos">128</span>
 <span class="linenos">129</span>
 <span class="linenos">130</span><span class="nd">@overload</span>
-<span class="linenos">131</span><span class="k">def</span> <span class="nf">arg</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">Pattern</span><span class="p">]:</span>
-<span class="linenos">132</span>    <span class="o">...</span>
+<span class="linenos">131</span><span class="k">def</span> <span class="nf">arg</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">Pattern</span><span class="p">]:</span> <span class="o">...</span>
+<span class="linenos">132</span>
 <span class="linenos">133</span>
-<span class="linenos">134</span>
-<span class="linenos">135</span><span class="nd">@overload</span>
-<span class="linenos">136</span><span class="k">def</span> <span class="nf">arg</span><span class="p">(</span><span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">App</span><span class="p">]:</span>
-<span class="linenos">137</span>    <span class="o">...</span>
-<span class="linenos">138</span>
-<span class="linenos">139</span>
+<span class="linenos">134</span><span class="nd">@overload</span>
+<span class="linenos">135</span><span class="k">def</span> <span class="nf">arg</span><span class="p">(</span><span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">App</span><span class="p">]:</span> <span class="o">...</span>
+<span class="linenos">136</span>
+<span class="linenos">137</span>
 <div class="viewcode-block" id="arg">
 <a class="viewcode-back" href="../../../api/pyk.kore.match.html#pyk.kore.match.arg">[docs]</a>
-<span class="linenos">140</span><span class="k">def</span> <span class="nf">arg</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">Pattern</span> <span class="o">|</span> <span class="n">App</span><span class="p">]:</span>
-<span class="linenos">141</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">App</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Pattern</span> <span class="o">|</span> <span class="n">App</span><span class="p">:</span>
-<span class="linenos">142</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
-<span class="linenos">143</span>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">args</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">id</span><span class="p">:</span>
-<span class="linenos">144</span>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Argument index is out of range&#39;</span><span class="p">)</span>
+<span class="linenos">138</span><span class="k">def</span> <span class="nf">arg</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">Pattern</span> <span class="o">|</span> <span class="n">App</span><span class="p">]:</span>
+<span class="linenos">139</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">App</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Pattern</span> <span class="o">|</span> <span class="n">App</span><span class="p">:</span>
+<span class="linenos">140</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
+<span class="linenos">141</span>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">args</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="nb">id</span><span class="p">:</span>
+<span class="linenos">142</span>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Argument index is out of range&#39;</span><span class="p">)</span>
+<span class="linenos">143</span>
+<span class="linenos">144</span>            <span class="k">return</span> <span class="n">app</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
 <span class="linenos">145</span>
-<span class="linenos">146</span>            <span class="k">return</span> <span class="n">app</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
-<span class="linenos">147</span>
-<span class="linenos">148</span>        <span class="k">try</span><span class="p">:</span>
-<span class="linenos">149</span>            <span class="n">arg</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="p">(</span><span class="n">arg</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">app</span><span class="o">.</span><span class="n">args</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">is</span> <span class="n">App</span> <span class="ow">and</span> <span class="n">arg</span><span class="o">.</span><span class="n">symbol</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span>
-<span class="linenos">150</span>        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-<span class="linenos">151</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No matching argument found for symbol: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
-<span class="linenos">152</span>        <span class="k">return</span> <span class="n">arg</span>
-<span class="linenos">153</span>
-<span class="linenos">154</span>    <span class="k">return</span> <span class="n">res</span></div>
+<span class="linenos">146</span>        <span class="k">try</span><span class="p">:</span>
+<span class="linenos">147</span>            <span class="n">arg</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="p">(</span><span class="n">arg</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">app</span><span class="o">.</span><span class="n">args</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="ow">is</span> <span class="n">App</span> <span class="ow">and</span> <span class="n">arg</span><span class="o">.</span><span class="n">symbol</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span>
+<span class="linenos">148</span>        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+<span class="linenos">149</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No matching argument found for symbol: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
+<span class="linenos">150</span>        <span class="k">return</span> <span class="n">arg</span>
+<span class="linenos">151</span>
+<span class="linenos">152</span>    <span class="k">return</span> <span class="n">res</span></div>
 
-<span class="linenos">155</span>
-<span class="linenos">156</span>
-<span class="linenos">157</span><span class="nd">@overload</span>
-<span class="linenos">158</span><span class="k">def</span> <span class="nf">args</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[()]]:</span>
-<span class="linenos">159</span>    <span class="o">...</span>
-<span class="linenos">160</span>
+<span class="linenos">153</span>
+<span class="linenos">154</span>
+<span class="linenos">155</span><span class="nd">@overload</span>
+<span class="linenos">156</span><span class="k">def</span> <span class="nf">args</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[()]]:</span> <span class="o">...</span>
+<span class="linenos">157</span>
+<span class="linenos">158</span>
+<span class="linenos">159</span><span class="nd">@overload</span>
+<span class="linenos">160</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">]]:</span> <span class="o">...</span>
 <span class="linenos">161</span>
-<span class="linenos">162</span><span class="nd">@overload</span>
-<span class="linenos">163</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">]]:</span>
-<span class="linenos">164</span>    <span class="o">...</span>
+<span class="linenos">162</span>
+<span class="linenos">163</span><span class="nd">@overload</span>
+<span class="linenos">164</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">]]:</span> <span class="o">...</span>
 <span class="linenos">165</span>
 <span class="linenos">166</span>
 <span class="linenos">167</span><span class="nd">@overload</span>
-<span class="linenos">168</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">]]:</span>
-<span class="linenos">169</span>    <span class="o">...</span>
+<span class="linenos">168</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n3</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">]]:</span> <span class="o">...</span>
+<span class="linenos">169</span>
 <span class="linenos">170</span>
-<span class="linenos">171</span>
-<span class="linenos">172</span><span class="nd">@overload</span>
-<span class="linenos">173</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n3</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">]]:</span>
-<span class="linenos">174</span>    <span class="o">...</span>
-<span class="linenos">175</span>
-<span class="linenos">176</span>
-<span class="linenos">177</span><span class="nd">@overload</span>
-<span class="linenos">178</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n3</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n4</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">]]:</span>
-<span class="linenos">179</span>    <span class="o">...</span>
-<span class="linenos">180</span>
+<span class="linenos">171</span><span class="nd">@overload</span>
+<span class="linenos">172</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n2</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n3</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n4</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">,</span> <span class="n">Pattern</span><span class="p">]]:</span> <span class="o">...</span>
+<span class="linenos">173</span>
+<span class="linenos">174</span>
+<span class="linenos">175</span><span class="nd">@overload</span>
+<span class="linenos">176</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="o">*</span><span class="n">ns</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span> <span class="o">...</span>
+<span class="linenos">177</span>
+<span class="linenos">178</span>
+<span class="linenos">179</span><span class="nd">@overload</span>
+<span class="linenos">180</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">s1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">]]:</span> <span class="o">...</span>
 <span class="linenos">181</span>
-<span class="linenos">182</span><span class="nd">@overload</span>
-<span class="linenos">183</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="o">*</span><span class="n">ns</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="linenos">184</span>    <span class="o">...</span>
+<span class="linenos">182</span>
+<span class="linenos">183</span><span class="nd">@overload</span>
+<span class="linenos">184</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">s1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">]]:</span> <span class="o">...</span>
 <span class="linenos">185</span>
 <span class="linenos">186</span>
 <span class="linenos">187</span><span class="nd">@overload</span>
-<span class="linenos">188</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">s1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">]]:</span>
-<span class="linenos">189</span>    <span class="o">...</span>
+<span class="linenos">188</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">s1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s3</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">]]:</span> <span class="o">...</span>
+<span class="linenos">189</span>
 <span class="linenos">190</span>
-<span class="linenos">191</span>
-<span class="linenos">192</span><span class="nd">@overload</span>
-<span class="linenos">193</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">s1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">]]:</span>
-<span class="linenos">194</span>    <span class="o">...</span>
-<span class="linenos">195</span>
-<span class="linenos">196</span>
-<span class="linenos">197</span><span class="nd">@overload</span>
-<span class="linenos">198</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">s1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s3</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">]]:</span>
-<span class="linenos">199</span>    <span class="o">...</span>
-<span class="linenos">200</span>
-<span class="linenos">201</span>
-<span class="linenos">202</span><span class="nd">@overload</span>
-<span class="linenos">203</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">s1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s3</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s4</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">]]:</span>
-<span class="linenos">204</span>    <span class="o">...</span>
-<span class="linenos">205</span>
-<span class="linenos">206</span>
-<span class="linenos">207</span><span class="nd">@overload</span>
-<span class="linenos">208</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="o">*</span><span class="n">ss</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="linenos">209</span>    <span class="o">...</span>
-<span class="linenos">210</span>
-<span class="linenos">211</span>
+<span class="linenos">191</span><span class="nd">@overload</span>
+<span class="linenos">192</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="n">s1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s2</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s3</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">s4</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">/</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">,</span> <span class="n">App</span><span class="p">]]:</span> <span class="o">...</span>
+<span class="linenos">193</span>
+<span class="linenos">194</span>
+<span class="linenos">195</span><span class="nd">@overload</span>
+<span class="linenos">196</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="o">*</span><span class="n">ss</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">App</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span> <span class="o">...</span>
+<span class="linenos">197</span>
+<span class="linenos">198</span>
 <div class="viewcode-block" id="args">
 <a class="viewcode-back" href="../../../api/pyk.kore.match.html#pyk.kore.match.args">[docs]</a>
-<span class="linenos">212</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="o">*</span><span class="n">ids</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">]:</span>
-<span class="linenos">213</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">App</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="linenos">214</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">ids</span><span class="p">:</span>
-<span class="linenos">215</span>            <span class="k">return</span> <span class="p">()</span>
-<span class="linenos">216</span>
-<span class="linenos">217</span>        <span class="n">fst</span> <span class="o">=</span> <span class="n">ids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="linenos">218</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">fst</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
-<span class="linenos">219</span>            <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">arg</span><span class="p">(</span><span class="n">n</span><span class="p">)(</span><span class="n">app</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">)</span>
-<span class="linenos">220</span>
-<span class="linenos">221</span>        <span class="n">symbol_match</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">App</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="linenos">222</span>        <span class="n">symbols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
-<span class="linenos">223</span>
-<span class="linenos">224</span>        <span class="k">for</span> <span class="n">_arg</span> <span class="ow">in</span> <span class="n">app</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
-<span class="linenos">225</span>            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_arg</span><span class="p">)</span> <span class="ow">is</span> <span class="n">App</span> <span class="ow">and</span> <span class="n">_arg</span><span class="o">.</span><span class="n">symbol</span> <span class="ow">in</span> <span class="n">symbols</span> <span class="ow">and</span> <span class="n">_arg</span><span class="o">.</span><span class="n">symbol</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">symbol_match</span><span class="p">:</span>
-<span class="linenos">226</span>                <span class="n">symbol_match</span><span class="p">[</span><span class="n">_arg</span><span class="o">.</span><span class="n">symbol</span><span class="p">]</span> <span class="o">=</span> <span class="n">_arg</span>
-<span class="linenos">227</span>
-<span class="linenos">228</span>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">symbol_match</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">symbols</span><span class="p">):</span>
-<span class="linenos">229</span>                <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbol_match</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span> <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">)</span>
-<span class="linenos">230</span>
-<span class="linenos">231</span>        <span class="n">unmatched_symbols</span> <span class="o">=</span> <span class="n">symbols</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">symbol_match</span><span class="p">)</span>
-<span class="linenos">232</span>        <span class="k">assert</span> <span class="n">unmatched_symbols</span>
-<span class="linenos">233</span>        <span class="n">unmatched_symbol_str</span> <span class="o">=</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">unmatched_symbols</span><span class="p">)</span>
-<span class="linenos">234</span>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No matching arguments found for symbols: </span><span class="si">{</span><span class="n">unmatched_symbol_str</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">235</span>
-<span class="linenos">236</span>    <span class="k">return</span> <span class="n">res</span></div>
+<span class="linenos">199</span><span class="k">def</span> <span class="nf">args</span><span class="p">(</span><span class="o">*</span><span class="n">ids</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">]:</span>
+<span class="linenos">200</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">App</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Pattern</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="linenos">201</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">ids</span><span class="p">:</span>
+<span class="linenos">202</span>            <span class="k">return</span> <span class="p">()</span>
+<span class="linenos">203</span>
+<span class="linenos">204</span>        <span class="n">fst</span> <span class="o">=</span> <span class="n">ids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="linenos">205</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">fst</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
+<span class="linenos">206</span>            <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">arg</span><span class="p">(</span><span class="n">n</span><span class="p">)(</span><span class="n">app</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">)</span>
+<span class="linenos">207</span>
+<span class="linenos">208</span>        <span class="n">symbol_match</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">App</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="linenos">209</span>        <span class="n">symbols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+<span class="linenos">210</span>
+<span class="linenos">211</span>        <span class="k">for</span> <span class="n">_arg</span> <span class="ow">in</span> <span class="n">app</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
+<span class="linenos">212</span>            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_arg</span><span class="p">)</span> <span class="ow">is</span> <span class="n">App</span> <span class="ow">and</span> <span class="n">_arg</span><span class="o">.</span><span class="n">symbol</span> <span class="ow">in</span> <span class="n">symbols</span> <span class="ow">and</span> <span class="n">_arg</span><span class="o">.</span><span class="n">symbol</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">symbol_match</span><span class="p">:</span>
+<span class="linenos">213</span>                <span class="n">symbol_match</span><span class="p">[</span><span class="n">_arg</span><span class="o">.</span><span class="n">symbol</span><span class="p">]</span> <span class="o">=</span> <span class="n">_arg</span>
+<span class="linenos">214</span>
+<span class="linenos">215</span>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">symbol_match</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">symbols</span><span class="p">):</span>
+<span class="linenos">216</span>                <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">symbol_match</span><span class="p">[</span><span class="n">symbol</span><span class="p">]</span> <span class="k">for</span> <span class="n">symbol</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">)</span>
+<span class="linenos">217</span>
+<span class="linenos">218</span>        <span class="n">unmatched_symbols</span> <span class="o">=</span> <span class="n">symbols</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">symbol_match</span><span class="p">)</span>
+<span class="linenos">219</span>        <span class="k">assert</span> <span class="n">unmatched_symbols</span>
+<span class="linenos">220</span>        <span class="n">unmatched_symbol_str</span> <span class="o">=</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">unmatched_symbols</span><span class="p">)</span>
+<span class="linenos">221</span>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No matching arguments found for symbols: </span><span class="si">{</span><span class="n">unmatched_symbol_str</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">222</span>
+<span class="linenos">223</span>    <span class="k">return</span> <span class="n">res</span></div>
 
-<span class="linenos">237</span>
-<span class="linenos">238</span>
+<span class="linenos">224</span>
+<span class="linenos">225</span>
 <div class="viewcode-block" id="inj">
 <a class="viewcode-back" href="../../../api/pyk.kore.match.html#pyk.kore.match.inj">[docs]</a>
-<span class="linenos">239</span><span class="k">def</span> <span class="nf">inj</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Pattern</span><span class="p">:</span>
-<span class="linenos">240</span>    <span class="k">return</span> <span class="n">arg</span><span class="p">(</span><span class="mi">0</span><span class="p">)(</span><span class="n">app</span><span class="p">(</span><span class="s1">&#39;inj&#39;</span><span class="p">)(</span><span class="n">pattern</span><span class="p">))</span></div>
+<span class="linenos">226</span><span class="k">def</span> <span class="nf">inj</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Pattern</span><span class="p">:</span>
+<span class="linenos">227</span>    <span class="k">return</span> <span class="n">arg</span><span class="p">(</span><span class="mi">0</span><span class="p">)(</span><span class="n">app</span><span class="p">(</span><span class="s1">&#39;inj&#39;</span><span class="p">)(</span><span class="n">pattern</span><span class="p">))</span></div>
 
-<span class="linenos">241</span>
-<span class="linenos">242</span>
+<span class="linenos">228</span>
+<span class="linenos">229</span>
 <div class="viewcode-block" id="kore_list_of">
 <a class="viewcode-back" href="../../../api/pyk.kore.match.html#pyk.kore.match.kore_list_of">[docs]</a>
-<span class="linenos">243</span><span class="k">def</span> <span class="nf">kore_list_of</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="linenos">244</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="linenos">245</span>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">item</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">match_list</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
-<span class="linenos">246</span>
-<span class="linenos">247</span>    <span class="k">return</span> <span class="n">res</span></div>
+<span class="linenos">230</span><span class="k">def</span> <span class="nf">kore_list_of</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
+<span class="linenos">231</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="linenos">232</span>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">item</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">match_list</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
+<span class="linenos">233</span>
+<span class="linenos">234</span>    <span class="k">return</span> <span class="n">res</span></div>
 
-<span class="linenos">248</span>
-<span class="linenos">249</span>
+<span class="linenos">235</span>
+<span class="linenos">236</span>
 <div class="viewcode-block" id="kore_set_of">
 <a class="viewcode-back" href="../../../api/pyk.kore.match.html#pyk.kore.match.kore_set_of">[docs]</a>
-<span class="linenos">250</span><span class="k">def</span> <span class="nf">kore_set_of</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="linenos">251</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="linenos">252</span>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">item</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">match_set</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
-<span class="linenos">253</span>
-<span class="linenos">254</span>    <span class="k">return</span> <span class="n">res</span></div>
+<span class="linenos">237</span><span class="k">def</span> <span class="nf">kore_set_of</span><span class="p">(</span><span class="n">item</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
+<span class="linenos">238</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">T</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="linenos">239</span>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">item</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">match_set</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
+<span class="linenos">240</span>
+<span class="linenos">241</span>    <span class="k">return</span> <span class="n">res</span></div>
 
-<span class="linenos">255</span>
-<span class="linenos">256</span>
+<span class="linenos">242</span>
+<span class="linenos">243</span>
 <div class="viewcode-block" id="kore_map_of">
 <a class="viewcode-back" href="../../../api/pyk.kore.match.html#pyk.kore.match.kore_map_of">[docs]</a>
-<span class="linenos">257</span><span class="k">def</span> <span class="nf">kore_map_of</span><span class="p">(</span>
-<span class="linenos">258</span>    <span class="n">key</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">K</span><span class="p">],</span>
-<span class="linenos">259</span>    <span class="n">value</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">V</span><span class="p">],</span>
-<span class="linenos">260</span>    <span class="o">*</span><span class="p">,</span>
-<span class="linenos">261</span>    <span class="n">cell</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="linenos">262</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="p">],</span> <span class="o">...</span><span class="p">]]:</span>
-<span class="linenos">263</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
-<span class="linenos">264</span>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">((</span><span class="n">key</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="n">value</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">match_map</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="n">cell</span><span class="p">))</span>
-<span class="linenos">265</span>
-<span class="linenos">266</span>    <span class="k">return</span> <span class="n">res</span></div>
+<span class="linenos">244</span><span class="k">def</span> <span class="nf">kore_map_of</span><span class="p">(</span>
+<span class="linenos">245</span>    <span class="n">key</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">K</span><span class="p">],</span>
+<span class="linenos">246</span>    <span class="n">value</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">V</span><span class="p">],</span>
+<span class="linenos">247</span>    <span class="o">*</span><span class="p">,</span>
+<span class="linenos">248</span>    <span class="n">cell</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="linenos">249</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="p">],</span> <span class="o">...</span><span class="p">]]:</span>
+<span class="linenos">250</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
+<span class="linenos">251</span>        <span class="k">return</span> <span class="nb">tuple</span><span class="p">((</span><span class="n">key</span><span class="p">(</span><span class="n">k</span><span class="p">),</span> <span class="n">value</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">match_map</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="n">cell</span><span class="p">))</span>
+<span class="linenos">252</span>
+<span class="linenos">253</span>    <span class="k">return</span> <span class="n">res</span></div>
 
-<span class="linenos">267</span>
-<span class="linenos">268</span>
+<span class="linenos">254</span>
+<span class="linenos">255</span>
 <div class="viewcode-block" id="case_symbol">
 <a class="viewcode-back" href="../../../api/pyk.kore.match.html#pyk.kore.match.case_symbol">[docs]</a>
-<span class="linenos">269</span><span class="k">def</span> <span class="nf">case_symbol</span><span class="p">(</span>
-<span class="linenos">270</span>    <span class="o">*</span><span class="n">cases</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">T</span><span class="p">]],</span>
-<span class="linenos">271</span>    <span class="n">default</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">T</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="linenos">272</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">T</span><span class="p">]:</span>
-<span class="linenos">273</span>    <span class="k">def</span> <span class="nf">cond</span><span class="p">(</span><span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
-<span class="linenos">274</span>        <span class="k">return</span> <span class="k">lambda</span> <span class="n">app</span><span class="p">:</span> <span class="n">app</span><span class="o">.</span><span class="n">symbol</span> <span class="o">==</span> <span class="n">symbol</span>
-<span class="linenos">275</span>
-<span class="linenos">276</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
-<span class="linenos">277</span>        <span class="n">app</span> <span class="o">=</span> <span class="n">match_app</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
-<span class="linenos">278</span>        <span class="k">return</span> <span class="n">case</span><span class="p">(</span>
-<span class="linenos">279</span>            <span class="n">cases</span><span class="o">=</span><span class="p">((</span><span class="n">cond</span><span class="p">(</span><span class="n">symbol</span><span class="p">),</span> <span class="n">then</span><span class="p">)</span> <span class="k">for</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">then</span> <span class="ow">in</span> <span class="n">cases</span><span class="p">),</span>
-<span class="linenos">280</span>            <span class="n">default</span><span class="o">=</span><span class="n">default</span><span class="p">,</span>
-<span class="linenos">281</span>        <span class="p">)(</span><span class="n">app</span><span class="p">)</span>
-<span class="linenos">282</span>
-<span class="linenos">283</span>    <span class="k">return</span> <span class="n">res</span></div>
+<span class="linenos">256</span><span class="k">def</span> <span class="nf">case_symbol</span><span class="p">(</span>
+<span class="linenos">257</span>    <span class="o">*</span><span class="n">cases</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">T</span><span class="p">]],</span>
+<span class="linenos">258</span>    <span class="n">default</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="n">T</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="linenos">259</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Pattern</span><span class="p">],</span> <span class="n">T</span><span class="p">]:</span>
+<span class="linenos">260</span>    <span class="k">def</span> <span class="nf">cond</span><span class="p">(</span><span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">App</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="linenos">261</span>        <span class="k">return</span> <span class="k">lambda</span> <span class="n">app</span><span class="p">:</span> <span class="n">app</span><span class="o">.</span><span class="n">symbol</span> <span class="o">==</span> <span class="n">symbol</span>
+<span class="linenos">262</span>
+<span class="linenos">263</span>    <span class="k">def</span> <span class="nf">res</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="n">Pattern</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+<span class="linenos">264</span>        <span class="n">app</span> <span class="o">=</span> <span class="n">match_app</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+<span class="linenos">265</span>        <span class="k">return</span> <span class="n">case</span><span class="p">(</span>
+<span class="linenos">266</span>            <span class="n">cases</span><span class="o">=</span><span class="p">((</span><span class="n">cond</span><span class="p">(</span><span class="n">symbol</span><span class="p">),</span> <span class="n">then</span><span class="p">)</span> <span class="k">for</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">then</span> <span class="ow">in</span> <span class="n">cases</span><span class="p">),</span>
+<span class="linenos">267</span>            <span class="n">default</span><span class="o">=</span><span class="n">default</span><span class="p">,</span>
+<span class="linenos">268</span>        <span class="p">)(</span><span class="n">app</span><span class="p">)</span>
+<span class="linenos">269</span>
+<span class="linenos">270</span>    <span class="k">return</span> <span class="n">res</span></div>
 
 </pre></div>
 

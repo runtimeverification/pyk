@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kcfg.semantics &#8212; pyk 0.1.734 documentation</title>
+    <title>pyk.kcfg.semantics &#8212; pyk 0.1.735 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=f3f253d3"></script>
+    <script src="../../../_static/documentation_options.js?v=578ad7ca"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -46,58 +46,54 @@
 <div class="viewcode-block" id="KCFGSemantics.is_terminal">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.KCFGSemantics.is_terminal">[docs]</a>
 <span class="linenos">12</span>    <span class="nd">@abstractmethod</span>
-<span class="linenos">13</span>    <span class="k">def</span> <span class="nf">is_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="linenos">14</span>        <span class="o">...</span></div>
+<span class="linenos">13</span>    <span class="k">def</span> <span class="nf">is_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span></div>
 
-<span class="linenos">15</span>
+<span class="linenos">14</span>
 <div class="viewcode-block" id="KCFGSemantics.extract_branches">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.KCFGSemantics.extract_branches">[docs]</a>
-<span class="linenos">16</span>    <span class="nd">@abstractmethod</span>
-<span class="linenos">17</span>    <span class="k">def</span> <span class="nf">extract_branches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">KInner</span><span class="p">]:</span>
-<span class="linenos">18</span>        <span class="o">...</span></div>
+<span class="linenos">15</span>    <span class="nd">@abstractmethod</span>
+<span class="linenos">16</span>    <span class="k">def</span> <span class="nf">extract_branches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">KInner</span><span class="p">]:</span> <span class="o">...</span></div>
 
-<span class="linenos">19</span>
+<span class="linenos">17</span>
 <div class="viewcode-block" id="KCFGSemantics.abstract_node">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.KCFGSemantics.abstract_node">[docs]</a>
-<span class="linenos">20</span>    <span class="nd">@abstractmethod</span>
-<span class="linenos">21</span>    <span class="k">def</span> <span class="nf">abstract_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CTerm</span><span class="p">:</span>
-<span class="linenos">22</span>        <span class="o">...</span></div>
+<span class="linenos">18</span>    <span class="nd">@abstractmethod</span>
+<span class="linenos">19</span>    <span class="k">def</span> <span class="nf">abstract_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CTerm</span><span class="p">:</span> <span class="o">...</span></div>
 
-<span class="linenos">23</span>
+<span class="linenos">20</span>
 <div class="viewcode-block" id="KCFGSemantics.same_loop">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.KCFGSemantics.same_loop">[docs]</a>
-<span class="linenos">24</span>    <span class="nd">@abstractmethod</span>
-<span class="linenos">25</span>    <span class="k">def</span> <span class="nf">same_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c1</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">,</span> <span class="n">c2</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="linenos">26</span>        <span class="o">...</span></div>
+<span class="linenos">21</span>    <span class="nd">@abstractmethod</span>
+<span class="linenos">22</span>    <span class="k">def</span> <span class="nf">same_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c1</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">,</span> <span class="n">c2</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span></div>
 </div>
 
-<span class="linenos">27</span>
-<span class="linenos">28</span>
+<span class="linenos">23</span>
+<span class="linenos">24</span>
 <div class="viewcode-block" id="DefaultSemantics">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.DefaultSemantics">[docs]</a>
-<span class="linenos">29</span><span class="k">class</span> <span class="nc">DefaultSemantics</span><span class="p">(</span><span class="n">KCFGSemantics</span><span class="p">):</span>
+<span class="linenos">25</span><span class="k">class</span> <span class="nc">DefaultSemantics</span><span class="p">(</span><span class="n">KCFGSemantics</span><span class="p">):</span>
 <div class="viewcode-block" id="DefaultSemantics.is_terminal">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.DefaultSemantics.is_terminal">[docs]</a>
-<span class="linenos">30</span>    <span class="k">def</span> <span class="nf">is_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="linenos">31</span>        <span class="k">return</span> <span class="kc">False</span></div>
+<span class="linenos">26</span>    <span class="k">def</span> <span class="nf">is_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="linenos">27</span>        <span class="k">return</span> <span class="kc">False</span></div>
 
-<span class="linenos">32</span>
+<span class="linenos">28</span>
 <div class="viewcode-block" id="DefaultSemantics.extract_branches">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.DefaultSemantics.extract_branches">[docs]</a>
-<span class="linenos">33</span>    <span class="k">def</span> <span class="nf">extract_branches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">KInner</span><span class="p">]:</span>
-<span class="linenos">34</span>        <span class="k">return</span> <span class="p">[]</span></div>
+<span class="linenos">29</span>    <span class="k">def</span> <span class="nf">extract_branches</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">KInner</span><span class="p">]:</span>
+<span class="linenos">30</span>        <span class="k">return</span> <span class="p">[]</span></div>
 
-<span class="linenos">35</span>
+<span class="linenos">31</span>
 <div class="viewcode-block" id="DefaultSemantics.abstract_node">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.DefaultSemantics.abstract_node">[docs]</a>
-<span class="linenos">36</span>    <span class="k">def</span> <span class="nf">abstract_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CTerm</span><span class="p">:</span>
-<span class="linenos">37</span>        <span class="k">return</span> <span class="n">c</span></div>
+<span class="linenos">32</span>    <span class="k">def</span> <span class="nf">abstract_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CTerm</span><span class="p">:</span>
+<span class="linenos">33</span>        <span class="k">return</span> <span class="n">c</span></div>
 
-<span class="linenos">38</span>
+<span class="linenos">34</span>
 <div class="viewcode-block" id="DefaultSemantics.same_loop">
 <a class="viewcode-back" href="../../../api/pyk.kcfg.semantics.html#pyk.kcfg.semantics.DefaultSemantics.same_loop">[docs]</a>
-<span class="linenos">39</span>    <span class="k">def</span> <span class="nf">same_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c1</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">,</span> <span class="n">c2</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="linenos">40</span>        <span class="k">return</span> <span class="kc">False</span></div>
+<span class="linenos">35</span>    <span class="k">def</span> <span class="nf">same_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">c1</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">,</span> <span class="n">c2</span><span class="p">:</span> <span class="n">CTerm</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="linenos">36</span>        <span class="k">return</span> <span class="kc">False</span></div>
 </div>
 
 </pre></div>
