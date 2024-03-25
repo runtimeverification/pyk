@@ -755,11 +755,9 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     definition = DiscardSymbolAtts([Atts.COLOR]).execute(definition)
     definition = AddTerminalAtts().execute(definition)
     definition = AddPrioritiesAtts().execute(definition)
+    definition = AddAssocAtts().execute(definition)
 
     module = definition.modules[0]
-
-    module = _add_assoc_atts(module)
-
     return module
 
 
@@ -1297,8 +1295,18 @@ class AddPrioritiesAtts(KompilerPass):
         return production.let(att=production.att.update([Atts.PRIORITIES(priorities)]))
 
 
-def _add_assoc_atts(module: KFlatModule) -> KFlatModule:
-    def assocs(assoc: KAssoc) -> dict[str, set[str]]:
+@dataclass
+class AddAssocAtts(SingleModulePass):
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        left_assocs = self._assocs(module, KAssoc.LEFT)
+        right_assocs = self._assocs(module, KAssoc.RIGHT)
+        sentences = tuple(
+            self._update(sent, left_assocs, right_assocs) if isinstance(sent, KProduction) else sent for sent in module
+        )
+        return module.let(sentences=sentences)
+
+    @staticmethod
+    def _assocs(module: KFlatModule, assoc: KAssoc) -> dict[str, set[str]]:
         sents = (
             sent
             for sent in module.sentences
@@ -1312,22 +1320,18 @@ def _add_assoc_atts(module: KFlatModule) -> KFlatModule:
 
         return reduce(lambda res, pair: insert(res, key=pair[0], value=pair[1]), pairs, {})
 
-    left_assocs = assocs(KAssoc.LEFT)
-    right_assocs = assocs(KAssoc.RIGHT)
+    @staticmethod
+    def _update(
+        production: KProduction,
+        left_assocs: Mapping[str, set[str]],
+        right_assocs: Mapping[str, set[str]],
+    ) -> KProduction:
+        if not production.klabel:
+            return production
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+        if Atts.FORMAT not in production.att:
+            return production
 
-        if not sentence.klabel:
-            return sentence
-
-        if Atts.FORMAT not in sentence.att:
-            return sentence
-
-        left = tuple(KApply(tag).to_dict() for tag in sorted(left_assocs.get(sentence.klabel.name, [])))
-        right = tuple(KApply(tag).to_dict() for tag in sorted(right_assocs.get(sentence.klabel.name, [])))
-        return sentence.let(att=sentence.att.update([Atts.LEFT(left), Atts.RIGHT(right)]))
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+        left = tuple(KApply(tag).to_dict() for tag in sorted(left_assocs.get(production.klabel.name, [])))
+        right = tuple(KApply(tag).to_dict() for tag in sorted(right_assocs.get(production.klabel.name, [])))
+        return production.let(att=production.att.update([Atts.LEFT(left), Atts.RIGHT(right)]))
