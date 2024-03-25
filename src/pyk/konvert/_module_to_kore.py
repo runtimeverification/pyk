@@ -754,10 +754,10 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     definition = AddColorAtts().execute(definition)
     definition = DiscardSymbolAtts([Atts.COLOR]).execute(definition)
     definition = AddTerminalAtts().execute(definition)
+    definition = AddPrioritiesAtts().execute(definition)
 
     module = definition.modules[0]
 
-    module = _add_priorities_atts(module)
     module = _add_assoc_atts(module)
 
     return module
@@ -1271,27 +1271,30 @@ class AddTerminalAtts(SingleModulePass):
         return production.let(att=production.att.update([Atts.TERMINALS(terminals)]))
 
 
-def _add_priorities_atts(module: KFlatModule) -> KFlatModule:
-    defn = KDefinition(module.name, (module,))
+@dataclass
+class AddPrioritiesAtts(KompilerPass):
+    def execute(self, definition: KDefinition) -> KDefinition:
+        if len(definition.modules) > 1:
+            raise ValueError('Expected a single module')
+        module = definition.modules[0]
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+        sentences = tuple(self._update(sent, definition) if isinstance(sent, KProduction) else sent for sent in module)
+        module = module.let(sentences=sentences)
+        return KDefinition(module.name, (module,))
 
-        if not sentence.klabel:
-            return sentence
+    @staticmethod
+    def _update(production: KProduction, definition: KDefinition) -> KSentence:
+        if not production.klabel:
+            return production
 
-        if Atts.FORMAT not in sentence.att:
-            return sentence
+        if Atts.FORMAT not in production.att:
+            return production
 
-        tags = sorted(defn.priorities.get(sentence.klabel.name, []))
+        tags = sorted(definition.priorities.get(production.klabel.name, []))
         priorities = tuple(
             KApply(tag).to_dict() for tag in tags if tag not in BUILTIN_LABELS
         )  # TODO Add KType to pyk.kast.att
-        return sentence.let(att=sentence.att.update([Atts.PRIORITIES(priorities)]))
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+        return production.let(att=production.att.update([Atts.PRIORITIES(priorities)]))
 
 
 def _add_assoc_atts(module: KFlatModule) -> KFlatModule:
