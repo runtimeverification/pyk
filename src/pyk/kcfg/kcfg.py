@@ -709,9 +709,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self.compute_attrs(node.id)
 
     def update_node_cterm(self, node_id: NodeIdLike, cterm: CTerm) -> None:
-        node_id = self._resolve(node_id)
-        node = KCFG.Node(node_id, cterm)
-        self._nodes[node.id] = node
+        node = self.node(node_id)
+        new_node = KCFG.Node(node.id, cterm, attrs=node.attrs)
+        self._nodes[node.id] = new_node
         self._created_nodes.add(node.id)
         self.update_refs(node.id)
         self.compute_attrs(node.id)
