@@ -15,6 +15,7 @@ from ..kast.manip import flatten_label, free_vars, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
 from ..kcfg import KCFG, KCFGStore
 from ..kcfg.exploration import KCFGExploration
+from ..kcfg.kcfg import NodeAttr
 from ..konvert import kflatmodule_to_kore
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
@@ -34,6 +35,15 @@ if TYPE_CHECKING:
     T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class APRProofNodeAttr(NodeAttr):
+    INIT = 'init'
+    TARGET = 'target'
+    PENDING = 'pending'
+    REFUTED = 'refuted'
+    TERMINAL = 'terminal'
+    BOUNDED = 'bounded'
 
 
 @dataclass
@@ -70,7 +80,6 @@ class APRProof(Proof, KCFGExploration):
     """
 
     node_refutations: dict[int, RefutationProof]  # TODO _node_refutatations
-    init: int
     target: int
     bmc_depth: int | None
     _bounded: set[int]
@@ -103,7 +112,7 @@ class APRProof(Proof, KCFGExploration):
         KCFGExploration.__init__(self, kcfg, terminal)
 
         self.failure_info = None
-        self.init = kcfg._resolve(init)
+        self.kcfg.add_attr(init, APRProofNodeAttr.INIT)
         self.target = kcfg._resolve(target)
         self.bmc_depth = bmc_depth
         self._bounded = set(bounded) if bounded is not None else set()
@@ -149,6 +158,10 @@ class APRProof(Proof, KCFGExploration):
         return self._make_module_name(self.id)
 
     @property
+    def init(self) -> int:
+        return single(node.id for node in self.kcfg.nodes if APRProofNodeAttr.INIT in node.attrs)
+
+    @property
     def pending(self) -> list[KCFG.Node]:
         return [node for node in self.explorable if self.is_pending(node.id)]
 
@@ -172,7 +185,7 @@ class APRProof(Proof, KCFGExploration):
         )
 
     def is_init(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.init)
+        return APRProofNodeAttr.INIT in self.kcfg.node(node_id).attrs
 
     def is_target(self, node_id: NodeIdLike) -> bool:
         return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.target)
