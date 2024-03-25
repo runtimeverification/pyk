@@ -15,6 +15,7 @@ from ..kast.manip import flatten_label, free_vars, ml_pred_to_bool
 from ..kast.outer import KFlatModule, KImport, KRule
 from ..kcfg import KCFG, KCFGStore
 from ..kcfg.exploration import KCFGExploration
+from ..kcfg.kcfg import NodeAttr
 from ..konvert import kflatmodule_to_kore
 from ..prelude.ml import mlAnd, mlTop
 from ..utils import FrozenDict, ensure_dir_path, hash_str, shorten_hashes, single
@@ -34,6 +35,15 @@ if TYPE_CHECKING:
     T = TypeVar('T', bound='Proof')
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class APRProofNodeAttr(NodeAttr):
+    INIT = 'init'
+    TARGET = 'target'
+    PENDING = 'pending'
+    REFUTED = 'refuted'
+    TERMINAL = 'terminal'
+    BOUNDED = 'bounded'
 
 
 @dataclass

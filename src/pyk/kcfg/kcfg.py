@@ -45,7 +45,10 @@ NodeIdLike = int | str
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class NodeAttr(Enum):
+class NodeAttr(Enum): ...
+
+
+class KCFGNodeAttr(NodeAttr, Enum):
     ROOT = 'root'
     VACUOUS = 'vacuous'
     STUCK = 'stuck'
@@ -102,13 +105,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         attrs = set(node.attrs)
         if check_root(node_id):
-            attrs.add(NodeAttr.ROOT)
+            attrs.add(KCFGNodeAttr.ROOT)
         else:
-            attrs.discard(NodeAttr.ROOT)
+            attrs.discard(KCFGNodeAttr.ROOT)
         if check_leaf(node_id):
-            attrs.add(NodeAttr.LEAF)
+            attrs.add(KCFGNodeAttr.LEAF)
         else:
-            attrs.discard(NodeAttr.LEAF)
+            attrs.discard(KCFGNodeAttr.LEAF)
 
         node = KCFG.Node(node_id, node.cterm, attrs=attrs)
 
@@ -514,8 +517,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         splits = [split.to_dict() for split in self.splits()]
         ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
-        vacuous = sorted([node.id for node in self.nodes if NodeAttr.VACUOUS in node.attrs])
-        stuck = sorted([node.id for node in self.nodes if NodeAttr.STUCK in node.attrs])
+        vacuous = sorted([node.id for node in self.nodes if KCFGNodeAttr.VACUOUS in node.attrs])
+        stuck = sorted([node.id for node in self.nodes if KCFGNodeAttr.STUCK in node.attrs])
         aliases = dict(sorted(self._aliases.items()))
 
         res = {
@@ -754,7 +757,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 )
             if type(succ) is KCFG.Split:
                 self._splits[succ.source.id] = succ
-                self.add_attr(succ.source.id, NodeAttr.SPLIT)
+                self.add_attr(succ.source.id, KCFGNodeAttr.SPLIT)
             elif type(succ) is KCFG.NDBranch:
                 self._ndbranches[succ.source.id] = succ
 
@@ -849,28 +852,28 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         )
 
     def add_vacuous(self, node_id: NodeIdLike) -> None:
-        self.add_attr(node_id, NodeAttr.VACUOUS)
+        self.add_attr(node_id, KCFGNodeAttr.VACUOUS)
 
     def remove_vacuous(self, node_id: NodeIdLike) -> None:
         node = self.node(node_id)
-        if NodeAttr.VACUOUS not in node.attrs:
+        if KCFGNodeAttr.VACUOUS not in node.attrs:
             raise ValueError(f'Node is not vacuous: {node_id}')
-        self.remove_attr(node_id, NodeAttr.VACUOUS)
+        self.remove_attr(node_id, KCFGNodeAttr.VACUOUS)
 
     def discard_vacuous(self, node_id: NodeIdLike) -> None:
-        self.remove_attr(node_id, NodeAttr.VACUOUS)
+        self.remove_attr(node_id, KCFGNodeAttr.VACUOUS)
 
     def add_stuck(self, node_id: NodeIdLike) -> None:
-        self.add_attr(node_id, NodeAttr.STUCK)
+        self.add_attr(node_id, KCFGNodeAttr.STUCK)
 
     def remove_stuck(self, node_id: NodeIdLike) -> None:
         node = self.node(node_id)
-        if NodeAttr.STUCK not in node.attrs:
+        if KCFGNodeAttr.STUCK not in node.attrs:
             raise ValueError(f'Node is not stuck: {node_id}')
-        self.remove_attr(node_id, NodeAttr.STUCK)
+        self.remove_attr(node_id, KCFGNodeAttr.STUCK)
 
     def discard_stuck(self, node_id: NodeIdLike) -> None:
-        self.remove_attr(node_id, NodeAttr.STUCK)
+        self.remove_attr(node_id, KCFGNodeAttr.STUCK)
 
     def splits(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[Split]:
         source_id = self._resolve(source_id) if source_id is not None else None
@@ -1062,23 +1065,23 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._aliases.pop(alias)
 
     def is_root(self, node_id: NodeIdLike) -> bool:
-        return NodeAttr.ROOT in self.node(node_id).attrs
+        return KCFGNodeAttr.ROOT in self.node(node_id).attrs
 
     def is_vacuous(self, node_id: NodeIdLike) -> bool:
-        return NodeAttr.VACUOUS in self.node(node_id).attrs
+        return KCFGNodeAttr.VACUOUS in self.node(node_id).attrs
 
     def is_stuck(self, node_id: NodeIdLike) -> bool:
-        return NodeAttr.STUCK in self.node(node_id).attrs
+        return KCFGNodeAttr.STUCK in self.node(node_id).attrs
 
     def is_split(self, node_id: NodeIdLike) -> bool:
-        return NodeAttr.SPLIT in self.node(node_id).attrs
+        return KCFGNodeAttr.SPLIT in self.node(node_id).attrs
 
     def is_ndbranch(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return node_id in self._ndbranches
 
     def is_leaf(self, node_id: NodeIdLike) -> bool:
-        return NodeAttr.LEAF in self.node(node_id).attrs
+        return KCFGNodeAttr.LEAF in self.node(node_id).attrs
 
     def is_covered(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
