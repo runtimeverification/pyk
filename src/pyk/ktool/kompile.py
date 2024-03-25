@@ -14,7 +14,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING, final
 
-from ..utils import abs_or_rel_to, check_dir_path, check_file_path, run_process, single
+from ..utils import abs_or_rel_to, check_dir_path, check_file_path, exit_with_process_error, run_process, single
 from . import TypeInferenceMode
 
 if TYPE_CHECKING:
@@ -172,12 +172,7 @@ class Kompile(ABC):
         try:
             proc_res = run_process(args, logger=_LOGGER, cwd=cwd, check=check)
         except CalledProcessError as err:
-            raise RuntimeError(
-                f'Command kompile exited with code {err.returncode} for: {self.base_args.main_file}',
-                err.stdout,
-                err.stderr,
-                err.returncode,
-            ) from err
+            exit_with_process_error(err)
 
         if proc_res.stdout:
             out = proc_res.stdout.rstrip()
@@ -351,6 +346,7 @@ class KompileArgs:
     bison_lists: bool
     warnings: Warnings | None
     warning_to_error: bool
+    no_exc_wrap: bool
 
     def __init__(
         self,
@@ -371,6 +367,7 @@ class KompileArgs:
         bison_lists: bool = False,
         warnings: str | Warnings | None = None,
         warning_to_error: bool = False,
+        no_exc_wrap: bool = False,
     ):
         main_file = Path(main_file)
         include_dirs = tuple(sorted(Path(include_dir) for include_dir in include_dirs))
@@ -393,6 +390,7 @@ class KompileArgs:
         object.__setattr__(self, 'bison_lists', bison_lists)
         object.__setattr__(self, 'warnings', warnings)
         object.__setattr__(self, 'warning_to_error', warning_to_error)
+        object.__setattr__(self, 'no_exc_wrap', no_exc_wrap)
 
     def args(self) -> list[str]:
         args = [str(self.main_file)]
@@ -441,6 +439,9 @@ class KompileArgs:
 
         if self.warning_to_error:
             args += ['-w2e']
+
+        if self.no_exc_wrap:
+            args += ['--no-exc-wrap']
 
         return args
 
