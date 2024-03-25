@@ -137,6 +137,7 @@ class APRProof(Proof, KCFGExploration):
                 )
             for node_id, proof_id in node_refutations.items():
                 subproof = self._subproofs[proof_id]
+                self.kcfg.add_attr(node_id, APRProofNodeAttr.REFUTED)
                 assert type(subproof) is RefutationProof
                 self.node_refutations[node_id] = subproof
 
@@ -177,7 +178,7 @@ class APRProof(Proof, KCFGExploration):
         return [nd for nd in self.kcfg.leaves if self.is_bounded(nd.id)]
 
     def is_refuted(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg._resolve(node_id) in self.node_refutations.keys()
+        return APRProofNodeAttr.REFUTED in self.kcfg.node(node_id).attrs
 
     def is_pending(self, node_id: NodeIdLike) -> bool:
         return (
@@ -566,6 +567,7 @@ class APRProof(Proof, KCFGExploration):
         refutation.write_proof_data()
 
         self.node_refutations[node.id] = refutation
+        self.kcfg.add_attr(node.id, APRProofNodeAttr.REFUTED)
 
         self.write_proof_data()
 
@@ -574,6 +576,7 @@ class APRProof(Proof, KCFGExploration):
     def unrefute_node(self, node: KCFG.Node) -> None:
         self.remove_subproof(self.get_refutation_id(node.id))
         del self.node_refutations[node.id]
+        self.kcfg.remove_attr(node.id, APRProofNodeAttr.REFUTED)
         self.write_proof_data()
         _LOGGER.info(f'Disabled refutation of node {node.id}.')
 
