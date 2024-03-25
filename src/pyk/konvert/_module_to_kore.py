@@ -753,10 +753,10 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     definition = InlineFormatTerminals().execute(definition)
     definition = AddColorAtts().execute(definition)
     definition = DiscardSymbolAtts([Atts.COLOR]).execute(definition)
+    definition = AddTerminalAtts().execute(definition)
 
     module = definition.modules[0]
 
-    module = _add_terminals_atts(module)
     module = _add_priorities_atts(module)
     module = _add_assoc_atts(module)
 
@@ -1253,22 +1253,22 @@ class AddColorAtts(SingleModulePass):
         return production.let(att=production.att.update([Atts.COLORS(colors)]))
 
 
-def _add_terminals_atts(module: KFlatModule) -> KFlatModule:
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+@dataclass
+class AddTerminalAtts(SingleModulePass):
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
+        return module.let(sentences=sentences)
 
-        if not sentence.klabel:
-            return sentence
+    @staticmethod
+    def _update(production: KProduction) -> KProduction:
+        if not production.klabel:
+            return production
 
-        if Atts.FORMAT not in sentence.att:
-            return sentence
+        if Atts.FORMAT not in production.att:
+            return production
 
-        terminals = ''.join('0' if isinstance(item, KNonTerminal) else '1' for item in sentence.items)
-        return sentence.let(att=sentence.att.update([Atts.TERMINALS(terminals)]))
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+        terminals = ''.join('0' if isinstance(item, KNonTerminal) else '1' for item in production.items)
+        return production.let(att=production.att.update([Atts.TERMINALS(terminals)]))
 
 
 def _add_priorities_atts(module: KFlatModule) -> KFlatModule:
