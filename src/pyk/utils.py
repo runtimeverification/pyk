@@ -121,7 +121,7 @@ def check_type(x: Any, typ: type[T]) -> T:
 def raised(f: Callable, *args: Any, **kwargs: Any) -> BaseException | None:
     try:
         f(*args, **kwargs)
-    except BaseException as e:
+    except Exception as e:
         return e
 
     return None
