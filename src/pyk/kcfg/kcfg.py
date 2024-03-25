@@ -852,7 +852,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
         source = self.node(source_id)
         branch_node_ids = [self.create_node(source.cterm.add_constraint(c)).id for c in constraints]
-        csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
+        csubsts = [not_none(source.cterm.match_with_constraint(self.node(id).cterm)) for id in branch_node_ids]
+        csubsts = [
+            reduce(CSubst.add_constraint, flatten_label('#And', constraint), csubst)
+            for (csubst, constraint) in zip(csubsts, constraints, strict=True)
+        ]
         self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids
 
