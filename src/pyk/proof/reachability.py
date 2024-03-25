@@ -80,7 +80,6 @@ class APRProof(Proof, KCFGExploration):
     """
 
     node_refutations: dict[int, RefutationProof]  # TODO _node_refutatations
-    target: int
     bmc_depth: int | None
     _bounded: set[int]
     logs: dict[int, tuple[LogEntry, ...]]
@@ -113,7 +112,7 @@ class APRProof(Proof, KCFGExploration):
 
         self.failure_info = None
         self.kcfg.add_attr(init, APRProofNodeAttr.INIT)
-        self.target = kcfg._resolve(target)
+        self.kcfg.add_attr(target, APRProofNodeAttr.TARGET)
         self.bmc_depth = bmc_depth
         self._bounded = set(bounded) if bounded is not None else set()
         self.logs = logs
@@ -162,6 +161,10 @@ class APRProof(Proof, KCFGExploration):
         return single(node.id for node in self.kcfg.nodes if APRProofNodeAttr.INIT in node.attrs)
 
     @property
+    def target(self) -> int:
+        return single(node.id for node in self.kcfg.nodes if APRProofNodeAttr.TARGET in node.attrs)
+
+    @property
     def pending(self) -> list[KCFG.Node]:
         return [node for node in self.explorable if self.is_pending(node.id)]
 
@@ -188,7 +191,7 @@ class APRProof(Proof, KCFGExploration):
         return APRProofNodeAttr.INIT in self.kcfg.node(node_id).attrs
 
     def is_target(self, node_id: NodeIdLike) -> bool:
-        return self.kcfg._resolve(node_id) == self.kcfg._resolve(self.target)
+        return APRProofNodeAttr.TARGET in self.kcfg.node(node_id).attrs
 
     def is_failing(self, node_id: NodeIdLike) -> bool:
         return (
