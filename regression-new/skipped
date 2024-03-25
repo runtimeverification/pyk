@@ -1,4 +1,5 @@
 append
+bad-flags
 bison-parser-library
 boundary-cells-opt
 cell-sort-haskell
