@@ -712,51 +712,51 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     output. These discrepancies should be analyzed and fixed.
     """
     module_name = module_name or definition.main_module_name
-    definition = FlattenDefinition(module_name).execute(definition)
-
-    # sorts
-    definition = AddSyntaxSorts().execute(definition)
-    definition = AddCollectionAtts().execute(definition)
-    definition = AddDomainValueAtts().execute(definition)
-
-    # symbols
-    definition = PullUpRewrites().execute(definition)
-    definition = DiscardSymbolAtts(
-        [
-            Atts.CELL,
-            Atts.CELL_FRAGMENT,
-            Atts.CELL_NAME,
-            Atts.CELL_OPT_ABSENT,
-            Atts.GROUP,
-            Atts.IMPURE,
-            Atts.INDEX,
-            Atts.INITIALIZER,
-            Atts.MAINCELL,
-            Atts.PREDICATE,
-            Atts.PREFER,
-            Atts.PRIVATE,
-            Atts.PRODUCTION,
-            Atts.PROJECTION,
-            Atts.SEQSTRICT,
-            Atts.STRICT,
-            Atts.USER_LIST,
-        ],
-    ).execute(definition)
-    definition = DiscardHookAtts().execute(definition)
-    definition = AddAnywhereAtts().execute(definition)
-    definition = AddSymbolAtts(Atts.MACRO(None), _is_macro).execute(definition)
-    definition = AddSymbolAtts(Atts.FUNCTIONAL(None), _is_functional).execute(definition)
-    definition = AddSymbolAtts(Atts.INJECTIVE(None), _is_injective).execute(definition)
-    definition = AddSymbolAtts(Atts.CONSTRUCTOR(None), _is_constructor).execute(definition)
-    definition = AddDefaultFormatAtts().execute(definition)
-    definition = DiscardFormatAtts().execute(definition)
-    definition = InlineFormatTerminals().execute(definition)
-    definition = AddColorAtts().execute(definition)
-    definition = DiscardSymbolAtts([Atts.COLOR]).execute(definition)
-    definition = AddTerminalAtts().execute(definition)
-    definition = AddPrioritiesAtts().execute(definition)
-    definition = AddAssocAtts().execute(definition)
-
+    pipeline = (
+        FlattenDefinition(module_name),
+        # sorts
+        AddSyntaxSorts(),
+        AddCollectionAtts(),
+        AddDomainValueAtts(),
+        # symbols
+        PullUpRewrites(),
+        DiscardSymbolAtts(
+            [
+                Atts.CELL,
+                Atts.CELL_FRAGMENT,
+                Atts.CELL_NAME,
+                Atts.CELL_OPT_ABSENT,
+                Atts.GROUP,
+                Atts.IMPURE,
+                Atts.INDEX,
+                Atts.INITIALIZER,
+                Atts.MAINCELL,
+                Atts.PREDICATE,
+                Atts.PREFER,
+                Atts.PRIVATE,
+                Atts.PRODUCTION,
+                Atts.PROJECTION,
+                Atts.SEQSTRICT,
+                Atts.STRICT,
+                Atts.USER_LIST,
+            ],
+        ),
+        DiscardHookAtts(),
+        AddAnywhereAtts(),
+        AddSymbolAtts(Atts.MACRO(None), _is_macro),
+        AddSymbolAtts(Atts.FUNCTIONAL(None), _is_functional),
+        AddSymbolAtts(Atts.INJECTIVE(None), _is_injective),
+        AddSymbolAtts(Atts.CONSTRUCTOR(None), _is_constructor),
+        AddDefaultFormatAtts(),
+        DiscardFormatAtts(),
+        InlineFormatTerminals(),
+        AddColorAtts(),
+        DiscardSymbolAtts([Atts.COLOR]),
+        AddTerminalAtts(),
+        AddPrioritiesAtts(),
+        AddAssocAtts(),
+    )
+    definition = reduce(lambda defn, step: step.execute(defn), pipeline, definition)
     module = definition.modules[0]
     return module
 
