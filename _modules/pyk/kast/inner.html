@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kast.inner &#8212; pyk 0.1.737 documentation</title>
+    <title>pyk.kast.inner &#8212; pyk 0.1.738 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=c40ad9b9"></script>
+    <script src="../../../_static/documentation_options.js?v=2c107a7b"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -870,7 +870,7 @@
 <a class="viewcode-back" href="../../../api/pyk.kast.inner.html#pyk.kast.inner.Subst.minimize">[docs]</a>
 <span class="linenos">694</span>    <span class="k">def</span> <span class="nf">minimize</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Subst</span><span class="p">:</span>
 <span class="linenos">695</span><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a new substitution with any identity items removed.&quot;&quot;&quot;</span>
-<span class="linenos">696</span>        <span class="k">return</span> <span class="n">Subst</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="o">!=</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">k</span><span class="p">)})</span></div>
+<span class="linenos">696</span>        <span class="k">return</span> <span class="n">Subst</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">KVariable</span> <span class="ow">or</span> <span class="n">v</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="n">k</span><span class="p">})</span></div>
 
 <span class="linenos">697</span>
 <div class="viewcode-block" id="Subst.compose">
@@ -961,183 +961,187 @@
 <span class="linenos">768</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">conjuncts</span><span class="p">:</span>
 <span class="linenos">769</span>            <span class="k">return</span> <span class="n">KToken</span><span class="p">(</span><span class="s1">&#39;true&#39;</span><span class="p">,</span> <span class="s1">&#39;Bool&#39;</span><span class="p">)</span>
 <span class="linenos">770</span>
-<span class="linenos">771</span>        <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="n">KLabel</span><span class="p">(</span><span class="s1">&#39;_andBool_&#39;</span><span class="p">),</span> <span class="n">conjuncts</span><span class="p">)</span></div>
-
+<span class="linenos">771</span>        <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="n">KLabel</span><span class="p">(</span><span class="s1">&#39;_andBool_&#39;</span><span class="p">),</span> <span class="n">conjuncts</span><span class="p">)</span>
 <span class="linenos">772</span>
-<span class="linenos">773</span>
+<span class="linenos">773</span>    <span class="nd">@property</span>
+<span class="linenos">774</span>    <span class="k">def</span> <span class="nf">is_identity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="linenos">775</span>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">minimize</span><span class="p">())</span> <span class="o">==</span> <span class="mi">0</span></div>
+
+<span class="linenos">776</span>
+<span class="linenos">777</span>
 <div class="viewcode-block" id="bottom_up_with_summary">
 <a class="viewcode-back" href="../../../api/pyk.kast.inner.html#pyk.kast.inner.bottom_up_with_summary">[docs]</a>
-<span class="linenos">774</span><span class="k">def</span> <span class="nf">bottom_up_with_summary</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">KInner</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">A</span><span class="p">]],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KInner</span><span class="p">,</span> <span class="n">A</span><span class="p">]],</span> <span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KInner</span><span class="p">,</span> <span class="n">A</span><span class="p">]:</span>
-<span class="linenos">775</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">776</span><span class="sd">    Traverse a term from the bottom moving upward, potentially both transforming it and collecting information about it.</span>
-<span class="linenos">777</span>
-<span class="linenos">778</span><span class="sd">    :param f: Function to apply at each AST node to transform it and collect summary.</span>
-<span class="linenos">779</span><span class="sd">    :param kinner: KInner to apply this transformation to.</span>
-<span class="linenos">780</span><span class="sd">    :return: A tuple of the transformed term and the summarized results.</span>
-<span class="linenos">781</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">782</span>    <span class="n">stack</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">kinner</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[]]</span>
-<span class="linenos">783</span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-<span class="linenos">784</span>        <span class="n">summaries</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-<span class="linenos">785</span>        <span class="n">terms</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-<span class="linenos">786</span>        <span class="n">term</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
-<span class="linenos">787</span>        <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
-<span class="linenos">788</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
-<span class="linenos">789</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="linenos">790</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="linenos">791</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="linenos">792</span>            <span class="n">term</span><span class="p">,</span> <span class="n">summary</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">let_terms</span><span class="p">(</span><span class="n">terms</span><span class="p">),</span> <span class="n">summaries</span><span class="p">)</span>
-<span class="linenos">793</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="p">:</span>
-<span class="linenos">794</span>                <span class="k">return</span> <span class="n">term</span><span class="p">,</span> <span class="n">summary</span>
-<span class="linenos">795</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
-<span class="linenos">796</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
-<span class="linenos">797</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">798</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
-<span class="linenos">799</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
-<span class="linenos">800</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span></div>
+<span class="linenos">778</span><span class="k">def</span> <span class="nf">bottom_up_with_summary</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">KInner</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">A</span><span class="p">]],</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KInner</span><span class="p">,</span> <span class="n">A</span><span class="p">]],</span> <span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KInner</span><span class="p">,</span> <span class="n">A</span><span class="p">]:</span>
+<span class="linenos">779</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">780</span><span class="sd">    Traverse a term from the bottom moving upward, potentially both transforming it and collecting information about it.</span>
+<span class="linenos">781</span>
+<span class="linenos">782</span><span class="sd">    :param f: Function to apply at each AST node to transform it and collect summary.</span>
+<span class="linenos">783</span><span class="sd">    :param kinner: KInner to apply this transformation to.</span>
+<span class="linenos">784</span><span class="sd">    :return: A tuple of the transformed term and the summarized results.</span>
+<span class="linenos">785</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">786</span>    <span class="n">stack</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">kinner</span><span class="p">,</span> <span class="p">[],</span> <span class="p">[]]</span>
+<span class="linenos">787</span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+<span class="linenos">788</span>        <span class="n">summaries</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="linenos">789</span>        <span class="n">terms</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+<span class="linenos">790</span>        <span class="n">term</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+<span class="linenos">791</span>        <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
+<span class="linenos">792</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
+<span class="linenos">793</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">794</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">795</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">796</span>            <span class="n">term</span><span class="p">,</span> <span class="n">summary</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">let_terms</span><span class="p">(</span><span class="n">terms</span><span class="p">),</span> <span class="n">summaries</span><span class="p">)</span>
+<span class="linenos">797</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="p">:</span>
+<span class="linenos">798</span>                <span class="k">return</span> <span class="n">term</span><span class="p">,</span> <span class="n">summary</span>
+<span class="linenos">799</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
+<span class="linenos">800</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
+<span class="linenos">801</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">802</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+<span class="linenos">803</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+<span class="linenos">804</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span></div>
 
-<span class="linenos">801</span>
-<span class="linenos">802</span>
-<span class="linenos">803</span><span class="c1"># TODO make method of KInner</span>
+<span class="linenos">805</span>
+<span class="linenos">806</span>
+<span class="linenos">807</span><span class="c1"># TODO make method of KInner</span>
 <div class="viewcode-block" id="bottom_up">
 <a class="viewcode-back" href="../../../api/pyk.kast.inner.html#pyk.kast.inner.bottom_up">[docs]</a>
-<span class="linenos">804</span><span class="k">def</span> <span class="nf">bottom_up</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">KInner</span><span class="p">],</span> <span class="n">KInner</span><span class="p">],</span> <span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">805</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">806</span><span class="sd">    Traverse a term from the bottom moving upward, updating it using a given transformation.</span>
-<span class="linenos">807</span>
-<span class="linenos">808</span><span class="sd">    :param f: Transformation to apply at each node in the term.</span>
-<span class="linenos">809</span><span class="sd">    :param kinner: Original term to transform.</span>
-<span class="linenos">810</span><span class="sd">    :return: The transformed term.</span>
-<span class="linenos">811</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">812</span>    <span class="n">stack</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">kinner</span><span class="p">,</span> <span class="p">[]]</span>
-<span class="linenos">813</span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-<span class="linenos">814</span>        <span class="n">terms</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-<span class="linenos">815</span>        <span class="n">term</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-<span class="linenos">816</span>        <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
-<span class="linenos">817</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
-<span class="linenos">818</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="linenos">819</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="linenos">820</span>            <span class="n">term</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">let_terms</span><span class="p">(</span><span class="n">terms</span><span class="p">))</span>
-<span class="linenos">821</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="p">:</span>
-<span class="linenos">822</span>                <span class="k">return</span> <span class="n">term</span>
-<span class="linenos">823</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
-<span class="linenos">824</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">825</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
-<span class="linenos">826</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span></div>
+<span class="linenos">808</span><span class="k">def</span> <span class="nf">bottom_up</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">KInner</span><span class="p">],</span> <span class="n">KInner</span><span class="p">],</span> <span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">809</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">810</span><span class="sd">    Traverse a term from the bottom moving upward, updating it using a given transformation.</span>
+<span class="linenos">811</span>
+<span class="linenos">812</span><span class="sd">    :param f: Transformation to apply at each node in the term.</span>
+<span class="linenos">813</span><span class="sd">    :param kinner: Original term to transform.</span>
+<span class="linenos">814</span><span class="sd">    :return: The transformed term.</span>
+<span class="linenos">815</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">816</span>    <span class="n">stack</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">kinner</span><span class="p">,</span> <span class="p">[]]</span>
+<span class="linenos">817</span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+<span class="linenos">818</span>        <span class="n">terms</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="linenos">819</span>        <span class="n">term</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+<span class="linenos">820</span>        <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
+<span class="linenos">821</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
+<span class="linenos">822</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">823</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">824</span>            <span class="n">term</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">let_terms</span><span class="p">(</span><span class="n">terms</span><span class="p">))</span>
+<span class="linenos">825</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="p">:</span>
+<span class="linenos">826</span>                <span class="k">return</span> <span class="n">term</span>
+<span class="linenos">827</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
+<span class="linenos">828</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">829</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span>
+<span class="linenos">830</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span></div>
 
-<span class="linenos">827</span>
-<span class="linenos">828</span>
-<span class="linenos">829</span><span class="c1"># TODO make method of KInner</span>
+<span class="linenos">831</span>
+<span class="linenos">832</span>
+<span class="linenos">833</span><span class="c1"># TODO make method of KInner</span>
 <div class="viewcode-block" id="top_down">
 <a class="viewcode-back" href="../../../api/pyk.kast.inner.html#pyk.kast.inner.top_down">[docs]</a>
-<span class="linenos">830</span><span class="k">def</span> <span class="nf">top_down</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">KInner</span><span class="p">],</span> <span class="n">KInner</span><span class="p">],</span> <span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">831</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">832</span><span class="sd">    Traverse a term from the top moving downward, updating it using a given transformation.</span>
-<span class="linenos">833</span>
-<span class="linenos">834</span><span class="sd">    :param f: Transformation to apply at each node in the term.</span>
-<span class="linenos">835</span><span class="sd">    :param kinner: Original term to transform.</span>
-<span class="linenos">836</span><span class="sd">    :return: The transformed term.</span>
-<span class="linenos">837</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">838</span>    <span class="n">stack</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="p">(</span><span class="n">kinner</span><span class="p">),</span> <span class="p">[]]</span>
-<span class="linenos">839</span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-<span class="linenos">840</span>        <span class="n">terms</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-<span class="linenos">841</span>        <span class="n">term</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
-<span class="linenos">842</span>        <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
-<span class="linenos">843</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
-<span class="linenos">844</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="linenos">845</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="linenos">846</span>            <span class="n">term</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">let_terms</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
-<span class="linenos">847</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="p">:</span>
-<span class="linenos">848</span>                <span class="k">return</span> <span class="n">term</span>
-<span class="linenos">849</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
-<span class="linenos">850</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">851</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">[</span><span class="n">idx</span><span class="p">]))</span>
-<span class="linenos">852</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span></div>
+<span class="linenos">834</span><span class="k">def</span> <span class="nf">top_down</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">KInner</span><span class="p">],</span> <span class="n">KInner</span><span class="p">],</span> <span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">835</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">836</span><span class="sd">    Traverse a term from the top moving downward, updating it using a given transformation.</span>
+<span class="linenos">837</span>
+<span class="linenos">838</span><span class="sd">    :param f: Transformation to apply at each node in the term.</span>
+<span class="linenos">839</span><span class="sd">    :param kinner: Original term to transform.</span>
+<span class="linenos">840</span><span class="sd">    :return: The transformed term.</span>
+<span class="linenos">841</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">842</span>    <span class="n">stack</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="p">(</span><span class="n">kinner</span><span class="p">),</span> <span class="p">[]]</span>
+<span class="linenos">843</span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+<span class="linenos">844</span>        <span class="n">terms</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="linenos">845</span>        <span class="n">term</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+<span class="linenos">846</span>        <span class="n">idx</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">)</span>
+<span class="linenos">847</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
+<span class="linenos">848</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">849</span>            <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">850</span>            <span class="n">term</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">let_terms</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
+<span class="linenos">851</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">stack</span><span class="p">:</span>
+<span class="linenos">852</span>                <span class="k">return</span> <span class="n">term</span>
+<span class="linenos">853</span>            <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
+<span class="linenos">854</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">855</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">(</span><span class="n">term</span><span class="o">.</span><span class="n">terms</span><span class="p">[</span><span class="n">idx</span><span class="p">]))</span>
+<span class="linenos">856</span>            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span></div>
 
-<span class="linenos">853</span>
-<span class="linenos">854</span>
-<span class="linenos">855</span><span class="c1"># TODO: make method of KInner</span>
+<span class="linenos">857</span>
+<span class="linenos">858</span>
+<span class="linenos">859</span><span class="c1"># TODO: make method of KInner</span>
 <div class="viewcode-block" id="var_occurrences">
 <a class="viewcode-back" href="../../../api/pyk.kast.inner.html#pyk.kast.inner.var_occurrences">[docs]</a>
-<span class="linenos">856</span><span class="k">def</span> <span class="nf">var_occurrences</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">KVariable</span><span class="p">]]:</span>
-<span class="linenos">857</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">858</span><span class="sd">    Collect the list of occurrences of each variable in a given term.</span>
-<span class="linenos">859</span>
-<span class="linenos">860</span><span class="sd">    :param term: Term to collect variables from.</span>
-<span class="linenos">861</span><span class="sd">    :return: Dictionary with keys a variable names and value as list of all occurrences of that variable.</span>
-<span class="linenos">862</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">863</span>    <span class="n">_var_occurrences</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">KVariable</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="linenos">864</span>
-<span class="linenos">865</span>    <span class="c1"># TODO: should treat #Exists and #Forall specially.</span>
-<span class="linenos">866</span>    <span class="k">def</span> <span class="nf">_var_occurence</span><span class="p">(</span><span class="n">_term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="linenos">867</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KVariable</span><span class="p">:</span>
-<span class="linenos">868</span>            <span class="k">if</span> <span class="n">_term</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_var_occurrences</span><span class="p">:</span>
-<span class="linenos">869</span>                <span class="n">_var_occurrences</span><span class="p">[</span><span class="n">_term</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="linenos">870</span>            <span class="n">_var_occurrences</span><span class="p">[</span><span class="n">_term</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span>
-<span class="linenos">871</span>
-<span class="linenos">872</span>    <span class="n">collect</span><span class="p">(</span><span class="n">_var_occurence</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
-<span class="linenos">873</span>    <span class="k">return</span> <span class="n">_var_occurrences</span></div>
-
-<span class="linenos">874</span>
+<span class="linenos">860</span><span class="k">def</span> <span class="nf">var_occurrences</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">KVariable</span><span class="p">]]:</span>
+<span class="linenos">861</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">862</span><span class="sd">    Collect the list of occurrences of each variable in a given term.</span>
+<span class="linenos">863</span>
+<span class="linenos">864</span><span class="sd">    :param term: Term to collect variables from.</span>
+<span class="linenos">865</span><span class="sd">    :return: Dictionary with keys a variable names and value as list of all occurrences of that variable.</span>
+<span class="linenos">866</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">867</span>    <span class="n">_var_occurrences</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">KVariable</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="linenos">868</span>
+<span class="linenos">869</span>    <span class="c1"># TODO: should treat #Exists and #Forall specially.</span>
+<span class="linenos">870</span>    <span class="k">def</span> <span class="nf">_var_occurence</span><span class="p">(</span><span class="n">_term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="linenos">871</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KVariable</span><span class="p">:</span>
+<span class="linenos">872</span>            <span class="k">if</span> <span class="n">_term</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_var_occurrences</span><span class="p">:</span>
+<span class="linenos">873</span>                <span class="n">_var_occurrences</span><span class="p">[</span><span class="n">_term</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">874</span>            <span class="n">_var_occurrences</span><span class="p">[</span><span class="n">_term</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span>
 <span class="linenos">875</span>
-<span class="linenos">876</span><span class="c1"># TODO replace by method that does not reconstruct the AST</span>
+<span class="linenos">876</span>    <span class="n">collect</span><span class="p">(</span><span class="n">_var_occurence</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span>
+<span class="linenos">877</span>    <span class="k">return</span> <span class="n">_var_occurrences</span></div>
+
+<span class="linenos">878</span>
+<span class="linenos">879</span>
+<span class="linenos">880</span><span class="c1"># TODO replace by method that does not reconstruct the AST</span>
 <div class="viewcode-block" id="collect">
 <a class="viewcode-back" href="../../../api/pyk.kast.inner.html#pyk.kast.inner.collect">[docs]</a>
-<span class="linenos">877</span><span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">KInner</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span> <span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="linenos">878</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">879</span><span class="sd">    Collect information about a given term when traversing it bottom up using a side-effect function.</span>
-<span class="linenos">880</span>
-<span class="linenos">881</span><span class="sd">    :param callback: Function supplied by user which has side-effect of collecting desired information at each AST node.</span>
-<span class="linenos">882</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">883</span>
-<span class="linenos">884</span>    <span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">885</span>        <span class="n">callback</span><span class="p">(</span><span class="n">kinner</span><span class="p">)</span>
-<span class="linenos">886</span>        <span class="k">return</span> <span class="n">kinner</span>
+<span class="linenos">881</span><span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">KInner</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span> <span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="linenos">882</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">883</span><span class="sd">    Collect information about a given term when traversing it bottom up using a side-effect function.</span>
+<span class="linenos">884</span>
+<span class="linenos">885</span><span class="sd">    :param callback: Function supplied by user which has side-effect of collecting desired information at each AST node.</span>
+<span class="linenos">886</span><span class="sd">    &quot;&quot;&quot;</span>
 <span class="linenos">887</span>
-<span class="linenos">888</span>    <span class="n">bottom_up</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">kinner</span><span class="p">)</span></div>
+<span class="linenos">888</span>    <span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">kinner</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">889</span>        <span class="n">callback</span><span class="p">(</span><span class="n">kinner</span><span class="p">)</span>
+<span class="linenos">890</span>        <span class="k">return</span> <span class="n">kinner</span>
+<span class="linenos">891</span>
+<span class="linenos">892</span>    <span class="n">bottom_up</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">kinner</span><span class="p">)</span></div>
 
-<span class="linenos">889</span>
-<span class="linenos">890</span>
+<span class="linenos">893</span>
+<span class="linenos">894</span>
 <div class="viewcode-block" id="build_assoc">
 <a class="viewcode-back" href="../../../api/pyk.kast.inner.html#pyk.kast.inner.build_assoc">[docs]</a>
-<span class="linenos">891</span><span class="k">def</span> <span class="nf">build_assoc</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">KLabel</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">892</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">893</span><span class="sd">    Build an associative list.</span>
-<span class="linenos">894</span>
-<span class="linenos">895</span><span class="sd">    :param unit: The empty variant of the given list type.</span>
-<span class="linenos">896</span><span class="sd">    :param label: The associative list join operator.</span>
-<span class="linenos">897</span><span class="sd">    :param terms: List (potentially empty) of terms to join in an associative list.</span>
-<span class="linenos">898</span><span class="sd">    :return: The list of terms joined using the supplied label, or the unit element in the case of no terms.</span>
-<span class="linenos">899</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">900</span>    <span class="n">_label</span> <span class="o">=</span> <span class="n">label</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KLabel</span> <span class="k">else</span> <span class="n">KLabel</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
-<span class="linenos">901</span>    <span class="n">res</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="linenos">902</span>    <span class="k">for</span> <span class="n">term</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">terms</span><span class="p">)):</span>
-<span class="linenos">903</span>        <span class="k">if</span> <span class="n">term</span> <span class="o">==</span> <span class="n">unit</span><span class="p">:</span>
-<span class="linenos">904</span>            <span class="k">continue</span>
-<span class="linenos">905</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="p">:</span>
-<span class="linenos">906</span>            <span class="n">res</span> <span class="o">=</span> <span class="n">term</span>
-<span class="linenos">907</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">908</span>            <span class="n">res</span> <span class="o">=</span> <span class="n">_label</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
-<span class="linenos">909</span>    <span class="k">return</span> <span class="n">res</span> <span class="ow">or</span> <span class="n">unit</span></div>
+<span class="linenos">895</span><span class="k">def</span> <span class="nf">build_assoc</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">KLabel</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">896</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">897</span><span class="sd">    Build an associative list.</span>
+<span class="linenos">898</span>
+<span class="linenos">899</span><span class="sd">    :param unit: The empty variant of the given list type.</span>
+<span class="linenos">900</span><span class="sd">    :param label: The associative list join operator.</span>
+<span class="linenos">901</span><span class="sd">    :param terms: List (potentially empty) of terms to join in an associative list.</span>
+<span class="linenos">902</span><span class="sd">    :return: The list of terms joined using the supplied label, or the unit element in the case of no terms.</span>
+<span class="linenos">903</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">904</span>    <span class="n">_label</span> <span class="o">=</span> <span class="n">label</span> <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KLabel</span> <span class="k">else</span> <span class="n">KLabel</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+<span class="linenos">905</span>    <span class="n">res</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="linenos">906</span>    <span class="k">for</span> <span class="n">term</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">terms</span><span class="p">)):</span>
+<span class="linenos">907</span>        <span class="k">if</span> <span class="n">term</span> <span class="o">==</span> <span class="n">unit</span><span class="p">:</span>
+<span class="linenos">908</span>            <span class="k">continue</span>
+<span class="linenos">909</span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">res</span><span class="p">:</span>
+<span class="linenos">910</span>            <span class="n">res</span> <span class="o">=</span> <span class="n">term</span>
+<span class="linenos">911</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">912</span>            <span class="n">res</span> <span class="o">=</span> <span class="n">_label</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+<span class="linenos">913</span>    <span class="k">return</span> <span class="n">res</span> <span class="ow">or</span> <span class="n">unit</span></div>
 
-<span class="linenos">910</span>
-<span class="linenos">911</span>
+<span class="linenos">914</span>
+<span class="linenos">915</span>
 <div class="viewcode-block" id="build_cons">
 <a class="viewcode-back" href="../../../api/pyk.kast.inner.html#pyk.kast.inner.build_cons">[docs]</a>
-<span class="linenos">912</span><span class="k">def</span> <span class="nf">build_cons</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">KLabel</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">913</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">914</span><span class="sd">    Build a cons list.</span>
-<span class="linenos">915</span>
-<span class="linenos">916</span><span class="sd">    :param unit: The empty variant of the given list type.</span>
-<span class="linenos">917</span><span class="sd">    :param label: The associative list join operator.</span>
-<span class="linenos">918</span><span class="sd">    :param terms: List (potentially empty) of terms to join in an associative list.</span>
-<span class="linenos">919</span><span class="sd">    :return: The list of terms joined using the supplied label, terminated with the unit element.</span>
-<span class="linenos">920</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">921</span>    <span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
-<span class="linenos">922</span>    <span class="k">try</span><span class="p">:</span>
-<span class="linenos">923</span>        <span class="n">fst</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
-<span class="linenos">924</span>        <span class="k">return</span> <span class="n">KApply</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="p">(</span><span class="n">fst</span><span class="p">,</span> <span class="n">build_cons</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">it</span><span class="p">)))</span>
-<span class="linenos">925</span>    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
-<span class="linenos">926</span>        <span class="k">return</span> <span class="n">unit</span></div>
+<span class="linenos">916</span><span class="k">def</span> <span class="nf">build_cons</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">KLabel</span><span class="p">,</span> <span class="n">terms</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">917</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">918</span><span class="sd">    Build a cons list.</span>
+<span class="linenos">919</span>
+<span class="linenos">920</span><span class="sd">    :param unit: The empty variant of the given list type.</span>
+<span class="linenos">921</span><span class="sd">    :param label: The associative list join operator.</span>
+<span class="linenos">922</span><span class="sd">    :param terms: List (potentially empty) of terms to join in an associative list.</span>
+<span class="linenos">923</span><span class="sd">    :return: The list of terms joined using the supplied label, terminated with the unit element.</span>
+<span class="linenos">924</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">925</span>    <span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">terms</span><span class="p">)</span>
+<span class="linenos">926</span>    <span class="k">try</span><span class="p">:</span>
+<span class="linenos">927</span>        <span class="n">fst</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+<span class="linenos">928</span>        <span class="k">return</span> <span class="n">KApply</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="p">(</span><span class="n">fst</span><span class="p">,</span> <span class="n">build_cons</span><span class="p">(</span><span class="n">unit</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">it</span><span class="p">)))</span>
+<span class="linenos">929</span>    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+<span class="linenos">930</span>        <span class="k">return</span> <span class="n">unit</span></div>
 
 </pre></div>
 
