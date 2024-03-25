@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
     from typing import Any, Final
 
-    from ..kast import AttKey, KAtt
+    from ..kast import AttEntry, AttKey, KAtt
     from ..kast.inner import KLabel
     from ..kast.outer import KFlatModule, KSentence
     from ..kore.syntax import Pattern, Sentence, Sort
@@ -744,13 +744,13 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     ).execute(definition)
     definition = DiscardHookAtts().execute(definition)
     definition = AddAnywhereAtts().execute(definition)
+    definition = AddSymbolAtts(Atts.MACRO(None), _is_macro).execute(definition)
+    definition = AddSymbolAtts(Atts.FUNCTIONAL(None), _is_functional).execute(definition)
+    definition = AddSymbolAtts(Atts.INJECTIVE(None), _is_injective).execute(definition)
+    definition = AddSymbolAtts(Atts.CONSTRUCTOR(None), _is_constructor).execute(definition)
 
     module = definition.modules[0]
 
-    module = _add_symbol_atts(module, Atts.MACRO, _is_macro)
-    module = _add_symbol_atts(module, Atts.FUNCTIONAL, _is_functional)
-    module = _add_symbol_atts(module, Atts.INJECTIVE, _is_injective)
-    module = _add_symbol_atts(module, Atts.CONSTRUCTOR, _is_constructor)
     module = _add_default_format_atts(module)
     module = _discard_format_atts(module)
     module = _inline_terminals_in_format_atts(module)
@@ -1007,22 +1007,26 @@ class AddAnywhereAtts(KompilerPass):
         return production
 
 
-def _add_symbol_atts(module: KFlatModule, att: AttKey[None], pred: Callable[[KAtt], bool]) -> KFlatModule:
-    """Add attribute to symbol productions based on a predicate predicate."""
+@dataclass
+class AddSymbolAtts(SingleModulePass):
+    """Add attribute to symbol productions based on a predicate."""
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+    entry: AttEntry
+    pred: Callable[[KAtt], bool]
 
-        if not sentence.klabel:  # filter for symbol productions
-            return sentence
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        return module.let(
+            sentences=tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
+        )
 
-        if pred(sentence.att):
-            return sentence.let(att=sentence.att.update([att(None)]))
+    def _update(self, production: KProduction) -> KProduction:
+        if not production.klabel:  # filter for symbol productions
+            return production
 
-        return sentence
+        if self.pred(production.att):
+            return production.let(att=production.att.update([self.entry]))
 
-    return module.let(sentences=tuple(update(sent) for sent in module))
+        return production
 
 
 def _is_macro(att: KAtt) -> bool:
