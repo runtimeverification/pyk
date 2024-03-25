@@ -749,10 +749,10 @@ def simplified_module(definition: KDefinition, module_name: str | None = None) -
     definition = AddSymbolAtts(Atts.INJECTIVE(None), _is_injective).execute(definition)
     definition = AddSymbolAtts(Atts.CONSTRUCTOR(None), _is_constructor).execute(definition)
     definition = AddDefaultFormatAtts().execute(definition)
+    definition = DiscardFormatAtts().execute(definition)
 
     module = definition.modules[0]
 
-    module = _discard_format_atts(module)
     module = _inline_terminals_in_format_atts(module)
     module = _add_colors_atts(module)
 
@@ -1156,23 +1156,23 @@ class AddDefaultFormatAtts(SingleModulePass):
         return production.let(att=production.att.update([Atts.FORMAT(production.default_format)]))
 
 
-def _discard_format_atts(module: KFlatModule) -> KFlatModule:
+@dataclass
+class DiscardFormatAtts(SingleModulePass):
     """Remove format attributes from symbol productions with items other than terminals and non-terminals."""
 
-    def update(sentence: KSentence) -> KSentence:
-        if not isinstance(sentence, KProduction):
-            return sentence
+    def _transform_module(self, module: KFlatModule) -> KFlatModule:
+        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
+        return module.let(sentences=sentences)
 
-        if not sentence.klabel:
-            return sentence
+    @staticmethod
+    def _update(production: KProduction) -> KProduction:
+        if not production.klabel:
+            return production
 
-        if all(isinstance(item, (KTerminal, KNonTerminal)) for item in sentence.items):
-            return sentence
+        if all(isinstance(item, (KTerminal, KNonTerminal)) for item in production.items):
+            return production
 
-        return sentence.let(att=sentence.att.discard([Atts.FORMAT]))
-
-    sentences = tuple(update(sent) for sent in module)
-    return module.let(sentences=sentences)
+        return production.let(att=production.att.discard([Atts.FORMAT]))
 
 
 def _inline_terminals_in_format_atts(module: KFlatModule) -> KFlatModule:
