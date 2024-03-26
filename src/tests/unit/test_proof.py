@@ -117,10 +117,10 @@ class TestProof:
 
 def test_read_write_proof_data(proof_dir: Path) -> None:
     kcfg = KCFG(proof_dir / 'apr_proof_1' / 'kcfg')
-    node1 = kcfg.create_node(term(1))
-    node2 = kcfg.create_node(term(2))
-    kcfg.create_node(term(3))
-    kcfg.create_node(term(4))
+    node1 = kcfg.add_node(term(1))
+    node2 = kcfg.add_node(term(2))
+    kcfg.add_node(term(3))
+    kcfg.add_node(term(4))
 
     proof = APRProof(
         id='apr_proof_1',
@@ -225,9 +225,9 @@ def test_apr_proof_minimization_and_terminals() -> None:
         logs={},
     )
 
-    assert proof._terminal == {13, 19, 21}
+    assert proof.terminal_ids == {13, 19, 21}
     proof.minimize_kcfg()
-    assert proof._terminal == {21}
+    assert proof.terminal_ids == {21}
 
 
 MODULE_NAME_TEST_DATA: Final = (
