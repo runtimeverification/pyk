@@ -79,13 +79,10 @@ class KCFGExploration:
     def remove_node(self, node_id: NodeIdLike) -> None:
         node_id = self.kcfg._resolve(node_id)
         self.kcfg.remove_node(node_id)
-        self.remove_terminal(node_id)
 
     # Pruning a KCFG subtree starting from a given node
     def prune(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[int]:
         pruned_nodes = self.kcfg.prune(node_id, keep_nodes=keep_nodes)
-        for node_id in pruned_nodes:
-            self.remove_terminal(node_id)
         return pruned_nodes
 
     #
