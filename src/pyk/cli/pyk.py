@@ -101,12 +101,14 @@ class PrintOptions(DefinitionOptions, OutputFileOptions, DisplayOptions, Logging
 class ServeRpcOptions(LoggingOptions):
     addr: str
     port: int
+    definition_dir: Path | None
 
     @staticmethod
     def default() -> dict[str, Any]:
         return {
             'addr': 'localhost',
             'port': 56601,
+            'definition_dir': None,
         }
 
 

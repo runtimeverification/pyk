@@ -6,6 +6,14 @@ from functools import partial
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import TYPE_CHECKING, Any, Callable, Final
 
+from ..kast.manip import get_cell, set_cell
+from ..kast.inner import KSort, Subst, KSequence, KToken, KApply
+from ..ktool.krun import KRun
+from ..kast import KInner
+from ..prelude.kint import intToken
+
+from ..cterm.cterm import CTerm
+
 if TYPE_CHECKING:
     from ..cli.pyk import ServeRpcOptions
 
@@ -116,3 +124,49 @@ class ExampleJsonRpcServer(JsonRpcServer):
 
     def exec_print_hello(self, obj: None) -> str:
         return 'hello.'
+
+
+class StatefulKJsonRpcServer(JsonRpcServer):
+    krun: KRun
+    config: KInner
+
+    def __init__(self, options: ServeRpcOptions) -> None:
+        super().__init__(options)
+
+        self.register_method('get_x', self.exec_get_x)
+        self.register_method('get_y', self.exec_get_y)
+        self.register_method('set_x', self.exec_set_x)
+        self.register_method('set_y', self.exec_set_y)
+        self.register_method('add', self.exec_add)
+
+        if not options.definition_dir:
+            raise ValueError('Must specify a definition dir with --definition')
+        self.krun = KRun(options.definition_dir)
+        self.config = self.krun.definition.init_config(KSort('GeneratedTopCell'))
+
+    def exec_get_x(self, obj: None) -> int:
+        return int(get_cell(self.config, 'X_CELL').token)
+
+    def exec_get_y(self, obj: None) -> int:
+        return int(get_cell(self.config, 'Y_CELL').token)
+
+    def exec_set_x(self, n: int) -> None:
+        self.config = set_cell(self.config, 'X_CELL', KToken(token=str(n), sort=KSort(name='Int')))
+
+    def exec_set_y(self, n: int) -> None:
+        self.config = set_cell(self.config, 'Y_CELL', KToken(token=str(n), sort=KSort(name='Int')))
+
+    def exec_add(self, obj: None) -> int:
+        x = get_cell(self.config, 'X_CELL')
+        y = get_cell(self.config, 'Y_CELL')
+        self.config = set_cell(self.config, 'K_CELL', KApply('_+Int_', [x, y]))
+
+        pattern = self.krun.kast_to_kore(self.config, sort=KSort('GeneratedTopCell'))
+        output_kore = self.krun.run_pattern(pattern)
+        self.config = self.krun.kore_to_kast(output_kore)
+        k_cell = get_cell(self.config, 'K_CELL')
+        if type(k_cell) is KSequence:
+            assert len(k_cell.items) == 1
+            k_cell = k_cell.items[0]
+
+        return int(k_cell.token)

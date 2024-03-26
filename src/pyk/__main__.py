@@ -38,7 +38,7 @@ from .ktool.krun import KRun
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
 from .proof.reachability import APRFailureInfo
-from .rpc.rpc import ExampleJsonRpcServer
+from .rpc.rpc import StatefulKJsonRpcServer
 from .utils import check_file_path, ensure_dir_path
 
 if TYPE_CHECKING:
@@ -132,7 +132,7 @@ def exec_print(options: PrintOptions) -> None:
 
 
 def exec_serve_rpc(options: ServeRpcOptions) -> None:
-    server = ExampleJsonRpcServer(options)
+    server = StatefulKJsonRpcServer(options)
     server.serve()
 
 
@@ -408,13 +408,14 @@ def create_argument_parser() -> ArgumentParser:
     )
     rpc_print_args.add_argument('--output-file', type=FileType('w'))
 
-    server_rpc_args = pyk_args_command.add_parser(
+    serve_rpc_args = pyk_args_command.add_parser(
         'serve-rpc',
         help='Start JSON-RPC server for pyk',
         parents=[k_cli_args.logging_args],
     )
-    server_rpc_args.add_argument('--addr', type=str, help='Address to listen for HTTP JSON-RPC requests')
-    server_rpc_args.add_argument('--port', type=int, help='Port to listen for HTTP JSON-RPC requests')
+    serve_rpc_args.add_argument('--addr', type=str, help='Address to listen for HTTP JSON-RPC requests')
+    serve_rpc_args.add_argument('--port', type=int, help='Port to listen for HTTP JSON-RPC requests')
+    serve_rpc_args.add_argument('--definition', dest='definition_dir', type=dir_path, help='Path to definition to use')
 
     rpc_kast_args = pyk_args_command.add_parser(
         'rpc-kast',
