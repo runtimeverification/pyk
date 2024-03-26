@@ -806,6 +806,19 @@ def replace_rewrites_with_implies(kast: KInner) -> KInner:
 
 
 def no_cell_rewrite_to_dots(term: KInner) -> KInner:
+    """
+    Transforms a given term by replacing the contents of each cell with dots if the LHS and RHS are the same.
+
+    This function recursively traverses the cells in a term. When it finds a cell whose left-hand side (LHS) is identical to its right-hand side (RHS),
+    it replaces the cell's contents with a predefined DOTS.
+
+    Parameters:
+    - term (KInner): The term to be transformed.
+
+    Returns:
+    - KInner: The transformed term, where specific cell contents have been replaced with dots.
+    """
+
     def _no_cell_rewrite_to_dots(_term: KInner) -> KInner:
         if type(_term) is KApply and _term.is_cell:
             lhs = extract_lhs(_term)
