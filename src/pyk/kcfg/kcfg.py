@@ -950,7 +950,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # Ensure split can be lifted
         if not can_lift_split:
             raise AssertionError(error_msg)
-
         # Create CTerms and CSubsts corresponding to the new targets of the split
         new_cterms_with_constraints = [
             (CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints), csubst.constraint) for csubst in csubsts
@@ -997,7 +996,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # Ensure split can be lifted
         if not can_lift_split:
             raise AssertionError(error_msg)
-
         # Get the substitution for `B`, at the same time removing 'B' from the targets of `A`.
         csubst_b = splits_from_a.pop(self._resolve(id))
         # Generate substitutions for additional targets `C_I`, which all exist by construction;
