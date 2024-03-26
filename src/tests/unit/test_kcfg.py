@@ -718,7 +718,7 @@ def test_split_csubsts() -> None:
     cfg.split_on_constraints(1, [x_equals(10), x_equals(20)])
     # The target substitutions are identities, with the appropriate constraints
     split = single(cfg.splits())
-    assert split.source == KCFG.Node(1, term(11))
+    assert split.source == KCFG.Node(1, term(11), attrs=[KCFGNodeAttr.SPLIT, KCFGNodeAttr.ROOT])
     assert split._targets[0][1] == CSubst(Subst({'V11': KVariable('V11')}), [x_equals(10)])
     assert split._targets[1][1] == CSubst(Subst({'V11': KVariable('V11')}), [x_equals(20)])
 
