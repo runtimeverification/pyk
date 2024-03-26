@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kast.manip &#8212; pyk 0.1.745 documentation</title>
+    <title>pyk.kast.manip &#8212; pyk 0.1.746 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=b294e057"></script>
+    <script src="../../../_static/documentation_options.js?v=856c6a3d"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -38,7 +38,7 @@
 <span class="linenos">  6</span>
 <span class="linenos">  7</span><span class="kn">from</span> <span class="nn">..prelude.k</span> <span class="kn">import</span> <span class="n">DOTS</span><span class="p">,</span> <span class="n">GENERATED_TOP_CELL</span>
 <span class="linenos">  8</span><span class="kn">from</span> <span class="nn">..prelude.kbool</span> <span class="kn">import</span> <span class="n">FALSE</span><span class="p">,</span> <span class="n">TRUE</span><span class="p">,</span> <span class="n">andBool</span><span class="p">,</span> <span class="n">impliesBool</span><span class="p">,</span> <span class="n">notBool</span><span class="p">,</span> <span class="n">orBool</span>
-<span class="linenos">  9</span><span class="kn">from</span> <span class="nn">..prelude.ml</span> <span class="kn">import</span> <span class="n">mlAnd</span><span class="p">,</span> <span class="n">mlEqualsTrue</span><span class="p">,</span> <span class="n">mlOr</span>
+<span class="linenos">  9</span><span class="kn">from</span> <span class="nn">..prelude.ml</span> <span class="kn">import</span> <span class="n">mlAnd</span><span class="p">,</span> <span class="n">mlEqualsTrue</span><span class="p">,</span> <span class="n">mlImplies</span><span class="p">,</span> <span class="n">mlOr</span>
 <span class="linenos"> 10</span><span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="n">find_common_items</span><span class="p">,</span> <span class="n">hash_str</span>
 <span class="linenos"> 11</span><span class="kn">from</span> <span class="nn">.att</span> <span class="kn">import</span> <span class="n">EMPTY_ATT</span><span class="p">,</span> <span class="n">Atts</span><span class="p">,</span> <span class="n">KAtt</span><span class="p">,</span> <span class="n">WithKAtt</span>
 <span class="linenos"> 12</span><span class="kn">from</span> <span class="nn">.inner</span> <span class="kn">import</span> <span class="p">(</span>
@@ -948,6 +948,49 @@
 <span class="linenos">794</span>    <span class="n">rule</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">update_atts</span><span class="p">([</span><span class="n">Atts</span><span class="o">.</span><span class="n">LABEL</span><span class="p">(</span><span class="n">rule_id</span><span class="p">)])</span>
 <span class="linenos">795</span>
 <span class="linenos">796</span>    <span class="k">return</span> <span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">Subst</span><span class="p">(</span><span class="n">vremap_subst</span><span class="p">))</span></div>
+
+<span class="linenos">797</span>
+<span class="linenos">798</span>
+<div class="viewcode-block" id="replace_rewrites_with_implies">
+<a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.replace_rewrites_with_implies">[docs]</a>
+<span class="linenos">799</span><span class="k">def</span> <span class="nf">replace_rewrites_with_implies</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">800</span>    <span class="k">def</span> <span class="nf">_replace_rewrites_with_implies</span><span class="p">(</span><span class="n">_kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">801</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KRewrite</span><span class="p">:</span>
+<span class="linenos">802</span>            <span class="k">return</span> <span class="n">mlImplies</span><span class="p">(</span><span class="n">_kast</span><span class="o">.</span><span class="n">lhs</span><span class="p">,</span> <span class="n">_kast</span><span class="o">.</span><span class="n">rhs</span><span class="p">)</span>
+<span class="linenos">803</span>        <span class="k">return</span> <span class="n">_kast</span>
+<span class="linenos">804</span>
+<span class="linenos">805</span>    <span class="k">return</span> <span class="n">bottom_up</span><span class="p">(</span><span class="n">_replace_rewrites_with_implies</span><span class="p">,</span> <span class="n">kast</span><span class="p">)</span></div>
+
+<span class="linenos">806</span>
+<span class="linenos">807</span>
+<div class="viewcode-block" id="no_cell_rewrite_to_dots">
+<a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.no_cell_rewrite_to_dots">[docs]</a>
+<span class="linenos">808</span><span class="k">def</span> <span class="nf">no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">809</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">810</span><span class="sd">    Transforms a given term by replacing the contents of each cell with dots if the LHS and RHS are the same.</span>
+<span class="linenos">811</span>
+<span class="linenos">812</span><span class="sd">    This function recursively traverses the cells in a term. When it finds a cell whose left-hand side (LHS) is identical to its right-hand side (RHS),</span>
+<span class="linenos">813</span><span class="sd">    it replaces the cell&#39;s contents with a predefined DOTS.</span>
+<span class="linenos">814</span>
+<span class="linenos">815</span><span class="sd">    Parameters:</span>
+<span class="linenos">816</span><span class="sd">    - term (KInner): The term to be transformed.</span>
+<span class="linenos">817</span>
+<span class="linenos">818</span><span class="sd">    Returns:</span>
+<span class="linenos">819</span><span class="sd">    - KInner: The transformed term, where specific cell contents have been replaced with dots.</span>
+<span class="linenos">820</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">821</span>
+<span class="linenos">822</span>    <span class="k">def</span> <span class="nf">_no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">_term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">823</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span> <span class="ow">and</span> <span class="n">_term</span><span class="o">.</span><span class="n">is_cell</span><span class="p">:</span>
+<span class="linenos">824</span>            <span class="n">lhs</span> <span class="o">=</span> <span class="n">extract_lhs</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span>
+<span class="linenos">825</span>            <span class="n">rhs</span> <span class="o">=</span> <span class="n">extract_rhs</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span>
+<span class="linenos">826</span>            <span class="k">if</span> <span class="n">lhs</span> <span class="o">==</span> <span class="n">rhs</span><span class="p">:</span>
+<span class="linenos">827</span>                <span class="k">return</span> <span class="n">KApply</span><span class="p">(</span><span class="n">_term</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="p">[</span><span class="n">DOTS</span><span class="p">])</span>
+<span class="linenos">828</span>        <span class="k">return</span> <span class="n">_term</span>
+<span class="linenos">829</span>
+<span class="linenos">830</span>    <span class="n">config</span><span class="p">,</span> <span class="n">_subst</span> <span class="o">=</span> <span class="n">split_config_from</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
+<span class="linenos">831</span>    <span class="n">subst</span> <span class="o">=</span> <span class="n">Subst</span><span class="p">({</span><span class="n">cell_name</span><span class="p">:</span> <span class="n">_no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">cell_contents</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell_name</span><span class="p">,</span> <span class="n">cell_contents</span> <span class="ow">in</span> <span class="n">_subst</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+<span class="linenos">832</span>
+<span class="linenos">833</span>    <span class="k">return</span> <span class="n">subst</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></div>
 
 </pre></div>
 
