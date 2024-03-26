@@ -5,6 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass, field
+from functools import reduce
 from threading import RLock
 from typing import TYPE_CHECKING, Final, List, Union, cast, final
 
@@ -24,7 +25,7 @@ from ..kast.manip import (
 from ..kast.outer import KFlatModule
 from ..prelude.kbool import andBool
 from ..prelude.ml import mlAnd
-from ..utils import ensure_dir_path, single
+from ..utils import ensure_dir_path, not_none, single
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
@@ -109,29 +110,24 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         @property
         @abstractmethod
-        def targets(self) -> tuple[KCFG.Node, ...]:
-            ...
+        def targets(self) -> tuple[KCFG.Node, ...]: ...
 
         @property
         def target_ids(self) -> list[int]:
             return sorted(target.id for target in self.targets)
 
         @abstractmethod
-        def replace_source(self, node: KCFG.Node) -> KCFG.Successor:
-            ...
+        def replace_source(self, node: KCFG.Node) -> KCFG.Successor: ...
 
         @abstractmethod
-        def replace_target(self, node: KCFG.Node) -> KCFG.Successor:
-            ...
+        def replace_target(self, node: KCFG.Node) -> KCFG.Successor: ...
 
         @abstractmethod
-        def to_dict(self) -> dict[str, Any]:
-            ...
+        def to_dict(self) -> dict[str, Any]: ...
 
         @staticmethod
         @abstractmethod
-        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.Successor:
-            ...
+        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.Successor: ...
 
     class EdgeLike(Successor):
         source: KCFG.Node
@@ -224,8 +220,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return (self.source, self.target_ids) < (other.source, other.target_ids)
 
         @abstractmethod
-        def with_single_target(self, target: KCFG.Node) -> KCFG.MultiEdge:
-            ...
+        def with_single_target(self, target: KCFG.Node) -> KCFG.MultiEdge: ...
 
     @final
     @dataclass(frozen=True)
@@ -860,7 +855,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
         source = self.node(source_id)
         branch_node_ids = [self.create_node(source.cterm.add_constraint(c)).id for c in constraints]
-        csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
+        csubsts = [not_none(source.cterm.match_with_constraint(self.node(id).cterm)) for id in branch_node_ids]
+        csubsts = [
+            reduce(CSubst.add_constraint, flatten_label('#And', constraint), csubst)
+            for (csubst, constraint) in zip(csubsts, constraints, strict=True)
+        ]
         self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids
 
@@ -1172,20 +1171,17 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return KCFG.Node.from_dict(store.read_node_data(node_id))
 
 
-class KCFGExtendResult(ABC):
-    ...
+class KCFGExtendResult(ABC): ...
 
 
 @final
 @dataclass(frozen=True)
-class Vacuous(KCFGExtendResult):
-    ...
+class Vacuous(KCFGExtendResult): ...
 
 
 @final
 @dataclass(frozen=True)
-class Stuck(KCFGExtendResult):
-    ...
+class Stuck(KCFGExtendResult): ...
 
 
 @final
