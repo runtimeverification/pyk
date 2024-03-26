@@ -50,11 +50,8 @@ class NodeAttr(Enum): ...
 
 
 class KCFGNodeAttr(NodeAttr, Enum):
-    ROOT = 'root'
     VACUOUS = 'vacuous'
     STUCK = 'stuck'
-    LEAF = 'leaf'
-    SPLIT = 'split'
 
 
 class KCFGStore:
@@ -96,23 +93,9 @@ class KCFGStore:
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def compute_attrs(self, node_id: int) -> None:
-        def check_root(_node_id: int) -> bool:
-            return len(self.predecessors(_node_id)) == 0
-
-        def check_leaf(_node_id: int) -> bool:
-            return len(self.successors(_node_id)) == 0
-
         node = self.node(node_id)
 
         attrs = set(node.attrs)
-        if check_root(node_id):
-            attrs.add(KCFGNodeAttr.ROOT)
-        else:
-            attrs.discard(KCFGNodeAttr.ROOT)
-        if check_leaf(node_id):
-            attrs.add(KCFGNodeAttr.LEAF)
-        else:
-            attrs.discard(KCFGNodeAttr.LEAF)
 
         node = KCFG.Node(node_id, node.cterm, attrs=attrs)
 
@@ -758,7 +741,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 )
             if type(succ) is KCFG.Split:
                 self._splits[succ.source.id] = succ
-                self.add_attr(succ.source.id, KCFGNodeAttr.SPLIT)
             elif type(succ) is KCFG.NDBranch:
                 self._ndbranches[succ.source.id] = succ
 
@@ -1070,7 +1052,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._aliases.pop(alias)
 
     def is_root(self, node_id: NodeIdLike) -> bool:
-        return KCFGNodeAttr.ROOT in self.node(node_id).attrs
+        node_id = self._resolve(node_id)
+        return len(self.predecessors(node_id)) == 0
 
     def is_vacuous(self, node_id: NodeIdLike) -> bool:
         return KCFGNodeAttr.VACUOUS in self.node(node_id).attrs
@@ -1079,14 +1062,15 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return KCFGNodeAttr.STUCK in self.node(node_id).attrs
 
     def is_split(self, node_id: NodeIdLike) -> bool:
-        return KCFGNodeAttr.SPLIT in self.node(node_id).attrs
+        node_id = self._resolve(node_id)
+        return node_id in self._splits
 
     def is_ndbranch(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
         return node_id in self._ndbranches
 
     def is_leaf(self, node_id: NodeIdLike) -> bool:
-        return KCFGNodeAttr.LEAF in self.node(node_id).attrs
+        return len(self.successors(node_id)) == 0
 
     def is_covered(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
