@@ -896,14 +896,29 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             -   bool: An indicator of whether or not at least one edge lift was performed.
         """
 
-        edges_to_lift = [
-            node.id
-            for node in self.nodes
-            if len(self.edges(source_id=node.id)) > 0 and len(self.edges(target_id=node.id)) > 0
-        ]
+        edges_to_lift = sorted(
+            [
+                node.id
+                for node in self.nodes
+                if len(self.edges(source_id=node.id)) > 0 and len(self.edges(target_id=node.id)) > 0
+            ]
+        )
         for node_id in edges_to_lift:
             self.lift_edge(node_id)
         return len(edges_to_lift) > 0
+
+    def _can_lift_split(self, source: NodeIdLike, target: NodeIdLike) -> tuple[bool, str]:
+        # If any of the targets contains variables not present in the source, the lift cannot be performed soundly
+        target_csubsts = list(single(self.splits(source_id=target)).splits.values())
+        fv_source = set(free_vars(self.node(source).cterm.kast))
+        for subst in target_csubsts:
+            fresh_vars = set(free_vars(mlAnd(subst.constraints))).difference(fv_source)
+        error_msg = (
+            f'Cannot lift split at node {target} due to branching on freshly introduced variables: {fresh_vars}'
+            if len(fresh_vars) > 0
+            else ''
+        )
+        return len(fresh_vars) == 0, error_msg
 
     def lift_split_edge(self, id: NodeIdLike) -> None:
         """Lift a split up an edge directly preceding it.
@@ -928,13 +943,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         a = a_to_b.source
         split_from_b = single(self.splits(source_id=id))
         ci, csubsts = list(split_from_b.splits.keys()), list(split_from_b.splits.values())
-        # If any of the `cond_I` contains variables not present in `A`, the lift cannot be performed soundly
-        fv_a = set(free_vars(a.cterm.kast))
-        for subst in csubsts:
-            fresh_vars = set(free_vars(mlAnd(subst.constraints))).difference(fv_a)
-            assert (
-                len(fresh_vars) == 0
-            ), f'Cannot lift split at node {id} due to branching on freshly introduced variables: {fresh_vars}'
+        can_lift_split, error_msg = self._can_lift_split(a.id, id)
+        # Ensure split can be lifted
+        if not can_lift_split:
+            raise AssertionError(error_msg)
+
         # Create CTerms and CSubsts corresponding to the new targets of the split
         new_cterms_with_constraints = [
             (CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints), csubst.constraint) for csubst in csubsts
@@ -975,15 +988,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         # `B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]-> [C_1, ..., C_N]`
         split_from_a, split_from_b = single(self.splits(target_id=id)), single(self.splits(source_id=id))
         splits_from_a, splits_from_b = split_from_a.splits, split_from_b.splits
-        ci, csubsts = list(splits_from_b.keys()), list(splits_from_b.values())
+        ci = list(splits_from_b.keys())
         a = split_from_a.source
-        # If any of the `cond_I` contains variables not present in `A`, the lift cannot be performed soundly
-        fv_a = set(free_vars(a.cterm.kast))
-        for subst in csubsts:
-            fresh_vars = set(free_vars(mlAnd(subst.constraints))).difference(fv_a)
-            assert (
-                len(fresh_vars) == 0
-            ), f'Cannot lift split at node {id} due to branching on freshly introduced variables: {fresh_vars}'
+        can_lift_split, error_msg = self._can_lift_split(a.id, id)
+        # Ensure split can be lifted
+        if not can_lift_split:
+            raise AssertionError(error_msg)
+
         # Get the substitution for `B`, at the same time removing 'B' from the targets of `A`.
         csubst_b = splits_from_a.pop(self._resolve(id))
         # Generate substitutions for additional targets `C_I`, which all exist by construction;
@@ -1017,17 +1028,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def _lift_split(finder: Callable, lifter: Callable) -> bool:
             while True:
                 result = False
-                splits_to_lift = [
-                    node.id
-                    for node in self.nodes
-                    if self.splits(source_id=node.id) != [] and finder(target_id=node.id) != []
-                ]
-                for node_id in splits_to_lift:
-                    try:
-                        lifter(node_id)
-                        result = True
-                    except AssertionError as err:
-                        _LOGGER.warning(str(err))
+                splits_to_lift = sorted(
+                    [
+                        node.id
+                        for node in self.nodes
+                        if self.splits(source_id=node.id) != []
+                        and finder(target_id=node.id) != []
+                        and self._can_lift_split(single(finder(target_id=node.id)).source.id, node.id)[0]
+                    ]
+                )
+                for id in splits_to_lift:
+                    lifter(id)
+                    result = True
                 if not result or len(splits_to_lift) == 0:
                     break
             return result
