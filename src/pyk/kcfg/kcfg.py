@@ -77,7 +77,7 @@ class KCFGStore:
 
     def read_cfg_data(self) -> dict[str, Any]:
         dct = json.loads(self.kcfg_json_path.read_text())
-        nodes = [json.loads(self.kcfg_node_path(node_id).read_text()) for node_id in dct.get('nodes') or []]
+        nodes = [self.read_node_data(node_id) for node_id in dct.get('nodes') or []]
         dct['nodes'] = nodes
         return dct
 
