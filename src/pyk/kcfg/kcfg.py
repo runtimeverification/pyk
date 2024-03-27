@@ -145,6 +145,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def discard_attr(self, attr: NodeAttr) -> KCFG.Node:
             return KCFG.Node(self.id, self.cterm, self.attrs.difference([attr]))
 
+        def let(self, cterm: CTerm | None = None, attrs: Iterable[KCFGNodeAttr] | None = None) -> KCFG.Node:
+            new_cterm = cterm if cterm is not None else self.cterm
+            new_attrs = attrs if attrs is not None else self.attrs
+            return KCFG.Node(self.id, new_cterm, new_attrs)
+
     class Successor(ABC):
         source: KCFG.Node
 
@@ -711,9 +716,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self, node_id: NodeIdLike, cterm: CTerm | None = None, attrs: Iterable[KCFGNodeAttr] | None = None
     ) -> None:
         node = self.node(node_id)
-        new_cterm = node.cterm if cterm is None else cterm
-        new_attrs = node.attrs if attrs is None else attrs
-        new_node = KCFG.Node(node.id, new_cterm, attrs=new_attrs)
+        new_node = node.let(cterm=cterm, attrs=attrs)
         self._nodes[node.id] = new_node
         self._created_nodes.add(node.id)
         self._update_refs(node.id)
