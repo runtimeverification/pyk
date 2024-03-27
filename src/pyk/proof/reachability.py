@@ -471,7 +471,7 @@ class APRProof(Proof, KCFGExploration):
         proof_json = proof_subdir / 'proof.json'
         proof_dict = json.loads(proof_json.read_text())
         cfg_dir = proof_subdir / 'kcfg'
-        kcfg = KCFG.read_cfg_data(cfg_dir, id)
+        kcfg = KCFG.read_cfg_data(cfg_dir)
         init = int(proof_dict['init'])
         target = int(proof_dict['target'])
         bounded = proof_dict['bounded']

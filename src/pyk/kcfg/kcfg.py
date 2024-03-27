@@ -77,9 +77,14 @@ class KCFGStore:
         self, dct: dict[str, Any], deleted_nodes: Iterable[int] = (), created_nodes: Iterable[int] = ()
     ) -> None:
         node_dict = {node_dct['id']: node_dct for node_dct in dct['nodes']}
+        vacuous_nodes = [node_id for node_id in node_dict.keys() if KCFGNodeAttr.VACUOUS in node_dict[node_id]['attrs']]
+        stuck_nodes = [node_id for node_id in node_dict.keys() if KCFGNodeAttr.STUCK in node_dict[node_id]['attrs']]
+        dct['vacuous'] = vacuous_nodes
+        dct['stuck'] = stuck_nodes
         for node_id in deleted_nodes:
             self.kcfg_node_path(node_id).unlink(missing_ok=True)
         for node_id in created_nodes:
+            del(node_dict[node_id]['attrs'])
             self.kcfg_node_path(node_id).write_text(json.dumps(node_dict[node_id]))
         dct['nodes'] = list(node_dict.keys())
         self.kcfg_json_path.write_text(json.dumps(dct))
@@ -88,6 +93,22 @@ class KCFGStore:
         dct = json.loads(self.kcfg_json_path.read_text())
         nodes = [self.read_node_data(node_id) for node_id in dct.get('nodes') or []]
         dct['nodes'] = nodes
+        node_ids = [node['id'] for node in nodes]
+
+        new_nodes = []
+        for node in dct['nodes']:
+            attrs = []
+            if node['id'] in dct['vacuous']:
+                attrs.append(KCFGNodeAttr.VACUOUS)
+            if node['id'] in dct['stuck']:
+                attrs.append(KCFGNodeAttr.STUCK)
+            new_nodes.append({'id': node['id'], 'cterm': node['cterm'], 'attrs': attrs})
+
+        dct['nodes'] = new_nodes
+
+        del(dct['vacuous'])
+        del(dct['stuck'])
+
         return dct
 
     def read_node_data(self, node_id: int) -> dict[str, Any]:
@@ -108,12 +129,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             object.__setattr__(self, 'attrs', frozenset(attrs))
 
         def to_dict(self) -> dict[str, Any]:
-            return {'id': self.id, 'cterm': self.cterm.to_dict(), 'attrs': [attr.name for attr in self.attrs]}
+            return {'id': self.id, 'cterm': self.cterm.to_dict(), 'attrs': self.attrs}
 
         @staticmethod
         def from_dict(dct: dict[str, Any]) -> KCFG.Node:
-            attrs = [NodeAttr(attr) for attr in dct['attrs']]
-            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']), attrs)
+            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']), dct['attrs'])
 
         def add_attr(self, attr: NodeAttr) -> KCFG.Node:
             return KCFG.Node(self.id, self.cterm, list(self.attrs) + [attr])
@@ -510,8 +530,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         splits = [split.to_dict() for split in self.splits()]
         ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
-        vacuous = sorted([node.id for node in self.nodes if KCFGNodeAttr.VACUOUS in node.attrs])
-        stuck = sorted([node.id for node in self.nodes if KCFGNodeAttr.STUCK in node.attrs])
         aliases = dict(sorted(self._aliases.items()))
 
         res = {
@@ -521,8 +539,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             'covers': covers,
             'splits': splits,
             'ndbranches': ndbranches,
-            'vacuous': vacuous,
-            'stuck': stuck,
             'aliases': aliases,
         }
         return {k: v for k, v in res.items() if v}
@@ -553,12 +569,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for ndbranch_dict in dct.get('ndbranches') or []:
             ndbranch = KCFG.NDBranch.from_dict(ndbranch_dict, cfg._nodes)
             cfg.add_successor(ndbranch)
-
-        for vacuous_id in dct.get('vacuous') or []:
-            cfg.add_vacuous(vacuous_id)
-
-        for stuck_id in dct.get('stuck') or []:
-            cfg.add_stuck(stuck_id)
 
         for alias, node_id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=node_id)
@@ -1200,7 +1210,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._created_nodes.clear()
 
     @staticmethod
-    def read_cfg_data(cfg_dir: Path, id: str) -> KCFG:
+    def read_cfg_data(cfg_dir: Path) -> KCFG:
         store = KCFGStore(cfg_dir)
         cfg = KCFG.from_dict(store.read_cfg_data())
         cfg._kcfg_store = store

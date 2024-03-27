@@ -8,6 +8,7 @@ from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KRewrite, KToken, KVariable, Subst
 from pyk.kast.manip import no_cell_rewrite_to_dots
 from pyk.kcfg import KCFG, KCFGShow
+from pyk.kcfg.kcfg import KCFGNodeAttr
 from pyk.kcfg.show import NodePrinter
 from pyk.prelude.kint import geInt, intToken, ltInt
 from pyk.prelude.ml import mlEquals, mlEqualsTrue, mlTop
@@ -671,9 +672,31 @@ def test_write_cfg_data(tmp_path: Path) -> None:
     assert _written_nodes() == {'2.json', '3.json', '4.json'}
 
 
+def test_read_write_cfg_data(tmp_path: Path) -> None:
+
+    kcfg = KCFG(cfg_dir=tmp_path)
+
+    kcfg.add_node(node(1))
+    kcfg.add_node(node(2))
+    kcfg.add_node(node(3))
+    kcfg.add_attr(1, KCFGNodeAttr.VACUOUS)
+    kcfg.add_attr(3, KCFGNodeAttr.STUCK)
+
+    kcfg.write_cfg_data()
+    read_kcfg = KCFG.read_cfg_data(tmp_path)
+
+    assert set(kcfg.nodes) == set(read_kcfg.nodes)
+
+
 def test_pretty_print() -> None:
+    nodes = node_dicts(15, start=10) + predicate_node_dicts(1, start=25)
+    nodes_dict = {node['id']: node for node in nodes}
+    nodes_dict[23]['attrs'] = [KCFGNodeAttr.STUCK]
+    nodes_dict[17]['attrs'] = [KCFGNodeAttr.VACUOUS]
+    nodes = list(nodes_dict.values())
+
     d = {
-        'nodes': node_dicts(15, start=10) + predicate_node_dicts(1, start=25),
+        'nodes': nodes,
         'aliases': {'foo': 14, 'bar': 14},
         'edges': edge_dicts((21, 12), (12, 13, 5), (13, 14), (15, 16), (16, 13), (18, 17), (22, 19)),
         'covers': cover_dicts((19, 22)),
