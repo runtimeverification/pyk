@@ -142,7 +142,7 @@ class KCFGExplore:
             raise ValueError(f'Unable to take {depth} steps from node, got {exec_res.depth} steps {self.id}: {node.id}')
         if len(exec_res.next_states) > 0:
             raise ValueError(f'Found branch within {depth} steps {self.id}: {node.id}')
-        new_node = cfg.add_node(exec_res.state)
+        new_node = cfg.create_node(exec_res.state)
         _LOGGER.info(f'Found new node at depth {depth} {self.id}: {shorten_hashes((node.id, new_node.id))}')
         logs[new_node.id] = exec_res.logs
         out_edges = cfg.edges(source_id=node.id)

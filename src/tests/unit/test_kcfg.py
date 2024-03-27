@@ -200,12 +200,12 @@ def test_to_dict_repeated() -> None:
     assert cfg_dict1 == cfg_dict2
 
 
-def test_add_node() -> None:
+def test_create_node() -> None:
     # Given
     cfg = KCFG()
 
     # When
-    new_node = cfg.add_node(term(1))
+    new_node = cfg.create_node(term(1))
 
     # Then
     assert new_node == node(1)
@@ -248,8 +248,8 @@ def test_cover_then_remove() -> None:
     cfg = KCFG()
 
     # When
-    node1 = cfg.add_node(CTerm(KApply('<top>', token(1))))
-    node2 = cfg.add_node(CTerm(KApply('<top>', KVariable('X'))))
+    node1 = cfg.create_node(CTerm(KApply('<top>', token(1))))
+    node2 = cfg.create_node(CTerm(KApply('<top>', KVariable('X'))))
     cover = cfg.create_cover(node1.id, node2.id)
 
     # Then
@@ -633,7 +633,7 @@ def test_minimize() -> None:
 
 def test_split_csubsts() -> None:
     cfg = KCFG()
-    cfg.add_node(term(11))
+    cfg.create_node(term(11))
     cfg.split_on_constraints(1, [x_equals(10), x_equals(20)])
     # The target substitutions are identities, with the appropriate constraints
     split = single(cfg.splits())
@@ -648,9 +648,9 @@ def test_write_cfg_data(tmp_path: Path) -> None:
 
     kcfg = KCFG(cfg_dir=tmp_path)
 
-    kcfg.add_node(node(1).cterm, node(1).id)
-    kcfg.add_node(node(2).cterm, node(2).id)
-    kcfg.add_node(node(3).cterm, node(3).id)
+    kcfg.add_node(node(1))
+    kcfg.add_node(node(2))
+    kcfg.add_node(node(3))
 
     assert _written_nodes() == set()
 
@@ -658,11 +658,11 @@ def test_write_cfg_data(tmp_path: Path) -> None:
 
     assert _written_nodes() == {'1.json', '2.json', '3.json'}
 
-    kcfg.add_node(node(4).cterm, node(4).id)
+    kcfg.add_node(node(4))
     kcfg.remove_node(1)
     kcfg.remove_node(2)
     kcfg.let_node(3, cterm=node(3).cterm)
-    kcfg.add_node(node(2).cterm, node(2).id)
+    kcfg.add_node(node(2))
 
     assert _written_nodes() == {'1.json', '2.json', '3.json'}
 

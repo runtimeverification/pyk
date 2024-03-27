@@ -117,10 +117,10 @@ class TestProof:
 
 def test_read_write_proof_data(proof_dir: Path) -> None:
     kcfg = KCFG(proof_dir / 'apr_proof_1' / 'kcfg')
-    node1 = kcfg.add_node(term(1))
-    node2 = kcfg.add_node(term(2))
-    kcfg.add_node(term(3))
-    kcfg.add_node(term(4))
+    node1 = kcfg.create_node(term(1))
+    node2 = kcfg.create_node(term(2))
+    kcfg.create_node(term(3))
+    kcfg.create_node(term(4))
 
     proof = APRProof(
         id='apr_proof_1',

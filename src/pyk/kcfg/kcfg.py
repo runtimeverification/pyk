@@ -46,7 +46,7 @@ NodeIdLike = int | str
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class NodeAttr(Enum): ...
+class NodeAttr(str, Enum): ...
 
 
 class KCFGNodeAttr(NodeAttr, Enum):
@@ -108,11 +108,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             object.__setattr__(self, 'attrs', frozenset(attrs))
 
         def to_dict(self) -> dict[str, Any]:
-            return {'id': self.id, 'cterm': self.cterm.to_dict()}
+            return {'id': self.id, 'cterm': self.cterm.to_dict(), 'attrs': [attr.name for attr in self.attrs]}
 
         @staticmethod
         def from_dict(dct: dict[str, Any]) -> KCFG.Node:
-            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']))
+            attrs = [NodeAttr(attr) for attr in dct['attrs']]
+            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']), attrs)
 
         def add_attr(self, attr: NodeAttr) -> KCFG.Node:
             return KCFG.Node(self.id, self.cterm, list(self.attrs) + [attr])
@@ -446,12 +447,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         claim_body = rename_generated_vars(claim_body)
 
         claim_lhs = CTerm.from_kast(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
-        init_node = cfg.add_node(claim_lhs)
+        init_node = cfg.create_node(claim_lhs)
 
         claim_rhs = CTerm.from_kast(extract_rhs(claim_body)).add_constraint(
             bool_to_ml_pred(andBool([claim.requires, claim.ensures]))
         )
-        target_node = cfg.add_node(claim_rhs)
+        target_node = cfg.create_node(claim_rhs)
 
         return cfg, init_node.id, target_node.id
 
@@ -482,11 +483,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 self.add_stuck(node.id)
 
             case Abstract(cterm):
-                new_node = self.add_node(cterm)
+                new_node = self.create_node(cterm)
                 self.create_cover(node.id, new_node.id)
 
             case Step(cterm, depth, next_node_logs, rule_labels, _):
-                next_node = self.add_node(cterm)
+                next_node = self.create_node(cterm)
                 logs[next_node.id] = next_node_logs
                 self.create_edge(node.id, next_node.id, depth, rules=rule_labels)
 
@@ -494,7 +495,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 self.split_on_constraints(node.id, constraints)
 
             case NDBranch(cterms, next_node_logs, rule_labels):
-                next_ids = [self.add_node(cterm).id for cterm in cterms]
+                next_ids = [self.create_node(cterm).id for cterm in cterms]
                 for i in next_ids:
                     logs[i] = next_node_logs
                 self.create_ndbranch(node.id, next_ids, rules=rule_labels)
@@ -531,7 +532,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         cfg = KCFG(optimize_memory=optimize_memory)
 
         for node_dict in dct.get('nodes') or []:
-            cfg.add_node(node_id=node_dict['id'], cterm=CTerm.from_dict(node_dict['cterm']))
+            node = KCFG.Node.from_dict(node_dict)
+            cfg.add_node(node)
 
         max_id = max([node.id for node in cfg.nodes], default=0)
         cfg._node_id = dct.get('next', max_id + 1)
@@ -623,7 +625,13 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def contains_node(self, node: Node) -> bool:
         return bool(self.get_node(node.id))
 
-    def add_node(self, cterm: CTerm, node_id: int | None = None) -> Node:
+    def add_node(self, node: KCFG.Node) -> None:
+        if node.id in self._nodes:
+            raise ValueError(f'Node with id already exists: {node.id}')
+        self._nodes[node.id] = node
+        self._created_nodes.add(node.id)
+
+    def create_node(self, cterm: CTerm, node_id: int | None = None) -> Node:
         """Adds a node to the KCFG and computes attributes. Uses fresh id if none is passed"""
         if node_id is None:
             node_id = self._node_id
@@ -894,7 +902,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
         source = self.node(source_id)
-        branch_node_ids = [self.add_node(source.cterm.add_constraint(c)).id for c in constraints]
+        branch_node_ids = [self.create_node(source.cterm.add_constraint(c)).id for c in constraints]
         csubsts = [not_none(source.cterm.match_with_constraint(self.node(id).cterm)) for id in branch_node_ids]
         csubsts = [
             reduce(CSubst.add_constraint, flatten_label('#And', constraint), csubst)
@@ -981,7 +989,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self.remove_node(id)
         # Create the nodes `[ A #And cond_I | I = 1..N ]`.
         ai: list[NodeIdLike] = [
-            self.add_node(CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints)).id for csubst in csubsts
+            self.create_node(CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints)).id for csubst in csubsts
         ]
         # Create the edges `[A #And cond_1 --M steps--> C_I | I = 1..N ]`
         for i in range(len(ai)):
