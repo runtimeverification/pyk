@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from signal import SIGTERM
+from signal import SIGINT
 from subprocess import Popen
 from time import sleep
 from typing import ClassVar  # noqa: TC003
@@ -1133,7 +1133,10 @@ class KoreServer(ContextManager['KoreServer']):
 
     def close(self) -> None:
         _LOGGER.info(f'Stopping KoreServer: {self.host}:{self.port}, pid={self.pid}')
-        self._proc.send_signal(SIGTERM)
+        if '--solver-transcript' in self._command:
+            self._proc.send_signal(SIGINT)
+        else:
+            self._proc.terminate()
         self._proc.wait()
         _LOGGER.info(f'KoreServer stopped: {self.host}:{self.port}, pid={self.pid}')
 
