@@ -5,6 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass, field
+from functools import reduce
 from threading import RLock
 from typing import TYPE_CHECKING, Final, List, Union, cast, final
 
@@ -24,7 +25,7 @@ from ..kast.manip import (
 from ..kast.outer import KFlatModule
 from ..prelude.kbool import andBool
 from ..prelude.ml import mlAnd
-from ..utils import ensure_dir_path, single
+from ..utils import ensure_dir_path, not_none, single
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, MutableMapping
@@ -77,9 +78,12 @@ class KCFGStore:
 
     def read_cfg_data(self) -> dict[str, Any]:
         dct = json.loads(self.kcfg_json_path.read_text())
-        nodes = [json.loads(self.kcfg_node_path(node_id).read_text()) for node_id in dct.get('nodes') or []]
+        nodes = [self.read_node_data(node_id) for node_id in dct.get('nodes') or []]
         dct['nodes'] = nodes
         return dct
+
+    def read_node_data(self, node_id: int) -> dict[str, Any]:
+        return json.loads(self.kcfg_node_path(node_id).read_text())
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
@@ -851,7 +855,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
         source = self.node(source_id)
         branch_node_ids = [self.create_node(source.cterm.add_constraint(c)).id for c in constraints]
-        csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
+        csubsts = [not_none(source.cterm.match_with_constraint(self.node(id).cterm)) for id in branch_node_ids]
+        csubsts = [
+            reduce(CSubst.add_constraint, flatten_label('#And', constraint), csubst)
+            for (csubst, constraint) in zip(csubsts, constraints, strict=True)
+        ]
         self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids
 
@@ -1156,6 +1164,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         cfg = KCFG.from_dict(store.read_cfg_data())
         cfg._kcfg_store = store
         return cfg
+
+    @staticmethod
+    def read_node_data(cfg_dir: Path, node_id: int) -> KCFG.Node:
+        store = KCFGStore(cfg_dir)
+        return KCFG.Node.from_dict(store.read_node_data(node_id))
 
 
 class KCFGExtendResult(ABC): ...
