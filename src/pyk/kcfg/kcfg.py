@@ -743,7 +743,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def add_successor(self, succ: KCFG.Successor) -> None:
         self._check_no_successors(succ.source.id)
         self._check_no_zero_loops(succ.source.id, succ.target_ids)
-
         if type(succ) is KCFG.Edge:
             self._edges[succ.source.id] = succ
         elif type(succ) is KCFG.Cover:
@@ -785,9 +784,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         target = self.node(target_id)
         edge = KCFG.Edge(source, target, depth, tuple(rules))
         self.add_successor(edge)
-        _edge = self.edge(source_id=source_id, target_id=target_id)
-        assert _edge is not None
-        return _edge
+        return edge
 
     def remove_edge(self, source_id: NodeIdLike, target_id: NodeIdLike) -> None:
         source_id = self._resolve(source_id)
@@ -827,9 +824,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 raise ValueError(f'No matching between: {source.id} and {target.id}')
         cover = KCFG.Cover(source, target, csubst=csubst)
         self.add_successor(cover)
-        _cover = self.cover(source_id=source_id, target_id=target_id)
-        assert _cover is not None
-        return _cover
+        return cover
 
     def remove_cover(self, source_id: NodeIdLike, target_id: NodeIdLike) -> None:
         source_id = self._resolve(source_id)
