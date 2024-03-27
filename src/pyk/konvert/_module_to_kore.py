@@ -912,13 +912,13 @@ class AddDomainValueAtts(SingleModulePass):
 
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
         token_sorts = self._token_sorts(module)
-        return module.map_sentences(lambda syntax_sort: self._update(syntax_sort, token_sorts), of_type=KSyntaxSort)
 
-    @staticmethod
-    def _update(syntax_sort: KSyntaxSort, token_sorts: set[KSort]) -> KSyntaxSort:
-        if syntax_sort.sort not in token_sorts:
-            return syntax_sort
-        return syntax_sort.let(att=syntax_sort.att.update([Atts.HAS_DOMAIN_VALUES(None)]))
+        def update(syntax_sort: KSyntaxSort) -> KSyntaxSort:
+            if syntax_sort.sort not in token_sorts:
+                return syntax_sort
+            return syntax_sort.let(att=syntax_sort.att.update([Atts.HAS_DOMAIN_VALUES(None)]))
+
+        return module.map_sentences(update, of_type=KSyntaxSort)
 
     @staticmethod
     def _token_sorts(module: KFlatModule) -> set[KSort]:
@@ -957,9 +957,22 @@ class AddAnywhereAtts(KompilerPass):
             raise ValueError('Expected a single module')
         module = definition.modules[0]
         rules = self._rules_by_klabel(module)
-        module = module.map_sentences(
-            lambda production: self._update(production, definition, rules), of_type=KProduction
-        )
+
+        def update(production: KProduction) -> KProduction:
+            if not production.klabel:
+                return production
+
+            klabel = production.klabel
+
+            if any(Atts.ANYWHERE in rule.att for rule in rules.get(klabel, [])):
+                return production.let(att=production.att.update([Atts.ANYWHERE(None)]))
+
+            if klabel.name in definition.overloads:
+                return production.let(att=production.att.update([Atts.ANYWHERE(None)]))
+
+            return production
+
+        module = module.map_sentences(update, of_type=KProduction)
         return KDefinition(module.name, (module,))
 
     @staticmethod
@@ -977,21 +990,6 @@ class AddAnywhereAtts(KompilerPass):
             label = rule.body.lhs.label
             res.setdefault(label, []).append(rule)
         return res
-
-    @staticmethod
-    def _update(production: KProduction, definition: KDefinition, rules: Mapping[KLabel, list[KRule]]) -> KProduction:
-        if not production.klabel:
-            return production
-
-        klabel = production.klabel
-
-        if any(Atts.ANYWHERE in rule.att for rule in rules.get(klabel, [])):
-            return production.let(att=production.att.update([Atts.ANYWHERE(None)]))
-
-        if klabel.name in definition.overloads:
-            return production.let(att=production.att.update([Atts.ANYWHERE(None)]))
-
-        return production
 
 
 @dataclass
@@ -1260,22 +1258,22 @@ class AddPrioritiesAtts(KompilerPass):
         if len(definition.modules) > 1:
             raise ValueError('Expected a single module')
         module = definition.modules[0]
-        module = module.map_sentences(lambda production: self._update(production, definition), of_type=KProduction)
+
+        def update(production: KProduction) -> KProduction:
+            if not production.klabel:
+                return production
+
+            if Atts.FORMAT not in production.att:
+                return production
+
+            tags = sorted(definition.priorities.get(production.klabel.name, []))
+            priorities = tuple(
+                KApply(tag).to_dict() for tag in tags if tag not in BUILTIN_LABELS
+            )  # TODO Add KType to pyk.kast.att
+            return production.let(att=production.att.update([Atts.PRIORITIES(priorities)]))
+
+        module = module.map_sentences(update, of_type=KProduction)
         return KDefinition(module.name, (module,))
-
-    @staticmethod
-    def _update(production: KProduction, definition: KDefinition) -> KProduction:
-        if not production.klabel:
-            return production
-
-        if Atts.FORMAT not in production.att:
-            return production
-
-        tags = sorted(definition.priorities.get(production.klabel.name, []))
-        priorities = tuple(
-            KApply(tag).to_dict() for tag in tags if tag not in BUILTIN_LABELS
-        )  # TODO Add KType to pyk.kast.att
-        return production.let(att=production.att.update([Atts.PRIORITIES(priorities)]))
 
 
 @dataclass
@@ -1283,9 +1281,19 @@ class AddAssocAtts(SingleModulePass):
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
         left_assocs = self._assocs(module, KAssoc.LEFT)
         right_assocs = self._assocs(module, KAssoc.RIGHT)
-        return module.map_sentences(
-            lambda production: self._update(production, left_assocs, right_assocs), of_type=KProduction
-        )
+
+        def update(production: KProduction) -> KProduction:
+            if not production.klabel:
+                return production
+
+            if Atts.FORMAT not in production.att:
+                return production
+
+            left = tuple(KApply(tag).to_dict() for tag in sorted(left_assocs.get(production.klabel.name, [])))
+            right = tuple(KApply(tag).to_dict() for tag in sorted(right_assocs.get(production.klabel.name, [])))
+            return production.let(att=production.att.update([Atts.LEFT(left), Atts.RIGHT(right)]))
+
+        return module.map_sentences(update, of_type=KProduction)
 
     @staticmethod
     def _assocs(module: KFlatModule, assoc: KAssoc) -> dict[str, set[str]]:
@@ -1301,19 +1309,3 @@ class AddAssocAtts(SingleModulePass):
             return dct
 
         return reduce(lambda res, pair: insert(res, key=pair[0], value=pair[1]), pairs, {})
-
-    @staticmethod
-    def _update(
-        production: KProduction,
-        left_assocs: Mapping[str, set[str]],
-        right_assocs: Mapping[str, set[str]],
-    ) -> KProduction:
-        if not production.klabel:
-            return production
-
-        if Atts.FORMAT not in production.att:
-            return production
-
-        left = tuple(KApply(tag).to_dict() for tag in sorted(left_assocs.get(production.klabel.name, [])))
-        right = tuple(KApply(tag).to_dict() for tag in sorted(right_assocs.get(production.klabel.name, [])))
-        return production.let(att=production.att.update([Atts.LEFT(left), Atts.RIGHT(right)]))
