@@ -717,9 +717,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     ) -> None:
         node = self.node(node_id)
         new_node = node.let(cterm=cterm, attrs=attrs)
-        self._nodes[node.id] = new_node
-        self._created_nodes.add(node.id)
-        self._update_refs(node.id)
+        self.replace_node(new_node)
 
     def replace_node(self, node: KCFG.Node) -> None:
         self._nodes[node.id] = node
