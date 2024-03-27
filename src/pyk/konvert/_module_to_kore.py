@@ -782,8 +782,7 @@ class SingleModulePass(KompilerPass, ABC):
 class RulePass(SingleModulePass, ABC):
     @final
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        sentences = tuple(self._transform_rule(sent) if isinstance(sent, KRule) else sent for sent in module.sentences)
-        return module.let(sentences=sentences)
+        return module.map_sentences(self._transform_rule, of_type=KRule)
 
     @abstractmethod
     def _transform_rule(self, rule: KRule) -> KRule: ...
@@ -880,8 +879,7 @@ class AddCollectionAtts(SingleModulePass):
             Atts.UNIT in att for _, att in concat_atts.items()
         )  # TODO Could be saved with a different attribute structure: concat(Element, Unit)
 
-        sentences = tuple(self._update(sent, concat_atts) if isinstance(sent, KSyntaxSort) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(lambda syntax_sort: self._update(syntax_sort, concat_atts), of_type=KSyntaxSort)
 
     @staticmethod
     def _update(syntax_sort: KSyntaxSort, concat_atts: Mapping[KSort, KAtt]) -> KSyntaxSort:
@@ -914,8 +912,7 @@ class AddDomainValueAtts(SingleModulePass):
 
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
         token_sorts = self._token_sorts(module)
-        sentences = tuple(self._update(sent, token_sorts) if isinstance(sent, KSyntaxSort) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(lambda syntax_sort: self._update(syntax_sort, token_sorts), of_type=KSyntaxSort)
 
     @staticmethod
     def _update(syntax_sort: KSyntaxSort, token_sorts: set[KSort]) -> KSyntaxSort:
@@ -959,13 +956,10 @@ class AddAnywhereAtts(KompilerPass):
         if len(definition.modules) > 1:
             raise ValueError('Expected a single module')
         module = definition.modules[0]
-
         rules = self._rules_by_klabel(module)
-
-        sentences = tuple(
-            self._update(sent, definition, rules) if isinstance(sent, KProduction) else sent for sent in module
+        module = module.map_sentences(
+            lambda production: self._update(production, definition, rules), of_type=KProduction
         )
-        module = module.let(sentences=sentences)
         return KDefinition(module.name, (module,))
 
     @staticmethod
@@ -1008,9 +1002,7 @@ class AddSymbolAtts(SingleModulePass):
     pred: Callable[[KAtt], bool]
 
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        return module.let(
-            sentences=tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
-        )
+        return module.map_sentences(self._update, of_type=KProduction)
 
     def _update(self, production: KProduction) -> KProduction:
         if not production.klabel:  # filter for symbol productions
@@ -1090,8 +1082,7 @@ class DiscardHookAtts(SingleModulePass):
         self.active_prefixes = tuple(f'{namespace}.' for namespace in namespaces)
 
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(self._update, of_type=KProduction)
 
     def _update(self, production: KProduction) -> KProduction:
         if not production.klabel:
@@ -1120,8 +1111,7 @@ class DiscardSymbolAtts(SingleModulePass):
         self.keys = frozenset(keys)
 
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(self._update, of_type=KProduction)
 
     def _update(self, production: KProduction) -> KProduction:
         if not production.klabel:
@@ -1135,8 +1125,7 @@ class AddDefaultFormatAtts(SingleModulePass):
     """Add a default format attribute value to each symbol profuction missing one."""
 
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(self._update, of_type=KProduction)
 
     @staticmethod
     def _update(production: KProduction) -> KProduction:
@@ -1154,8 +1143,7 @@ class DiscardFormatAtts(SingleModulePass):
     """Remove format attributes from symbol productions with items other than terminals and non-terminals."""
 
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(self._update, of_type=KProduction)
 
     @staticmethod
     def _update(production: KProduction) -> KProduction:
@@ -1173,8 +1161,7 @@ class InlineFormatTerminals(SingleModulePass):
     """For a terminal `"foo"` change `%i` to `%cfoo%r`. For a non-terminal, decrease the index."""
 
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(self._update, of_type=KProduction)
 
     @staticmethod
     def _update(production: KProduction) -> KProduction:
@@ -1229,8 +1216,7 @@ class InlineFormatTerminals(SingleModulePass):
 @dataclass
 class AddColorAtts(SingleModulePass):
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(self._update, of_type=KProduction)
 
     @staticmethod
     def _update(production: KProduction) -> KProduction:
@@ -1254,8 +1240,7 @@ class AddColorAtts(SingleModulePass):
 @dataclass
 class AddTerminalAtts(SingleModulePass):
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
-        sentences = tuple(self._update(sent) if isinstance(sent, KProduction) else sent for sent in module)
-        return module.let(sentences=sentences)
+        return module.map_sentences(self._update, of_type=KProduction)
 
     @staticmethod
     def _update(production: KProduction) -> KProduction:
@@ -1275,13 +1260,11 @@ class AddPrioritiesAtts(KompilerPass):
         if len(definition.modules) > 1:
             raise ValueError('Expected a single module')
         module = definition.modules[0]
-
-        sentences = tuple(self._update(sent, definition) if isinstance(sent, KProduction) else sent for sent in module)
-        module = module.let(sentences=sentences)
+        module = module.map_sentences(lambda production: self._update(production, definition), of_type=KProduction)
         return KDefinition(module.name, (module,))
 
     @staticmethod
-    def _update(production: KProduction, definition: KDefinition) -> KSentence:
+    def _update(production: KProduction, definition: KDefinition) -> KProduction:
         if not production.klabel:
             return production
 
@@ -1300,10 +1283,9 @@ class AddAssocAtts(SingleModulePass):
     def _transform_module(self, module: KFlatModule) -> KFlatModule:
         left_assocs = self._assocs(module, KAssoc.LEFT)
         right_assocs = self._assocs(module, KAssoc.RIGHT)
-        sentences = tuple(
-            self._update(sent, left_assocs, right_assocs) if isinstance(sent, KProduction) else sent for sent in module
+        return module.map_sentences(
+            lambda production: self._update(production, left_assocs, right_assocs), of_type=KProduction
         )
-        return module.let(sentences=sentences)
 
     @staticmethod
     def _assocs(module: KFlatModule, assoc: KAssoc) -> dict[str, set[str]]:
