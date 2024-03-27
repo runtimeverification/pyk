@@ -225,9 +225,9 @@ def test_apr_proof_minimization_and_terminals() -> None:
         logs={},
     )
 
-    assert proof._terminal == {13, 19, 21}
+    assert proof.terminal_ids == {13, 19, 21}
     proof.minimize_kcfg()
-    assert proof._terminal == {21}
+    assert proof.terminal_ids == {21}
 
 
 MODULE_NAME_TEST_DATA: Final = (
