@@ -84,7 +84,7 @@ class KCFGStore:
         for node_id in deleted_nodes:
             self.kcfg_node_path(node_id).unlink(missing_ok=True)
         for node_id in created_nodes:
-            del(node_dict[node_id]['attrs'])
+            del node_dict[node_id]['attrs']
             self.kcfg_node_path(node_id).write_text(json.dumps(node_dict[node_id]))
         dct['nodes'] = list(node_dict.keys())
         self.kcfg_json_path.write_text(json.dumps(dct))
@@ -93,7 +93,6 @@ class KCFGStore:
         dct = json.loads(self.kcfg_json_path.read_text())
         nodes = [self.read_node_data(node_id) for node_id in dct.get('nodes') or []]
         dct['nodes'] = nodes
-        node_ids = [node['id'] for node in nodes]
 
         new_nodes = []
         for node in dct['nodes']:
@@ -106,8 +105,8 @@ class KCFGStore:
 
         dct['nodes'] = new_nodes
 
-        del(dct['vacuous'])
-        del(dct['stuck'])
+        del dct['vacuous']
+        del dct['stuck']
 
         return dct
 
