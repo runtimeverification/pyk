@@ -71,7 +71,6 @@ class APRProof(Proof, KCFGExploration):
 
     node_refutations: dict[int, RefutationProof]  # TODO _node_refutatations
     init: int
-    target: int
     bmc_depth: int | None
     _bounded: set[int]
     logs: dict[int, tuple[LogEntry, ...]]
@@ -138,7 +137,7 @@ class APRProof(Proof, KCFGExploration):
         elif isinstance(result, APRProofSubsumeResult):
             self.kcfg.create_cover(result.node_id, self.target, csubst=result.csubst)
         elif isinstance(result, APRProofTerminalResult):
-            self._terminal.add(result.node_id)
+            self.add_terminal(result.node_id)
         elif isinstance(result, APRProofBoundedResult):
             self.add_bounded(result.node_id)
         else:
@@ -426,7 +425,7 @@ class APRProof(Proof, KCFGExploration):
         dct = super().dict
         dct['type'] = 'APRProof'
         dct['kcfg'] = self.kcfg.to_dict()
-        dct['terminal'] = sorted(self._terminal)
+        dct['terminal'] = sorted(node.id for node in self.kcfg.nodes if self.is_terminal(node.id))
         dct['init'] = self.init
         dct['target'] = self.target
         dct['bounded'] = list(self._bounded)
@@ -452,7 +451,7 @@ class APRProof(Proof, KCFGExploration):
                     len(self.failing),
                     len(self.kcfg.vacuous),
                     len(self.kcfg.stuck),
-                    len(self._terminal),
+                    len([node for node in self.kcfg.nodes if self.is_terminal(node.id)]),
                     len(self.node_refutations),
                     self.bmc_depth,
                     len(self._bounded),
@@ -523,7 +522,7 @@ class APRProof(Proof, KCFGExploration):
         dct['type'] = 'APRProof'
         dct['init'] = self.kcfg._resolve(self.init)
         dct['target'] = self.kcfg._resolve(self.target)
-        dct['terminal'] = sorted(self._terminal)
+        dct['terminal'] = sorted(node.id for node in self.kcfg.nodes if self.is_terminal(node.id))
         dct['node_refutations'] = {
             self.kcfg._resolve(node_id): proof.id for (node_id, proof) in self.node_refutations.items()
         }
@@ -688,10 +687,10 @@ class APRProver(Prover):
             self._checked_for_terminal.add(node.id)
             if self.kcfg_explore.kcfg_semantics.is_terminal(node.cterm):
                 _LOGGER.info(f'Terminal node: {node.id}.')
-                self.proof._terminal.add(node.id)
+                self.proof.add_terminal(node.id)
             elif self.fast_check_subsumption and self._may_subsume(node):
                 _LOGGER.info(f'Marking node as terminal because of fast may subsume check {self.proof.id}: {node.id}')
-                self.proof._terminal.add(node.id)
+                self.proof.add_terminal(node.id)
 
     def _check_all_terminals(self) -> None:
         for node in self.proof.kcfg.nodes:
@@ -750,7 +749,7 @@ class APRProver(Prover):
 
         # Terminal checks for current node and target node
         is_terminal = self.kcfg_explore.kcfg_semantics.is_terminal(curr_node.cterm)
-        target_is_terminal = self.proof.target in self.proof._terminal
+        target_is_terminal = self.proof.is_terminal(self.proof.target)
 
         terminal_result = [APRProofTerminalResult(node_id=curr_node.id)] if is_terminal else []
 
