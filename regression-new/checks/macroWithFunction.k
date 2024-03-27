@@ -20,5 +20,5 @@ module MACROWITHFUNCTION
     syntax Pgm ::= "go" FInt | Pgm ";" Pgm [left]
  // ---------------------------------------------
     rule <k> P ; Q => P ~> Q ... </k>
-    rule <k> go wad(0) => . ... </k>
+    rule <k> go wad(0) => .K ... </k>
 endmodule

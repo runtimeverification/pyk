@@ -18,7 +18,7 @@ module PRIORITYERROR
     syntax Exp ::= Exp "+" Exp [klabel(plus), symbol]
                  > "l" Exp     [klabel(lguard), symbol]
                  | Exp "r"     [klabel(rguard), symbol]
-    rule . => 1 + l 2 // unable to disambiguate - error
-    rule . => 1 r + 2 // unable to disambiguate - error
-    rule . => l 1 r   // ambiguous - error
+    rule .K => 1 + l 2 // unable to disambiguate - error
+    rule .K => 1 r + 2 // unable to disambiguate - error
+    rule .K => l 1 r   // ambiguous - error
 endmodule

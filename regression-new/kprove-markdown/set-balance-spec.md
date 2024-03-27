@@ -33,7 +33,7 @@ This property shows that `set_balance` will not result in a zero-balance attack.
 **TODO**: Assertions about log events.
 
 ```discard
-    rule <k> set_balance(Root, WHO, FREE_BALANCE', RESERVED_BALANCE') => . ... </k>
+    rule <k> set_balance(Root, WHO, FREE_BALANCE', RESERVED_BALANCE') => .K ... </k>
          <totalIssuance> TOTAL_ISSUANCE => TOTAL_ISSUANCE +Int ( FREE_BALANCE' -Int FREE_BALANCE ) +Int ( RESERVED_BALANCE' -Int RESERVED_BALANCE ) </totalIssuance>
          <existentialDeposit> EXISTENTIAL_DEPOSIT </existentialDeposit>
          <account>
