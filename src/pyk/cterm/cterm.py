@@ -327,7 +327,7 @@ class CSubst:
 
     @staticmethod
     def from_dict(dct: dict[str, Any]) -> CSubst:
-        """Desirialize `CSubst` from a dictionary representation."""
+        """Deserialize `CSubst` from a dictionary representation."""
         subst = Subst.from_dict(dct['subst'])
         constraints = (KInner.from_dict(c) for c in dct['constraints'])
         return CSubst(subst=subst, constraints=constraints)
