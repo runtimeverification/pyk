@@ -1221,7 +1221,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             constraint=mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
         )
 
-        assert anti_unifier.kast == expected_anti_unifier.kast
+        assert anti_unifier == expected_anti_unifier
 
     def test_anti_unify_keep_values(
         self,
@@ -1296,7 +1296,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
 
-        assert anti_unifier.kast == expected_anti_unifier.kast
+        assert anti_unifier == expected_anti_unifier
 
     def test_anti_unify_subst_true(
         self,
@@ -1318,7 +1318,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         anti_unifier, _, _ = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprove.definition)
 
-        assert anti_unifier.kast == cterm1.kast
+        assert anti_unifier == cterm1
 
     @pytest.mark.parametrize(
         'test_id,antecedent,consequent,expected',
