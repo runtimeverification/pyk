@@ -5,17 +5,15 @@ import logging
 from functools import partial
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import TYPE_CHECKING, Any, Callable, Final
+import inspect
 
+from ..kast.inner import KApply, KSequence, KSort, KToken
 from ..kast.manip import get_cell, set_cell
-from ..kast.inner import KSort, Subst, KSequence, KToken, KApply
 from ..ktool.krun import KRun
-from ..kast import KInner
-from ..prelude.kint import intToken
-
-from ..cterm.cterm import CTerm
 
 if TYPE_CHECKING:
     from ..cli.pyk import ServeRpcOptions
+    from ..kast import KInner
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -24,6 +22,7 @@ class JsonRpcServer:
     JSONRPC_VERSION: str = '2.0'
     methods: dict[str, Callable[[Any], Any]]
     options: ServeRpcOptions
+    http_server: HTTPServer
 
     def __init__(self, options: ServeRpcOptions) -> None:
         self.methods = {}
@@ -36,7 +35,13 @@ class JsonRpcServer:
     def serve(self) -> None:
         handler = partial(JsonRpcRequestHandler, self.methods)
         _LOGGER.info(f'Starting JSON-RPC server at {self.options.addr}:{self.options.port}')
-        HTTPServer((self.options.addr, self.options.port), handler).serve_forever()
+        self.http_server = HTTPServer((self.options.addr, self.options.port), handler)
+        self.http_server.serve_forever()
+        _LOGGER.info(f'JSON-RPC server at {self.options.addr}:{self.options.port} shut down.')
+
+
+    def shutdown(self) -> None:
+        self.http_server.shutdown()
 
 
 class JsonRpcRequestHandler(BaseHTTPRequestHandler):
@@ -112,7 +117,14 @@ class JsonRpcRequestHandler(BaseHTTPRequestHandler):
         method = self.methods[method_name]
         params = request.get('params', None)
         _LOGGER.info(f'Executing method {method_name}')
-        result = method(params)
+        if type(params) is dict:
+            result = method(**params)
+        elif type(params) is list:
+            result = method(*params)
+        elif params is None:
+            result = method()
+        else:
+            self.send_json_error(-32602, 'Unrecognized method parameter format.')
         _LOGGER.debug(f'Got response {result}')
         self.send_json_success(result, request['id'])
 
@@ -144,11 +156,15 @@ class StatefulKJsonRpcServer(JsonRpcServer):
         self.krun = KRun(options.definition_dir)
         self.config = self.krun.definition.init_config(KSort('GeneratedTopCell'))
 
-    def exec_get_x(self, obj: None) -> int:
-        return int(get_cell(self.config, 'X_CELL').token)
+    def exec_get_x(self) -> int:
+        x_cell = get_cell(self.config, 'X_CELL')
+        assert type(x_cell) is KToken
+        return int(x_cell.token)
 
-    def exec_get_y(self, obj: None) -> int:
-        return int(get_cell(self.config, 'Y_CELL').token)
+    def exec_get_y(self) -> int:
+        y_cell = get_cell(self.config, 'Y_CELL')
+        assert type(y_cell) is KToken
+        return int(y_cell.token)
 
     def exec_set_x(self, n: int) -> None:
         self.config = set_cell(self.config, 'X_CELL', KToken(token=str(n), sort=KSort(name='Int')))
@@ -156,7 +172,7 @@ class StatefulKJsonRpcServer(JsonRpcServer):
     def exec_set_y(self, n: int) -> None:
         self.config = set_cell(self.config, 'Y_CELL', KToken(token=str(n), sort=KSort(name='Int')))
 
-    def exec_add(self, obj: None) -> int:
+    def exec_add(self) -> int:
         x = get_cell(self.config, 'X_CELL')
         y = get_cell(self.config, 'Y_CELL')
         self.config = set_cell(self.config, 'K_CELL', KApply('_+Int_', [x, y]))
@@ -169,4 +185,5 @@ class StatefulKJsonRpcServer(JsonRpcServer):
             assert len(k_cell.items) == 1
             k_cell = k_cell.items[0]
 
+        assert type(k_cell) is KToken
         return int(k_cell.token)
