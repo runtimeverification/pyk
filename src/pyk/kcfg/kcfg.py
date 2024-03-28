@@ -46,10 +46,10 @@ NodeIdLike = int | str
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class NodeAttr(str, Enum): ...
+class NodeAttr(Enum): ...
 
 
-class KCFGNodeAttr(NodeAttr, Enum):
+class KCFGNodeAttr(NodeAttr):
     VACUOUS = 'vacuous'
     STUCK = 'stuck'
 
@@ -903,7 +903,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         source_id = self._resolve(source_id)
         ndbranch = KCFG.NDBranch(self.node(source_id), tuple(self.node(nid) for nid in list(ndbranches)), tuple(rules))
         self.add_successor(ndbranch)
-        return self._ndbranches[source_id]
+        return ndbranch
 
     def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
         source = self.node(source_id)

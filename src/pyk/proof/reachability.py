@@ -71,6 +71,7 @@ class APRProof(Proof, KCFGExploration):
 
     node_refutations: dict[int, RefutationProof]  # TODO _node_refutatations
     init: int
+    target: int
     bmc_depth: int | None
     _bounded: set[int]
     logs: dict[int, tuple[LogEntry, ...]]
