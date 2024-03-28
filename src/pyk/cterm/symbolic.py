@@ -177,8 +177,7 @@ class CTermSymbolic:
     ) -> CTermImplies:
         _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
         _consequent = consequent.kast
-        fv_antecedent = list(antecedent.free_vars)
-        unbound_consequent = [v for v in consequent.free_vars if v not in fv_antecedent]
+        unbound_consequent = [v for v in consequent.free_vars if v not in antecedent.free_vars]
         if len(unbound_consequent) > 0:
             bind_text, bind_label = ('existentially', '#Exists')
             if bind_universally:
