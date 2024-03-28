@@ -1,1 +1,28 @@
-#Top
+[Warning] Compiler: Variable 'MAP' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-2-spec.k)
+	Location(9,25,9,28)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Y ==K X andBool Z  ==K Y andBool Z  ==K X
+	  .	                        ^~~
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(remove-2-spec.k)
+	Location(9,81,9,82)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Y ==K X andBool Z  ==K Y andBool Z  ==K X
+	  .	                                                                          
+     ^
+APRProof: f487e034ec562c64ec39166a6b9b8948c4d9379dee5d501544d6ab18fd9917a6
+    status: ProofStatus.PASSED
+    admitted: False
+    nodes: 2
+    pending: 0
+    failing: 0
+    vacuous: 0
+    stuck: 0
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0

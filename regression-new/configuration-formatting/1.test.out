@@ -1,35 +1,42 @@
-<t>
-  <k>
-    1 ~> .K
-  </k>
-  foo(1)
-  <ms>
-    <m>
-      <id>
-        1
-      </id>
-      <val>
-        1
-      </val>
-    </m> <m>
-      <id>
-        2
-      </id>
-      <val>
-        1
-      </val>
-    </m>
-  </ms>
-  <ls>
-    <l>
+<generatedTop>
+  <t>
+    <k>
+      1 ~> .K
+    </k>
+    <foo>
       1
-    </l> <l>
-      1
-    </l>
-  </ls>
-  <ss>
-    <x>
-      1
-    </x>
-  </ss>
-</t>
+    </foo>
+    <ms>
+      <m>
+        <id>
+          2
+        </id>
+        <val>
+          1
+        </val>
+      </m> <m>
+        <id>
+          1
+        </id>
+        <val>
+          1
+        </val>
+      </m>
+    </ms>
+    <ls>
+      LCellListItem ( <l>
+        1
+      </l> ) LCellListItem ( <l>
+        1
+      </l> )
+    </ls>
+    <ss>
+      XCellSetItem ( <x>
+        1
+      </x> )
+    </ss>
+  </t>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>

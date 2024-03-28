@@ -1,1 +1,19 @@
-#Top
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(lookup-24-spec.k)
+	Location(9,51,9,52)
+	9 |	    claim <k> lookup ( (y |-> 4) [ x ] ==K 4 ) => . </k>
+	  .	                                                  ^
+APRProof: 7e0e2010e67a757226c304a1ec2a9da2edf6818b87404bde5a7b07a539f6fe81
+    status: ProofStatus.PASSED
+    admitted: False
+    nodes: 2
+    pending: 0
+    failing: 0
+    vacuous: 0
+    stuck: 0
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0

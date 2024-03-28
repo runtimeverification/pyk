@@ -1,1 +1,22 @@
-#Top
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(assignment-18-spec.k)
+	Location(9,88,9,89)
+	9 |	    claim <k> assignment ( (MAP:Map X:MyId |-> 1) [ Y:MyId <- 2 ] [ Z:MyId
+<- 3 ] ) => . </k> requires Y ==K X andBool Z  ==K Y andBool Z  ==K X andBool X
+in_keys(MAP)
+	  .	                                                                          
+            ^
+APRProof: 6937ebae710771fc7df4577ce119e8dcafcafb3185367cf2d38141e24e1fdb11
+    status: ProofStatus.PASSED
+    admitted: False
+    nodes: 2
+    pending: 0
+    failing: 0
+    vacuous: 0
+    stuck: 0
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0

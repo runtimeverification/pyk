@@ -1,18 +1,64 @@
-  <k>
-    lookupResult ( ( MAP
-    X:MyId |-> 1 ) [ Y:MyId <- 2 ] [ Z:MyId ] ~> .K ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    X:MyId in_keys ( MAP )
-  }
-#And
-  {
-    true
-  #Equals
-    Z:MyId in_keys ( ( MAP
-    X:MyId |-> 1 ) [ Y:MyId <- 2 ] )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'MAP' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(lookup-4-spec.k)
+	Location(9,25,9,28)
+	9 |	    claim <k> lookup ( (MAP:Map X:MyId |-> 1) [Y:MyId <- 2] [ Z:MyId ] )
+=> . </k>
+	  .	                        ^~~
+[Warning] Compiler: Variable 'X' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(lookup-4-spec.k)
+	Location(9,33,9,34)
+	9 |	    claim <k> lookup ( (MAP:Map X:MyId |-> 1) [Y:MyId <- 2] [ Z:MyId ] )
+=> . </k>
+	  .	                                ^
+[Warning] Compiler: Variable 'Y' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(lookup-4-spec.k)
+	Location(9,48,9,49)
+	9 |	    claim <k> lookup ( (MAP:Map X:MyId |-> 1) [Y:MyId <- 2] [ Z:MyId ] )
+=> . </k>
+	  .	                                               ^
+[Warning] Compiler: Variable 'Z' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(lookup-4-spec.k)
+	Location(9,63,9,64)
+	9 |	    claim <k> lookup ( (MAP:Map X:MyId |-> 1) [Y:MyId <- 2] [ Z:MyId ] )
+=> . </k>
+	  .	                                                              ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(lookup-4-spec.k)
+	Location(9,77,9,78)
+	9 |	    claim <k> lookup ( (MAP:Map X:MyId |-> 1) [Y:MyId <- 2] [ Z:MyId ] )
+=> . </k>
+	  .	                                                                          
+ ^
+APRProof: 7e31805ce49160f36936a44d78db45eb43d76077b5fb497728b4ff8575b020f0
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 5
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 5
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: lookupResult ( X:MyId |-> 1 MAP:Map [ Y:MyId <- 2 ] [ Z:MyId ] ~> .K ) ~> .K #Implies .K
+  Path condition:
+    { false #Equals X:MyId in_keys ( MAP:Map ) }
+#And { true #Equals Z:MyId in_keys ( X:MyId |-> 1 MAP:Map [ Y:MyId <- 2 ] ) }
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

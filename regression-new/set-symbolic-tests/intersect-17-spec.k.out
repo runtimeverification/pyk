@@ -1,11 +1,56 @@
-  <k>
-    intersectResult ( intersectSet ( S1
-    SetItem ( X:MyId ) , S2 ) ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    X:MyId in S1
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'S1' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(intersect-17-spec.k)
+	Location(9,40,9,42)
+	9 |	    claim <k> intersect ( intersectSet(S1 SetItem(X:MyId), S2 ) )         
+       => . </k>
+	  .	                                       ^~
+[Warning] Compiler: Variable 'X' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(intersect-17-spec.k)
+	Location(9,51,9,52)
+	9 |	    claim <k> intersect ( intersectSet(S1 SetItem(X:MyId), S2 ) )         
+       => . </k>
+	  .	                                                  ^
+[Warning] Compiler: Variable 'S2' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(intersect-17-spec.k)
+	Location(9,60,9,62)
+	9 |	    claim <k> intersect ( intersectSet(S1 SetItem(X:MyId), S2 ) )         
+       => . </k>
+	  .	                                                           ^~
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(intersect-17-spec.k)
+	Location(9,86,9,87)
+	9 |	    claim <k> intersect ( intersectSet(S1 SetItem(X:MyId), S2 ) )         
+       => . </k>
+	  .	                                                                          
+          ^
+APRProof: 42a5228afbab7916d5fe5db2ef756e5916f79afebfe72aeb2dcbcfc0f110a07d
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 5
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 5
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: intersectResult ( intersectSet ( SetItem ( X:MyId ) S1:Set , S2:Set ) ) ~> .K #Implies .K
+  Path condition:
+    { false #Equals X:MyId in S1:Set }
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

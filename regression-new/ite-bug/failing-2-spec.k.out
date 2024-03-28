@@ -1,21 +1,27 @@
-kore-exec: [] Warning (WarnStuckClaimState):
-    The configuration's term doesn't unify with the destination's term and the configuration cannot be rewritten further. Location: failing-2-spec.k:4:11-5:28
-Context:
-    (InfoReachability) while checking the implication
-  #Ceil ( bool2Word ( _X <Int 0 ) )
-#And
-  <generatedTop>
-    <k>
-      .K
-    </k>
-    <pc>
-      1
-    </pc>
-  </generatedTop>
-#And
-  {
-    0
-  #Equals
-    bool2Word ( _X <Int 0 )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+APRProof: 9160c5d5f6019ca43208444445d1a9b915d5cce6af2d009314f5808e886c8c25
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 5
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 4
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    PC_CELL: 1 #Implies 2
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

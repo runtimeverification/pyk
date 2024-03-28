@@ -12,9 +12,9 @@ module EXISTENTIALCHECK
   rule isDone(stateB) => true
   rule isDone(_) => false [owise]
 
-  claim <k> ?X:Int => . </k>
+  claim <k> ?X:Int => .K </k>
 
-  rule <k> ?X:Int => . </k>
+  rule <k> ?X:Int => .K </k>
 
   rule <k> stateA => ?STATE </k>
     requires isDone(?STATE)

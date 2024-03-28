@@ -1,10 +1,35 @@
-  <k>
-    unionResult ( true ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    X:MyId in SetItem ( y )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(union-39-spec.k)
+	Location(9,86,9,87)
+	9 |	    claim <k> union ( X      in ( SetItem(x) |Set (SetItem(X:MyId)
+SetItem(y))) ) => . </k>
+	  .	                                                                          
+          ^
+APRProof: 1e8527be22d6b555a9bfe529d8e82b4fa4bed4bc2f389abe5172ff6aaaacedc1
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 3
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: unionResult ( true ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN
