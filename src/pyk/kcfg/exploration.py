@@ -82,8 +82,7 @@ class KCFGExploration:
 
     # Pruning a KCFG subtree starting from a given node
     def prune(self, node_id: NodeIdLike, keep_nodes: Iterable[NodeIdLike] = ()) -> list[int]:
-        pruned_nodes = self.kcfg.prune(node_id, keep_nodes=keep_nodes)
-        return pruned_nodes
+        return self.kcfg.prune(node_id, keep_nodes=keep_nodes)
 
     #
     # Dictionarisation

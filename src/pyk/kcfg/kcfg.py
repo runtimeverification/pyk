@@ -377,7 +377,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return KCFG.NDBranch(self.source, tuple(new_targets), self.rules)
 
     _node_id: int
-    _nodes: MutableMapping[int, Node]
+    _nodes: MutableMapping[int, KCFG.Node]
 
     _created_nodes: set[int]
     _deleted_nodes: set[int]
@@ -439,31 +439,31 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return False
 
     @property
-    def nodes(self) -> list[Node]:
+    def nodes(self) -> list[KCFG.Node]:
         return list(self._nodes.values())
 
     @property
-    def root(self) -> list[Node]:
+    def root(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if self.is_root(node.id)]
 
     @property
-    def vacuous(self) -> list[Node]:
+    def vacuous(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if self.is_vacuous(node.id)]
 
     @property
-    def stuck(self) -> list[Node]:
+    def stuck(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if self.is_stuck(node.id)]
 
     @property
-    def leaves(self) -> list[Node]:
+    def leaves(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if self.is_leaf(node.id)]
 
     @property
-    def covered(self) -> list[Node]:
+    def covered(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if self.is_covered(node.id)]
 
     @property
-    def uncovered(self) -> list[Node]:
+    def uncovered(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if not self.is_covered(node.id)]
 
     @staticmethod
@@ -631,17 +631,17 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             raise ValueError(f'Unknown node: {id_like}')
         return match
 
-    def node(self, node_id: NodeIdLike) -> Node:
+    def node(self, node_id: NodeIdLike) -> KCFG.Node:
         node_id = self._resolve(node_id)
         return self._nodes[node_id]
 
-    def get_node(self, node_id: NodeIdLike) -> Node | None:
+    def get_node(self, node_id: NodeIdLike) -> KCFG.Node | None:
         resolved_id = self._resolve_or_none(node_id)
         if resolved_id is None:
             return None
         return self._nodes[resolved_id]
 
-    def contains_node(self, node: Node) -> bool:
+    def contains_node(self, node: KCFG.Node) -> bool:
         return bool(self.get_node(node.id))
 
     def add_node(self, node: KCFG.Node) -> None:
@@ -650,7 +650,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._nodes[node.id] = node
         self._created_nodes.add(node.id)
 
-    def create_node(self, cterm: CTerm, node_id: int | None = None) -> Node:
+    def create_node(self, cterm: CTerm, node_id: int | None = None) -> KCFG.Node:
         """Adds a node to the KCFG and computes attributes. Uses fresh id if none is passed"""
         if node_id is None:
             node_id = self._node_id
@@ -1187,7 +1187,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         return paths
 
-    def reachable_nodes(self, source_id: NodeIdLike, *, reverse: bool = False) -> set[Node]:
+    def reachable_nodes(self, source_id: NodeIdLike, *, reverse: bool = False) -> set[KCFG.Node]:
         visited: set[KCFG.Node] = set()
         worklist: list[KCFG.Node] = [self.node(source_id)]
 
