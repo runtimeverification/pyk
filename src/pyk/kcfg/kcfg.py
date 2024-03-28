@@ -651,12 +651,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._created_nodes.add(node.id)
 
     def create_node(self, cterm: CTerm) -> KCFG.Node:
-        node_id = self._node_id
+        node = KCFG.Node(self._node_id, cterm)
         self._node_id += 1
-        node = KCFG.Node(node_id, cterm)
-        self._nodes[node_id] = node
-        self._created_nodes.add(node_id)
-        return self.node(node_id)
+        self._nodes[node.id] = node
+        self._created_nodes.add(node.id)
+        return node
 
     def remove_node(self, node_id: NodeIdLike) -> None:
         node_id = self._resolve(node_id)
