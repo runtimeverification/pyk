@@ -1,4 +1,42 @@
-<k>
-  intersectResult ( .Set ) ~> .K
-</k>
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'S' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(intersect-3-spec.k)
+	Location(9,40,9,41)
+	9 |	    claim <k> intersect ( intersectSet(S,                 .Set ) )        
+       => . </k>
+	  .	                                       ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(intersect-3-spec.k)
+	Location(9,86,9,87)
+	9 |	    claim <k> intersect ( intersectSet(S,                 .Set ) )        
+       => . </k>
+	  .	                                                                          
+          ^
+APRProof: 3bd2adca0fd3d3eb8d02d397d1d8aac07cdd0051b005fdc9e4ec3ca3b2beeae9
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 3
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: intersectResult ( .Set ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

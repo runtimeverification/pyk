@@ -1,11 +1,35 @@
-  <k>
-    intersectResult ( X:MyId in intersectSet ( SetItem ( X:MyId )
-    SetItem ( y ) , SetItem ( x ) ) ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    y in SetItem ( X:MyId )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(intersect-37-spec.k)
+	Location(9,99,9,100)
+	9 |	    claim <k> intersect ( X      in intersectSet( SetItem(X:MyId)
+SetItem(y), SetItem(x)   ) ) => . </k>
+	  .	                                                                          
+                       ^
+APRProof: 5f5e9571756a1ef28dca5455ac555e188a8ced38440b1de0730698d22b8ea1f2
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 5
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 5
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: intersectResult ( X:MyId in intersectSet ( SetItem ( y ) SetItem ( X:MyId ) , SetItem ( x ) ) ) ~> .K #Implies .K
+  Path condition:
+    { false #Equals y in SetItem ( X:MyId ) }
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

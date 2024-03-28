@@ -1,1 +1,39 @@
-#Top
+WARNING 2024-03-28 02:59:00,960 pyk.kast.outer - Failed to add sort parameter, unable to determine sort for argument in production: (KProduction(sort=KSort(name='Sort2'), items=(KTerminal(value='#Forall'), KNonTerminal(sort=KSort(name='Sort1'), name=None), KTerminal(value='.'), KNonTerminal(sort=KSort(name='Sort2'), name=None)), params=(KSort(name='Sort1'), KSort(name='Sort2')), klabel=KLabel(name='#Forall', params=(KSort(name='Sort1'), KSort(name='Sort2'))), att=KAtt(atts=FrozenDict({AttKey(name='mlOp'): '', AttKey(name='group'): 'mlQuantifier, mlOp', AttKey(name='mlBinder'): '', AttKey(name='symbol'): None, AttKey(name='org.kframework.attributes.Location'): (156, 35, 156, 129), AttKey(name='klabel'): '#Forall', AttKey(name='org.kframework.attributes.Source'): PosixPath('/nix/store/nxp3jhaip8a1nv2cv2dgswls9pc378aa-k-6.3.64-4677dc0d4863d93b1d1b055ed13dc822d7913224/include/kframework/builtin/kast.md')}))), KSort(name='Sort2'), None)
+WARNING 2024-03-28 02:59:00,960 pyk.kast.outer - Failed to add sort parameter, unable to determine sort for argument in production: (KProduction(sort=KSort(name='Sort'), items=(KNonTerminal(sort=KSort(name='Sort'), name=None), KTerminal(value='#And'), KNonTerminal(sort=KSort(name='Sort'), name=None)), params=(KSort(name='Sort'),), klabel=KLabel(name='#And', params=(KSort(name='Sort'),)), att=KAtt(atts=FrozenDict({AttKey(name='format'): Format(tokens=('%i', '%1', '%d', '%n', '%2', '%n', '%i', '%3', '%d')), AttKey(name='mlOp'): '', AttKey(name='group'): 'mlAnd, mlOp', AttKey(name='left'): '', AttKey(name='symbol'): None, AttKey(name='assoc'): None, AttKey(name='org.kframework.attributes.Location'): (149, 26, 149, 150), AttKey(name='klabel'): '#And', AttKey(name='comm'): None, AttKey(name='org.kframework.attributes.Source'): PosixPath('/nix/store/nxp3jhaip8a1nv2cv2dgswls9pc378aa-k-6.3.64-4677dc0d4863d93b1d1b055ed13dc822d7913224/include/kframework/builtin/kast.md'), AttKey(name='unit'): '#Top'}))), KSort(name='Sort'), None)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/home/dev/src/pyk/src/pyk/__main__.py", line 90, in main
+    execute(options)
+  File "/home/dev/src/pyk/src/pyk/__main__.py", line 252, in exec_prove
+    proofs = kprove.prove_rpc(options=options)
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 389, in prove_rpc
+    return [_prove_claim_rpc(claim) for claim in all_claims]
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 389, in <listcomp>
+    return [_prove_claim_rpc(claim) for claim in all_claims]
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 357, in _prove_claim_rpc
+    return self.prove_claim_rpc(
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 321, in prove_claim_rpc
+    prover = APRProver(proof, kcfg_explore, execute_depth=max_depth)
+  File "/home/dev/src/pyk/src/pyk/proof/reachability.py", line 675, in __init__
+    _inject_module(self.circularities_module_name, self.dependencies_module_name, [circularity_rule])
+  File "/home/dev/src/pyk/src/pyk/proof/reachability.py", line 643, in _inject_module
+    _kore_module = kflatmodule_to_kore(
+  File "/home/dev/src/pyk/src/pyk/konvert/_kast_to_kore.py", line 127, in kflatmodule_to_kore
+    kore_axioms.append(krule_to_kore(kast_defn, kompiled_kore, sent))
+  File "/home/dev/src/pyk/src/pyk/konvert/_kast_to_kore.py", line 91, in krule_to_kore
+    kore_lhs0: Pattern = kast_to_kore(kast_defn, kompiled_kore, krule_lhs, sort=top_level_k_sort)
+  File "/home/dev/src/pyk/src/pyk/konvert/_kast_to_kore.py", line 72, in kast_to_kore
+    kore = _kast_to_kore(kast)
+  File "/home/dev/src/pyk/src/pyk/konvert/_kast_to_kore.py", line 149, in _kast_to_kore
+    pattern = _kinner_to_kore(term, patterns)
+  File "/home/dev/src/pyk/src/pyk/konvert/_kast_to_kore.py", line 169, in _kinner_to_kore
+    return _kapply_to_kore(kinner, patterns)
+  File "/home/dev/src/pyk/src/pyk/konvert/_kast_to_kore.py", line 220, in _kapply_to_kore
+    return _kapply_to_pattern(kapply, patterns)
+  File "/home/dev/src/pyk/src/pyk/konvert/_kast_to_kore.py", line 236, in _kapply_to_pattern
+    return MLPattern.of(symbol, sorts, patterns)
+  File "/home/dev/src/pyk/src/pyk/kore/syntax.py", line 551, in of
+    return actual_cls.of(symbol, sorts, patterns)
+  File "/home/dev/src/pyk/src/pyk/kore/syntax.py", line 1363, in of
+    op_sort, sort = sorts
+ValueError: not enough values to unpack (expected 2, got 0)

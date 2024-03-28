@@ -1,1 +1,42 @@
-#Top
+APRProof: 29f2a627e18daf47c044ed2a33cacd0eba5ed229d5f9ea633e907cb9a58585c2
+    status: ProofStatus.PASSED
+    admitted: True
+    nodes: 2
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+APRProof: 918284a75590005103fce55b01157487ffd836e9af5712e53fd27dd38b966d2c
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 3
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: apply ( "lemma" )
+    ~> apply ( "<~*.i" ) #Implies .K
+    G_CELL: #if B1:Int == ?B2:Int ~> .K ==K none ~> .K #then ?B2:Int <~ B2:Int #else B1:Int == ?B2:Int and ?B2:Int <~ B2:Int #fi #Implies B1:Int <~* B2:Int
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

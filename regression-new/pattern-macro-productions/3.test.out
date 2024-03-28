@@ -1,3 +1,8 @@
-<k>
-  t (...  m1: 0 , m2: 1 , st: int ) ~> .K
-</k>
+<generatedTop>
+  <k>
+    t ( ... m1: 0 , m2: 1 , st: int ) ~> .K
+  </k>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>

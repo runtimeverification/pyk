@@ -1,3 +1,8 @@
-<k>
-  x = ( 0 ~> .K ) ; .RecordDescr ~> .K
-</k>
+<generatedTop>
+  <k>
+    ... key: x = value: 0 ~> .K ; .RecordDescr ~> .K
+  </k>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>

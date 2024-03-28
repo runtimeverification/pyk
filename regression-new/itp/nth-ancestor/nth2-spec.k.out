@@ -1,1 +1,56 @@
-#Top
+APRProof: 7a5fefb58d9893f5519a482fe0633ca6ef19a79a94d1894dbe1fd130a098f5a0
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 3
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: apply ( "ih" )
+    ~> load ( "p2" )
+    ~> apply ( "lemma" ) #Implies .K
+    G_CELL: nth ( k ( N:Int ) , B1:Int , ?B2:Int ) #Implies B1:Int <~* B2:Int
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN
+APRProof: a1d0cfaf9eecd72f2a10d8f8641b4425c2da9e2d02333f1fcee511d9ad17abfc
+    status: ProofStatus.PASSED
+    admitted: True
+    nodes: 2
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+APRProof: cf8142ade4dcf1e0cc352a4c25adf0b4fb3a46ffc6c6fff193a6b82ef2826c49
+    status: ProofStatus.PASSED
+    admitted: True
+    nodes: 2
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0

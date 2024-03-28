@@ -1,10 +1,28 @@
-  #Not ( {
-    0
-  #Equals
-    keccak ( _Gen0 )
-  } )
-#And
-  <k>
-    doneLemma ( keccak ( _Gen0 ) ) ~> _DotVar1 ~> .K
-  </k>
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+APRProof: 5dc4e45fc57a86e49c2e532a28dd140d8adfb4ba2734ffbb8d83e68c90bcfb55
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 3
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: doneLemma ( keccak ( K_CELL_df24572d:Bytes ) #Implies 0 )
+    ~> K_CELL_fc656f08:K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

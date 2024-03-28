@@ -1,11 +1,49 @@
-  <k>
-    assignmentResult ( ( MAP
-    Z:MyId |-> 1 ) [ Y:MyId <- 2 ] [ Z:MyId <- 3 ] ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    Z:MyId in_keys ( MAP )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'MAP' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(assignment-21-spec.k)
+	Location(9,29,9,32)
+	9 |	    claim <k> assignment ( (MAP:Map X:MyId |-> 1) [ Y:MyId <- 2 ] [ Z:MyId
+<- 3 ] ) => . </k> requires Z  ==K X
+	  .	                            ^~~
+[Warning] Compiler: Variable 'Y' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(assignment-21-spec.k)
+	Location(9,53,9,54)
+	9 |	    claim <k> assignment ( (MAP:Map X:MyId |-> 1) [ Y:MyId <- 2 ] [ Z:MyId
+<- 3 ] ) => . </k> requires Z  ==K X
+	  .	                                                    ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(assignment-21-spec.k)
+	Location(9,88,9,89)
+	9 |	    claim <k> assignment ( (MAP:Map X:MyId |-> 1) [ Y:MyId <- 2 ] [ Z:MyId
+<- 3 ] ) => . </k> requires Z  ==K X
+	  .	                                                                          
+            ^
+APRProof: 42ea1a1aeb01f07870bec55582fe70253d06c11a7aa947e1e2ba6670ec67e84b
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 4
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: assignmentResult ( Z:MyId |-> 1 MAP:Map [ Y:MyId <- 2 ] [ Z:MyId <- 3 ] ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

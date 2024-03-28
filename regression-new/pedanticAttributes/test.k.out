@@ -9,3 +9,5 @@
 	4 |	               | Int "+" Int [group(badAttButOkay),badAtt,function]
 	  .	                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [Error] Compiler: Had 2 structural errors.
+[ERROR] Running process failed with returncode 113:
+    kompile test.k --syntax-module TEST --md-selector k --emit-json --warnings none --no-exc-wrap --backend llvm --output-definition test-kompiled --type-inference-mode checked

@@ -1,4 +1,42 @@
-<k>
-  unionResult ( S:Set ) ~> .K
-</k>
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'S' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(union-2-spec.k)
+	Location(9,49,9,50)
+	9 |	    claim <k> union ( .Set                 |Set S )                    =>
+. </k>
+	  .	                                                ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(union-2-spec.k)
+	Location(9,75,9,76)
+	9 |	    claim <k> union ( .Set                 |Set S )                    =>
+. </k>
+	  .	                                                                         
+^
+APRProof: 1eb607236c945b929f97ec2db47287d13434b3490fc0aa0f0155515c3c319ab0
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 3
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: unionResult ( S:Set ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

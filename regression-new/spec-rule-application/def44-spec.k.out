@@ -1,1 +1,40 @@
-#Top
+APRProof: 5e9d28f2e2f0a57c72e8f97349a2ebe7039b53831e377fa50ab5b8377eda5757
+    status: ProofStatus.PASSED
+    admitted: True
+    nodes: 2
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+APRProof: ebe7ed7be129ccfbc47c8da6b799b7422ab6746362ba17af462bd09639f80166
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 3
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: mid X:Int #Implies end X:Int
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

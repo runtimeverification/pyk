@@ -1,8 +1,8 @@
-foo ( 34 )
-frob ( "Hello" , false )
-"builtin"
-bar
-  foo ( 2 ) * foo ( 0 )
-<k>
-  .K
-</k>
+<generatedTop>
+  <k>
+    .K
+  </k>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>

@@ -1,5 +1,10 @@
-<T>
-  <k>
-    3 /Rat 2 ;  0 ;  -3 /Rat 2 ;  -3 ;  0 ;  3 ;  -3 /Rat 2 ;  0 ;  3 /Rat 2 ;  .Pgm ~> .K
-  </k>
-</T>
+<generatedTop>
+  <T>
+    <k>
+      < 3 , 2 >Rat ;  0 ;  < -3 , 2 >Rat ;  -3 ;  0 ;  3 ;  < -3 , 2 >Rat ;  0 ;  < 3 , 2 >Rat ;  .Pgm ~> .K
+    </k>
+  </T>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>

@@ -1,4 +1,23 @@
-kore-exec: [] Warning (WarnTrivialClaim):
-    Claim proven during initialization: claimLoc-spec.k:6:11-6:32
-    The left-hand side of the claim may be undefined.
-#Top
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/home/dev/src/pyk/src/pyk/__main__.py", line 90, in main
+    execute(options)
+  File "/home/dev/src/pyk/src/pyk/__main__.py", line 252, in exec_prove
+    proofs = kprove.prove_rpc(options=options)
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 389, in prove_rpc
+    return [_prove_claim_rpc(claim) for claim in all_claims]
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 389, in <listcomp>
+    return [_prove_claim_rpc(claim) for claim in all_claims]
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 357, in _prove_claim_rpc
+    return self.prove_claim_rpc(
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 320, in prove_claim_rpc
+    proof = APRProof.from_claim(self.definition, claim, {})
+  File "/home/dev/src/pyk/src/pyk/proof/reachability.py", line 314, in from_claim
+    kcfg, init_node, target_node = KCFG.from_claim(defn, claim, cfg_dir=kcfg_dir)
+  File "/home/dev/src/pyk/src/pyk/kcfg/kcfg.py", line 427, in from_claim
+    claim_lhs = CTerm.from_kast(extract_lhs(claim_body)).add_constraint(bool_to_ml_pred(claim.requires))
+  File "/home/dev/src/pyk/src/pyk/cterm/cterm.py", line 69, in from_kast
+    config, constraint = split_config_and_constraints(kast)
+  File "/home/dev/src/pyk/src/pyk/kast/manip.py", line 294, in split_config_and_constraints
+    raise ValueError(f'Could not find configuration for: {kast}')
+ValueError: Could not find configuration for: KApply(label=KLabel(name='a_CLAIMLOC_S', params=()), args=())
