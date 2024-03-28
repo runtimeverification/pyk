@@ -922,8 +922,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
     def _can_lift_split(self, node_to_lift_to: KCFG.Node, split: KCFG.Split) -> tuple[bool, str]:
         # Split targets cannot contain variables not present in the node to which it should be lifted
-        print(f'Node to lift to: {node_to_lift_to.id} with vars {node_to_lift_to.free_vars}')
-        print(f'Split to lift: {split.source.id} with vars {split.targets_vars}')
         fresh_vars = split.targets_vars.difference(node_to_lift_to.free_vars)
         if len(fresh_vars) > 0:
             error_msg = f'Cannot lift split at node {split.source.id} due to branching on freshly introduced variables: {fresh_vars}'
@@ -1041,11 +1039,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                     [
                         node.id
                         for node in self.nodes
-                        if self.splits(source_id=node.id) != []
-                        and finder(target_id=node.id) != []
-                        and self._can_lift_split(
-                            single(finder(target_id=node.id)).source, single(self.splits(source_id=node.id))
-                        )[0]
+                        if (target_splits := self.splits(source_id=node.id)) != []
+                        and (sources := finder(target_id=node.id)) != []
+                        and self._can_lift_split(single(sources).source, single(target_splits))[0]
                     ]
                 )
                 for id in splits_to_lift:
