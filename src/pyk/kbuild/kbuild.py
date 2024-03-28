@@ -88,7 +88,7 @@ class KBuildEnv:
         for sub_project in self.project.sub_projects:
             self._sync_project(sub_project)
 
-    def kompile(self, target_name: str, output_dir: Path, debug: bool = False) -> None:
+    def kompile(self, target_name: str, output_dir: Path, *, debug: bool = False) -> None:
         target = self.project.get_target(target_name)
         kompile(
             output_dir=output_dir,
