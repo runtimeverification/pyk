@@ -4,15 +4,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyk.kcfg.kcfg import KCFG
+from pyk.kcfg.exploration import KCFGExplorationNodeAttr
+from pyk.kcfg.kcfg import KCFG, KCFGNodeAttr
 from pyk.prelude.kbool import BOOL
 from pyk.prelude.kint import intToken
 from pyk.proof import EqualityProof
 from pyk.proof.implies import EqualitySummary
 from pyk.proof.proof import CompositeSummary, Proof, ProofStatus
 from pyk.proof.reachability import APRFailureInfo, APRProof, APRSummary
-from pyk.kcfg.exploration import KCFGExplorationNodeAttr
-from pyk.kcfg.kcfg import KCFGNodeAttr
 
 from .test_kcfg import minimization_test_kcfg, node, node_dicts, term
 
@@ -94,6 +93,7 @@ class TestProof:
 
         # Then
         assert type(proof_from_disk) is type(sample_proof)
+        assert type(proof_from_disk) is APRProof
         assert set(sample_proof.kcfg.nodes) == set(proof_from_disk.kcfg.nodes)
 
     def test_read_proof_aprbmc(self, proof_dir: Path) -> None:
