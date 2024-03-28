@@ -8,8 +8,9 @@ from typing import TYPE_CHECKING, Any, Callable, Final
 
 from typing_extensions import Protocol
 
+from ..cterm.cterm import Subst
 from ..kast.inner import KApply, KSequence, KSort, KToken
-from ..kast.manip import get_cell, set_cell
+from ..kast.manip import set_cell, split_config_from
 from ..ktool.krun import KRun
 
 if TYPE_CHECKING:
@@ -45,8 +46,7 @@ class JsonRpcServer:
 
 
 class JsonRpcMethod(Protocol):
-    def __call__(self, **kwargs: Any) -> Any:
-        ...
+    def __call__(self, **kwargs: Any) -> Any: ...
 
 
 class JsonRpcRequestHandler(BaseHTTPRequestHandler):
@@ -141,6 +141,11 @@ class ExampleJsonRpcServer(JsonRpcServer):
 
     def exec_print_hello(self, obj: None) -> str:
         return 'hello.'
+
+
+def get_cell(config: KInner, cell: str) -> KInner:
+    _, subst = split_config_from(config)
+    return Subst(subst)[cell]
 
 
 class StatefulKJsonRpcServer(JsonRpcServer):

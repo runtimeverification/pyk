@@ -167,7 +167,7 @@ class KoreClientTest(KompiledTest):
     KOMPILE_BACKEND: ClassVar = 'haskell'
     LLVM_ARGS: ClassVar[dict[str, Any]] = {}
 
-    CLIENT_TIMEOUT: ClassVar = 5000
+    CLIENT_TIMEOUT: ClassVar = 1000
 
     @pytest.fixture(scope='class', params=['legacy', 'booster'])
     def server_type(self, request: FixtureRequest, use_server: UseServer) -> ServerType:
@@ -246,8 +246,7 @@ class CTermSymbolicTest(KoreClientTest):
 
 class KCFGExploreTest(CTermSymbolicTest):
     @abstractmethod
-    def semantics(self, definition: KDefinition) -> KCFGSemantics:
-        ...
+    def semantics(self, definition: KDefinition) -> KCFGSemantics: ...
 
     @pytest.fixture
     def kcfg_explore(
