@@ -45,7 +45,8 @@ def _argument_parser() -> ArgumentParser:
         '--debug',
         action=BooleanOptionalAction,
         dest='debug',
-        help='send --debug to kompile',
+        default=False,
+        help='whether to send --debug to kompile',
     )
 
     which_parser = command_parser.add_parser('which', help='print definition directory for target')
