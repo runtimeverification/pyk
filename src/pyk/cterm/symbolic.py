@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, NamedTuple
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, NamedTuple, final
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
-from ..kast.manip import flatten_label, free_vars, sort_ac_collections
+from ..kast.manip import flatten_label, sort_ac_collections
 from ..kast.pretty import PrettyPrinter
 from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.rpc import (
@@ -53,6 +54,14 @@ class CTermImplies(NamedTuple):
     failing_cells: tuple[tuple[str, KInner], ...]
     remaining_implication: KInner | None
     logs: tuple[LogEntry, ...]
+
+
+@final
+@dataclass
+class CTermSMTError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
 
 
 class CTermSymbolic:
@@ -177,8 +186,7 @@ class CTermSymbolic:
     ) -> CTermImplies:
         _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
         _consequent = consequent.kast
-        fv_antecedent = free_vars(antecedent.kast)
-        unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
+        unbound_consequent = [v for v in consequent.free_vars if v not in antecedent.free_vars]
         if len(unbound_consequent) > 0:
             bind_text, bind_label = ('existentially', '#Exists')
             if bind_universally:
@@ -259,10 +267,10 @@ class CTermSymbolic:
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
 
-    def _smt_solver_error(self, err: SmtSolverError) -> RuntimeError:
+    def _smt_solver_error(self, err: SmtSolverError) -> CTermSMTError:
         kast = self.kore_to_kast(err.pattern)
         pretty_pattern = PrettyPrinter(self._definition).print(kast)
-        return RuntimeError(f'SMT solver error:\n{pretty_pattern}')
+        return CTermSMTError(pretty_pattern)
 
 
 @contextmanager
