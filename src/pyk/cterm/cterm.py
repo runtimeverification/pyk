@@ -205,7 +205,7 @@ class CTerm:
         return CTerm(self.config, [new_constraint] + list(self.constraints))
 
     @property
-    def free_vars(self) -> set[str]:
+    def free_vars(self) -> frozenset[str]:
         return free_vars(self.kast)
 
     def anti_unify(

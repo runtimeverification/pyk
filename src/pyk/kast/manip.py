@@ -255,8 +255,8 @@ def count_vars(term: KInner) -> Counter[str]:
     return counter
 
 
-def free_vars(kast: KInner) -> set[str]:
-    return set(count_vars(kast).keys())
+def free_vars(kast: KInner) -> frozenset[str]:
+    return frozenset(count_vars(kast).keys())
 
 
 def propagate_up_constraints(k: KInner) -> KInner:
