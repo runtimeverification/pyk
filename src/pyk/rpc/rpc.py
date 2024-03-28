@@ -5,7 +5,8 @@ import logging
 from functools import partial
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import TYPE_CHECKING, Any, Callable, Final
-import inspect
+
+from typing_extensions import Protocol
 
 from ..kast.inner import KApply, KSequence, KSort, KToken
 from ..kast.manip import get_cell, set_cell
@@ -20,7 +21,7 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class JsonRpcServer:
     JSONRPC_VERSION: str = '2.0'
-    methods: dict[str, Callable[[Any], Any]]
+    methods: dict[str, Callable[..., Any]]
     options: ServeRpcOptions
     http_server: HTTPServer
 
@@ -28,7 +29,7 @@ class JsonRpcServer:
         self.methods = {}
         self.options = options
 
-    def register_method(self, name: str, function: Callable[[Any], Any]) -> None:
+    def register_method(self, name: str, function: Callable[..., Any]) -> None:
         _LOGGER.info(f'Registered method {name} using {function}')
         self.methods[name] = function
 
@@ -39,15 +40,19 @@ class JsonRpcServer:
         self.http_server.serve_forever()
         _LOGGER.info(f'JSON-RPC server at {self.options.addr}:{self.options.port} shut down.')
 
-
     def shutdown(self) -> None:
         self.http_server.shutdown()
 
 
-class JsonRpcRequestHandler(BaseHTTPRequestHandler):
-    methods: dict[str, Callable[[Any], Any]]
+class JsonRpcMethod(Protocol):
+    def __call__(self, **kwargs: Any) -> Any:
+        ...
 
-    def __init__(self, methods: dict[str, Callable[[Any], Any]], *args: Any, **kwargs: Any) -> None:
+
+class JsonRpcRequestHandler(BaseHTTPRequestHandler):
+    methods: dict[str, JsonRpcMethod]
+
+    def __init__(self, methods: dict[str, JsonRpcMethod], *args: Any, **kwargs: Any) -> None:
         self.methods = methods
         super().__init__(*args, **kwargs)
 

@@ -8,8 +8,6 @@ from collections.abc import Iterable
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
-#  from multiprocessing import Process
-from threading import Thread
 
 from graphviz import Digraph
 
@@ -42,9 +40,6 @@ from .prelude.ml import is_top, mlAnd, mlOr
 from .proof.reachability import APRFailureInfo
 from .rpc.rpc import StatefulKJsonRpcServer
 from .utils import check_file_path, ensure_dir_path
-from .cli.pyk import ServeRpcOptions
-from .kore.rpc import JsonRpcClient, TransportType
-from time import sleep
 
 if TYPE_CHECKING:
     from typing import Any, Final
@@ -61,6 +56,7 @@ if TYPE_CHECKING:
         RPCKastOptions,
         RPCPrintOptions,
         RunOptions,
+        ServeRpcOptions,
     )
 
 

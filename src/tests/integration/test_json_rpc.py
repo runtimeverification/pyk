@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from multiprocessing import Process
+from threading import Thread
+from time import sleep
 from typing import TYPE_CHECKING
 
 from pyk.cli.pyk import ServeRpcOptions
-from pyk.kore.rpc import JsonRpcClient
+from pyk.kore.rpc import JsonRpcClient, TransportType
 from pyk.rpc.rpc import StatefulKJsonRpcServer
 from pyk.testing import KRunTest
-from threading import Thread
-from pyk.kore.rpc import JsonRpcClient, TransportType
 
 from .utils import K_FILES
 
@@ -21,8 +20,8 @@ class TestJsonRPCServer(KRunTest):
     KOMPILE_BACKEND = 'llvm'
 
     def test_json_rpc_server(self, krun: KRun) -> None:
-
         server = StatefulKJsonRpcServer(ServeRpcOptions({'definition_dir': krun.definition_dir, 'port': 56602}))
+
         def run_server() -> None:
             server.serve()
 
