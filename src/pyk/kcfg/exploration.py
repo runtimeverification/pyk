@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class KCFGExplorationNodeAttr(NodeAttr):
-    TERMINAL = 'terminal'
+    TERMINAL = NodeAttr('terminal')
 
 
 class KCFGExploration:

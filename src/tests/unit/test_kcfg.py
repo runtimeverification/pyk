@@ -680,7 +680,7 @@ def test_read_write_cfg_data(tmp_path: Path) -> None:
     kcfg.add_node(node(2))
     kcfg.add_node(node(3))
     kcfg.add_attr(1, KCFGNodeAttr.VACUOUS)
-    kcfg.add_attr(3, KCFGNodeAttr.STUCK)
+    kcfg.add_attr(2, KCFGNodeAttr.STUCK)
 
     kcfg.write_cfg_data()
     read_kcfg = KCFG.read_cfg_data(tmp_path)
@@ -691,8 +691,8 @@ def test_read_write_cfg_data(tmp_path: Path) -> None:
 def test_pretty_print() -> None:
     nodes = node_dicts(15, start=10) + predicate_node_dicts(1, start=25)
     nodes_dict = {node['id']: node for node in nodes}
-    nodes_dict[23]['attrs'] = [KCFGNodeAttr.STUCK]
-    nodes_dict[17]['attrs'] = [KCFGNodeAttr.VACUOUS]
+    nodes_dict[23]['attrs'] = [KCFGNodeAttr.STUCK.value]
+    nodes_dict[17]['attrs'] = [KCFGNodeAttr.VACUOUS.value]
     nodes = list(nodes_dict.values())
 
     d = {

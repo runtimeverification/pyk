@@ -11,6 +11,8 @@ from pyk.proof import EqualityProof
 from pyk.proof.implies import EqualitySummary
 from pyk.proof.proof import CompositeSummary, Proof, ProofStatus
 from pyk.proof.reachability import APRFailureInfo, APRProof, APRSummary
+from pyk.kcfg.exploration import KCFGExplorationNodeAttr
+from pyk.kcfg.kcfg import KCFGNodeAttr
 
 from .test_kcfg import minimization_test_kcfg, node, node_dicts, term
 
@@ -67,6 +69,32 @@ class TestProof:
         # Then
         assert type(proof_from_disk) is type(sample_proof)
         assert proof_from_disk.dict == sample_proof.dict
+
+    def test_read_proof_with_attributes(self, proof_dir: Path) -> None:
+
+        kcfg = KCFG.from_dict({'nodes': node_dicts(3)})
+        kcfg.add_attr(1, KCFGNodeAttr.VACUOUS)
+        kcfg.add_attr(2, KCFGExplorationNodeAttr.TERMINAL)
+        sample_proof = APRProof(
+            id='apr_proof_1',
+            kcfg=kcfg,
+            terminal=[],
+            init=node(1).id,
+            target=node(3).id,
+            logs={},
+            proof_dir=proof_dir,
+        )
+
+        # Given
+        assert sample_proof.proof_dir
+        sample_proof.write_proof_data()
+
+        # When
+        proof_from_disk = Proof.read_proof_data(id=sample_proof.id, proof_dir=proof_dir)
+
+        # Then
+        assert type(proof_from_disk) is type(sample_proof)
+        assert set(sample_proof.kcfg.nodes) == set(proof_from_disk.kcfg.nodes)
 
     def test_read_proof_aprbmc(self, proof_dir: Path) -> None:
         sample_proof = APRProof(

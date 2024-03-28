@@ -5,7 +5,6 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass, field
-from enum import Enum
 from functools import reduce
 from threading import RLock
 from typing import TYPE_CHECKING, Final, List, Union, cast, final
@@ -46,12 +45,14 @@ NodeIdLike = int | str
 _LOGGER: Final = logging.getLogger(__name__)
 
 
-class NodeAttr(Enum): ...
+@dataclass(frozen=True)
+class NodeAttr:
+    value: str
 
 
 class KCFGNodeAttr(NodeAttr):
-    VACUOUS = 'vacuous'
-    STUCK = 'stuck'
+    VACUOUS = NodeAttr('vacuous')
+    STUCK = NodeAttr('stuck')
 
 
 class KCFGStore:
@@ -77,8 +78,12 @@ class KCFGStore:
         self, dct: dict[str, Any], deleted_nodes: Iterable[int] = (), created_nodes: Iterable[int] = ()
     ) -> None:
         node_dict = {node_dct['id']: node_dct for node_dct in dct['nodes']}
-        vacuous_nodes = [node_id for node_id in node_dict.keys() if KCFGNodeAttr.VACUOUS in node_dict[node_id]['attrs']]
-        stuck_nodes = [node_id for node_id in node_dict.keys() if KCFGNodeAttr.STUCK in node_dict[node_id]['attrs']]
+        vacuous_nodes = [
+            node_id for node_id in node_dict.keys() if KCFGNodeAttr.VACUOUS.value in node_dict[node_id]['attrs']
+        ]
+        stuck_nodes = [
+            node_id for node_id in node_dict.keys() if KCFGNodeAttr.STUCK.value in node_dict[node_id]['attrs']
+        ]
         dct['vacuous'] = vacuous_nodes
         dct['stuck'] = stuck_nodes
         for node_id in deleted_nodes:
@@ -98,9 +103,9 @@ class KCFGStore:
         for node in dct['nodes']:
             attrs = []
             if node['id'] in dct['vacuous']:
-                attrs.append(KCFGNodeAttr.VACUOUS)
+                attrs.append(KCFGNodeAttr.VACUOUS.value)
             if node['id'] in dct['stuck']:
-                attrs.append(KCFGNodeAttr.STUCK)
+                attrs.append(KCFGNodeAttr.STUCK.value)
             new_nodes.append({'id': node['id'], 'cterm': node['cterm'], 'attrs': attrs})
 
         dct['nodes'] = new_nodes
@@ -128,18 +133,18 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             object.__setattr__(self, 'attrs', frozenset(attrs))
 
         def to_dict(self) -> dict[str, Any]:
-            return {'id': self.id, 'cterm': self.cterm.to_dict(), 'attrs': self.attrs}
+            return {'id': self.id, 'cterm': self.cterm.to_dict(), 'attrs': [attr.value for attr in self.attrs]}
 
         @staticmethod
         def from_dict(dct: dict[str, Any]) -> KCFG.Node:
-            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']), dct['attrs'])
+            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']), [NodeAttr(attr) for attr in dct['attrs']])
 
         def add_attr(self, attr: NodeAttr) -> KCFG.Node:
             return KCFG.Node(self.id, self.cterm, list(self.attrs) + [attr])
 
         def remove_attr(self, attr: NodeAttr) -> KCFG.Node:
             if attr not in self.attrs:
-                raise ValueError(f'Node {self.id} does not have attribute {attr.name}')
+                raise ValueError(f'Node {self.id} does not have attribute {attr.value}')
             return KCFG.Node(self.id, self.cterm, self.attrs.difference([attr]))
 
         def discard_attr(self, attr: NodeAttr) -> KCFG.Node:
