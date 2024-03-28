@@ -38,7 +38,7 @@ class KBuild:
     def definition_dir(self, project: Project, target_name: str) -> Path:
         return self.kdist_dir / self.k_version / target_name
 
-    def kompile(self, project: Project, target_name: str, debug: bool = False) -> Path:
+    def kompile(self, project: Project, target_name: str, *, debug: bool = False) -> Path:
         self.kdist_dir.mkdir(parents=True, exist_ok=True)
 
         with FileLock(self.kdist_dir / '.lock'):
