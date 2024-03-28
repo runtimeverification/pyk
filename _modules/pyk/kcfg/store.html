@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kcfg.store &#8212; pyk 0.1.756 documentation</title>
+    <title>pyk.kcfg.store &#8212; pyk 0.1.757 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=e1a3ba79"></script>
+    <script src="../../../_static/documentation_options.js?v=45db3e60"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -76,7 +76,7 @@
 <span class="linenos"> 42</span>        <span class="n">old_cterm</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">cterm</span>
 <span class="linenos"> 43</span>        <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimize</span><span class="p">(</span><span class="n">old_cterm</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
 <span class="linenos"> 44</span>        <span class="n">new_constraints</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_optimize</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">old_cterm</span><span class="o">.</span><span class="n">constraints</span><span class="p">)</span>
-<span class="linenos"> 45</span>        <span class="n">new_node</span> <span class="o">=</span> <span class="n">KCFG</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">CTerm</span><span class="p">(</span><span class="n">new_config</span><span class="p">,</span> <span class="n">new_constraints</span><span class="p">))</span>
+<span class="linenos"> 45</span>        <span class="n">new_node</span> <span class="o">=</span> <span class="n">KCFG</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">CTerm</span><span class="p">(</span><span class="n">new_config</span><span class="p">,</span> <span class="n">new_constraints</span><span class="p">),</span> <span class="n">attrs</span><span class="o">=</span><span class="n">node</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
 <span class="linenos"> 46</span>        <span class="bp">self</span><span class="o">.</span><span class="n">_nodes</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_node</span>
 <span class="linenos"> 47</span>
 <span class="linenos"> 48</span>    <span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
