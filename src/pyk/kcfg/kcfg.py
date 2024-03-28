@@ -650,13 +650,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._nodes[node.id] = node
         self._created_nodes.add(node.id)
 
-    def create_node(self, cterm: CTerm, node_id: int | None = None) -> KCFG.Node:
+    def create_node(self, cterm: CTerm) -> KCFG.Node:
         """Adds a node to the KCFG and computes attributes. Uses fresh id if none is passed"""
-        if node_id is None:
-            node_id = self._node_id
-            self._node_id += 1
-        if node_id in self._nodes:
-            raise ValueError(f'Node with id already exists: {node_id}')
+        node_id = self._node_id
+        self._node_id += 1
         node = KCFG.Node(node_id, cterm)
         self._nodes[node_id] = node
         self._created_nodes.add(node_id)
