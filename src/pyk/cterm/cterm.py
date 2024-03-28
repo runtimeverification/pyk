@@ -149,9 +149,9 @@ class CTerm:
         return mlAnd(self, GENERATED_TOP_CELL)
 
     @cached_property
-    def free_vars(self) -> set[str]:
+    def free_vars(self) -> frozenset[str]:
         """Return the set of free variable names contained in this `CTerm`"""
-        return set(free_vars(self.kast))
+        return frozenset(free_vars(self.kast))
 
     @property
     def hash(self) -> str:
