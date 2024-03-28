@@ -1,11 +1,56 @@
-  <k>
-    unionResult ( S1 |Set ( S2
-    SetItem ( X:MyId ) ) ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    X:MyId in S2
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'S1' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(union-19-spec.k)
+	Location(9,23,9,25)
+	9 |	    claim <k> union ( S1                   |Set (S2 SetItem(X:MyId)) ) =>
+. </k>
+	  .	                      ^~
+[Warning] Compiler: Variable 'S2' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(union-19-spec.k)
+	Location(9,50,9,52)
+	9 |	    claim <k> union ( S1                   |Set (S2 SetItem(X:MyId)) ) =>
+. </k>
+	  .	                                                 ^~
+[Warning] Compiler: Variable 'X' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(union-19-spec.k)
+	Location(9,61,9,62)
+	9 |	    claim <k> union ( S1                   |Set (S2 SetItem(X:MyId)) ) =>
+. </k>
+	  .	                                                            ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(union-19-spec.k)
+	Location(9,75,9,76)
+	9 |	    claim <k> union ( S1                   |Set (S2 SetItem(X:MyId)) ) =>
+. </k>
+	  .	                                                                         
+^
+APRProof: d9feee2d2c05f03d29ac3006b20973bab3f99a5f29b11348da152eada14379bd
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 5
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 5
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: unionResult ( S1:Set |Set SetItem ( X:MyId ) S2:Set ) ~> .K #Implies .K
+  Path condition:
+    { false #Equals X:MyId in S2:Set }
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

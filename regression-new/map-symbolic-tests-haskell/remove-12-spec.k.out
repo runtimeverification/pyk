@@ -1,1 +1,35 @@
-#Top
+[Warning] Compiler: Variable 'MAP' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-12-spec.k)
+	Location(9,25,9,28)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Z  ==K Y
+	  .	                        ^~~
+[Warning] Compiler: Variable 'X' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-12-spec.k)
+	Location(9,33,9,34)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Z  ==K Y
+	  .	                                ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(remove-12-spec.k)
+	Location(9,81,9,82)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Z  ==K Y
+	  .	                                                                          
+     ^
+APRProof: 8dba0e95c0415f77159f71b56124d9af8cc5886975c39db753338226a89ebff6
+    status: ProofStatus.PASSED
+    admitted: False
+    nodes: 2
+    pending: 0
+    failing: 0
+    vacuous: 0
+    stuck: 0
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0

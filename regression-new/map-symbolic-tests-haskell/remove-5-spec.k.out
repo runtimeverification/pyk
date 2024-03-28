@@ -1,30 +1,58 @@
-  #Not ( {
-    X
-  #Equals
-    Y
-  } )
-#And
-  <k>
-    removeResult ( MAP [ Y:MyId <- undef ]
-    ( X:MyId |-> 1 ) [ Z:MyId ] ~> .K ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    X:MyId in_keys ( MAP )
-  }
-#And
-  {
-    false
-  #Equals
-    X:MyId in_keys ( MAP [ Y:MyId <- undef ] )
-  }
-#And
-  {
-    true
-  #Equals
-    Z:MyId in_keys ( MAP [ Y:MyId <- undef ]
-    ( X:MyId |-> 1 ) )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'MAP' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-5-spec.k)
+	Location(9,25,9,28)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Y =/=K X
+	  .	                        ^~~
+[Warning] Compiler: Variable 'Z' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-5-spec.k)
+	Location(9,67,9,68)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Y =/=K X
+	  .	                                                                  ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(remove-5-spec.k)
+	Location(9,81,9,82)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Y =/=K X
+	  .	                                                                          
+     ^
+APRProof: 748267cb3b1316d532cdfc4c53c2bea5b86343d3e02fc678dcc0c678a1b8ff5b
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 7
+    pending: 0
+    failing: 2
+    vacuous: 0
+    stuck: 2
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+2 Failure nodes. (0 pending and 2 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: removeResult ( MAP:Map [ Y:MyId <- undef ] X:MyId |-> 1 [ Z:MyId ] ~> .K ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+  Node id: 6
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: removeResult ( MAP:Map [ Y:MyId <- undef ] X:MyId |-> 1 [ Z:MyId ] ~> .K ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

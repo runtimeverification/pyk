@@ -1,18 +1,64 @@
-  <k>
-    removeResult ( ( MAP
-    X:MyId |-> 1 ) [ Y:MyId <- undef ] [ Z:MyId ] ~> .K ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    X:MyId in_keys ( MAP )
-  }
-#And
-  {
-    true
-  #Equals
-    Z:MyId in_keys ( ( MAP
-    X:MyId |-> 1 ) [ Y:MyId <- undef ] )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'MAP' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-4-spec.k)
+	Location(9,25,9,28)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k>
+	  .	                        ^~~
+[Warning] Compiler: Variable 'X' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-4-spec.k)
+	Location(9,33,9,34)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k>
+	  .	                                ^
+[Warning] Compiler: Variable 'Y' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-4-spec.k)
+	Location(9,48,9,49)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k>
+	  .	                                               ^
+[Warning] Compiler: Variable 'Z' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-4-spec.k)
+	Location(9,67,9,68)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k>
+	  .	                                                                  ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(remove-4-spec.k)
+	Location(9,81,9,82)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k>
+	  .	                                                                          
+     ^
+APRProof: 5c11f37002bea624fbbd074537f13288ee88ff6e8b856d030dc88bbc2a7a256a
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 5
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 5
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: removeResult ( X:MyId |-> 1 MAP:Map [ Y:MyId <- undef ] [ Z:MyId ] ~> .K ) ~> .K #Implies .K
+  Path condition:
+    { false #Equals X:MyId in_keys ( MAP:Map ) }
+#And { true #Equals Z:MyId in_keys ( X:MyId |-> 1 MAP:Map [ Y:MyId <- undef ] ) }
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

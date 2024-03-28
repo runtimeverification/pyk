@@ -1,16 +1,49 @@
-  <k>
-    removeResult ( MAP [ Z:MyId ] ~> .K ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    Y:MyId in_keys ( MAP )
-  }
-#And
-  {
-    true
-  #Equals
-    Z:MyId in_keys ( MAP )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'MAP' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-1-spec.k)
+	Location(9,25,9,28)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Y ==K X
+	  .	                        ^~~
+[Warning] Compiler: Variable 'Z' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(remove-1-spec.k)
+	Location(9,67,9,68)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Y ==K X
+	  .	                                                                  ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(remove-1-spec.k)
+	Location(9,81,9,82)
+	9 |	    claim <k> remove ( (MAP:Map X:MyId |-> 1) [Y:MyId <- undef] [ Z:MyId ]
+) => . </k> requires Y ==K X
+	  .	                                                                          
+     ^
+APRProof: 7023d3e43ce529ab2c7afecc3ca09a53307889c23e8814e48c04c1f2741530d2
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 4
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: removeResult ( MAP:Map [ Z:MyId ] ~> .K ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

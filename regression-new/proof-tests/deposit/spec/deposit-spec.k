@@ -7,7 +7,7 @@ imports DEPOSIT-SYMBOLIC
 
 // Lemma 7 (deposit).
 
-claim <k> deposit(V) => . ... </k>
+claim <k> deposit(V) => .K ... </k>
       <depositCount> M => M +Int 1 </depositCount>
       <treeHeight> TREE_HEIGHT </treeHeight>
       <branch> Branch1 => ?Branch2 </branch>
@@ -18,7 +18,7 @@ claim <k> deposit(V) => . ... </k>
        andBool isValidBranch(Branch1, M)
       ensures  isValidBranch(?Branch2, M +Int 1)
 
-claim <k> depositLoop(I, TREE_HEIGHT -Int 1, down(I, M), tn(M, I, down(I, M))) => . ... </k>
+claim <k> depositLoop(I, TREE_HEIGHT -Int 1, down(I, M), tn(M, I, down(I, M))) => .K ... </k>
       <depositCount> M </depositCount> // M = m + 1
       <treeHeight> TREE_HEIGHT </treeHeight>
       <branch> Branch1 => ?Branch2 </branch>

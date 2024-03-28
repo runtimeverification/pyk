@@ -1,24 +1,63 @@
-  #Not ( {
-    X
-  #Equals
-    Z
-  } )
-#And
-  <k>
-    inkeysResult ( Y:MyId in_keys ( M
-    X:MyId |-> 0
-    ( Z:MyId |-> 1 ) ) ) ~> .K
-  </k>
-#And
-  {
-    false
-  #Equals
-    X:MyId in_keys ( M )
-  }
-#And
-  {
-    false
-  #Equals
-    Z:MyId in_keys ( M )
-  }
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Variable 'Y' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(inkeys-7-spec.k)
+	Location(9,24,9,25)
+	9 |	    claim <k> inkeys ( Y:MyId in_keys ( Z:MyId |-> 1 M:Map X:MyId |-> 0 )
+) => . </k>
+	  .	                       ^
+[Warning] Compiler: Variable 'Z' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(inkeys-7-spec.k)
+	Location(9,41,9,42)
+	9 |	    claim <k> inkeys ( Y:MyId in_keys ( Z:MyId |-> 1 M:Map X:MyId |-> 0 )
+) => . </k>
+	  .	                                        ^
+[Warning] Compiler: Variable 'M' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(inkeys-7-spec.k)
+	Location(9,54,9,55)
+	9 |	    claim <k> inkeys ( Y:MyId in_keys ( Z:MyId |-> 1 M:Map X:MyId |-> 0 )
+) => . </k>
+	  .	                                                     ^
+[Warning] Compiler: Variable 'X' defined but not used. Prefix variable name
+with underscore if this is intentional.
+	Source(inkeys-7-spec.k)
+	Location(9,60,9,61)
+	9 |	    claim <k> inkeys ( Y:MyId in_keys ( Z:MyId |-> 1 M:Map X:MyId |-> 0 )
+) => . </k>
+	  .	                                                           ^
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(inkeys-7-spec.k)
+	Location(9,80,9,81)
+	9 |	    claim <k> inkeys ( Y:MyId in_keys ( Z:MyId |-> 1 M:Map X:MyId |-> 0 )
+) => . </k>
+	  .	                                                                          
+    ^
+APRProof: 84fb9fc9fe3e51ba4a3878ea281c00c6988d9d34f10937ec5a1314bbe2b6c642
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 4
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: inkeysResult ( Y:MyId in_keys ( X:MyId |-> 0 Z:MyId |-> 1 M:Map ) ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

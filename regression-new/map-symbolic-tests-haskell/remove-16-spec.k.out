@@ -1,16 +1,34 @@
-  #Not ( {
-    X
-  #Equals
-    x
-  } )
-#And
-  #Not ( {
-    X
-  #Equals
-    y
-  } )
-#And
-  <k>
-    removeResult ( 3 ~> .K ) ~> .K
-  </k>
-[Error] Prover: backend terminated because the configuration cannot be rewritten further. See output for more details.
+[Warning] Compiler: Use of deprecated production found; this syntax may be
+removed in the future.
+	Source(remove-16-spec.k)
+	Location(9,73,9,74)
+	9 |	    claim <k> remove ( (X:MyId |-> 3 y |-> 4) [ x <- undef ] [ X ] ) => .
+</k> requires X =/=K x
+	  .	                                                                        ^
+APRProof: ded5c6442dce17160736ed473243a269154b5f20b4f5398a8991643efa45dc02
+    status: ProofStatus.FAILED
+    admitted: False
+    nodes: 3
+    pending: 0
+    failing: 1
+    vacuous: 0
+    stuck: 1
+    terminal: 0
+    refuted: 0
+    bounded: 0
+    execution time: 0s
+Subproofs: 0
+1 Failure nodes. (0 pending and 1 failing)
+
+Failing nodes:
+
+  Node id: 3
+  Failure reason:
+    Matching failed.
+    The following cells failed matching individually (antecedent #Implies consequent):
+    K_CELL: removeResult ( 3 ~> .K ) ~> .K #Implies .K
+  Path condition:
+    #Top
+  Failed to generate a model.
+
+Join the Runtime Verification Discord server for support: https://discord.gg/CurfmXNtbN

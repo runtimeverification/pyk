@@ -1,5 +1,10 @@
-<T>
-  <k>
-    29 /Rat 18 ;  1 /Rat 18 ;  35 /Rat 54 ;  15 /Rat 14 ;  52 /Rat 9 ;  38 /Rat 9 ;  35 /Rat 9 ;  45 /Rat 7 ;  47 /Rat 6 ;  -37 /Rat 6 ;  35 /Rat 6 ;  5 /Rat 42 ;  12 ;  -2 ;  35 ;  5 /Rat 7 ;  .Pgm ~> .K
-  </k>
-</T>
+<generatedTop>
+  <T>
+    <k>
+      < 29 , 18 >Rat ;  < 1 , 18 >Rat ;  < 35 , 54 >Rat ;  < 15 , 14 >Rat ;  < 52 , 9 >Rat ;  < 38 , 9 >Rat ;  < 35 , 9 >Rat ;  < 45 , 7 >Rat ;  < 47 , 6 >Rat ;  < -37 , 6 >Rat ;  < 35 , 6 >Rat ;  < 5 , 42 >Rat ;  12 ;  -2 ;  35 ;  < 5 , 7 >Rat ;  .Pgm ~> .K
+    </k>
+  </T>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>

@@ -1,5 +1,32 @@
-[Error] Compiler: Simplification rules expect function/functional/mlOp symbols at the top of the left hand side term.
+[Error] Compiler: Simplification rules expect function/functional/mlOp symbols
+at the top of the left hand side term.
 	Source(a6-spec.k)
 	Location(8,8,8,25)
 	8 |	  rule notAFunction => 1 [simplification]
 	  .	       ^~~~~~~~~~~~~~~~~
+Traceback (most recent call last):
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 105, in _kprove
+    return run_process(run_args, logger=_LOGGER, env=env, check=check)
+  File "/home/dev/src/pyk/src/pyk/utils.py", line 451, in run_process
+    res.check_returncode()
+  File "/usr/lib/python3.10/subprocess.py", line 457, in check_returncode
+    raise CalledProcessError(self.returncode, self.args, self.stdout,
+subprocess.CalledProcessError: Command '('kprove', 'a6-spec.k', '--definition', 'test-kompiled', '--output', 'json', '--type-inference-mode', 'checked', '--dry-run', '--emit-json-spec', '/tmp/tmpwqmtv5bu')' returned non-zero exit status 113.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/home/dev/src/pyk/src/pyk/__main__.py", line 90, in main
+    execute(options)
+  File "/home/dev/src/pyk/src/pyk/__main__.py", line 252, in exec_prove
+    proofs = kprove.prove_rpc(options=options)
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 380, in prove_rpc
+    all_claims = self.get_claims(
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 425, in get_claims
+    flat_module_list = self.get_claim_modules(
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 400, in get_claim_modules
+    _kprove(
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 107, in _kprove
+    raise RuntimeError(
+RuntimeError: ('Command kprove exited with code 113 for: a6-spec.k', '', None)

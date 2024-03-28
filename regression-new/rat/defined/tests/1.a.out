@@ -1,5 +1,10 @@
-<T>
-  <k>
-    1 /Rat 2 ;  -1 /Rat 2 ;  -1 /Rat 2 ;  1 /Rat 2 ;  2 ;  -2 ;  -2 ;  2 ;  2 ;  -2 ;  -2 ;  2 ;  2 /Rat 3 ;  -2 /Rat 3 ;  -2 /Rat 3 ;  2 /Rat 3 ;  3 /Rat 2 ;  -3 /Rat 2 ;  -3 /Rat 2 ;  3 /Rat 2 ;  5 /Rat 3 ;  -5 /Rat 3 ;  -5 /Rat 3 ;  5 /Rat 3 ;  3 /Rat 5 ;  -3 /Rat 5 ;  -3 /Rat 5 ;  3 /Rat 5 ;  51 /Rat 22 ;  -51 /Rat 22 ;  -51 /Rat 22 ;  51 /Rat 22 ;  22 /Rat 51 ;  -22 /Rat 51 ;  -22 /Rat 51 ;  22 /Rat 51 ;  .Pgm ~> .K
-  </k>
-</T>
+<generatedTop>
+  <T>
+    <k>
+      < 1 , 2 >Rat ;  < -1 , 2 >Rat ;  < -1 , 2 >Rat ;  < 1 , 2 >Rat ;  2 ;  -2 ;  -2 ;  2 ;  2 ;  -2 ;  -2 ;  2 ;  < 2 , 3 >Rat ;  < -2 , 3 >Rat ;  < -2 , 3 >Rat ;  < 2 , 3 >Rat ;  < 3 , 2 >Rat ;  < -3 , 2 >Rat ;  < -3 , 2 >Rat ;  < 3 , 2 >Rat ;  < 5 , 3 >Rat ;  < -5 , 3 >Rat ;  < -5 , 3 >Rat ;  < 5 , 3 >Rat ;  < 3 , 5 >Rat ;  < -3 , 5 >Rat ;  < -3 , 5 >Rat ;  < 3 , 5 >Rat ;  < 51 , 22 >Rat ;  < -51 , 22 >Rat ;  < -51 , 22 >Rat ;  < 51 , 22 >Rat ;  < 22 , 51 >Rat ;  < -22 , 51 >Rat ;  < -22 , 51 >Rat ;  < 22 , 51 >Rat ;  .Pgm ~> .K
+    </k>
+  </T>
+  <generatedCounter>
+    0
+  </generatedCounter>
+</generatedTop>

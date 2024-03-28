@@ -1,6 +1,33 @@
-[Error] Compiler: Only claims and simplification rules are allowed in proof modules.
+[Error] Compiler: Only claims and simplification rules are allowed in proof
+modules.
 	Source(rule-spec.k)
 	Location(6,10,6,43)
 	6 |	    rule <k> doIt(foo) => doIt(0) ... </k>
 	  .	         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [Error] Compiler: Had 1 structural errors.
+Traceback (most recent call last):
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 105, in _kprove
+    return run_process(run_args, logger=_LOGGER, env=env, check=check)
+  File "/home/dev/src/pyk/src/pyk/utils.py", line 451, in run_process
+    res.check_returncode()
+  File "/usr/lib/python3.10/subprocess.py", line 457, in check_returncode
+    raise CalledProcessError(self.returncode, self.args, self.stdout,
+subprocess.CalledProcessError: Command '('kprove', 'rule-spec.k', '--definition', 'errorClaim-kompiled', '--output', 'json', '--type-inference-mode', 'checked', '--dry-run', '--emit-json-spec', '/tmp/tmppacrxgx1')' returned non-zero exit status 113.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/home/dev/src/pyk/src/pyk/__main__.py", line 90, in main
+    execute(options)
+  File "/home/dev/src/pyk/src/pyk/__main__.py", line 252, in exec_prove
+    proofs = kprove.prove_rpc(options=options)
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 380, in prove_rpc
+    all_claims = self.get_claims(
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 425, in get_claims
+    flat_module_list = self.get_claim_modules(
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 400, in get_claim_modules
+    _kprove(
+  File "/home/dev/src/pyk/src/pyk/ktool/kprove.py", line 107, in _kprove
+    raise RuntimeError(
+RuntimeError: ('Command kprove exited with code 113 for: rule-spec.k', '', None)
