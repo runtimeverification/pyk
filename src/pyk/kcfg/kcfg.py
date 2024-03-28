@@ -916,12 +916,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         fv_source = set(free_vars(self.node(source).cterm.kast))
         for subst in target_csubsts:
             fresh_vars = set(free_vars(mlAnd(subst.constraints))).difference(fv_source)
-        error_msg = (
-            f'Cannot lift split at node {target} due to branching on freshly introduced variables: {fresh_vars}'
-            if len(fresh_vars) > 0
-            else ''
-        )
-        return len(fresh_vars) == 0, error_msg
+            if len(fresh_vars) > 0:
+                error_msg = (
+                    f'Cannot lift split at node {target} due to branching on freshly introduced variables: {fresh_vars}'
+                )
+                return False, error_msg
+        return True, ''
 
     def lift_split_edge(self, id: NodeIdLike) -> None:
         """Lift a split up an edge directly preceding it.
