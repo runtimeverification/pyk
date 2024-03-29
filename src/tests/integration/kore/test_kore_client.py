@@ -412,9 +412,15 @@ class TestKoreClientWithSMTLemmas(KoreClientTest):
 
 
 class TestAddModule(KoreClientTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'int-config.k'
-
-    MAIN_MODULE = 'INT-CONFIG'
+    KOMPILE_DEFINITION = """
+        module INT-CONFIG
+          imports INT-SYNTAX
+          configuration <k> $PGM:Int </k>
+        endmodule
+    """
+    KOMPILE_MAIN_MODULE = 'INT-CONFIG'
+    KOMPILE_ARGS = {'syntax_module': 'INT-CONFIG'}
+    LLVM_ARGS = {'syntax_module': 'INT-CONFIG'}
 
     @staticmethod
     def config(i: int) -> Pattern:
@@ -448,7 +454,7 @@ class TestAddModule(KoreClientTest):
         expected = StuckResult(State(term=config, substitution=None, predicate=None), depth=0, logs=())
 
         # When
-        actual = kore_client.execute(config, module_name=self.MAIN_MODULE)
+        actual = kore_client.execute(config, module_name=self.KOMPILE_MAIN_MODULE)
 
         # Then
         assert actual == expected
@@ -456,7 +462,7 @@ class TestAddModule(KoreClientTest):
     def test_add_a_single_module(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
 
         # When
@@ -469,7 +475,7 @@ class TestAddModule(KoreClientTest):
     def test_add_a_single_module_but_dont_use_it(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         expected = StuckResult(State(term=self.config(0), substitution=None, predicate=None), depth=0, logs=())
 
         # When
@@ -482,7 +488,7 @@ class TestAddModule(KoreClientTest):
     def test_name_as_id(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
 
         # When
@@ -495,7 +501,7 @@ class TestAddModule(KoreClientTest):
     def test_without_name_as_id_fails(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
 
         # When + Then
         kore_client.add_module(module)
@@ -505,7 +511,7 @@ class TestAddModule(KoreClientTest):
     def test_add_module_twice(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
 
         # When
@@ -524,7 +530,7 @@ class TestAddModule(KoreClientTest):
     def test_add_module_twice_with_name(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
 
         # When
@@ -543,7 +549,7 @@ class TestAddModule(KoreClientTest):
     def test_add_module_without_name_then_with_name(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
 
         # When
@@ -568,7 +574,7 @@ class TestAddModule(KoreClientTest):
     def test_add_module_with_name_then_without_name(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         expected = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
 
         # When
@@ -598,8 +604,8 @@ class TestAddModule(KoreClientTest):
 
     def test_add_different_modules_with_same_name_as_id_fails(self, kore_client: KoreClient) -> None:
         # Given
-        module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        module_2 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
+        module_1 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
+        module_2 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 2)))
 
         # When-Then
         kore_client.add_module(module_1, name_as_id=True)
@@ -609,8 +615,8 @@ class TestAddModule(KoreClientTest):
     def test_add_two_modules_second_with_same_name_as_id(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        module_2 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
+        module_1 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
+        module_2 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 2)))
         expected_1 = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
         expected_2 = StuckResult(State(term=self.config(2), substitution=None, predicate=None), depth=1, logs=())
 
@@ -631,8 +637,8 @@ class TestAddModule(KoreClientTest):
     def test_add_two_modules_first_with_same_name_as_id(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        module_2 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
+        module_1 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
+        module_2 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 2)))
         expected_1 = StuckResult(State(term=self.config(1), substitution=None, predicate=None), depth=1, logs=())
         expected_2 = StuckResult(State(term=self.config(2), substitution=None, predicate=None), depth=1, logs=())
 
@@ -653,7 +659,7 @@ class TestAddModule(KoreClientTest):
     def test_add_module_with_import(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module_1 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         expected = StuckResult(State(term=self.config(2), substitution=None, predicate=None), depth=2, logs=())
 
         # When
@@ -668,7 +674,7 @@ class TestAddModule(KoreClientTest):
     def test_add_module_with_named_import(self, kore_client: KoreClient) -> None:
         # Given
         config = self.config(0)
-        module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module_1 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
         module_2 = Module('B', sentences=(Import('A'), self.rule(1, 2)))
         expected = StuckResult(State(term=self.config(2), substitution=None, predicate=None), depth=2, logs=())
 
@@ -691,7 +697,7 @@ class TestAddModule(KoreClientTest):
 
     def test_add_module_with_unknown_named_import_fails(self, kore_client: KoreClient) -> None:
         # Given
-        module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
+        module_1 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
 
         # When-Then
         kore_client.add_module(module_1)
@@ -702,8 +708,8 @@ class TestAddModule(KoreClientTest):
     def test_add_module_with_hash_name_not_as_id_first(self, kore_client: KoreClient) -> None:
         # Given
         expected_module_2_id = 'mb2dcdc14b22cf840e6270ac0ebd1d9448dad1a64f04413c20c1c87d687ac28c9'
-        module_1 = Module(expected_module_2_id, sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        module_2 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
+        module_1 = Module(expected_module_2_id, sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
+        module_2 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 2)))
 
         # When
         kore_client.add_module(module_1)
@@ -715,8 +721,8 @@ class TestAddModule(KoreClientTest):
     def test_add_module_with_hash_name_as_id_first_fails(self, kore_client: KoreClient) -> None:
         # Given
         module_2_id = 'mb2dcdc14b22cf840e6270ac0ebd1d9448dad1a64f04413c20c1c87d687ac28c9'
-        module_1 = Module(module_2_id, sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        module_2 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
+        module_1 = Module(module_2_id, sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
+        module_2 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 2)))
 
         # When-Then
         kore_client.add_module(module_1, name_as_id=True)
@@ -726,8 +732,8 @@ class TestAddModule(KoreClientTest):
     def test_add_module_with_hash_name_not_as_id_second(self, kore_client: KoreClient) -> None:
         # Given
         expected_module_1_id = 'm33a3f42dd93f20505f7b1132dadc18fb4adc9882e0d55d9661cc1d77ad549b97'
-        module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        module_2 = Module(expected_module_1_id, sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
+        module_1 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
+        module_2 = Module(expected_module_1_id, sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 2)))
 
         # When
         actual_module_1_id = kore_client.add_module(module_1)
@@ -739,8 +745,8 @@ class TestAddModule(KoreClientTest):
     def test_add_module_with_hash_name_as_id_second_fails(self, kore_client: KoreClient) -> None:
         # Given
         module_1_id = 'm33a3f42dd93f20505f7b1132dadc18fb4adc9882e0d55d9661cc1d77ad549b97'
-        module_1 = Module('A', sentences=(Import(self.MAIN_MODULE), self.rule(0, 1)))
-        module_2 = Module(module_1_id, sentences=(Import(self.MAIN_MODULE), self.rule(0, 2)))
+        module_1 = Module('A', sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 1)))
+        module_2 = Module(module_1_id, sentences=(Import(self.KOMPILE_MAIN_MODULE), self.rule(0, 2)))
 
         # When-Then
         kore_client.add_module(module_1)
