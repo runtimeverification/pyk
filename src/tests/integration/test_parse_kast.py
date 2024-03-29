@@ -29,12 +29,25 @@ def test_sort_synonym(kompile: Kompiler) -> None:
 
 def test_kas(kompile: Kompiler) -> None:
     # Given
-    definition_dir = kompile(main_file=K_FILES / 'contextual-function.k')
+    k_text = """
+        module CONTEXTUAL-FUNCTION
+            imports INT-SYNTAX
+
+            syntax Int ::= getCtx() [function, total]
+
+            configuration <k> $PGM:KItem </k>
+                          <ctx> 0 </ctx>
+
+            rule [[ getCtx() => N ]] <ctx> N </ctx> [label(def-get-ctx)]
+        endmodule
+    """
+    main_module = 'CONTEXTUAL-FUNCTION'
+    definition_dir = kompile(definition=k_text, main_module=main_module, syntax_module=main_module)
     definition = read_kast_definition(definition_dir / 'compiled.json')
-    module = definition.module('CONTEXTUAL-FUNCTION')
+    module = definition.module(main_module)
 
     # When
-    rule = single(rule for rule in module.rules if rule.att.get(Atts.LABEL) == 'def-get-ctx')
+    (rule,) = (rule for rule in module.rules if rule.att.get(Atts.LABEL) == 'def-get-ctx')
 
     # Then
     rewrite = rule.body
