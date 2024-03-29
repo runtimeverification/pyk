@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyk.kast import Atts
+from pyk.kast import EMPTY_ATT, Atts
 from pyk.kast.inner import KApply, KAs, KRewrite, KSort
 from pyk.kast.outer import KRegexTerminal, KSortSynonym, read_kast_definition
-from pyk.utils import single
 
 from .utils import K_FILES
 
@@ -15,16 +14,24 @@ if TYPE_CHECKING:
 
 def test_sort_synonym(kompile: Kompiler) -> None:
     # Given
-    definition_dir = kompile(main_file=K_FILES / 'sort-synonym.k')
+    k_text = """
+        module SORT-SYNONYM
+            imports INT-SYNTAX
+            syntax NewInt = Int
+        endmodule
+    """
+    main_module = 'SORT-SYNONYM'
+    definition_dir = kompile(definition=k_text, main_module=main_module, syntax_module=main_module)
     definition = read_kast_definition(definition_dir / 'compiled.json')
-    module = definition.module('SORT-SYNONYM-SYNTAX')
+    module = definition.module(main_module)
+    expected = KSortSynonym(new_sort=KSort('NewInt'), old_sort=KSort('Int'))
 
     # When
-    sort_synonym = single(sentence for sentence in module if type(sentence) is KSortSynonym)
+    (syntax_synonym,) = (sentence for sentence in module if type(sentence) is KSortSynonym)
+    actual = syntax_synonym.let(att=EMPTY_ATT)
 
     # Then
-    assert sort_synonym.new_sort == KSort('NewInt')
-    assert sort_synonym.old_sort == KSort('Int')
+    assert actual == expected
 
 
 def test_kas(kompile: Kompiler) -> None:
