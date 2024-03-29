@@ -268,7 +268,23 @@ def assert_execute_result_equals(actual: ExecuteResult, expected: ExecuteResult)
 
 
 class TestKoreClient(KoreClientTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'kore-rpc-test.k'
+    KOMPILE_DEFINITION = """
+        module KORE-RPC-TEST
+            imports BOOL
+            imports INT
+
+            rule [r01]: 0 => 1
+            rule [r12]: 1 => 2
+            rule [r23]: 2 => 3
+            rule [r24]: 2 => 4
+            rule [r34]: 3 => 4 ensures false
+            rule [r45]: 4 => 5
+            rule [r56]: 5 => 6
+        endmodule
+    """
+    KOMPILE_MAIN_MODULE = 'KORE-RPC-TEST'
+    KOMPILE_ARGS = {'syntax_module': 'KORE-RPC-TEST'}
+    LLVM_ARGS = {'syntax_module': 'KORE-RPC-TEST'}
 
     @pytest.mark.parametrize(
         'test_id,n,params,expected',
