@@ -148,6 +148,11 @@ class CTerm:
         """Return the unstructured bare `KInner` representation of a `CTerm` (see `CTerm.from_kast`)."""
         return mlAnd(self, GENERATED_TOP_CELL)
 
+    @cached_property
+    def free_vars(self) -> frozenset[str]:
+        """Return the set of free variable names contained in this `CTerm`"""
+        return frozenset(free_vars(self.kast))
+
     @property
     def hash(self) -> str:
         """Unique hash representing the contents of this `CTerm`."""
@@ -203,10 +208,6 @@ class CTerm:
     def add_constraint(self, new_constraint: KInner) -> CTerm:
         """Return a new `CTerm` with the additional constraints."""
         return CTerm(self.config, [new_constraint] + list(self.constraints))
-
-    @property
-    def free_vars(self) -> frozenset[str]:
-        return free_vars(self.kast)
 
     def anti_unify(
         self, other: CTerm, keep_values: bool = False, kdef: KDefinition | None = None
