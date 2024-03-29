@@ -5,7 +5,6 @@ import logging
 from functools import partial
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import TYPE_CHECKING, Any, Final
-from collections.abc import Callable
 
 from typing_extensions import Protocol
 
@@ -15,6 +14,8 @@ from ..kast.manip import set_cell, split_config_from
 from ..ktool.krun import KRun
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ..cli.pyk import ServeRpcOptions
     from ..kast import KInner
 
