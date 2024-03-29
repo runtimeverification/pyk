@@ -6,8 +6,6 @@ from pyk.kast import EMPTY_ATT, Atts
 from pyk.kast.inner import KApply, KAs, KRewrite, KSort
 from pyk.kast.outer import KRegexTerminal, KSortSynonym, read_kast_definition
 
-from .utils import K_FILES
-
 if TYPE_CHECKING:
     from pyk.testing import Kompiler
 
@@ -67,9 +65,18 @@ def test_kas(kompile: Kompiler) -> None:
 
 def test_regex_terminal(kompile: Kompiler) -> None:
     # Given
-    definition_dir = kompile(main_file=K_FILES / 'regex-terminal.k')
+    k_text = """
+        module REGEX-TERMINAL
+            syntax T0 ::= r"b"            [token]
+            syntax T1 ::= r"(?<!a)b"      [token]
+            syntax T2 ::= r"b(?!c)"       [token]
+            syntax T3 ::= r"(?<!a)b(?!c)" [token]
+        endmodule
+    """
+    main_module = 'REGEX-TERMINAL'
+    definition_dir = kompile(definition=k_text, main_module=main_module, syntax_module=main_module)
     definition = read_kast_definition(definition_dir / 'compiled.json')
-    module = definition.module('REGEX-TERMINAL-SYNTAX')
+    module = definition.module(main_module)
     expected = [
         KRegexTerminal('b', '#', '#'),
         KRegexTerminal('b', 'a', '#'),
