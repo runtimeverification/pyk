@@ -52,7 +52,7 @@ KOMPILE_MAIN_MODULE = 'BYTES-REWRITE'
 @pytest.fixture(scope='module')
 def llvm_dir(kompile: Kompiler) -> Path:
     return kompile(
-        KOMPILE_MAIN_FILE,
+        main_file=KOMPILE_MAIN_FILE,
         main_module=KOMPILE_MAIN_MODULE,
         backend='llvm',
     )
@@ -61,7 +61,7 @@ def llvm_dir(kompile: Kompiler) -> Path:
 @pytest.fixture(scope='module')
 def haskell_dir(kompile: Kompiler) -> Path:
     return kompile(
-        KOMPILE_MAIN_FILE,
+        main_file=KOMPILE_MAIN_FILE,
         main_module=KOMPILE_MAIN_MODULE,
         backend='haskell',
     )

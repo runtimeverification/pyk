@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture(scope='module')
 def definition_dir(kompile: Kompiler) -> Path:
-    return kompile(K_FILES / 'top-cell-initializer.k')
+    return kompile(main_file=K_FILES / 'top-cell-initializer.k')
 
 
 def test_top_cell_initializer(definition_dir: Path) -> None:

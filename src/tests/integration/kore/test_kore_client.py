@@ -758,12 +758,12 @@ START_BOOSTER_SERVER_TEST_DATA: Final[tuple[dict[str, Any], ...]] = (
 
 @pytest.fixture(scope='module')
 def imp_dir(kompile: Kompiler) -> Path:
-    return kompile(K_FILES / 'imp.k', backend='haskell')
+    return kompile(main_file=K_FILES / 'imp.k', backend='haskell')
 
 
 @pytest.fixture(scope='module')
 def imp_llvm_dir(kompile: Kompiler) -> Path:
-    return kompile(K_FILES / 'imp.k', backend='llvm', llvm_kompile_type=LLVMKompileType.C)
+    return kompile(main_file=K_FILES / 'imp.k', backend='llvm', llvm_kompile_type=LLVMKompileType.C)
 
 
 @pytest.mark.parametrize('args', START_BOOSTER_SERVER_TEST_DATA, ids=count())
