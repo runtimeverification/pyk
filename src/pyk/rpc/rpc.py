@@ -4,7 +4,8 @@ import json
 import logging
 from functools import partial
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import TYPE_CHECKING, Any, Callable, Final
+from typing import TYPE_CHECKING, Any, Final
+from collections.abc import Callable
 
 from typing_extensions import Protocol
 
