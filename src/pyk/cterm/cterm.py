@@ -153,6 +153,11 @@ class CTerm:
         """Return the set of free variable names contained in this `CTerm`"""
         return frozenset(free_vars(self.kast))
 
+    @cached_property
+    def free_vars_constraints(self) -> frozenset[str]:
+        """Return the set of free variable names contained in the constraints of this `CTerm`"""
+        return frozenset(free_vars(mlAnd(self.constraints)))
+
     @property
     def hash(self) -> str:
         """Unique hash representing the contents of this `CTerm`."""

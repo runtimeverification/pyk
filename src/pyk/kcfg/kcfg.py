@@ -153,9 +153,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             new_attrs = attrs if attrs is not None else self.attrs
             return KCFG.Node(self.id, new_cterm, new_attrs)
 
-        @property
-        def free_vars(self) -> frozenset[str]:
-            return frozenset(self.cterm.free_vars)
+        def free_vars(self, constraints_only: bool = False) -> frozenset[str]:
+            return frozenset(self.cterm.free_vars_constraints if constraints_only else self.cterm.free_vars)
 
     class Successor(ABC):
         source: KCFG.Node
@@ -166,8 +165,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return self.source < other.source
 
         @property
-        def source_vars(self) -> frozenset[str]:
-            return frozenset(self.source.free_vars)
+        def source_vars(self, constraints_only: bool = False) -> frozenset[str]:
+            return frozenset(self.source.free_vars(constraints_only=constraints_only))
 
         @property
         @abstractmethod
@@ -177,9 +176,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def target_ids(self) -> list[int]:
             return sorted(target.id for target in self.targets)
 
-        @property
-        def target_vars(self) -> frozenset[str]:
-            return frozenset(set.union(set(), *(target.free_vars for target in self.targets)))
+        def target_vars(self, constraints_only: bool = False) -> frozenset[str]:
+            return frozenset(
+                set.union(set(), *(target.free_vars(constraints_only=constraints_only) for target in self.targets))
+            )
 
         @abstractmethod
         def replace_source(self, node: KCFG.Node) -> KCFG.Successor: ...
@@ -974,8 +974,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return len(edges_to_lift) > 0
 
     def _can_lift_split(self, node_to_lift_to: KCFG.Node, split: KCFG.Split) -> tuple[bool, str]:
-        # Split targets cannot contain variables not present in the node to which it should be lifted
-        fresh_vars = split.target_vars.difference(node_to_lift_to.free_vars)
+        # Split cannot be lifted if a target-node constraint has variables not in the node to which the split is to be lifted
+        fresh_vars = split.target_vars(constraints_only=True).difference(node_to_lift_to.free_vars())
         if len(fresh_vars) > 0:
             error_msg = f'Cannot lift split at node {split.source.id} due to branching on freshly introduced variables: {set(fresh_vars)}'
             return False, error_msg
