@@ -200,9 +200,9 @@ class TestImpProve(KProveTest):
                     {
                         'spec_file': Path(spec_file),
                         'spec_module': spec_module,
+                        'claim_labels': [claim_id],
                     }
                 ),
-                claim_labels=[claim_id],
                 kcfg_semantics=ImpSemantics(kprove.definition),
             )
         )
