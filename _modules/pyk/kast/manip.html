@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kast.manip &#8212; pyk 0.1.763 documentation</title>
+    <title>pyk.kast.manip &#8212; pyk 0.1.764 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=14fa540b"></script>
+    <script src="../../../_static/documentation_options.js?v=df73c4c6"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -325,8 +325,8 @@
 <span class="linenos">257</span>
 <div class="viewcode-block" id="free_vars">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.free_vars">[docs]</a>
-<span class="linenos">258</span><span class="k">def</span> <span class="nf">free_vars</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="linenos">259</span>    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">count_vars</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
+<span class="linenos">258</span><span class="k">def</span> <span class="nf">free_vars</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="linenos">259</span>    <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">count_vars</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
 
 <span class="linenos">260</span>
 <span class="linenos">261</span>
@@ -642,346 +642,344 @@
 <span class="linenos">530</span>    <span class="n">ensures</span> <span class="o">=</span> <span class="n">andBool</span><span class="p">(</span><span class="n">flatten_label</span><span class="p">(</span><span class="s1">&#39;_andBool_&#39;</span><span class="p">,</span> <span class="n">ensures</span><span class="p">))</span>
 <span class="linenos">531</span>    <span class="n">ensures</span> <span class="o">=</span> <span class="n">simplify_bool</span><span class="p">(</span><span class="n">ensures</span><span class="p">)</span>
 <span class="linenos">532</span>
-<span class="linenos">533</span>    <span class="n">constrained_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">keep_vars</span><span class="p">)</span>
-<span class="linenos">534</span>    <span class="n">constrained_vars</span> <span class="o">=</span> <span class="n">constrained_vars</span> <span class="o">+</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">requires</span><span class="p">)</span>
-<span class="linenos">535</span>    <span class="n">constrained_vars</span> <span class="o">=</span> <span class="n">constrained_vars</span> <span class="o">+</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">ensures</span><span class="p">)</span>
-<span class="linenos">536</span>    <span class="n">body</span> <span class="o">=</span> <span class="n">minimize_term</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="n">keep_vars</span><span class="o">=</span><span class="n">constrained_vars</span><span class="p">)</span>
-<span class="linenos">537</span>
-<span class="linenos">538</span>    <span class="k">return</span> <span class="n">rule</span><span class="o">.</span><span class="n">let</span><span class="p">(</span><span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">requires</span><span class="o">=</span><span class="n">requires</span><span class="p">,</span> <span class="n">ensures</span><span class="o">=</span><span class="n">ensures</span><span class="p">)</span></div>
+<span class="linenos">533</span>    <span class="n">constrained_vars</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">keep_vars</span><span class="p">)</span> <span class="o">|</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">requires</span><span class="p">)</span> <span class="o">|</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">ensures</span><span class="p">)</span>
+<span class="linenos">534</span>    <span class="n">body</span> <span class="o">=</span> <span class="n">minimize_term</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="n">keep_vars</span><span class="o">=</span><span class="n">constrained_vars</span><span class="p">)</span>
+<span class="linenos">535</span>
+<span class="linenos">536</span>    <span class="k">return</span> <span class="n">rule</span><span class="o">.</span><span class="n">let</span><span class="p">(</span><span class="n">body</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">requires</span><span class="o">=</span><span class="n">requires</span><span class="p">,</span> <span class="n">ensures</span><span class="o">=</span><span class="n">ensures</span><span class="p">)</span></div>
 
-<span class="linenos">539</span>
-<span class="linenos">540</span>
+<span class="linenos">537</span>
+<span class="linenos">538</span>
 <div class="viewcode-block" id="remove_source_map">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.remove_source_map">[docs]</a>
-<span class="linenos">541</span><span class="k">def</span> <span class="nf">remove_source_map</span><span class="p">(</span><span class="n">definition</span><span class="p">:</span> <span class="n">KDefinition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KDefinition</span><span class="p">:</span>
-<span class="linenos">542</span>    <span class="k">return</span> <span class="n">on_attributes</span><span class="p">(</span><span class="n">definition</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">att</span><span class="p">:</span> <span class="n">att</span><span class="o">.</span><span class="n">drop_source</span><span class="p">())</span></div>
+<span class="linenos">539</span><span class="k">def</span> <span class="nf">remove_source_map</span><span class="p">(</span><span class="n">definition</span><span class="p">:</span> <span class="n">KDefinition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KDefinition</span><span class="p">:</span>
+<span class="linenos">540</span>    <span class="k">return</span> <span class="n">on_attributes</span><span class="p">(</span><span class="n">definition</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">att</span><span class="p">:</span> <span class="n">att</span><span class="o">.</span><span class="n">drop_source</span><span class="p">())</span></div>
 
-<span class="linenos">543</span>
-<span class="linenos">544</span>
+<span class="linenos">541</span>
+<span class="linenos">542</span>
 <div class="viewcode-block" id="remove_attrs">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.remove_attrs">[docs]</a>
-<span class="linenos">545</span><span class="k">def</span> <span class="nf">remove_attrs</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">546</span>    <span class="k">def</span> <span class="nf">remove_attr</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">547</span>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">WithKAtt</span><span class="p">):</span>
-<span class="linenos">548</span>            <span class="k">return</span> <span class="n">term</span><span class="o">.</span><span class="n">let_att</span><span class="p">(</span><span class="n">EMPTY_ATT</span><span class="p">)</span>
-<span class="linenos">549</span>        <span class="k">return</span> <span class="n">term</span>
-<span class="linenos">550</span>
-<span class="linenos">551</span>    <span class="k">return</span> <span class="n">top_down</span><span class="p">(</span><span class="n">remove_attr</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span></div>
+<span class="linenos">543</span><span class="k">def</span> <span class="nf">remove_attrs</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">544</span>    <span class="k">def</span> <span class="nf">remove_attr</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">545</span>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">WithKAtt</span><span class="p">):</span>
+<span class="linenos">546</span>            <span class="k">return</span> <span class="n">term</span><span class="o">.</span><span class="n">let_att</span><span class="p">(</span><span class="n">EMPTY_ATT</span><span class="p">)</span>
+<span class="linenos">547</span>        <span class="k">return</span> <span class="n">term</span>
+<span class="linenos">548</span>
+<span class="linenos">549</span>    <span class="k">return</span> <span class="n">top_down</span><span class="p">(</span><span class="n">remove_attr</span><span class="p">,</span> <span class="n">term</span><span class="p">)</span></div>
 
-<span class="linenos">552</span>
-<span class="linenos">553</span>
+<span class="linenos">550</span>
+<span class="linenos">551</span>
 <div class="viewcode-block" id="remove_generated_cells">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.remove_generated_cells">[docs]</a>
-<span class="linenos">554</span><span class="k">def</span> <span class="nf">remove_generated_cells</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">555</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove &lt;generatedTop&gt; and &lt;generatedCounter&gt; from a configuration.</span>
-<span class="linenos">556</span>
-<span class="linenos">557</span><span class="sd">    -   Input: Constrained term.</span>
-<span class="linenos">558</span><span class="sd">    -   Output: Constrained term with those cells removed.</span>
-<span class="linenos">559</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">560</span>    <span class="n">rewrite</span> <span class="o">=</span> <span class="n">KRewrite</span><span class="p">(</span><span class="n">KApply</span><span class="p">(</span><span class="s1">&#39;&lt;generatedTop&gt;&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;CONFIG&#39;</span><span class="p">),</span> <span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)]),</span> <span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;CONFIG&#39;</span><span class="p">))</span>
-<span class="linenos">561</span>    <span class="k">return</span> <span class="n">rewrite</span><span class="p">(</span><span class="n">term</span><span class="p">)</span></div>
+<span class="linenos">552</span><span class="k">def</span> <span class="nf">remove_generated_cells</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">553</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove &lt;generatedTop&gt; and &lt;generatedCounter&gt; from a configuration.</span>
+<span class="linenos">554</span>
+<span class="linenos">555</span><span class="sd">    -   Input: Constrained term.</span>
+<span class="linenos">556</span><span class="sd">    -   Output: Constrained term with those cells removed.</span>
+<span class="linenos">557</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">558</span>    <span class="n">rewrite</span> <span class="o">=</span> <span class="n">KRewrite</span><span class="p">(</span><span class="n">KApply</span><span class="p">(</span><span class="s1">&#39;&lt;generatedTop&gt;&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;CONFIG&#39;</span><span class="p">),</span> <span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)]),</span> <span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;CONFIG&#39;</span><span class="p">))</span>
+<span class="linenos">559</span>    <span class="k">return</span> <span class="n">rewrite</span><span class="p">(</span><span class="n">term</span><span class="p">)</span></div>
 
-<span class="linenos">562</span>
-<span class="linenos">563</span>
+<span class="linenos">560</span>
+<span class="linenos">561</span>
 <div class="viewcode-block" id="is_anon_var">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.is_anon_var">[docs]</a>
-<span class="linenos">564</span><span class="k">def</span> <span class="nf">is_anon_var</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="linenos">565</span>    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KVariable</span> <span class="ow">and</span> <span class="n">kast</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span></div>
+<span class="linenos">562</span><span class="k">def</span> <span class="nf">is_anon_var</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="linenos">563</span>    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KVariable</span> <span class="ow">and</span> <span class="n">kast</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span></div>
 
-<span class="linenos">566</span>
-<span class="linenos">567</span>
+<span class="linenos">564</span>
+<span class="linenos">565</span>
 <div class="viewcode-block" id="set_cell">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.set_cell">[docs]</a>
-<span class="linenos">568</span><span class="k">def</span> <span class="nf">set_cell</span><span class="p">(</span><span class="n">constrained_term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">cell_variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cell_value</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">569</span>    <span class="n">state</span><span class="p">,</span> <span class="n">constraint</span> <span class="o">=</span> <span class="n">split_config_and_constraints</span><span class="p">(</span><span class="n">constrained_term</span><span class="p">)</span>
-<span class="linenos">570</span>    <span class="n">config</span><span class="p">,</span> <span class="n">subst</span> <span class="o">=</span> <span class="n">split_config_from</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
-<span class="linenos">571</span>    <span class="n">subst</span><span class="p">[</span><span class="n">cell_variable</span><span class="p">]</span> <span class="o">=</span> <span class="n">cell_value</span>
-<span class="linenos">572</span>    <span class="k">return</span> <span class="n">mlAnd</span><span class="p">([</span><span class="n">Subst</span><span class="p">(</span><span class="n">subst</span><span class="p">)(</span><span class="n">config</span><span class="p">),</span> <span class="n">constraint</span><span class="p">])</span></div>
+<span class="linenos">566</span><span class="k">def</span> <span class="nf">set_cell</span><span class="p">(</span><span class="n">constrained_term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">cell_variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">cell_value</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">567</span>    <span class="n">state</span><span class="p">,</span> <span class="n">constraint</span> <span class="o">=</span> <span class="n">split_config_and_constraints</span><span class="p">(</span><span class="n">constrained_term</span><span class="p">)</span>
+<span class="linenos">568</span>    <span class="n">config</span><span class="p">,</span> <span class="n">subst</span> <span class="o">=</span> <span class="n">split_config_from</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+<span class="linenos">569</span>    <span class="n">subst</span><span class="p">[</span><span class="n">cell_variable</span><span class="p">]</span> <span class="o">=</span> <span class="n">cell_value</span>
+<span class="linenos">570</span>    <span class="k">return</span> <span class="n">mlAnd</span><span class="p">([</span><span class="n">Subst</span><span class="p">(</span><span class="n">subst</span><span class="p">)(</span><span class="n">config</span><span class="p">),</span> <span class="n">constraint</span><span class="p">])</span></div>
 
-<span class="linenos">573</span>
-<span class="linenos">574</span>
+<span class="linenos">571</span>
+<span class="linenos">572</span>
 <div class="viewcode-block" id="abstract_term_safely">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.abstract_term_safely">[docs]</a>
-<span class="linenos">575</span><span class="k">def</span> <span class="nf">abstract_term_safely</span><span class="p">(</span>
-<span class="linenos">576</span>    <span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">base_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;V&#39;</span><span class="p">,</span> <span class="n">sort</span><span class="p">:</span> <span class="n">KSort</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">existing_var_names</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="linenos">577</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KVariable</span><span class="p">:</span>
-<span class="linenos">578</span>    <span class="k">def</span> <span class="nf">_abstract</span><span class="p">(</span><span class="n">k</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KVariable</span><span class="p">:</span>
-<span class="linenos">579</span>        <span class="n">vname</span> <span class="o">=</span> <span class="n">hash_str</span><span class="p">(</span><span class="n">k</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">8</span><span class="p">]</span>
-<span class="linenos">580</span>        <span class="k">return</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">base_name</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">vname</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">sort</span><span class="p">)</span>
-<span class="linenos">581</span>
-<span class="linenos">582</span>    <span class="n">new_var</span> <span class="o">=</span> <span class="n">_abstract</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span>
-<span class="linenos">583</span>    <span class="k">if</span> <span class="n">existing_var_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<span class="linenos">584</span>        <span class="k">while</span> <span class="n">new_var</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">existing_var_names</span><span class="p">:</span>
-<span class="linenos">585</span>            <span class="n">new_var</span> <span class="o">=</span> <span class="n">_abstract</span><span class="p">(</span><span class="n">new_var</span><span class="p">)</span>
-<span class="linenos">586</span>    <span class="k">return</span> <span class="n">new_var</span></div>
+<span class="linenos">573</span><span class="k">def</span> <span class="nf">abstract_term_safely</span><span class="p">(</span>
+<span class="linenos">574</span>    <span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">base_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;V&#39;</span><span class="p">,</span> <span class="n">sort</span><span class="p">:</span> <span class="n">KSort</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">existing_var_names</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="linenos">575</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KVariable</span><span class="p">:</span>
+<span class="linenos">576</span>    <span class="k">def</span> <span class="nf">_abstract</span><span class="p">(</span><span class="n">k</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KVariable</span><span class="p">:</span>
+<span class="linenos">577</span>        <span class="n">vname</span> <span class="o">=</span> <span class="n">hash_str</span><span class="p">(</span><span class="n">k</span><span class="p">)[</span><span class="mi">0</span><span class="p">:</span><span class="mi">8</span><span class="p">]</span>
+<span class="linenos">578</span>        <span class="k">return</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">base_name</span> <span class="o">+</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">vname</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">sort</span><span class="p">)</span>
+<span class="linenos">579</span>
+<span class="linenos">580</span>    <span class="n">new_var</span> <span class="o">=</span> <span class="n">_abstract</span><span class="p">(</span><span class="n">kast</span><span class="p">)</span>
+<span class="linenos">581</span>    <span class="k">if</span> <span class="n">existing_var_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="linenos">582</span>        <span class="k">while</span> <span class="n">new_var</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">existing_var_names</span><span class="p">:</span>
+<span class="linenos">583</span>            <span class="n">new_var</span> <span class="o">=</span> <span class="n">_abstract</span><span class="p">(</span><span class="n">new_var</span><span class="p">)</span>
+<span class="linenos">584</span>    <span class="k">return</span> <span class="n">new_var</span></div>
 
-<span class="linenos">587</span>
-<span class="linenos">588</span>
+<span class="linenos">585</span>
+<span class="linenos">586</span>
 <div class="viewcode-block" id="apply_existential_substitutions">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.apply_existential_substitutions">[docs]</a>
-<span class="linenos">589</span><span class="k">def</span> <span class="nf">apply_existential_substitutions</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KInner</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]]:</span>
-<span class="linenos">590</span>    <span class="n">pattern</span> <span class="o">=</span> <span class="n">mlEqualsTrue</span><span class="p">(</span><span class="n">KApply</span><span class="p">(</span><span class="s1">&#39;_==K_&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;#VAR&#39;</span><span class="p">),</span> <span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;#VAL&#39;</span><span class="p">)]))</span>
-<span class="linenos">591</span>    <span class="n">subst</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="linenos">592</span>    <span class="n">new_constraints</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="linenos">593</span>    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">constraints</span><span class="p">:</span>
-<span class="linenos">594</span>        <span class="n">match</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-<span class="linenos">595</span>        <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">match</span><span class="p">[</span><span class="s1">&#39;#VAR&#39;</span><span class="p">])</span> <span class="ow">is</span> <span class="n">KVariable</span> <span class="ow">and</span> <span class="n">match</span><span class="p">[</span><span class="s1">&#39;#VAR&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;?&#39;</span><span class="p">):</span>
-<span class="linenos">596</span>            <span class="n">subst</span><span class="p">[</span><span class="n">match</span><span class="p">[</span><span class="s1">&#39;#VAR&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s1">&#39;#VAL&#39;</span><span class="p">]</span>
-<span class="linenos">597</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">598</span>            <span class="n">new_constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-<span class="linenos">599</span>    <span class="k">return</span> <span class="p">(</span><span class="n">Subst</span><span class="p">(</span><span class="n">subst</span><span class="p">)(</span><span class="n">state</span><span class="p">),</span> <span class="p">[</span><span class="n">Subst</span><span class="p">(</span><span class="n">subst</span><span class="p">)(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">new_constraints</span><span class="p">])</span></div>
+<span class="linenos">587</span><span class="k">def</span> <span class="nf">apply_existential_substitutions</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KInner</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]]:</span>
+<span class="linenos">588</span>    <span class="n">pattern</span> <span class="o">=</span> <span class="n">mlEqualsTrue</span><span class="p">(</span><span class="n">KApply</span><span class="p">(</span><span class="s1">&#39;_==K_&#39;</span><span class="p">,</span> <span class="p">[</span><span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;#VAR&#39;</span><span class="p">),</span> <span class="n">KVariable</span><span class="p">(</span><span class="s1">&#39;#VAL&#39;</span><span class="p">)]))</span>
+<span class="linenos">589</span>    <span class="n">subst</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="linenos">590</span>    <span class="n">new_constraints</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">591</span>    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">constraints</span><span class="p">:</span>
+<span class="linenos">592</span>        <span class="n">match</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="linenos">593</span>        <span class="k">if</span> <span class="n">match</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">match</span><span class="p">[</span><span class="s1">&#39;#VAR&#39;</span><span class="p">])</span> <span class="ow">is</span> <span class="n">KVariable</span> <span class="ow">and</span> <span class="n">match</span><span class="p">[</span><span class="s1">&#39;#VAR&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;?&#39;</span><span class="p">):</span>
+<span class="linenos">594</span>            <span class="n">subst</span><span class="p">[</span><span class="n">match</span><span class="p">[</span><span class="s1">&#39;#VAR&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="p">[</span><span class="s1">&#39;#VAL&#39;</span><span class="p">]</span>
+<span class="linenos">595</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">596</span>            <span class="n">new_constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="linenos">597</span>    <span class="k">return</span> <span class="p">(</span><span class="n">Subst</span><span class="p">(</span><span class="n">subst</span><span class="p">)(</span><span class="n">state</span><span class="p">),</span> <span class="p">[</span><span class="n">Subst</span><span class="p">(</span><span class="n">subst</span><span class="p">)(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">new_constraints</span><span class="p">])</span></div>
 
-<span class="linenos">600</span>
-<span class="linenos">601</span>
+<span class="linenos">598</span>
+<span class="linenos">599</span>
 <div class="viewcode-block" id="indexed_rewrite">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.indexed_rewrite">[docs]</a>
-<span class="linenos">602</span><span class="k">def</span> <span class="nf">indexed_rewrite</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">rewrites</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KRewrite</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">603</span>    <span class="n">token_rewrites</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">KRewrite</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="linenos">604</span>    <span class="n">apply_rewrites</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">KRewrite</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="linenos">605</span>    <span class="n">other_rewrites</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">KRewrite</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="linenos">606</span>    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rewrites</span><span class="p">:</span>
-<span class="linenos">607</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KToken</span><span class="p">:</span>
-<span class="linenos">608</span>            <span class="n">token_rewrites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
-<span class="linenos">609</span>        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span><span class="p">:</span>
-<span class="linenos">610</span>            <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">token_rewrites</span><span class="p">:</span>
-<span class="linenos">611</span>                <span class="n">apply_rewrites</span><span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
-<span class="linenos">612</span>            <span class="k">else</span><span class="p">:</span>
-<span class="linenos">613</span>                <span class="n">apply_rewrites</span><span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">]</span>
-<span class="linenos">614</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">615</span>            <span class="n">other_rewrites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
-<span class="linenos">616</span>
-<span class="linenos">617</span>    <span class="k">def</span> <span class="nf">_apply_rewrites</span><span class="p">(</span><span class="n">_kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">618</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KToken</span><span class="p">:</span>
-<span class="linenos">619</span>            <span class="k">for</span> <span class="n">tr</span> <span class="ow">in</span> <span class="n">token_rewrites</span><span class="p">:</span>
-<span class="linenos">620</span>                <span class="n">_kast</span> <span class="o">=</span> <span class="n">tr</span><span class="o">.</span><span class="n">apply_top</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span>
-<span class="linenos">621</span>        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span><span class="p">:</span>
-<span class="linenos">622</span>            <span class="k">if</span> <span class="n">_kast</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">apply_rewrites</span><span class="p">:</span>
-<span class="linenos">623</span>                <span class="k">for</span> <span class="n">ar</span> <span class="ow">in</span> <span class="n">apply_rewrites</span><span class="p">[</span><span class="n">_kast</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">]:</span>
-<span class="linenos">624</span>                    <span class="n">_kast</span> <span class="o">=</span> <span class="n">ar</span><span class="o">.</span><span class="n">apply_top</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span>
-<span class="linenos">625</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">626</span>            <span class="k">for</span> <span class="n">_or</span> <span class="ow">in</span> <span class="n">other_rewrites</span><span class="p">:</span>
-<span class="linenos">627</span>                <span class="n">_kast</span> <span class="o">=</span> <span class="n">_or</span><span class="o">.</span><span class="n">apply_top</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span>
-<span class="linenos">628</span>        <span class="k">return</span> <span class="n">_kast</span>
-<span class="linenos">629</span>
-<span class="linenos">630</span>    <span class="n">orig_kast</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">=</span> <span class="n">kast</span>
-<span class="linenos">631</span>    <span class="n">new_kast</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="linenos">632</span>    <span class="k">while</span> <span class="n">orig_kast</span> <span class="o">!=</span> <span class="n">new_kast</span><span class="p">:</span>
-<span class="linenos">633</span>        <span class="k">if</span> <span class="n">new_kast</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<span class="linenos">634</span>            <span class="n">new_kast</span> <span class="o">=</span> <span class="n">orig_kast</span>
-<span class="linenos">635</span>        <span class="k">else</span><span class="p">:</span>
-<span class="linenos">636</span>            <span class="n">orig_kast</span> <span class="o">=</span> <span class="n">new_kast</span>
-<span class="linenos">637</span>        <span class="n">new_kast</span> <span class="o">=</span> <span class="n">bottom_up</span><span class="p">(</span><span class="n">_apply_rewrites</span><span class="p">,</span> <span class="n">new_kast</span><span class="p">)</span>
-<span class="linenos">638</span>    <span class="k">return</span> <span class="n">new_kast</span></div>
+<span class="linenos">600</span><span class="k">def</span> <span class="nf">indexed_rewrite</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span> <span class="n">rewrites</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KRewrite</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">601</span>    <span class="n">token_rewrites</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">KRewrite</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">602</span>    <span class="n">apply_rewrites</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">KRewrite</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="linenos">603</span>    <span class="n">other_rewrites</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">KRewrite</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">604</span>    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rewrites</span><span class="p">:</span>
+<span class="linenos">605</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KToken</span><span class="p">:</span>
+<span class="linenos">606</span>            <span class="n">token_rewrites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="linenos">607</span>        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span><span class="p">:</span>
+<span class="linenos">608</span>            <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">token_rewrites</span><span class="p">:</span>
+<span class="linenos">609</span>                <span class="n">apply_rewrites</span><span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="linenos">610</span>            <span class="k">else</span><span class="p">:</span>
+<span class="linenos">611</span>                <span class="n">apply_rewrites</span><span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">lhs</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">]</span>
+<span class="linenos">612</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">613</span>            <span class="n">other_rewrites</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="linenos">614</span>
+<span class="linenos">615</span>    <span class="k">def</span> <span class="nf">_apply_rewrites</span><span class="p">(</span><span class="n">_kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">616</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KToken</span><span class="p">:</span>
+<span class="linenos">617</span>            <span class="k">for</span> <span class="n">tr</span> <span class="ow">in</span> <span class="n">token_rewrites</span><span class="p">:</span>
+<span class="linenos">618</span>                <span class="n">_kast</span> <span class="o">=</span> <span class="n">tr</span><span class="o">.</span><span class="n">apply_top</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span>
+<span class="linenos">619</span>        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span><span class="p">:</span>
+<span class="linenos">620</span>            <span class="k">if</span> <span class="n">_kast</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">apply_rewrites</span><span class="p">:</span>
+<span class="linenos">621</span>                <span class="k">for</span> <span class="n">ar</span> <span class="ow">in</span> <span class="n">apply_rewrites</span><span class="p">[</span><span class="n">_kast</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">]:</span>
+<span class="linenos">622</span>                    <span class="n">_kast</span> <span class="o">=</span> <span class="n">ar</span><span class="o">.</span><span class="n">apply_top</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span>
+<span class="linenos">623</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">624</span>            <span class="k">for</span> <span class="n">_or</span> <span class="ow">in</span> <span class="n">other_rewrites</span><span class="p">:</span>
+<span class="linenos">625</span>                <span class="n">_kast</span> <span class="o">=</span> <span class="n">_or</span><span class="o">.</span><span class="n">apply_top</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span>
+<span class="linenos">626</span>        <span class="k">return</span> <span class="n">_kast</span>
+<span class="linenos">627</span>
+<span class="linenos">628</span>    <span class="n">orig_kast</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">=</span> <span class="n">kast</span>
+<span class="linenos">629</span>    <span class="n">new_kast</span><span class="p">:</span> <span class="n">KInner</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="linenos">630</span>    <span class="k">while</span> <span class="n">orig_kast</span> <span class="o">!=</span> <span class="n">new_kast</span><span class="p">:</span>
+<span class="linenos">631</span>        <span class="k">if</span> <span class="n">new_kast</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<span class="linenos">632</span>            <span class="n">new_kast</span> <span class="o">=</span> <span class="n">orig_kast</span>
+<span class="linenos">633</span>        <span class="k">else</span><span class="p">:</span>
+<span class="linenos">634</span>            <span class="n">orig_kast</span> <span class="o">=</span> <span class="n">new_kast</span>
+<span class="linenos">635</span>        <span class="n">new_kast</span> <span class="o">=</span> <span class="n">bottom_up</span><span class="p">(</span><span class="n">_apply_rewrites</span><span class="p">,</span> <span class="n">new_kast</span><span class="p">)</span>
+<span class="linenos">636</span>    <span class="k">return</span> <span class="n">new_kast</span></div>
 
-<span class="linenos">639</span>
-<span class="linenos">640</span>
+<span class="linenos">637</span>
+<span class="linenos">638</span>
 <div class="viewcode-block" id="undo_aliases">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.undo_aliases">[docs]</a>
-<span class="linenos">641</span><span class="k">def</span> <span class="nf">undo_aliases</span><span class="p">(</span><span class="n">definition</span><span class="p">:</span> <span class="n">KDefinition</span><span class="p">,</span> <span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">642</span>    <span class="n">aliases</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="linenos">643</span>    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">definition</span><span class="o">.</span><span class="n">alias_rules</span><span class="p">:</span>
-<span class="linenos">644</span>        <span class="n">rewrite</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">body</span>
-<span class="linenos">645</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">rewrite</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">KRewrite</span><span class="p">:</span>
-<span class="linenos">646</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Expected KRewrite as alias body, found: </span><span class="si">{</span><span class="n">rewrite</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">647</span>        <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">requires</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">rule</span><span class="o">.</span><span class="n">requires</span> <span class="o">!=</span> <span class="n">TRUE</span><span class="p">:</span>
-<span class="linenos">648</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Expended empty requires clause on alias, found: </span><span class="si">{</span><span class="n">rule</span><span class="o">.</span><span class="n">requires</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">649</span>        <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">ensures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">rule</span><span class="o">.</span><span class="n">ensures</span> <span class="o">!=</span> <span class="n">TRUE</span><span class="p">:</span>
-<span class="linenos">650</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Expended empty ensures clause on alias, found: </span><span class="si">{</span><span class="n">rule</span><span class="o">.</span><span class="n">ensures</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-<span class="linenos">651</span>        <span class="n">aliases</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">KRewrite</span><span class="p">(</span><span class="n">rewrite</span><span class="o">.</span><span class="n">rhs</span><span class="p">,</span> <span class="n">rewrite</span><span class="o">.</span><span class="n">lhs</span><span class="p">))</span>
-<span class="linenos">652</span>    <span class="k">return</span> <span class="n">indexed_rewrite</span><span class="p">(</span><span class="n">kast</span><span class="p">,</span> <span class="n">aliases</span><span class="p">)</span></div>
+<span class="linenos">639</span><span class="k">def</span> <span class="nf">undo_aliases</span><span class="p">(</span><span class="n">definition</span><span class="p">:</span> <span class="n">KDefinition</span><span class="p">,</span> <span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">640</span>    <span class="n">aliases</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">641</span>    <span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">definition</span><span class="o">.</span><span class="n">alias_rules</span><span class="p">:</span>
+<span class="linenos">642</span>        <span class="n">rewrite</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">body</span>
+<span class="linenos">643</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">rewrite</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">KRewrite</span><span class="p">:</span>
+<span class="linenos">644</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Expected KRewrite as alias body, found: </span><span class="si">{</span><span class="n">rewrite</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">645</span>        <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">requires</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">rule</span><span class="o">.</span><span class="n">requires</span> <span class="o">!=</span> <span class="n">TRUE</span><span class="p">:</span>
+<span class="linenos">646</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Expended empty requires clause on alias, found: </span><span class="si">{</span><span class="n">rule</span><span class="o">.</span><span class="n">requires</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">647</span>        <span class="k">if</span> <span class="n">rule</span><span class="o">.</span><span class="n">ensures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">rule</span><span class="o">.</span><span class="n">ensures</span> <span class="o">!=</span> <span class="n">TRUE</span><span class="p">:</span>
+<span class="linenos">648</span>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Expended empty ensures clause on alias, found: </span><span class="si">{</span><span class="n">rule</span><span class="o">.</span><span class="n">ensures</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+<span class="linenos">649</span>        <span class="n">aliases</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">KRewrite</span><span class="p">(</span><span class="n">rewrite</span><span class="o">.</span><span class="n">rhs</span><span class="p">,</span> <span class="n">rewrite</span><span class="o">.</span><span class="n">lhs</span><span class="p">))</span>
+<span class="linenos">650</span>    <span class="k">return</span> <span class="n">indexed_rewrite</span><span class="p">(</span><span class="n">kast</span><span class="p">,</span> <span class="n">aliases</span><span class="p">)</span></div>
 
-<span class="linenos">653</span>
-<span class="linenos">654</span>
+<span class="linenos">651</span>
+<span class="linenos">652</span>
 <div class="viewcode-block" id="rename_generated_vars">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.rename_generated_vars">[docs]</a>
-<span class="linenos">655</span><span class="k">def</span> <span class="nf">rename_generated_vars</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">656</span>    <span class="nb">vars</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">free_vars</span><span class="p">(</span><span class="n">term</span><span class="p">))</span>
-<span class="linenos">657</span>    <span class="n">cell_stack</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="linenos">658</span>
-<span class="linenos">659</span>    <span class="k">def</span> <span class="nf">_rename_vars</span><span class="p">(</span><span class="n">k</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">660</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span> <span class="ow">and</span> <span class="n">k</span><span class="o">.</span><span class="n">is_cell</span><span class="p">:</span>
-<span class="linenos">661</span>            <span class="n">cell_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cell_label_to_var_name</span><span class="p">(</span><span class="n">k</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
-<span class="linenos">662</span>            <span class="n">res</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">map_inner</span><span class="p">(</span><span class="n">_rename_vars</span><span class="p">)</span>
-<span class="linenos">663</span>            <span class="n">cell_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
-<span class="linenos">664</span>            <span class="k">return</span> <span class="n">res</span>
-<span class="linenos">665</span>
-<span class="linenos">666</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KVariable</span> <span class="ow">and</span> <span class="n">k</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s1">&#39;_Gen&#39;</span><span class="p">,</span> <span class="s1">&#39;?_Gen&#39;</span><span class="p">,</span> <span class="s1">&#39;_DotVar&#39;</span><span class="p">,</span> <span class="s1">&#39;?_DotVar&#39;</span><span class="p">)):</span>
-<span class="linenos">667</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">cell_stack</span><span class="p">:</span>
-<span class="linenos">668</span>                <span class="k">return</span> <span class="n">k</span>
-<span class="linenos">669</span>            <span class="n">cell_name</span> <span class="o">=</span> <span class="n">cell_stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-<span class="linenos">670</span>            <span class="n">new_var</span> <span class="o">=</span> <span class="n">abstract_term_safely</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">base_name</span><span class="o">=</span><span class="n">cell_name</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">k</span><span class="o">.</span><span class="n">sort</span><span class="p">,</span> <span class="n">existing_var_names</span><span class="o">=</span><span class="nb">vars</span><span class="p">)</span>
-<span class="linenos">671</span>            <span class="nb">vars</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_var</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-<span class="linenos">672</span>            <span class="k">return</span> <span class="n">new_var</span>
+<span class="linenos">653</span><span class="k">def</span> <span class="nf">rename_generated_vars</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">654</span>    <span class="nb">vars</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">free_vars</span><span class="p">(</span><span class="n">term</span><span class="p">))</span>
+<span class="linenos">655</span>    <span class="n">cell_stack</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">656</span>
+<span class="linenos">657</span>    <span class="k">def</span> <span class="nf">_rename_vars</span><span class="p">(</span><span class="n">k</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">658</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span> <span class="ow">and</span> <span class="n">k</span><span class="o">.</span><span class="n">is_cell</span><span class="p">:</span>
+<span class="linenos">659</span>            <span class="n">cell_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cell_label_to_var_name</span><span class="p">(</span><span class="n">k</span><span class="o">.</span><span class="n">label</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+<span class="linenos">660</span>            <span class="n">res</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">map_inner</span><span class="p">(</span><span class="n">_rename_vars</span><span class="p">)</span>
+<span class="linenos">661</span>            <span class="n">cell_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="linenos">662</span>            <span class="k">return</span> <span class="n">res</span>
+<span class="linenos">663</span>
+<span class="linenos">664</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KVariable</span> <span class="ow">and</span> <span class="n">k</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s1">&#39;_Gen&#39;</span><span class="p">,</span> <span class="s1">&#39;?_Gen&#39;</span><span class="p">,</span> <span class="s1">&#39;_DotVar&#39;</span><span class="p">,</span> <span class="s1">&#39;?_DotVar&#39;</span><span class="p">)):</span>
+<span class="linenos">665</span>            <span class="k">if</span> <span class="ow">not</span> <span class="n">cell_stack</span><span class="p">:</span>
+<span class="linenos">666</span>                <span class="k">return</span> <span class="n">k</span>
+<span class="linenos">667</span>            <span class="n">cell_name</span> <span class="o">=</span> <span class="n">cell_stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="linenos">668</span>            <span class="n">new_var</span> <span class="o">=</span> <span class="n">abstract_term_safely</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">base_name</span><span class="o">=</span><span class="n">cell_name</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="n">k</span><span class="o">.</span><span class="n">sort</span><span class="p">,</span> <span class="n">existing_var_names</span><span class="o">=</span><span class="nb">vars</span><span class="p">)</span>
+<span class="linenos">669</span>            <span class="nb">vars</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_var</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="linenos">670</span>            <span class="k">return</span> <span class="n">new_var</span>
+<span class="linenos">671</span>
+<span class="linenos">672</span>        <span class="k">return</span> <span class="n">k</span><span class="o">.</span><span class="n">map_inner</span><span class="p">(</span><span class="n">_rename_vars</span><span class="p">)</span>
 <span class="linenos">673</span>
-<span class="linenos">674</span>        <span class="k">return</span> <span class="n">k</span><span class="o">.</span><span class="n">map_inner</span><span class="p">(</span><span class="n">_rename_vars</span><span class="p">)</span>
-<span class="linenos">675</span>
-<span class="linenos">676</span>    <span class="k">return</span> <span class="n">_rename_vars</span><span class="p">(</span><span class="n">term</span><span class="p">)</span></div>
+<span class="linenos">674</span>    <span class="k">return</span> <span class="n">_rename_vars</span><span class="p">(</span><span class="n">term</span><span class="p">)</span></div>
 
-<span class="linenos">677</span>
-<span class="linenos">678</span>
+<span class="linenos">675</span>
+<span class="linenos">676</span>
 <div class="viewcode-block" id="remove_useless_constraints">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.remove_useless_constraints">[docs]</a>
-<span class="linenos">679</span><span class="k">def</span> <span class="nf">remove_useless_constraints</span><span class="p">(</span><span class="n">constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">],</span> <span class="n">initial_vars</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">KInner</span><span class="p">]:</span>
-<span class="linenos">680</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Given a list of constraints and a list of variables, return an updated list with only constraints that depend on these variables (directly or indirectly).</span>
-<span class="linenos">681</span>
-<span class="linenos">682</span><span class="sd">    :param constraints: Original list of constraints to remove from.</span>
-<span class="linenos">683</span><span class="sd">    :param initial_vars: Initial list of variables to keep constraints for.</span>
-<span class="linenos">684</span><span class="sd">    :return: A list of constraints with only those constraints that contain the initial variables or variables that depend on those through other constraints in the list.</span>
-<span class="linenos">685</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">686</span>    <span class="n">used_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">initial_vars</span><span class="p">)</span>
-<span class="linenos">687</span>    <span class="n">prev_len_used_vars</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="linenos">688</span>    <span class="n">new_constraints</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="linenos">689</span>    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_vars</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">prev_len_used_vars</span><span class="p">:</span>
-<span class="linenos">690</span>        <span class="n">prev_len_used_vars</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_vars</span><span class="p">)</span>
-<span class="linenos">691</span>        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">constraints</span><span class="p">:</span>
-<span class="linenos">692</span>            <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">new_constraints</span><span class="p">:</span>
-<span class="linenos">693</span>                <span class="n">new_vars</span> <span class="o">=</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-<span class="linenos">694</span>                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">v</span> <span class="ow">in</span> <span class="n">used_vars</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_vars</span><span class="p">):</span>
-<span class="linenos">695</span>                    <span class="n">new_constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-<span class="linenos">696</span>                    <span class="n">used_vars</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">new_vars</span><span class="p">)</span>
-<span class="linenos">697</span>        <span class="n">used_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">used_vars</span><span class="p">))</span>
-<span class="linenos">698</span>    <span class="k">return</span> <span class="n">new_constraints</span></div>
+<span class="linenos">677</span><span class="k">def</span> <span class="nf">remove_useless_constraints</span><span class="p">(</span><span class="n">constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">],</span> <span class="n">initial_vars</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">KInner</span><span class="p">]:</span>
+<span class="linenos">678</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Given a list of constraints and a list of variables, return an updated list with only constraints that depend on these variables (directly or indirectly).</span>
+<span class="linenos">679</span>
+<span class="linenos">680</span><span class="sd">    :param constraints: Original list of constraints to remove from.</span>
+<span class="linenos">681</span><span class="sd">    :param initial_vars: Initial list of variables to keep constraints for.</span>
+<span class="linenos">682</span><span class="sd">    :return: A list of constraints with only those constraints that contain the initial variables or variables that depend on those through other constraints in the list.</span>
+<span class="linenos">683</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">684</span>    <span class="n">used_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">initial_vars</span><span class="p">)</span>
+<span class="linenos">685</span>    <span class="n">prev_len_used_vars</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="linenos">686</span>    <span class="n">new_constraints</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="linenos">687</span>    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_vars</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">prev_len_used_vars</span><span class="p">:</span>
+<span class="linenos">688</span>        <span class="n">prev_len_used_vars</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">used_vars</span><span class="p">)</span>
+<span class="linenos">689</span>        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">constraints</span><span class="p">:</span>
+<span class="linenos">690</span>            <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">new_constraints</span><span class="p">:</span>
+<span class="linenos">691</span>                <span class="n">new_vars</span> <span class="o">=</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="linenos">692</span>                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">v</span> <span class="ow">in</span> <span class="n">used_vars</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">new_vars</span><span class="p">):</span>
+<span class="linenos">693</span>                    <span class="n">new_constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+<span class="linenos">694</span>                    <span class="n">used_vars</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">new_vars</span><span class="p">)</span>
+<span class="linenos">695</span>        <span class="n">used_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">used_vars</span><span class="p">))</span>
+<span class="linenos">696</span>    <span class="k">return</span> <span class="n">new_constraints</span></div>
 
-<span class="linenos">699</span>
-<span class="linenos">700</span>
+<span class="linenos">697</span>
+<span class="linenos">698</span>
 <div class="viewcode-block" id="build_claim">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.build_claim">[docs]</a>
-<span class="linenos">701</span><span class="k">def</span> <span class="nf">build_claim</span><span class="p">(</span>
-<span class="linenos">702</span>    <span class="n">claim_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<span class="linenos">703</span>    <span class="n">init_config</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
-<span class="linenos">704</span>    <span class="n">final_config</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
-<span class="linenos">705</span>    <span class="n">init_constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
-<span class="linenos">706</span>    <span class="n">final_constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
-<span class="linenos">707</span>    <span class="n">keep_vars</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
-<span class="linenos">708</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KClaim</span><span class="p">,</span> <span class="n">Subst</span><span class="p">]:</span>
-<span class="linenos">709</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a `KClaim` between the supplied initial and final states.</span>
-<span class="linenos">710</span>
-<span class="linenos">711</span><span class="sd">    :param claim_id: Label to give the claim.</span>
-<span class="linenos">712</span><span class="sd">    :param init_config: State to put on LHS of the rule.</span>
-<span class="linenos">713</span><span class="sd">    :param final_config: State to put on RHS of the rule.</span>
-<span class="linenos">714</span><span class="sd">    :param init_constraints: Constraints to use as `requires` clause.</span>
-<span class="linenos">715</span><span class="sd">    :param final_constraints: Constraints to use as `ensures` clause.</span>
-<span class="linenos">716</span><span class="sd">    :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.</span>
-<span class="linenos">717</span><span class="sd">    :return: tuple `claim: KClaim, var_map: Subst`:</span>
-<span class="linenos">718</span><span class="sd">      - `claim`: A `KClaim` with variable naming conventions applied so that it should be parseable by K frontend.</span>
-<span class="linenos">719</span><span class="sd">      - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).</span>
-<span class="linenos">720</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">721</span>    <span class="n">rule</span><span class="p">,</span> <span class="n">var_map</span> <span class="o">=</span> <span class="n">build_rule</span><span class="p">(</span>
-<span class="linenos">722</span>        <span class="n">claim_id</span><span class="p">,</span> <span class="n">init_config</span><span class="p">,</span> <span class="n">final_config</span><span class="p">,</span> <span class="n">init_constraints</span><span class="p">,</span> <span class="n">final_constraints</span><span class="p">,</span> <span class="n">keep_vars</span><span class="o">=</span><span class="n">keep_vars</span>
-<span class="linenos">723</span>    <span class="p">)</span>
-<span class="linenos">724</span>    <span class="n">claim</span> <span class="o">=</span> <span class="n">KClaim</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">body</span><span class="p">,</span> <span class="n">requires</span><span class="o">=</span><span class="n">rule</span><span class="o">.</span><span class="n">requires</span><span class="p">,</span> <span class="n">ensures</span><span class="o">=</span><span class="n">rule</span><span class="o">.</span><span class="n">ensures</span><span class="p">,</span> <span class="n">att</span><span class="o">=</span><span class="n">rule</span><span class="o">.</span><span class="n">att</span><span class="p">)</span>
-<span class="linenos">725</span>    <span class="k">return</span> <span class="n">claim</span><span class="p">,</span> <span class="n">var_map</span></div>
+<span class="linenos">699</span><span class="k">def</span> <span class="nf">build_claim</span><span class="p">(</span>
+<span class="linenos">700</span>    <span class="n">claim_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="linenos">701</span>    <span class="n">init_config</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
+<span class="linenos">702</span>    <span class="n">final_config</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
+<span class="linenos">703</span>    <span class="n">init_constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+<span class="linenos">704</span>    <span class="n">final_constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+<span class="linenos">705</span>    <span class="n">keep_vars</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+<span class="linenos">706</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KClaim</span><span class="p">,</span> <span class="n">Subst</span><span class="p">]:</span>
+<span class="linenos">707</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a `KClaim` between the supplied initial and final states.</span>
+<span class="linenos">708</span>
+<span class="linenos">709</span><span class="sd">    :param claim_id: Label to give the claim.</span>
+<span class="linenos">710</span><span class="sd">    :param init_config: State to put on LHS of the rule.</span>
+<span class="linenos">711</span><span class="sd">    :param final_config: State to put on RHS of the rule.</span>
+<span class="linenos">712</span><span class="sd">    :param init_constraints: Constraints to use as `requires` clause.</span>
+<span class="linenos">713</span><span class="sd">    :param final_constraints: Constraints to use as `ensures` clause.</span>
+<span class="linenos">714</span><span class="sd">    :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.</span>
+<span class="linenos">715</span><span class="sd">    :return: tuple `claim: KClaim, var_map: Subst`:</span>
+<span class="linenos">716</span><span class="sd">      - `claim`: A `KClaim` with variable naming conventions applied so that it should be parseable by K frontend.</span>
+<span class="linenos">717</span><span class="sd">      - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).</span>
+<span class="linenos">718</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">719</span>    <span class="n">rule</span><span class="p">,</span> <span class="n">var_map</span> <span class="o">=</span> <span class="n">build_rule</span><span class="p">(</span>
+<span class="linenos">720</span>        <span class="n">claim_id</span><span class="p">,</span> <span class="n">init_config</span><span class="p">,</span> <span class="n">final_config</span><span class="p">,</span> <span class="n">init_constraints</span><span class="p">,</span> <span class="n">final_constraints</span><span class="p">,</span> <span class="n">keep_vars</span><span class="o">=</span><span class="n">keep_vars</span>
+<span class="linenos">721</span>    <span class="p">)</span>
+<span class="linenos">722</span>    <span class="n">claim</span> <span class="o">=</span> <span class="n">KClaim</span><span class="p">(</span><span class="n">rule</span><span class="o">.</span><span class="n">body</span><span class="p">,</span> <span class="n">requires</span><span class="o">=</span><span class="n">rule</span><span class="o">.</span><span class="n">requires</span><span class="p">,</span> <span class="n">ensures</span><span class="o">=</span><span class="n">rule</span><span class="o">.</span><span class="n">ensures</span><span class="p">,</span> <span class="n">att</span><span class="o">=</span><span class="n">rule</span><span class="o">.</span><span class="n">att</span><span class="p">)</span>
+<span class="linenos">723</span>    <span class="k">return</span> <span class="n">claim</span><span class="p">,</span> <span class="n">var_map</span></div>
 
-<span class="linenos">726</span>
-<span class="linenos">727</span>
+<span class="linenos">724</span>
+<span class="linenos">725</span>
 <div class="viewcode-block" id="build_rule">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.build_rule">[docs]</a>
-<span class="linenos">728</span><span class="k">def</span> <span class="nf">build_rule</span><span class="p">(</span>
-<span class="linenos">729</span>    <span class="n">rule_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<span class="linenos">730</span>    <span class="n">init_config</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
-<span class="linenos">731</span>    <span class="n">final_config</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
-<span class="linenos">732</span>    <span class="n">init_constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
-<span class="linenos">733</span>    <span class="n">final_constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
-<span class="linenos">734</span>    <span class="n">priority</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<span class="linenos">735</span>    <span class="n">keep_vars</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
-<span class="linenos">736</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KRule</span><span class="p">,</span> <span class="n">Subst</span><span class="p">]:</span>
-<span class="linenos">737</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a `KRule` between the supplied initial and final states.</span>
-<span class="linenos">738</span>
-<span class="linenos">739</span><span class="sd">    :param rule_id: Label to give the rule.</span>
-<span class="linenos">740</span><span class="sd">    :param init_config: State to put on LHS of the rule.</span>
-<span class="linenos">741</span><span class="sd">    :param final_config: State to put on RHS of the rule.</span>
-<span class="linenos">742</span><span class="sd">    :param init_constraints: Constraints to use as `requires` clause.</span>
-<span class="linenos">743</span><span class="sd">    :param final_constraints: Constraints to use as `ensures` clause.</span>
-<span class="linenos">744</span><span class="sd">    :param priority: Rule priority to give to the generated `KRule`.</span>
-<span class="linenos">745</span><span class="sd">    :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.</span>
-<span class="linenos">746</span><span class="sd">    :return: tuple `claim: KRule, var_map: Subst` such that:</span>
-<span class="linenos">747</span><span class="sd">      - `rule`: A `KRule` with variable naming conventions applied so that it should be parseable by K frontend.</span>
-<span class="linenos">748</span><span class="sd">      - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).</span>
-<span class="linenos">749</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">750</span>    <span class="n">init_constraints</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">init_constraints</span><span class="p">)</span>
-<span class="linenos">751</span>    <span class="n">final_constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">final_constraints</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">init_constraints</span><span class="p">]</span>
-<span class="linenos">752</span>    <span class="n">init_term</span> <span class="o">=</span> <span class="n">mlAnd</span><span class="p">([</span><span class="n">init_config</span><span class="p">]</span> <span class="o">+</span> <span class="n">init_constraints</span><span class="p">)</span>
-<span class="linenos">753</span>    <span class="n">final_term</span> <span class="o">=</span> <span class="n">mlAnd</span><span class="p">([</span><span class="n">final_config</span><span class="p">]</span> <span class="o">+</span> <span class="n">final_constraints</span><span class="p">)</span>
-<span class="linenos">754</span>
-<span class="linenos">755</span>    <span class="n">lhs_vars</span> <span class="o">=</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">init_term</span><span class="p">)</span>
-<span class="linenos">756</span>    <span class="n">rhs_vars</span> <span class="o">=</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">final_term</span><span class="p">)</span>
-<span class="linenos">757</span>    <span class="n">var_occurrences</span> <span class="o">=</span> <span class="n">count_vars</span><span class="p">(</span>
-<span class="linenos">758</span>        <span class="n">mlAnd</span><span class="p">(</span>
-<span class="linenos">759</span>            <span class="p">[</span><span class="n">push_down_rewrites</span><span class="p">(</span><span class="n">KRewrite</span><span class="p">(</span><span class="n">init_config</span><span class="p">,</span> <span class="n">final_config</span><span class="p">))]</span> <span class="o">+</span> <span class="n">init_constraints</span> <span class="o">+</span> <span class="n">final_constraints</span><span class="p">,</span>
-<span class="linenos">760</span>            <span class="n">GENERATED_TOP_CELL</span><span class="p">,</span>
-<span class="linenos">761</span>        <span class="p">)</span>
-<span class="linenos">762</span>    <span class="p">)</span>
-<span class="linenos">763</span>    <span class="n">v_subst</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">KVariable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="linenos">764</span>    <span class="n">vremap_subst</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">KVariable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="linenos">765</span>    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">var_occurrences</span><span class="p">:</span>
-<span class="linenos">766</span>        <span class="n">new_v</span> <span class="o">=</span> <span class="n">v</span>
-<span class="linenos">767</span>        <span class="k">if</span> <span class="n">var_occurrences</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-<span class="linenos">768</span>            <span class="n">new_v</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">new_v</span>
-<span class="linenos">769</span>        <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rhs_vars</span> <span class="ow">and</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lhs_vars</span><span class="p">:</span>
-<span class="linenos">770</span>            <span class="n">new_v</span> <span class="o">=</span> <span class="s1">&#39;?&#39;</span> <span class="o">+</span> <span class="n">new_v</span>
-<span class="linenos">771</span>        <span class="k">if</span> <span class="n">new_v</span> <span class="o">!=</span> <span class="n">v</span><span class="p">:</span>
-<span class="linenos">772</span>            <span class="n">v_subst</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">new_v</span><span class="p">)</span>
-<span class="linenos">773</span>            <span class="n">vremap_subst</span><span class="p">[</span><span class="n">new_v</span><span class="p">]</span> <span class="o">=</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-<span class="linenos">774</span>
-<span class="linenos">775</span>    <span class="n">new_init_config</span> <span class="o">=</span> <span class="n">Subst</span><span class="p">(</span><span class="n">v_subst</span><span class="p">)(</span><span class="n">init_config</span><span class="p">)</span>
-<span class="linenos">776</span>    <span class="n">new_init_constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">Subst</span><span class="p">(</span><span class="n">v_subst</span><span class="p">)(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">init_constraints</span><span class="p">]</span>
-<span class="linenos">777</span>    <span class="n">new_final_config</span><span class="p">,</span> <span class="n">new_final_constraints</span> <span class="o">=</span> <span class="n">apply_existential_substitutions</span><span class="p">(</span>
-<span class="linenos">778</span>        <span class="n">Subst</span><span class="p">(</span><span class="n">v_subst</span><span class="p">)(</span><span class="n">final_config</span><span class="p">),</span> <span class="p">[</span><span class="n">Subst</span><span class="p">(</span><span class="n">v_subst</span><span class="p">)(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">final_constraints</span><span class="p">]</span>
-<span class="linenos">779</span>    <span class="p">)</span>
-<span class="linenos">780</span>
-<span class="linenos">781</span>    <span class="n">rule_body</span> <span class="o">=</span> <span class="n">push_down_rewrites</span><span class="p">(</span><span class="n">KRewrite</span><span class="p">(</span><span class="n">new_init_config</span><span class="p">,</span> <span class="n">new_final_config</span><span class="p">))</span>
-<span class="linenos">782</span>    <span class="n">rule_requires</span> <span class="o">=</span> <span class="n">simplify_bool</span><span class="p">(</span><span class="n">ml_pred_to_bool</span><span class="p">(</span><span class="n">mlAnd</span><span class="p">(</span><span class="n">new_init_constraints</span><span class="p">)))</span>
-<span class="linenos">783</span>    <span class="n">rule_ensures</span> <span class="o">=</span> <span class="n">simplify_bool</span><span class="p">(</span><span class="n">ml_pred_to_bool</span><span class="p">(</span><span class="n">mlAnd</span><span class="p">(</span><span class="n">new_final_constraints</span><span class="p">)))</span>
-<span class="linenos">784</span>    <span class="n">att_entries</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">priority</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="n">Atts</span><span class="o">.</span><span class="n">PRIORITY</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">priority</span><span class="p">))]</span>
-<span class="linenos">785</span>    <span class="n">rule_att</span> <span class="o">=</span> <span class="n">KAtt</span><span class="p">(</span><span class="n">entries</span><span class="o">=</span><span class="n">att_entries</span><span class="p">)</span>
-<span class="linenos">786</span>
-<span class="linenos">787</span>    <span class="n">rule</span> <span class="o">=</span> <span class="n">KRule</span><span class="p">(</span><span class="n">rule_body</span><span class="p">,</span> <span class="n">requires</span><span class="o">=</span><span class="n">rule_requires</span><span class="p">,</span> <span class="n">ensures</span><span class="o">=</span><span class="n">rule_ensures</span><span class="p">,</span> <span class="n">att</span><span class="o">=</span><span class="n">rule_att</span><span class="p">)</span>
-<span class="linenos">788</span>    <span class="n">rule</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">update_atts</span><span class="p">([</span><span class="n">Atts</span><span class="o">.</span><span class="n">LABEL</span><span class="p">(</span><span class="n">rule_id</span><span class="p">)])</span>
-<span class="linenos">789</span>
-<span class="linenos">790</span>    <span class="k">return</span> <span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">Subst</span><span class="p">(</span><span class="n">vremap_subst</span><span class="p">))</span></div>
+<span class="linenos">726</span><span class="k">def</span> <span class="nf">build_rule</span><span class="p">(</span>
+<span class="linenos">727</span>    <span class="n">rule_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="linenos">728</span>    <span class="n">init_config</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
+<span class="linenos">729</span>    <span class="n">final_config</span><span class="p">:</span> <span class="n">KInner</span><span class="p">,</span>
+<span class="linenos">730</span>    <span class="n">init_constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+<span class="linenos">731</span>    <span class="n">final_constraints</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">KInner</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+<span class="linenos">732</span>    <span class="n">priority</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="linenos">733</span>    <span class="n">keep_vars</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+<span class="linenos">734</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">KRule</span><span class="p">,</span> <span class="n">Subst</span><span class="p">]:</span>
+<span class="linenos">735</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a `KRule` between the supplied initial and final states.</span>
+<span class="linenos">736</span>
+<span class="linenos">737</span><span class="sd">    :param rule_id: Label to give the rule.</span>
+<span class="linenos">738</span><span class="sd">    :param init_config: State to put on LHS of the rule.</span>
+<span class="linenos">739</span><span class="sd">    :param final_config: State to put on RHS of the rule.</span>
+<span class="linenos">740</span><span class="sd">    :param init_constraints: Constraints to use as `requires` clause.</span>
+<span class="linenos">741</span><span class="sd">    :param final_constraints: Constraints to use as `ensures` clause.</span>
+<span class="linenos">742</span><span class="sd">    :param priority: Rule priority to give to the generated `KRule`.</span>
+<span class="linenos">743</span><span class="sd">    :param keep_vars: Variables to leave in the side-conditions even if not bound in the configuration.</span>
+<span class="linenos">744</span><span class="sd">    :return: tuple `claim: KRule, var_map: Subst` such that:</span>
+<span class="linenos">745</span><span class="sd">      - `rule`: A `KRule` with variable naming conventions applied so that it should be parseable by K frontend.</span>
+<span class="linenos">746</span><span class="sd">      - `var_map`: The variable renamings that happened to make the claim parseable by K frontend (which can be undone to recover original variables).</span>
+<span class="linenos">747</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">748</span>    <span class="n">init_constraints</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">init_constraints</span><span class="p">)</span>
+<span class="linenos">749</span>    <span class="n">final_constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">final_constraints</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">init_constraints</span><span class="p">]</span>
+<span class="linenos">750</span>    <span class="n">init_term</span> <span class="o">=</span> <span class="n">mlAnd</span><span class="p">([</span><span class="n">init_config</span><span class="p">]</span> <span class="o">+</span> <span class="n">init_constraints</span><span class="p">)</span>
+<span class="linenos">751</span>    <span class="n">final_term</span> <span class="o">=</span> <span class="n">mlAnd</span><span class="p">([</span><span class="n">final_config</span><span class="p">]</span> <span class="o">+</span> <span class="n">final_constraints</span><span class="p">)</span>
+<span class="linenos">752</span>
+<span class="linenos">753</span>    <span class="n">lhs_vars</span> <span class="o">=</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">init_term</span><span class="p">)</span>
+<span class="linenos">754</span>    <span class="n">rhs_vars</span> <span class="o">=</span> <span class="n">free_vars</span><span class="p">(</span><span class="n">final_term</span><span class="p">)</span>
+<span class="linenos">755</span>    <span class="n">var_occurrences</span> <span class="o">=</span> <span class="n">count_vars</span><span class="p">(</span>
+<span class="linenos">756</span>        <span class="n">mlAnd</span><span class="p">(</span>
+<span class="linenos">757</span>            <span class="p">[</span><span class="n">push_down_rewrites</span><span class="p">(</span><span class="n">KRewrite</span><span class="p">(</span><span class="n">init_config</span><span class="p">,</span> <span class="n">final_config</span><span class="p">))]</span> <span class="o">+</span> <span class="n">init_constraints</span> <span class="o">+</span> <span class="n">final_constraints</span><span class="p">,</span>
+<span class="linenos">758</span>            <span class="n">GENERATED_TOP_CELL</span><span class="p">,</span>
+<span class="linenos">759</span>        <span class="p">)</span>
+<span class="linenos">760</span>    <span class="p">)</span>
+<span class="linenos">761</span>    <span class="n">v_subst</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">KVariable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="linenos">762</span>    <span class="n">vremap_subst</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">KVariable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="linenos">763</span>    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">var_occurrences</span><span class="p">:</span>
+<span class="linenos">764</span>        <span class="n">new_v</span> <span class="o">=</span> <span class="n">v</span>
+<span class="linenos">765</span>        <span class="k">if</span> <span class="n">var_occurrences</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+<span class="linenos">766</span>            <span class="n">new_v</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span> <span class="o">+</span> <span class="n">new_v</span>
+<span class="linenos">767</span>        <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rhs_vars</span> <span class="ow">and</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">lhs_vars</span><span class="p">:</span>
+<span class="linenos">768</span>            <span class="n">new_v</span> <span class="o">=</span> <span class="s1">&#39;?&#39;</span> <span class="o">+</span> <span class="n">new_v</span>
+<span class="linenos">769</span>        <span class="k">if</span> <span class="n">new_v</span> <span class="o">!=</span> <span class="n">v</span><span class="p">:</span>
+<span class="linenos">770</span>            <span class="n">v_subst</span><span class="p">[</span><span class="n">v</span><span class="p">]</span> <span class="o">=</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">new_v</span><span class="p">)</span>
+<span class="linenos">771</span>            <span class="n">vremap_subst</span><span class="p">[</span><span class="n">new_v</span><span class="p">]</span> <span class="o">=</span> <span class="n">KVariable</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+<span class="linenos">772</span>
+<span class="linenos">773</span>    <span class="n">new_init_config</span> <span class="o">=</span> <span class="n">Subst</span><span class="p">(</span><span class="n">v_subst</span><span class="p">)(</span><span class="n">init_config</span><span class="p">)</span>
+<span class="linenos">774</span>    <span class="n">new_init_constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">Subst</span><span class="p">(</span><span class="n">v_subst</span><span class="p">)(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">init_constraints</span><span class="p">]</span>
+<span class="linenos">775</span>    <span class="n">new_final_config</span><span class="p">,</span> <span class="n">new_final_constraints</span> <span class="o">=</span> <span class="n">apply_existential_substitutions</span><span class="p">(</span>
+<span class="linenos">776</span>        <span class="n">Subst</span><span class="p">(</span><span class="n">v_subst</span><span class="p">)(</span><span class="n">final_config</span><span class="p">),</span> <span class="p">[</span><span class="n">Subst</span><span class="p">(</span><span class="n">v_subst</span><span class="p">)(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">final_constraints</span><span class="p">]</span>
+<span class="linenos">777</span>    <span class="p">)</span>
+<span class="linenos">778</span>
+<span class="linenos">779</span>    <span class="n">rule_body</span> <span class="o">=</span> <span class="n">push_down_rewrites</span><span class="p">(</span><span class="n">KRewrite</span><span class="p">(</span><span class="n">new_init_config</span><span class="p">,</span> <span class="n">new_final_config</span><span class="p">))</span>
+<span class="linenos">780</span>    <span class="n">rule_requires</span> <span class="o">=</span> <span class="n">simplify_bool</span><span class="p">(</span><span class="n">ml_pred_to_bool</span><span class="p">(</span><span class="n">mlAnd</span><span class="p">(</span><span class="n">new_init_constraints</span><span class="p">)))</span>
+<span class="linenos">781</span>    <span class="n">rule_ensures</span> <span class="o">=</span> <span class="n">simplify_bool</span><span class="p">(</span><span class="n">ml_pred_to_bool</span><span class="p">(</span><span class="n">mlAnd</span><span class="p">(</span><span class="n">new_final_constraints</span><span class="p">)))</span>
+<span class="linenos">782</span>    <span class="n">att_entries</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">priority</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="n">Atts</span><span class="o">.</span><span class="n">PRIORITY</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">priority</span><span class="p">))]</span>
+<span class="linenos">783</span>    <span class="n">rule_att</span> <span class="o">=</span> <span class="n">KAtt</span><span class="p">(</span><span class="n">entries</span><span class="o">=</span><span class="n">att_entries</span><span class="p">)</span>
+<span class="linenos">784</span>
+<span class="linenos">785</span>    <span class="n">rule</span> <span class="o">=</span> <span class="n">KRule</span><span class="p">(</span><span class="n">rule_body</span><span class="p">,</span> <span class="n">requires</span><span class="o">=</span><span class="n">rule_requires</span><span class="p">,</span> <span class="n">ensures</span><span class="o">=</span><span class="n">rule_ensures</span><span class="p">,</span> <span class="n">att</span><span class="o">=</span><span class="n">rule_att</span><span class="p">)</span>
+<span class="linenos">786</span>    <span class="n">rule</span> <span class="o">=</span> <span class="n">rule</span><span class="o">.</span><span class="n">update_atts</span><span class="p">([</span><span class="n">Atts</span><span class="o">.</span><span class="n">LABEL</span><span class="p">(</span><span class="n">rule_id</span><span class="p">)])</span>
+<span class="linenos">787</span>
+<span class="linenos">788</span>    <span class="k">return</span> <span class="p">(</span><span class="n">rule</span><span class="p">,</span> <span class="n">Subst</span><span class="p">(</span><span class="n">vremap_subst</span><span class="p">))</span></div>
 
-<span class="linenos">791</span>
-<span class="linenos">792</span>
+<span class="linenos">789</span>
+<span class="linenos">790</span>
 <div class="viewcode-block" id="replace_rewrites_with_implies">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.replace_rewrites_with_implies">[docs]</a>
-<span class="linenos">793</span><span class="k">def</span> <span class="nf">replace_rewrites_with_implies</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">794</span>    <span class="k">def</span> <span class="nf">_replace_rewrites_with_implies</span><span class="p">(</span><span class="n">_kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">795</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KRewrite</span><span class="p">:</span>
-<span class="linenos">796</span>            <span class="k">return</span> <span class="n">mlImplies</span><span class="p">(</span><span class="n">_kast</span><span class="o">.</span><span class="n">lhs</span><span class="p">,</span> <span class="n">_kast</span><span class="o">.</span><span class="n">rhs</span><span class="p">)</span>
-<span class="linenos">797</span>        <span class="k">return</span> <span class="n">_kast</span>
-<span class="linenos">798</span>
-<span class="linenos">799</span>    <span class="k">return</span> <span class="n">bottom_up</span><span class="p">(</span><span class="n">_replace_rewrites_with_implies</span><span class="p">,</span> <span class="n">kast</span><span class="p">)</span></div>
+<span class="linenos">791</span><span class="k">def</span> <span class="nf">replace_rewrites_with_implies</span><span class="p">(</span><span class="n">kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">792</span>    <span class="k">def</span> <span class="nf">_replace_rewrites_with_implies</span><span class="p">(</span><span class="n">_kast</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">793</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_kast</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KRewrite</span><span class="p">:</span>
+<span class="linenos">794</span>            <span class="k">return</span> <span class="n">mlImplies</span><span class="p">(</span><span class="n">_kast</span><span class="o">.</span><span class="n">lhs</span><span class="p">,</span> <span class="n">_kast</span><span class="o">.</span><span class="n">rhs</span><span class="p">)</span>
+<span class="linenos">795</span>        <span class="k">return</span> <span class="n">_kast</span>
+<span class="linenos">796</span>
+<span class="linenos">797</span>    <span class="k">return</span> <span class="n">bottom_up</span><span class="p">(</span><span class="n">_replace_rewrites_with_implies</span><span class="p">,</span> <span class="n">kast</span><span class="p">)</span></div>
 
-<span class="linenos">800</span>
-<span class="linenos">801</span>
+<span class="linenos">798</span>
+<span class="linenos">799</span>
 <div class="viewcode-block" id="no_cell_rewrite_to_dots">
 <a class="viewcode-back" href="../../../api/pyk.kast.manip.html#pyk.kast.manip.no_cell_rewrite_to_dots">[docs]</a>
-<span class="linenos">802</span><span class="k">def</span> <span class="nf">no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">803</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="linenos">804</span><span class="sd">    Transforms a given term by replacing the contents of each cell with dots if the LHS and RHS are the same.</span>
-<span class="linenos">805</span>
-<span class="linenos">806</span><span class="sd">    This function recursively traverses the cells in a term. When it finds a cell whose left-hand side (LHS) is identical to its right-hand side (RHS),</span>
-<span class="linenos">807</span><span class="sd">    it replaces the cell&#39;s contents with a predefined DOTS.</span>
-<span class="linenos">808</span>
-<span class="linenos">809</span><span class="sd">    Parameters:</span>
-<span class="linenos">810</span><span class="sd">    - term (KInner): The term to be transformed.</span>
-<span class="linenos">811</span>
-<span class="linenos">812</span><span class="sd">    Returns:</span>
-<span class="linenos">813</span><span class="sd">    - KInner: The transformed term, where specific cell contents have been replaced with dots.</span>
-<span class="linenos">814</span><span class="sd">    &quot;&quot;&quot;</span>
-<span class="linenos">815</span>
-<span class="linenos">816</span>    <span class="k">def</span> <span class="nf">_no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">_term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
-<span class="linenos">817</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span> <span class="ow">and</span> <span class="n">_term</span><span class="o">.</span><span class="n">is_cell</span><span class="p">:</span>
-<span class="linenos">818</span>            <span class="n">lhs</span> <span class="o">=</span> <span class="n">extract_lhs</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span>
-<span class="linenos">819</span>            <span class="n">rhs</span> <span class="o">=</span> <span class="n">extract_rhs</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span>
-<span class="linenos">820</span>            <span class="k">if</span> <span class="n">lhs</span> <span class="o">==</span> <span class="n">rhs</span><span class="p">:</span>
-<span class="linenos">821</span>                <span class="k">return</span> <span class="n">KApply</span><span class="p">(</span><span class="n">_term</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="p">[</span><span class="n">DOTS</span><span class="p">])</span>
-<span class="linenos">822</span>        <span class="k">return</span> <span class="n">_term</span>
-<span class="linenos">823</span>
-<span class="linenos">824</span>    <span class="n">config</span><span class="p">,</span> <span class="n">_subst</span> <span class="o">=</span> <span class="n">split_config_from</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
-<span class="linenos">825</span>    <span class="n">subst</span> <span class="o">=</span> <span class="n">Subst</span><span class="p">({</span><span class="n">cell_name</span><span class="p">:</span> <span class="n">_no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">cell_contents</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell_name</span><span class="p">,</span> <span class="n">cell_contents</span> <span class="ow">in</span> <span class="n">_subst</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
-<span class="linenos">826</span>
-<span class="linenos">827</span>    <span class="k">return</span> <span class="n">subst</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></div>
+<span class="linenos">800</span><span class="k">def</span> <span class="nf">no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">801</span><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">802</span><span class="sd">    Transforms a given term by replacing the contents of each cell with dots if the LHS and RHS are the same.</span>
+<span class="linenos">803</span>
+<span class="linenos">804</span><span class="sd">    This function recursively traverses the cells in a term. When it finds a cell whose left-hand side (LHS) is identical to its right-hand side (RHS),</span>
+<span class="linenos">805</span><span class="sd">    it replaces the cell&#39;s contents with a predefined DOTS.</span>
+<span class="linenos">806</span>
+<span class="linenos">807</span><span class="sd">    Parameters:</span>
+<span class="linenos">808</span><span class="sd">    - term (KInner): The term to be transformed.</span>
+<span class="linenos">809</span>
+<span class="linenos">810</span><span class="sd">    Returns:</span>
+<span class="linenos">811</span><span class="sd">    - KInner: The transformed term, where specific cell contents have been replaced with dots.</span>
+<span class="linenos">812</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">813</span>
+<span class="linenos">814</span>    <span class="k">def</span> <span class="nf">_no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">_term</span><span class="p">:</span> <span class="n">KInner</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">KInner</span><span class="p">:</span>
+<span class="linenos">815</span>        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span> <span class="ow">is</span> <span class="n">KApply</span> <span class="ow">and</span> <span class="n">_term</span><span class="o">.</span><span class="n">is_cell</span><span class="p">:</span>
+<span class="linenos">816</span>            <span class="n">lhs</span> <span class="o">=</span> <span class="n">extract_lhs</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span>
+<span class="linenos">817</span>            <span class="n">rhs</span> <span class="o">=</span> <span class="n">extract_rhs</span><span class="p">(</span><span class="n">_term</span><span class="p">)</span>
+<span class="linenos">818</span>            <span class="k">if</span> <span class="n">lhs</span> <span class="o">==</span> <span class="n">rhs</span><span class="p">:</span>
+<span class="linenos">819</span>                <span class="k">return</span> <span class="n">KApply</span><span class="p">(</span><span class="n">_term</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="p">[</span><span class="n">DOTS</span><span class="p">])</span>
+<span class="linenos">820</span>        <span class="k">return</span> <span class="n">_term</span>
+<span class="linenos">821</span>
+<span class="linenos">822</span>    <span class="n">config</span><span class="p">,</span> <span class="n">_subst</span> <span class="o">=</span> <span class="n">split_config_from</span><span class="p">(</span><span class="n">term</span><span class="p">)</span>
+<span class="linenos">823</span>    <span class="n">subst</span> <span class="o">=</span> <span class="n">Subst</span><span class="p">({</span><span class="n">cell_name</span><span class="p">:</span> <span class="n">_no_cell_rewrite_to_dots</span><span class="p">(</span><span class="n">cell_contents</span><span class="p">)</span> <span class="k">for</span> <span class="n">cell_name</span><span class="p">,</span> <span class="n">cell_contents</span> <span class="ow">in</span> <span class="n">_subst</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+<span class="linenos">824</span>
+<span class="linenos">825</span>    <span class="k">return</span> <span class="n">subst</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></div>
 
 </pre></div>
 
