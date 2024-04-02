@@ -128,12 +128,3 @@ class JsonRpcRequestHandler(BaseHTTPRequestHandler):
             self.send_json_error(-32602, 'Unrecognized method parameter format.')
         _LOGGER.debug(f'Got response {result}')
         self.send_json_success(result, request['id'])
-
-
-class ExampleJsonRpcServer(JsonRpcServer):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.register_method('print_hello', self.exec_print_hello)
-
-    def exec_print_hello(self, obj: None) -> str:
-        return 'hello.'
