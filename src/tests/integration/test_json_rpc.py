@@ -13,8 +13,6 @@ from pyk.ktool.krun import KRun
 from pyk.rpc.rpc import JsonRpcServer
 from pyk.testing import KRunTest
 
-from .utils import K_FILES
-
 if TYPE_CHECKING:
     from pyk.kast import KInner
 
@@ -76,7 +74,20 @@ class StatefulKJsonRpcServer(JsonRpcServer):
 
 
 class TestJsonRPCServer(KRunTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'json-rpc-example.k'
+    KOMPILE_DEFINITION = """
+        module JSON-RPC-EXAMPLE
+        imports INT
+
+          configuration 
+          <example>
+            <k> $PGM </k>
+            <x> 0:Int </x>
+            <y> 0:Int </y>
+          </example>
+
+        endmodule
+    """
+    KOMPILE_MAIN_MODULE = 'JSON-RPC-EXAMPLE'
     KOMPILE_BACKEND = 'llvm'
 
     def test_json_rpc_server(self, krun: KRun) -> None:
