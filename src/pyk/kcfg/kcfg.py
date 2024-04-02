@@ -153,8 +153,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             new_attrs = attrs if attrs is not None else self.attrs
             return KCFG.Node(self.id, new_cterm, new_attrs)
 
-        def free_vars(self, constraints_only: bool = False) -> frozenset[str]:
-            return frozenset(self.cterm.free_vars_constraints if constraints_only else self.cterm.free_vars)
+        @property
+        def free_vars(self) -> frozenset[str]:
+            return frozenset(self.cterm.free_vars)
 
     class Successor(ABC):
         source: KCFG.Node
@@ -165,8 +166,8 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return self.source < other.source
 
         @property
-        def source_vars(self, constraints_only: bool = False) -> frozenset[str]:
-            return frozenset(self.source.free_vars(constraints_only=constraints_only))
+        def source_vars(self) -> frozenset[str]:
+            return frozenset(self.source.free_vars)
 
         @property
         @abstractmethod
@@ -176,10 +177,9 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         def target_ids(self) -> list[int]:
             return sorted(target.id for target in self.targets)
 
-        def target_vars(self, constraints_only: bool = False) -> frozenset[str]:
-            return frozenset(
-                set.union(set(), *(target.free_vars(constraints_only=constraints_only) for target in self.targets))
-            )
+        @property
+        def target_vars(self) -> frozenset[str]:
+            return frozenset(set.union(set(), *(target.free_vars for target in self.targets)))
 
         @abstractmethod
         def replace_source(self, node: KCFG.Node) -> KCFG.Successor: ...
@@ -973,14 +973,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             self.lift_edge(node_id)
         return len(edges_to_lift) > 0
 
-    def _can_lift_split(self, node_to_lift_to: KCFG.Node, split: KCFG.Split) -> tuple[bool, str]:
-        # Split cannot be lifted if a target-node constraint has variables not in the node to which the split is to be lifted
-        fresh_vars = split.target_vars(constraints_only=True).difference(node_to_lift_to.free_vars())
-        if len(fresh_vars) > 0:
-            error_msg = f'Cannot lift split at node {split.source.id} due to branching on freshly introduced variables: {set(fresh_vars)}'
-            return False, error_msg
-        return True, ''
-
     def lift_split_edge(self, b_id: NodeIdLike) -> None:
         """Lift a split up an edge directly preceding it.
 
@@ -1004,10 +996,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         a = a_to_b.source
         split_from_b = single(self.splits(source_id=b_id))
         ci, csubsts = list(split_from_b.splits.keys()), list(split_from_b.splits.values())
-        # Ensure split can be lifted
-        can_lift_split, error_msg = self._can_lift_split(a, split_from_b)
-        if not can_lift_split:
-            raise AssertionError(error_msg)
+        # Ensure split can be lifted soundly (i.e., that it does not introduce fresh variables)
+        assert (
+            len(split_from_b.source_vars.difference(a.free_vars)) == 0
+            and len(split_from_b.target_vars.difference(split_from_b.source_vars)) == 0
+        )
         # Create CTerms and CSubsts corresponding to the new targets of the split
         new_cterms_with_constraints = [
             (CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints), csubst.constraint) for csubst in csubsts
@@ -1050,10 +1043,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         splits_from_a, splits_from_b = split_from_a.splits, split_from_b.splits
         a = split_from_a.source
         ci = list(splits_from_b.keys())
-        # Ensure split can be lifted
-        can_lift_split, error_msg = self._can_lift_split(a, split_from_b)
-        if not can_lift_split:
-            raise AssertionError(error_msg)
+        # Ensure split can be lifted soundly (i.e., that it does not introduce fresh variables)
+        assert (
+            len(split_from_b.source_vars.difference(a.free_vars)) == 0
+            and len(split_from_b.target_vars.difference(split_from_b.source_vars)) == 0
+        )
         # Get the substitution for `B`, at the same time removing 'B' from the targets of `A`.
         csubst_b = splits_from_a.pop(self._resolve(b_id))
         # Generate substitutions for additional targets `C_I`, which all exist by construction;
@@ -1092,9 +1086,12 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                     [
                         node.id
                         for node in self.nodes
-                        if (target_splits := self.splits(source_id=node.id)) != []
+                        if (splits := self.splits(source_id=node.id)) != []
                         and (sources := finder(target_id=node.id)) != []
-                        and self._can_lift_split(single(sources).source, single(target_splits))[0]
+                        and (source := single(sources).source)
+                        and (split := single(splits))
+                        and len(split.source_vars.difference(source.free_vars)) == 0
+                        and len(split.target_vars.difference(split.source_vars)) == 0
                     ]
                 )
                 for id in splits_to_lift:

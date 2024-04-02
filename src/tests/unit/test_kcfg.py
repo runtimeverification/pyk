@@ -561,9 +561,7 @@ def test_lifting_functions_manual() -> None:
     for id in [1, 2, 4, 5, 7, 8, 9, 10, 11, 12]:
         with pytest.raises(ValueError, match='^Expected a single element, found none$'):
             cfg.lift_split_edge(id)
-    with pytest.raises(
-        AssertionError, match="^Cannot lift split at node 6 due to branching on freshly introduced variables: {'Y'}$"
-    ):
+    with pytest.raises(AssertionError):
         cfg.lift_split_edge(6)
 
     for id in [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12]:
@@ -597,9 +595,7 @@ def test_lifting_functions_manual() -> None:
         )
     )
 
-    with pytest.raises(
-        AssertionError, match="^Cannot lift split at node 9 due to branching on freshly introduced variables: {'Y'}$"
-    ):
+    with pytest.raises(AssertionError):
         cfg.lift_split_split(9)
 
     cfg.lift_edge(4)
