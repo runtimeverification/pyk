@@ -3,13 +3,12 @@ from __future__ import annotations
 from threading import Thread
 from time import sleep
 
-from pyk.cli.args import ServeRpcOptions
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken
 from pyk.kast.manip import set_cell
 from pyk.kore.rpc import JsonRpcClient, TransportType
 from pyk.ktool.krun import KRun
-from pyk.rpc.rpc import JsonRpcServer
+from pyk.rpc.rpc import JsonRpcServer, ServeRpcOptions
 from pyk.testing import KRunTest
 
 

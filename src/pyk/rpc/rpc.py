@@ -8,12 +8,28 @@ from typing import TYPE_CHECKING, Any, Final
 
 from typing_extensions import Protocol
 
+from ..cli.cli import Options
+
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
-    from ..cli.args import ServeRpcOptions
 
 _LOGGER: Final = logging.getLogger(__name__)
+
+
+class ServeRpcOptions(Options):
+    addr: str
+    port: int
+    definition_dir: Path | None
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'addr': 'localhost',
+            'port': 56601,
+            'definition_dir': None,
+        }
 
 
 class JsonRpcServer:

@@ -62,20 +62,6 @@ class DisplayOptions(Options):
         }
 
 
-class ServeRpcOptions(Options):
-    addr: str
-    port: int
-    definition_dir: Path | None
-
-    @staticmethod
-    def default() -> dict[str, Any]:
-        return {
-            'addr': 'localhost',
-            'port': 56601,
-            'definition_dir': None,
-        }
-
-
 class KDefinitionOptions(Options):
     includes: list[str]
     main_module: str | None
