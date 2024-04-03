@@ -4,10 +4,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>pyk.kcfg.kcfg &#8212; pyk 0.1.766 documentation</title>
+    <title>pyk.kcfg.kcfg &#8212; pyk 0.1.767 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=12dfc556" />
-    <script src="../../../_static/documentation_options.js?v=4cf3cab5"></script>
+    <script src="../../../_static/documentation_options.js?v=e88b4eac"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
@@ -1407,8 +1407,8 @@
 <span class="linenos">1080</span><span class="sd">        &quot;&quot;&quot;</span>
 <span class="linenos">1081</span>
 <span class="linenos">1082</span>        <span class="k">def</span> <span class="nf">_lift_split</span><span class="p">(</span><span class="n">finder</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">lifter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="linenos">1083</span>            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-<span class="linenos">1084</span>                <span class="n">result</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">1083</span>            <span class="n">result</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="linenos">1084</span>            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
 <span class="linenos">1085</span>                <span class="n">splits_to_lift</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
 <span class="linenos">1086</span>                    <span class="p">[</span>
 <span class="linenos">1087</span>                        <span class="n">node</span><span class="o">.</span><span class="n">id</span>
@@ -1424,7 +1424,7 @@
 <span class="linenos">1097</span>                <span class="k">for</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">splits_to_lift</span><span class="p">:</span>
 <span class="linenos">1098</span>                    <span class="n">lifter</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
 <span class="linenos">1099</span>                    <span class="n">result</span> <span class="o">=</span> <span class="kc">True</span>
-<span class="linenos">1100</span>                <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">splits_to_lift</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+<span class="linenos">1100</span>                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">splits_to_lift</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
 <span class="linenos">1101</span>                    <span class="k">break</span>
 <span class="linenos">1102</span>            <span class="k">return</span> <span class="n">result</span>
 <span class="linenos">1103</span>
