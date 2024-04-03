@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import copy
 import re
+from collections.abc import Iterator
 from enum import Enum, auto
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Generator, Iterable, Iterator
+    from collections.abc import Collection, Generator, Iterable
     from typing import Final
 
 
@@ -57,9 +59,48 @@ class TokenType(Enum):
     BUBBLE = auto()
 
 
+class Location:
+    _line: int = 0
+    _col: int = 0
+
+    def __init__(self, line: int = 1, col: int = 0) -> None:
+        self._line = line
+        self._col = col
+
+    def __add__(self, s: str) -> Location:
+        line, col = self._line, self._col
+        for c in s:
+            col += 1
+            if c == '\n':
+                line += 1
+                col = 0
+        return Location(line, col)
+
+    def __iadd__(self, s: str) -> Location:
+        for c in s:
+            self._col += 1
+            if c == '\n':
+                self._line += 1
+                self._col = 0
+        return self
+
+    def __repr__(self) -> str:
+        return f'Location({self._line}, {self._col})'
+
+    def get(self) -> tuple[int, int]:
+        return self._line, self._col
+
+
 class Token(NamedTuple):
     text: str
     type: TokenType
+    loc: Location = Location()
+
+    def __eq__(self, t: Token) -> bool:
+        return self.text == t.text and self.type == t.type
+
+    def with_loc(self, loc: Location) -> Token:
+        return Token(self.text, self.type, loc)
 
 
 _EOF_TOKEN: Final = Token('', TokenType.EOF)
@@ -169,8 +210,24 @@ _NEXT_STATE: Final = {
 _BUBBLY_STATES: Final = {State.BUBBLE, State.CONTEXT}
 
 
+class LocationIterator(Iterator[str]):
+    _loc: Location = Location()
+    _iter: Iterator[str]
+
+    def __init__(self, x: Iterable[str]) -> None:
+        self._iter = iter(x)
+
+    def __next__(self) -> str:
+        la = next(self._iter)
+        self._loc += la
+        return la
+
+    def loc(self) -> Location:
+        return copy.copy(self._loc)
+
+
 def outer_lexer(it: Iterable[str]) -> Iterator[Token]:
-    it = iter(it)
+    it = LocationIterator(it)
     la = next(it, '')
     state = State.DEFAULT
 
@@ -216,35 +273,39 @@ _DEFAULT_KEYWORDS: Final = {
 }
 
 
-def _default(la: str, it: Iterator[str]) -> tuple[Token, str]:
+def _default(la: str, it: LocationIterator) -> tuple[Token, str]:
     la = _skip_ws_and_comments(la, it)
 
     if not la:
         return _EOF_TOKEN, la
 
     elif la in _SIMPLE_CHARS:
-        return _simple_char(la, it)
+        tokenfunc = _simple_char
 
     elif la == '"':
-        return _string(la, it)
+        tokenfunc = _string
 
     elif la == 'r':
-        return _regex_or_lower_id_or_keyword(la, it)
+        tokenfunc = _regex_or_lower_id_or_keyword
 
     elif la in _DIGIT:
-        return _nat(la, it)
+        tokenfunc = _nat
 
     elif la in _ALNUM:
-        return _id_or_keyword(la, it)
+        tokenfunc = _id_or_keyword
 
     elif la == '#':
-        return _hash_id(la, it)
+        tokenfunc = _hash_id
 
     elif la == ':':
-        return _colon_or_dcoloneq(la, it)
+        tokenfunc = _colon_or_dcoloneq
 
     else:
         raise _unexpected_character(la)
+
+    loc = it.loc()
+    token, la = tokenfunc(la, it)
+    return token.with_loc(loc), la
 
 
 def _skip_ws_and_comments(la: str, it: Iterator[str]) -> str:
@@ -389,26 +450,30 @@ _SYNTAX_KEYWORDS: Final = {
 }
 
 
-def _syntax(la: str, it: Iterator[str]) -> tuple[Token, str]:
+def _syntax(la: str, it: LocationIterator) -> tuple[Token, str]:
     la = _skip_ws_and_comments(la, it)
 
     if not la:
         return _EOF_TOKEN, la
 
     elif la == '{':
-        return _simple_char(la, it)
+        tokenfunc = _simple_char
 
     elif la in _LOWER:
-        return _syntax_keyword(la, it)
+        tokenfunc = _syntax_keyword
 
     elif la in _UPPER:
-        return _upper_id(la, it)
+        tokenfunc = _upper_id
 
     elif la == '#':
-        return _hash_upper_id(la, it)
+        tokenfunc = _hash_upper_id
 
     else:
         raise _unexpected_character(la)
+
+    loc = it.loc()
+    token, la = tokenfunc(la, it)
+    return token.with_loc(loc), la
 
 
 def _syntax_keyword(la: str, it: Iterator[str]) -> tuple[Token, str]:
@@ -459,10 +524,11 @@ _MODNAME_KEYWORDS: Final = {'private', 'public'}
 _MODNAME_CHARS: Final = {'-', '_'}.union(_ALNUM)
 
 
-def _modname(la: str, it: Iterator) -> tuple[Token, str]:
+def _modname(la: str, it: LocationIterator) -> tuple[Token, str]:
     la = _skip_ws_and_comments(la, it)
 
     consumed = []
+    loc = it.loc()
 
     if la == '#':
         consumed.append(la)
@@ -481,14 +547,15 @@ def _modname(la: str, it: Iterator) -> tuple[Token, str]:
 
     text = ''.join(consumed)
     if text in _MODNAME_KEYWORDS:
-        return _KEYWORDS[text], la
-    return Token(text, TokenType.MODNAME), la
+        return _KEYWORDS[text].with_loc(loc), la
+    return Token(text, TokenType.MODNAME).with_loc(loc), la
 
 
 _KLABEL_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuration', 'context'}
 
 
-def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
+def _klabel(la: str, it: LocationIterator) -> tuple[Token, str]:
+    loc: Location
     consumed: list[str]
     while True:
         while la in _WHITESPACE:
@@ -498,6 +565,7 @@ def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
             return _EOF_TOKEN, la
 
         if la == '/':
+            loc = it.loc()
             is_comment, consumed, la = _maybe_comment(la, it)
 
             if not is_comment and len(consumed) > 1:
@@ -509,6 +577,7 @@ def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
 
             break
 
+        loc = it.loc()
         consumed = []
         break
 
@@ -516,7 +585,7 @@ def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
         consumed.append(la)
         la = next(it, '')
         if not la or la in _WHITESPACE:
-            return _GT_TOKEN, la
+            return _GT_TOKEN.with_loc(loc), la
 
     while la and la not in _WHITESPACE:
         consumed.append(la)
@@ -527,7 +596,7 @@ def _klabel(la: str, it: Iterator[str]) -> tuple[Token, str]:
         token = _KEYWORDS[text]
     else:
         token = Token(text, TokenType.KLABEL)
-    return token, la
+    return token.with_loc(loc), la
 
 
 _SIMPLE_STATES: Final = {
@@ -542,19 +611,19 @@ _BUBBLE_KEYWORDS: Final = {'syntax', 'endmodule', 'rule', 'claim', 'configuratio
 _CONTEXT_KEYWORDS: Final = {'alias'}.union(_BUBBLE_KEYWORDS)
 
 
-def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple[list[Token], str]:
+def _bubble_or_context(la: str, it: LocationIterator, *, context: bool = False) -> tuple[list[Token], str]:
     keywords = _CONTEXT_KEYWORDS if context else _BUBBLE_KEYWORDS
 
     tokens: list[Token] = []
 
-    bubble, final_token, la = _raw_bubble(la, it, keywords)
+    bubble, final_token, la, bubble_loc = _raw_bubble(la, it, keywords)
     if bubble is not None:
-        label_tokens, bubble = _strip_bubble_label(bubble)
+        label_tokens, bubble, bubble_loc = _strip_bubble_label(bubble, bubble_loc)
         bubble, attr_tokens = _strip_bubble_attr(bubble)
 
         tokens = label_tokens
         if bubble:
-            bubble_token = Token(bubble, TokenType.BUBBLE)
+            bubble_token = Token(bubble, TokenType.BUBBLE, bubble_loc)
             tokens += [bubble_token]
         tokens += attr_tokens
 
@@ -562,21 +631,30 @@ def _bubble_or_context(la: str, it: Iterator, *, context: bool = False) -> tuple
     return tokens, la
 
 
-def _raw_bubble(la: str, it: Iterator[str], keywords: Collection[str]) -> tuple[str | None, Token, str]:
+def _raw_bubble(la: str, it: LocationIterator, keywords: Collection[str]) -> tuple[str | None, Token, str, Location]:
     bubble: list[str] = []  # text that belongs to the bubble
     special: list[str] = []  # text that belongs to the bubble iff preceded and followed by bubble text
     current: list[str] = []  # text that might belong to the bubble or terminate the bubble if keyword
+    bubble_loc: Location = it.loc()
+    current_loc: Location = it.loc()
     while True:
         if not la or la in _WHITESPACE:
             if current:
                 current_str = ''.join(current)
                 if current_str in keywords:  # <special><keyword><ws>
-                    return ''.join(bubble) if bubble else None, _KEYWORDS[current_str], la
+                    return (
+                        ''.join(bubble) if bubble else None,
+                        _KEYWORDS[current_str].with_loc(current_loc),
+                        la,
+                        bubble_loc,
+                    )
                 else:  # <special><current><ws>
+                    bubble_loc += '' if bubble else ''.join(special)
                     bubble += special if bubble else []
                     bubble += current
                     special = []
                     current = []
+                    current_loc = it.loc()
 
             else:  # <special><ws>
                 pass
@@ -584,9 +662,10 @@ def _raw_bubble(la: str, it: Iterator[str], keywords: Collection[str]) -> tuple[
             while la in _WHITESPACE:
                 special.append(la)
                 la = next(it, '')
+                current_loc = it.loc()
 
             if not la:
-                return ''.join(bubble) if bubble else None, _EOF_TOKEN, la
+                return ''.join(bubble) if bubble else None, _EOF_TOKEN, la, bubble_loc
 
         elif la == '/':
             is_comment, consumed, la = _maybe_comment(la, it)
@@ -595,12 +674,19 @@ def _raw_bubble(la: str, it: Iterator[str], keywords: Collection[str]) -> tuple[
                     current_str = ''.join(current)
                     if current_str in keywords:  # <special><keyword><comment>
                         # Differs from K Frontend behavior, see: https://github.com/runtimeverification/k/issues/3501
-                        return ''.join(bubble) if bubble else None, _KEYWORDS[current_str], la
+                        return (
+                            ''.join(bubble) if bubble else None,
+                            _KEYWORDS[current_str].with_loc(current_loc),
+                            la,
+                            bubble_loc,
+                        )
                     else:  # <special><current><comment>
+                        bubble_loc += '' if bubble else ''.join(special)
                         bubble += special if bubble else []
                         bubble += current
                         special = consumed
                         current = []
+                        current_loc = it.loc()
 
                 else:  # <special><comment>
                     special += consumed
@@ -617,22 +703,25 @@ def _raw_bubble(la: str, it: Iterator[str], keywords: Collection[str]) -> tuple[
                 la = next(it, '')
 
 
-RULE_LABEL_PATTERN: Final = re.compile(r'(?s)\s*\[\s*(?P<label>[^\[\]\_\n\r\t ]+)\s*\]\s*:\s*(?P<rest>.*)')
+RULE_LABEL_PATTERN: Final = re.compile(
+    r'(?s)\s*(?P<lbrack>\[)\s*(?P<label>[^\[\]\_\n\r\t ]+)\s*(?P<rbrack>\])\s*(?P<colon>:)\s*(?P<rest>.*)'
+)
 
 
-def _strip_bubble_label(bubble: str) -> tuple[list[Token], str]:
+def _strip_bubble_label(bubble: str, loc: Location) -> tuple[list[Token], str, Location]:
     match = RULE_LABEL_PATTERN.fullmatch(bubble)
     if not match:
-        return [], bubble
+        return [], bubble, loc
 
     return (
         [
-            _LBRACK_TOKEN,
-            Token(match['label'], TokenType.RULE_LABEL),
-            _RBRACK_TOKEN,
-            _COLON_TOKEN,
+            _LBRACK_TOKEN.with_loc(loc + bubble[: match.start('lbrack')]),
+            Token(match['label'], TokenType.RULE_LABEL, loc + bubble[: match.start('label')]),
+            _RBRACK_TOKEN.with_loc(loc + bubble[: match.start('rbrack')]),
+            _COLON_TOKEN.with_loc(loc + bubble[: match.start('colon')]),
         ],
         match['rest'],
+        loc + bubble[: match.start('rest')],
     )
 
 
