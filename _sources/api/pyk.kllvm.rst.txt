@@ -20,3 +20,4 @@ Submodules
    pyk.kllvm.load_static
    pyk.kllvm.parser
    pyk.kllvm.runtime
+   pyk.kllvm.utils
