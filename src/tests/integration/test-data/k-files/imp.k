@@ -53,8 +53,6 @@ module IMP
   rule #lookup(X, M) => M[X] requires X in_keys(M)
   rule #lookup(X, M) => Error(X, M) [owise]
 
-  rule <k> X:Id => #lookup(X, STATE) ... </k> <state> STATE </state>
-
   rule <k> I1 * I2 => I1 *Int I2   ... </k>
   rule <k> I1 / I2 => I1 /Int I2   ... </k> requires I2 =/=Int 0
   rule <k> I1 % I2 => I1 modInt I2 ... </k> requires I2 =/=Int 0
@@ -67,8 +65,10 @@ module IMP
   rule <k> true && B  => B           ... </k>
   rule <k> false && _ => false       ... </k>
 
-  rule <k> {}  => .K ... </k>
+  rule <k> X:Id => #lookup(X, STATE) ... </k> <state> STATE </state>
+
   rule <k> {S} => S  ... </k>
+  rule <k> {}  => .K ... </k>
 
   rule <k> X = I:Int; => .K ... </k> <state> STATE => STATE [ X <- I ] </state>
 
