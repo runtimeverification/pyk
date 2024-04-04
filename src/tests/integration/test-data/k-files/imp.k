@@ -42,12 +42,18 @@ module IMP
   syntax KResult ::= Int | Bool
   syntax KItem   ::= Pgm
 
+  syntax KItem ::= Error(Id, Map)
+  syntax KItem ::= #lookup(Id, Map) [function, total]
+
   configuration <T color="yellow">
                   <k color="green"> $PGM:Pgm </k>
                   <state color="red"> .Map </state>
                 </T>
 
-  rule <k> X:Id => STATE[X] ... </k> <state> STATE </state> requires X in_keys(STATE)
+  rule #lookup(X, M) => M[X] requires X in_keys(M)
+  rule #lookup(X, M) => Error(X, M) [owise]
+
+  rule <k> X:Id => #lookup(X, STATE) ... </k> <state> STATE </state>
 
   rule <k> I1 * I2 => I1 *Int I2   ... </k>
   rule <k> I1 / I2 => I1 /Int I2   ... </k> requires I2 =/=Int 0
