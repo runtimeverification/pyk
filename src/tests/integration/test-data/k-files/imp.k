@@ -65,22 +65,22 @@ module IMP
   rule <k> true && B  => B           ... </k>
   rule <k> false && _ => false       ... </k>
 
-  rule <k> X:Id => #lookup(X, STATE) ... </k> <state> STATE </state>
+  rule [var]: <k> X:Id => #lookup(X, STATE) ... </k> <state> STATE </state>
 
-  rule <k> {S} => S  ... </k>
-  rule <k> {}  => .K ... </k>
+  rule [block]: <k> {S} => S  ... </k>
+  rule [block-empty]: <k> {}  => .K ... </k>
 
-  rule <k> X = I:Int; => .K ... </k> <state> STATE => STATE [ X <- I ] </state>
+  rule [assign]: <k> X = I:Int; => .K ... </k> <state> STATE => STATE [ X <- I ] </state>
 
-  rule <k> S1:Stmt S2:Stmt => S1 ~> S2 ... </k>
+  rule [sequence]: <k> S1:Stmt S2:Stmt => S1 ~> S2 ... </k>
 
-  rule <k> if (true)  S else _ => S ... </k>
-  rule <k> if (false) _ else S => S ... </k>
+  rule [if-true]: <k> if (true)  S else _ => S ... </k>
+  rule [if-false]: <k> if (false) _ else S => S ... </k>
 
   rule [while]: <k> while (B) S => if (B) {S while (B) S} else {} ... </k>
 
-  rule <k> int (X , Xs => Xs) ; _ ... </k> <state> STATE => STATE [ X <- 0 ] </state>
+  rule [decl]: <k> int (X , Xs => Xs) ; _ ... </k> <state> STATE => STATE [ X <- 0 ] </state>
     requires notBool (X in keys(STATE))
 
-  rule <k> int .Ids ; S => S ... </k>
+  rule [decl-empty]: <k> int .Ids ; S => S ... </k>
 endmodule
