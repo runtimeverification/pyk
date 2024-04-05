@@ -375,6 +375,8 @@ class TestAPRProof(KCFGExploreTest, KProveTest):
 
         # When
         prover.advance_proof(max_iterations=4)
+        # After the minimization, nodes 7-10 created by the advancement of the proof
+        # will have multiple constraints in their immediately preceding splits
         prover.proof.kcfg.minimize()
 
         # Then
