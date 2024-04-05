@@ -456,7 +456,7 @@ def _hash_upper_id(la: str, it: Iterator[str]) -> tuple[Token, str]:
 
 
 _MODNAME_KEYWORDS: Final = {'private', 'public'}
-_MODNAME_CHARS: Final = {'-', '_'}.union(_ALNUM)
+_MODNAME_CHARS: Final = {'_'}.union(_ALNUM)
 
 
 def _modname(la: str, it: Iterator) -> tuple[Token, str]:
@@ -470,13 +470,26 @@ def _modname(la: str, it: Iterator) -> tuple[Token, str]:
     consumed.append(la)
     la = next(it, '')
 
-    allow_dash = True
     while la in _MODNAME_CHARS:
-        if la == '-' and not allow_dash:
-            raise _unexpected_character(la)
-        allow_dash = la != '-'
         consumed.append(la)
         la = next(it, '')
+
+    while True:
+        if la != '-':
+            break
+
+        consumed.append(la)
+        la = next(it, '')
+
+        if la not in _MODNAME_CHARS:
+            raise _unexpected_character(la)
+
+        consumed.append(la)
+        la = next(it, '')
+
+        while la in _MODNAME_CHARS:
+            consumed.append(la)
+            la = next(it, '')
 
     text = ''.join(consumed)
     if text in _MODNAME_KEYWORDS:
