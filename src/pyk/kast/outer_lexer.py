@@ -464,14 +464,13 @@ def _modname(la: str, it: Iterator) -> tuple[Token, str]:
 
     consumed = []
 
-    if la == '#':
-        consumed.append(la)
-        la = next(it, '')
-
-    if not la:
+    if la not in _ALPHA:
         raise _unexpected_character(la)
 
-    allow_dash = False
+    consumed.append(la)
+    la = next(it, '')
+
+    allow_dash = True
     while la in _MODNAME_CHARS:
         if la == '-' and not allow_dash:
             raise _unexpected_character(la)
