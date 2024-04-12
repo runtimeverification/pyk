@@ -6,7 +6,6 @@ import pytest
 
 from pyk.cterm import CTerm
 from pyk.kast.inner import KApply, KSequence, KToken, KVariable
-from pyk.kast.manip import get_cell
 from pyk.prelude.ml import mlEqualsTrue, mlTop
 from pyk.testing import CTermSymbolicTest, KPrintTest
 
@@ -23,18 +22,18 @@ if TYPE_CHECKING:
 
 
 EXECUTE_TEST_DATA: Iterable[tuple[str, int, STATE, int, STATE, list[STATE]]] = (
-    ('branch', 3, ('a', '.Map'), 1, ('b', '.Map'), [('c', '.Map'), ('d', '.Map')]),
+    ('branch', 3, ('a', '.Map'), 1, ('b ~> .K', '.Map'), [('c ~> .K', '.Map'), ('d ~> .K', '.Map')]),
     (
         'no-branch',
         1,
         ('foo', '3 |-> M:Int', 'notBool pred1(M:Int)'),
         0,
-        ('foo', '3 |-> M:Int'),
+        ('foo ~> .K', '3 |-> M:Int'),
         [],
     ),
 )
 
-SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90\xa0\n\xa1\xf1a"', '.Map')),)
+SIMPLIFY_TEST_DATA: Final = (('bytes-return', ('mybytes', '.Map'), (r'b"\x00\x90\xa0\n\xa1\xf1a" ~> .K', '.Map')),)
 
 
 class TestSimpleProof(CTermSymbolicTest, KPrintTest):
@@ -42,7 +41,7 @@ class TestSimpleProof(CTermSymbolicTest, KPrintTest):
 
     @staticmethod
     def config(kprint: KPrint, k: str, state: str, constraint: str | None = None) -> CTerm:
-        _k_parsed = kprint.parse_token(KToken(k, 'KItem'), as_rule=True)
+        _k_parsed = kprint.parse_token(KToken(k, 'K'), as_rule=True)
         _state_parsed = kprint.parse_token(KToken(state, 'Map'), as_rule=True)
         _constraint = (
             mlTop()
@@ -116,8 +115,8 @@ class TestSimpleProof(CTermSymbolicTest, KPrintTest):
 
         # When
         actual_post, _logs = cterm_symbolic.simplify(self.config(kprint, *pre))
-        actual_k = kprint.pretty_print(get_cell(actual_post.kast, 'K_CELL'))
-        actual_state = kprint.pretty_print(get_cell(actual_post.kast, 'STATE_CELL'))
+        actual_k = kprint.pretty_print(actual_post.cell('K_CELL'))
+        actual_state = kprint.pretty_print(actual_post.cell('STATE_CELL'))
 
         # Then
         assert actual_k == expected_k

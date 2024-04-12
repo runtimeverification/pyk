@@ -9,8 +9,6 @@ from pyk.kast.inner import KApply, KSequence, KVariable
 from pyk.prelude.ml import mlTop
 from pyk.testing import CTermSymbolicTest, KPrintTest
 
-from ..utils import K_FILES
-
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
@@ -22,7 +20,31 @@ EXECUTE_TEST_DATA: Iterable[tuple[str]] = (('branch',),)
 
 
 class TestMultipleDefinitionsProof(CTermSymbolicTest, KPrintTest):
-    KOMPILE_MAIN_FILE = K_FILES / 'multiple-definitions.k'
+    KOMPILE_DEFINITION = """
+        module MULTIPLE-DEFINITIONS
+          imports A
+          imports B
+          imports BOOL
+
+          syntax KItem  ::= a(KItem) [symbol(a)]
+                          | "b"
+                          | "c"
+          rule a(X) => b requires isInt(X)
+          rule a(X) => b requires notBool isInt(X)
+          rule b => c
+        endmodule
+
+        module A
+          syntax Int
+        endmodule
+
+        module B
+          syntax Int
+        endmodule
+    """
+    KOMPILE_MAIN_MODULE = 'MULTIPLE-DEFINITIONS'
+    KOMPILE_ARGS = {'syntax_module': 'MULTIPLE-DEFINITIONS'}
+    LLVM_ARGS = {'syntax_module': 'MULTIPLE-DEFINITIONS'}
 
     @staticmethod
     def config() -> CTerm:
@@ -53,16 +75,16 @@ class TestMultipleDefinitionsProof(CTermSymbolicTest, KPrintTest):
 
         assert exec_res.depth == 0
         assert len(split_next_terms) == 2
-        assert 'a ( X:KItem )' == split_k
+        assert 'a ( X:KItem ) ~> .K' == split_k
         assert [
-            'a ( X:KItem )',
-            'a ( X:KItem )',
+            'a ( X:KItem ) ~> .K',
+            'a ( X:KItem ) ~> .K',
         ] == split_next_k
 
         step_1_res = cterm_symbolic.execute(split_next_terms[0], depth=1)
         step_1_k = kprint.pretty_print(step_1_res.state.cell('K_CELL'))
-        assert 'c' == step_1_k
+        assert 'c ~> .K' == step_1_k
 
         step_2_res = cterm_symbolic.execute(split_next_terms[1], depth=1)
         step_2_k = kprint.pretty_print(step_2_res.state.cell('K_CELL'))
-        assert 'c' == step_2_k
+        assert 'c ~> .K' == step_2_k

@@ -14,7 +14,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING, final
 
-from ..utils import abs_or_rel_to, check_dir_path, check_file_path, run_process
+from ..utils import abs_or_rel_to, check_dir_path, check_file_path, run_process, single
 from . import TypeInferenceMode
 
 if TYPE_CHECKING:
@@ -29,6 +29,11 @@ _LOGGER: Final = logging.getLogger(__name__)
 class KompileNotFoundError(RuntimeError):
     def __init__(self, kompile_command: str):
         super().__init__(f'Kompile command not found: {str}')
+
+
+class Warnings(Enum):
+    ALL = 'all'
+    NONE = 'none'
 
 
 def kompile(
@@ -81,6 +86,19 @@ class Kompile(ABC):
     base_args: KompileArgs
 
     @staticmethod
+    def default_directory() -> Path:
+        try:
+            return single(Path().glob('*-kompiled'))
+        except ValueError as err:
+            if len(err.args) == 1:
+                raise ValueError('Could not find `*-kompiled` directory, use --definition to specify one.') from err
+            else:
+                _, fst, snd = err.args
+                raise ValueError(
+                    f'More than one `*-kompiled` directory found ({fst}, {snd}, ...), use `--definition` to specify one.'
+                ) from err
+
+    @staticmethod
     def from_dict(dct: Mapping[str, Any]) -> Kompile:
         backend = KompileBackend(dct.get('backend') or 'llvm')
 
@@ -109,8 +127,7 @@ class Kompile(ABC):
 
     @property
     @abstractmethod
-    def backend(self) -> KompileBackend:
-        ...
+    def backend(self) -> KompileBackend: ...
 
     def __call__(
         self,
@@ -160,6 +177,7 @@ class Kompile(ABC):
                 err.stdout,
                 err.stderr,
                 err.returncode,
+                err,
             ) from err
 
         if proc_res.stdout:
@@ -174,8 +192,7 @@ class Kompile(ABC):
         return definition_dir
 
     @abstractmethod
-    def args(self) -> list[str]:
-        ...
+    def args(self) -> list[str]: ...
 
 
 @final
@@ -240,27 +257,30 @@ class LLVMKompileType(Enum):
 @dataclass(frozen=True)
 class LLVMKompile(Kompile):
     base_args: KompileArgs
-    llvm_kompile_type: LLVMKompileType
-    llvm_kompile_output: str | None
+    llvm_kompile_type: LLVMKompileType | None
+    llvm_kompile_output: Path | None
     opt_level: int
     ccopts: tuple[str, ...]
     no_llvm_kompile: bool
     enable_search: bool
     enable_llvm_debug: bool
+    llvm_proof_hint_instrumentation: bool
 
     def __init__(
         self,
         base_args: KompileArgs,
         *,
         llvm_kompile_type: str | LLVMKompileType | None = None,
-        llvm_kompile_output: str | None = None,
+        llvm_kompile_output: str | Path | None = None,
         opt_level: int | None = None,
         ccopts: Iterable[str] = (),
         no_llvm_kompile: bool = False,
         enable_search: bool = False,
         enable_llvm_debug: bool = False,
+        llvm_proof_hint_instrumentation: bool = False,
     ):
         llvm_kompile_type = LLVMKompileType(llvm_kompile_type) if llvm_kompile_type is not None else None
+        llvm_kompile_output = Path(llvm_kompile_output) if llvm_kompile_output is not None else None
 
         opt_level = opt_level or 0
         if not (0 <= opt_level <= 3):
@@ -276,6 +296,7 @@ class LLVMKompile(Kompile):
         object.__setattr__(self, 'no_llvm_kompile', no_llvm_kompile)
         object.__setattr__(self, 'enable_search', enable_search)
         object.__setattr__(self, 'enable_llvm_debug', enable_llvm_debug)
+        object.__setattr__(self, 'llvm_proof_hint_instrumentation', llvm_proof_hint_instrumentation)
 
     @property
     def backend(self) -> Literal[KompileBackend.LLVM]:
@@ -289,7 +310,7 @@ class LLVMKompile(Kompile):
             args += ['--llvm-kompile-type', self.llvm_kompile_type.value]
 
         if self.llvm_kompile_output is not None:
-            args += ['--llvm-kompile-output', self.llvm_kompile_output]
+            args += ['--llvm-kompile-output', str(self.llvm_kompile_output)]
 
         if self.opt_level:
             args += [f'-O{self.opt_level}']
@@ -305,6 +326,9 @@ class LLVMKompile(Kompile):
 
         if self.enable_llvm_debug:
             args += ['--enable-llvm-debug']
+
+        if self.llvm_proof_hint_instrumentation:
+            args += ['--llvm-proof-hint-instrumentation']
 
         return args
 
@@ -324,6 +348,11 @@ class KompileArgs:
     bison_parser_library: bool
     post_process: str | None
     read_only: bool
+    coverage: bool
+    bison_lists: bool
+    warnings: Warnings | None
+    warning_to_error: bool
+    no_exc_wrap: bool
 
     def __init__(
         self,
@@ -340,10 +369,16 @@ class KompileArgs:
         bison_parser_library: bool = False,
         post_process: str | None = None,
         read_only: bool = False,
+        coverage: bool = False,
+        bison_lists: bool = False,
+        warnings: str | Warnings | None = None,
+        warning_to_error: bool = False,
+        no_exc_wrap: bool = False,
     ):
         main_file = Path(main_file)
         include_dirs = tuple(sorted(Path(include_dir) for include_dir in include_dirs))
         hook_namespaces = tuple(hook_namespaces)
+        warnings = Warnings(warnings) if warnings is not None else warnings
 
         object.__setattr__(self, 'main_file', main_file)
         object.__setattr__(self, 'main_module', main_module)
@@ -357,6 +392,11 @@ class KompileArgs:
         object.__setattr__(self, 'bison_parser_library', bison_parser_library)
         object.__setattr__(self, 'post_process', post_process)
         object.__setattr__(self, 'read_only', read_only)
+        object.__setattr__(self, 'coverage', coverage)
+        object.__setattr__(self, 'bison_lists', bison_lists)
+        object.__setattr__(self, 'warnings', warnings)
+        object.__setattr__(self, 'warning_to_error', warning_to_error)
+        object.__setattr__(self, 'no_exc_wrap', no_exc_wrap)
 
     def args(self) -> list[str]:
         args = [str(self.main_file)]
@@ -393,6 +433,21 @@ class KompileArgs:
 
         if self.read_only:
             args += ['--read-only-kompiled-directory']
+
+        if self.coverage:
+            args += ['--coverage']
+
+        if self.bison_lists:
+            args += ['--bison-lists']
+
+        if self.warnings is not None:
+            args += ['--warnings', self.warnings.value]
+
+        if self.warning_to_error:
+            args += ['-w2e']
+
+        if self.no_exc_wrap:
+            args += ['--no-exc-wrap']
 
         return args
 

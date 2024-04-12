@@ -1,16 +1,184 @@
 from __future__ import annotations
 
+import sys
 from argparse import ArgumentParser
 from functools import cached_property
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import IO, TYPE_CHECKING, Any
 
-from ..utils import ensure_dir_path
-from .utils import bug_report_arg, dir_path, file_path
+from ..ktool.kompile import KompileBackend, LLVMKompileType, TypeInferenceMode, Warnings
+from .cli import Options
+from .utils import bug_report_arg, ensure_dir_path, file_path
 
 if TYPE_CHECKING:
-    from typing import TypeVar
+    from ..utils import BugReport
 
-    T = TypeVar('T')
+
+class LoggingOptions(Options):
+    debug: bool
+    verbose: bool
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'verbose': False,
+            'debug': False,
+        }
+
+
+class WarningOptions(Options):
+    warnings: Warnings | None
+    warning_to_error: bool
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'warnings': None,
+            'warning_to_error': False,
+        }
+
+
+class OutputFileOptions(Options):
+    output_file: IO[Any]
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'output_file': sys.stdout,
+        }
+
+
+class DefinitionOptions(Options):
+    definition_dir: Path
+
+
+class DisplayOptions(Options):
+    minimize: bool
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'minimize': True,
+        }
+
+
+class KDefinitionOptions(Options):
+    includes: list[str]
+    main_module: str | None
+    syntax_module: str | None
+    spec_module: str | None
+    md_selector: str
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'spec_module': None,
+            'main_module': None,
+            'syntax_module': None,
+            'md_selector': 'k',
+            'includes': [],
+        }
+
+
+class SaveDirOptions(Options):
+    save_directory: Path | None
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'save_directory': None,
+        }
+
+
+class SpecOptions(SaveDirOptions):
+    spec_file: Path
+    claim_labels: list[str] | None
+    exclude_claim_labels: list[str]
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'claim_labels': None,
+            'exclude_claim_labels': [],
+        }
+
+
+class KompileOptions(Options):
+    emit_json: bool
+    llvm_kompile: bool
+    llvm_library: bool
+    enable_llvm_debug: bool
+    llvm_kompile_type: LLVMKompileType | None
+    llvm_kompile_output: Path | None
+    llvm_proof_hint_instrumentation: bool
+    read_only: bool
+    o0: bool
+    o1: bool
+    o2: bool
+    o3: bool
+    ccopts: list[str]
+    enable_search: bool
+    coverage: bool
+    gen_bison_parser: bool
+    gen_glr_bison_parser: bool
+    bison_lists: bool
+    no_exc_wrap: bool
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'emit_json': True,
+            'llvm_kompile': False,
+            'llvm_library': False,
+            'enable_llvm_debug': False,
+            'llvm_kompile_type': None,
+            'llvm_kompile_output': None,
+            'llvm_proof_hint_instrumentation': False,
+            'read_only': False,
+            'o0': False,
+            'o1': False,
+            'o2': False,
+            'o3': False,
+            'ccopts': [],
+            'enable_search': False,
+            'coverage': False,
+            'gen_bison_parser': False,
+            'gen_glr_bison_parser': False,
+            'bison_lists': False,
+            'no_exc_wrap': False,
+        }
+
+
+class ParallelOptions(Options):
+    workers: int
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'workers': 1,
+        }
+
+
+class BugReportOptions(Options):
+    bug_report: BugReport | None
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {'bug_report': None}
+
+
+class SMTOptions(Options):
+    smt_timeout: int
+    smt_retry_limit: int
+    smt_tactic: str | None
+
+    @staticmethod
+    def default() -> dict[str, Any]:
+        return {
+            'smt_timeout': 300,
+            'smt_retry_limit': 10,
+            'smt_tactic': None,
+        }
 
 
 class KCLIArgs:
@@ -19,6 +187,26 @@ class KCLIArgs:
         args = ArgumentParser(add_help=False)
         args.add_argument('--verbose', '-v', default=False, action='store_true', help='Verbose output.')
         args.add_argument('--debug', default=False, action='store_true', help='Debug output.')
+        return args
+
+    @cached_property
+    def warning_args(self) -> ArgumentParser:
+        args = ArgumentParser(add_help=False)
+        args.add_argument(
+            '--warnings',
+            '-w',
+            dest='warnings',
+            type=Warnings,
+            default=None,
+            help='Warnings to print about (no effect on pyk, only subcommands).',
+        )
+        args.add_argument(
+            '-w2e',
+            dest='warning_to_error',
+            default=False,
+            action='store_true',
+            help='Turn warnings into errors (no effect on pyk, only subcommands).',
+        )
         return args
 
     @cached_property
@@ -41,14 +229,27 @@ class KCLIArgs:
     def kompile_args(self) -> ArgumentParser:
         args = ArgumentParser(add_help=False)
         args.add_argument(
+            '--output-definition',
+            '--definition',
+            type=ensure_dir_path,
+            dest='definition_dir',
+            help='Path to kompile definition to.',
+        )
+        args.add_argument(
+            '--backend',
+            type=KompileBackend,
+            dest='backend',
+            help='K backend to target with compilation.',
+        )
+        args.add_argument(
+            '--type-inference-mode', type=TypeInferenceMode, help='Mode for doing K rule type inference in.'
+        )
+        args.add_argument(
             '--emit-json',
             dest='emit_json',
             default=True,
             action='store_true',
             help='Emit JSON definition after compilation.',
-        )
-        args.add_argument(
-            '--no-emit-json', dest='emit_json', action='store_false', help='Do not JSON definition after compilation.'
         )
         args.add_argument(
             '-ccopt',
@@ -78,6 +279,8 @@ class KCLIArgs:
             action='store_true',
             help='Make kompile generate debug symbols for llvm.',
         )
+        args.add_argument('--llvm-kompile-type', type=LLVMKompileType, help='Mode to kompile LLVM backend in.')
+        args.add_argument('--llvm-kompile-output', type=Path, help='Location to put kompiled LLVM backend at.')
         args.add_argument(
             '--read-only-kompiled-directory',
             dest='read_only',
@@ -89,6 +292,55 @@ class KCLIArgs:
         args.add_argument('-O1', dest='o1', default=False, action='store_true', help='Optimization level 1.')
         args.add_argument('-O2', dest='o2', default=False, action='store_true', help='Optimization level 2.')
         args.add_argument('-O3', dest='o3', default=False, action='store_true', help='Optimization level 3.')
+        args.add_argument(
+            '--enable-search',
+            dest='enable_search',
+            default=False,
+            action='store_true',
+            help='Enable search mode on LLVM backend krun.',
+        )
+        args.add_argument(
+            '--coverage',
+            dest='coverage',
+            default=False,
+            action='store_true',
+            help='Enable logging semantic rule coverage measurement.',
+        )
+        args.add_argument(
+            '--gen-bison-parser',
+            dest='gen_bison_parser',
+            default=False,
+            action='store_true',
+            help='Generate standalone Bison parser for program sort.',
+        )
+        args.add_argument(
+            '--gen-glr-bison-parser',
+            dest='gen_glr_bison_parser',
+            default=False,
+            action='store_true',
+            help='Generate standalone GLR Bison parser for program sort.',
+        )
+        args.add_argument(
+            '--bison-lists',
+            dest='bison_lists',
+            default=False,
+            action='store_true',
+            help='Disable List{Sort} parsing to make grammar LR(1) for Bison parser.',
+        )
+        args.add_argument(
+            '--llvm-proof-hint-instrumentation',
+            dest='llvm_proof_hint_instrumentation',
+            default=False,
+            action='store_true',
+            help='Enable proof hint generation in LLVM backend kompilation.',
+        )
+        args.add_argument(
+            '--no-exc-wrap',
+            dest='no_exc_wrap',
+            default=False,
+            action='store_true',
+            help='Do not wrap the output on the CLI.',
+        )
         return args
 
     @cached_property
@@ -122,10 +374,8 @@ class KCLIArgs:
         args.add_argument(
             '-I', type=str, dest='includes', default=[], action='append', help='Directories to lookup K definitions in.'
         )
-        args.add_argument('--main-module', default=None, type=str, help='Name of the main module.')
-        args.add_argument('--syntax-module', default=None, type=str, help='Name of the syntax module.')
-        args.add_argument('--spec-module', default=None, type=str, help='Name of the spec module.')
-        args.add_argument('--definition', type=dir_path, dest='definition_dir', help='Path to definition to use.')
+        args.add_argument('--main-module', type=str, help='Name of the main module.')
+        args.add_argument('--syntax-module', type=str, help='Name of the syntax module.')
         args.add_argument(
             '--md-selector',
             type=str,

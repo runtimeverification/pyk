@@ -9,16 +9,17 @@ import subprocess
 import sys
 import tarfile
 import time
-from collections.abc import Mapping
+from collections.abc import Hashable, Mapping
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING, Generic, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Generic, TypeVar, cast, final, overload
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable, Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
     from logging import Logger
-    from subprocess import CompletedProcess
+    from subprocess import CalledProcessError, CompletedProcess
     from typing import Any, Final
 
     P1 = TypeVar('P1')
@@ -32,11 +33,11 @@ if TYPE_CHECKING:
     R4 = TypeVar('R4')
     T = TypeVar('T')
     S = TypeVar('S')
-    H = TypeVar('H', bound=Hashable)
 
 P = TypeVar('P')
 R = TypeVar('R')
-K = TypeVar('K')
+H = TypeVar('H', bound=Hashable)
+K = TypeVar('K', bound=Hashable)
 V = TypeVar('V')
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -83,6 +84,34 @@ class FrozenDict(Mapping[K, V]):
 EMPTY_FROZEN_DICT: Final[FrozenDict] = FrozenDict()
 
 
+@final
+@dataclass(frozen=True)
+class POSet(Generic[H]):
+    image: FrozenDict[H, frozenset[H]]
+
+    def __init__(self, relation: Iterable[tuple[H, H]]):
+        _image = self._compute_image(relation)
+        image: FrozenDict[H, frozenset[H]] = FrozenDict({x: frozenset(y) for x, y in _image.items()})
+        object.__setattr__(self, 'image', image)
+
+    @staticmethod
+    def _compute_image(relation: Iterable[tuple[H, H]]) -> dict[H, set[H]]:
+        image: dict[H, set[H]] = {}
+
+        for x, y in relation:
+            image.setdefault(x, set()).add(y)
+
+        domain = set(image)
+        for k in domain:
+            for i in domain:
+                if k not in image[i]:
+                    continue
+                for j in image[k]:
+                    image[i].add(j)
+
+        return image
+
+
 def check_type(x: Any, typ: type[T]) -> T:
     if not isinstance(x, typ):
         raise ValueError(f'Expected object of type {typ.__name__}, got: {x}')
@@ -92,7 +121,7 @@ def check_type(x: Any, typ: type[T]) -> T:
 def raised(f: Callable, *args: Any, **kwargs: Any) -> BaseException | None:
     try:
         f(*args, **kwargs)
-    except BaseException as e:
+    except Exception as e:
         return e
 
     return None
@@ -150,16 +179,14 @@ def maybe(f: Callable[[P], R]) -> Callable[[P | None], R | None]:
 
 
 @overload
-def tuple_of() -> Callable[[tuple[()]], tuple[()]]:
-    ...
+def tuple_of() -> Callable[[tuple[()]], tuple[()]]: ...
 
 
 @overload
 def tuple_of(
     f1: Callable[[P1], R1],
     /,
-) -> Callable[[tuple[P1]], tuple[R1]]:
-    ...
+) -> Callable[[tuple[P1]], tuple[R1]]: ...
 
 
 @overload
@@ -167,8 +194,7 @@ def tuple_of(
     f1: Callable[[P1], R1],
     f2: Callable[[P2], R2],
     /,
-) -> Callable[[tuple[P1, P2]], tuple[R1, R2]]:
-    ...
+) -> Callable[[tuple[P1, P2]], tuple[R1, R2]]: ...
 
 
 @overload
@@ -177,8 +203,7 @@ def tuple_of(
     f2: Callable[[P2], R2],
     f3: Callable[[P3], R3],
     /,
-) -> Callable[[tuple[P1, P2, P3]], tuple[R1, R2, R3]]:
-    ...
+) -> Callable[[tuple[P1, P2, P3]], tuple[R1, R2, R3]]: ...
 
 
 @overload
@@ -188,8 +213,7 @@ def tuple_of(
     f3: Callable[[P3], R3],
     f4: Callable[[P4], R4],
     /,
-) -> Callable[[tuple[P1, P2, P3, P4]], tuple[R1, R2, R3, R4]]:
-    ...
+) -> Callable[[tuple[P1, P2, P3, P4]], tuple[R1, R2, R3, R4]]: ...
 
 
 def tuple_of(*args: Callable) -> Callable:
@@ -427,6 +451,12 @@ def run_process(
         res.check_returncode()
 
     return res
+
+
+def exit_with_process_error(err: CalledProcessError) -> None:
+    sys.stderr.write(f'[ERROR] Running process failed with returncode {err.returncode}:\n    {shlex.join(err.cmd)}\n')
+    sys.stderr.flush()
+    sys.exit(err.returncode)
 
 
 def gen_file_timestamp(comment: str = '//') -> str:

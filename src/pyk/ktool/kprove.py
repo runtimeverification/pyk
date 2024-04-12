@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from subprocess import CompletedProcess
     from typing import Final
 
+    from ..cli.pyk import ProveOptions
     from ..kast.outer import KClaim, KRule, KRuleLike
     from ..kast.pretty import SymbolTable
     from ..kcfg.semantics import KCFGSemantics
@@ -311,10 +312,7 @@ class KProve(KPrint):
             proof: Proof
             prover: Prover
             lhs_top = extract_lhs(claim.body)
-            if (
-                type(lhs_top) is KApply
-                and self.definition.production_for_klabel(lhs_top.label) in self.definition.functions
-            ):
+            if type(lhs_top) is KApply and self.definition.symbols[lhs_top.label.name] in self.definition.functions:
                 proof = EqualityProof.from_claim(claim, self.definition)
                 prover = ImpliesProver(proof, kcfg_explore)
             else:
@@ -331,8 +329,7 @@ class KProve(KPrint):
 
     def prove_rpc(
         self,
-        spec_file: Path,
-        spec_module_name: str,
+        options: ProveOptions,
         claim_labels: Iterable[str] | None = None,
         exclude_claim_labels: Iterable[str] | None = None,
         kcfg_semantics: KCFGSemantics | None = None,
@@ -378,13 +375,14 @@ class KProve(KPrint):
             )
 
         all_claims = self.get_claims(
-            spec_file,
-            spec_module_name=spec_module_name,
+            options.spec_file,
+            spec_module_name=options.spec_module,
             claim_labels=claim_labels,
             exclude_claim_labels=exclude_claim_labels,
+            type_inference_mode=options.type_inference_mode,
         )
         if all_claims is None:
-            raise ValueError(f'No claims found in file: {spec_file}')
+            raise ValueError(f'No claims found in file: {options.spec_file}')
         return [_prove_claim_rpc(claim) for claim in all_claims]
 
     def get_claim_modules(
@@ -393,6 +391,7 @@ class KProve(KPrint):
         spec_module_name: str | None = None,
         include_dirs: Iterable[Path] = (),
         md_selector: str | None = None,
+        type_inference_mode: TypeInferenceMode | None = None,
     ) -> KFlatModuleList:
         with self._temp_file() as ntf:
             _kprove(
@@ -404,6 +403,7 @@ class KProve(KPrint):
                 output=KProveOutput.JSON,
                 temp_dir=self.use_directory,
                 dry_run=True,
+                type_inference_mode=type_inference_mode,
                 args=['--emit-json-spec', ntf.name],
             )
             return KFlatModuleList.from_dict(kast_term(json.loads(Path(ntf.name).read_text())))
@@ -417,12 +417,14 @@ class KProve(KPrint):
         claim_labels: Iterable[str] | None = None,
         exclude_claim_labels: Iterable[str] | None = None,
         include_dependencies: bool = True,
+        type_inference_mode: TypeInferenceMode | None = None,
     ) -> list[KClaim]:
         flat_module_list = self.get_claim_modules(
             spec_file=spec_file,
             spec_module_name=spec_module_name,
             include_dirs=include_dirs,
             md_selector=md_selector,
+            type_inference_mode=type_inference_mode,
         )
 
         _module_names = [module.name for module in flat_module_list.modules]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Iterable
@@ -9,12 +10,13 @@ from dataclasses import InitVar  # noqa: TC003
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, final
+from itertools import pairwise, product
+from typing import TYPE_CHECKING, final, overload
 
 from ..prelude.kbool import TRUE
 from ..prelude.ml import ML_QUANTIFIERS
-from ..utils import filter_none, single, unique
-from .att import EMPTY_ATT, Atts, KAst, KAtt, WithKAtt
+from ..utils import FrozenDict, POSet, filter_none, single, unique
+from .att import EMPTY_ATT, Atts, Format, KAst, KAtt, WithKAtt
 from .inner import (
     KApply,
     KInner,
@@ -32,10 +34,11 @@ from .inner import (
 from .kast import kast_term
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Callable, Iterator, Mapping
     from os import PathLike
     from typing import Any, Final, TypeVar
 
+    S = TypeVar('S', bound='KSentence')
     RL = TypeVar('RL', bound='KRuleLike')
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -242,16 +245,6 @@ class KProduction(KSentence):
         object.__setattr__(self, 'klabel', klabel)
         object.__setattr__(self, 'att', att)
 
-    @property
-    def arity(self) -> int:
-        """Return the total number of _all_ production items."""
-        return len(self.items)
-
-    @property
-    def argument_sorts(self) -> list[KSort]:
-        """Return the sorts of the non-terminal positions of the productions."""
-        return [knt.sort for knt in self.items if type(knt) is KNonTerminal]
-
     @classmethod
     def _from_dict(cls: type[KProduction], d: Mapping[str, Any]) -> KProduction:
         return KProduction(
@@ -292,6 +285,85 @@ class KProduction(KSentence):
 
     def let_att(self, att: KAtt) -> KProduction:
         return self.let(att=att)
+
+    @cached_property
+    def as_subsort(self) -> tuple[KSort, KSort] | None:
+        """Return a pair `(supersort, subsort)` if `self` is a subsort production, and `None` otherwise."""
+        if self.klabel:
+            return None
+        if len(self.items) != 1:
+            return None
+        item = self.items[0]
+        if not isinstance(item, KNonTerminal):
+            return None
+        assert not self.klabel
+        return self.sort, item.sort
+
+    @cached_property
+    def non_terminals(self) -> tuple[KNonTerminal, ...]:
+        """Return the non-terminals of the production."""
+        return tuple(item for item in self.items if isinstance(item, KNonTerminal))
+
+    @property
+    def argument_sorts(self) -> list[KSort]:
+        """Return the sorts of the non-terminal positions of the productions."""
+        return [knt.sort for knt in self.non_terminals]
+
+    @cached_property
+    def is_prefix(self) -> bool:
+        """
+        The production is of the form `t* "(" (n ("," n)*)? ")"`.
+
+        Here, `t` is a terminal other than `"("`, `","` or `")"`, and `n` a non-terminal.
+        Example: `Int ::= "mul" "(" Int "," Int ")"`
+        """
+
+        def encode(item: KProductionItem) -> str:
+            match item:
+                case KTerminal(value):
+                    if value in ['(', ',', ')']:
+                        return value
+                    return 't'
+                case KNonTerminal():
+                    return 'n'
+                case KRegexTerminal():
+                    return 'r'
+                case _:
+                    raise AssertionError()
+
+        string = ''.join(encode(item) for item in self.items)
+        pattern = r't*\((n(,n)*)?\)'
+        return bool(re.fullmatch(pattern, string))
+
+    @cached_property
+    def is_record(self) -> bool:
+        """The production is prefix with labelled nonterminals"""
+        return bool(self.is_prefix and self.non_terminals and all(item.name is not None for item in self.non_terminals))
+
+    @property
+    def default_format(self) -> Format:
+        format_str: str
+        if self.is_record:
+            tokens = []
+            for i, item in enumerate(self.items):
+                match item:
+                    case KTerminal('('):
+                        tokens.append(f'%{i + 1}...')
+                    case KTerminal(_):
+                        tokens.append(f'%{i + 1}')
+                    case KNonTerminal(_, name):
+                        assert name is not None
+                        tokens.append(f'{name}:')
+                        tokens.append(f'%{i + 1}')
+                    case KRegexTerminal():
+                        raise ValueError('Default format is not supported for productions with regex terminals')
+                    case _:
+                        raise AssertionError()
+            format_str = ' '.join(tokens)
+        else:
+            format_str = ' '.join(f'%{i}' for i in range(1, len(self.items) + 1))
+
+        return Format.parse(format_str)
 
 
 @final
@@ -561,8 +633,7 @@ class KRuleLike(KSentence):
         requires: KInner | None = None,
         ensures: KInner | None = None,
         att: KAtt | None = None,
-    ) -> RL:
-        ...
+    ) -> RL: ...
 
 
 @final
@@ -832,6 +903,18 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
     def sentence_by_unique_id(self) -> dict[str, KSentence]:
         return {sent.unique_id: sent for sent in self.sentences if sent.unique_id is not None}
 
+    @overload
+    def map_sentences(self, f: Callable[[S], S], *, of_type: type[S]) -> KFlatModule: ...
+
+    @overload
+    def map_sentences(self, f: Callable[[KSentence], KSentence], *, of_type: None = None) -> KFlatModule: ...
+
+    # Uses overload instead of default argument as a workaround: https://github.com/python/mypy/issues/3737
+    def map_sentences(self, f: Callable, *, of_type: Any = None) -> KFlatModule:
+        if of_type is None:
+            of_type = KSentence
+        return self.let(sentences=tuple(f(sent) if isinstance(sent, of_type) else sent for sent in self.sentences))
+
     @staticmethod
     def from_dict(d: Mapping[str, Any]) -> KFlatModule:
         return KFlatModule(
@@ -931,8 +1014,6 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     main_module: InitVar[KFlatModule]
 
-    _production_for_klabel: dict[KLabel, KProduction]
-    _subsorts: dict[KSort, list[KSort]]
     _init_config: dict[KSort, KInner]
     _empty_config: dict[KSort, KInner]
 
@@ -958,8 +1039,6 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
         object.__setattr__(self, 'requires', tuple(requires))
         object.__setattr__(self, 'att', att)
         object.__setattr__(self, 'main_module', main_module)
-        object.__setattr__(self, '_production_for_klabel', {})
-        object.__setattr__(self, '_subsorts', {})
         object.__setattr__(self, '_init_config', {})
         object.__setattr__(self, '_empty_config', {})
 
@@ -1094,28 +1173,6 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                     unique_id_map[unique_id] = sent
         return unique_id_map
 
-    def production_for_klabel(self, klabel: KLabel) -> KProduction:
-        """Returns the original production for a given `KLabel` (failing if 0 or >1 are returned)."""
-        if klabel not in self._production_for_klabel:
-            prods = [prod for prod in self.productions if prod.klabel and prod.klabel.name == klabel.name]
-            _prods = [prod for prod in prods if Atts.UNPARSE_AVOID not in prod.att]
-            if len(_prods) < len(prods):
-                _LOGGER.warning(
-                    f'Discarding {len(prods) - len(_prods)} productions with `unparseAvoid` attribute for label: {klabel}'
-                )
-                prods = _prods
-            # Automatically defined symbols like isInt may get multiple
-            # definitions in different modules.
-            _prods = list({prod.let_att(prod.att.drop_source()) for prod in prods})
-            if len(_prods) < len(prods):
-                _LOGGER.warning(f'Discarding {len(prods) - len(_prods)} equivalent productions')
-                prods = _prods
-            try:
-                self._production_for_klabel[klabel] = single(prods)
-            except ValueError as err:
-                raise ValueError(f'Expected a single production for label {klabel}, not: {prods}') from err
-        return self._production_for_klabel[klabel]
-
     def production_for_cell_sort(self, sort: KSort) -> KProduction:
         """Returns the production for a given cell-declaration syntax from the cell's declared sort."""
         # Typical cell production has 3 productions:
@@ -1140,25 +1197,93 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
     def return_sort(self, label: KLabel) -> KSort:
         """Returns the return sort of a given `KLabel` by looking up the production."""
-        return self.production_for_klabel(label).sort
+        return self.symbols[label.name].sort
 
     def argument_sorts(self, label: KLabel) -> list[KSort]:
         """Returns the argument sorts of a given `KLabel` by looking up the production."""
-        return self.production_for_klabel(label).argument_sorts
+        return self.symbols[label.name].argument_sorts
 
-    def subsorts(self, sort: KSort) -> list[KSort]:
-        """Returns all subsorts of a given `KSort` by inspecting the definition (table computed lazily and memoized)."""
-        if sort not in self._subsorts:
-            self._subsorts[sort] = self._compute_subsorts(sort)
-        return self._subsorts[sort]
+    @cached_property
+    def subsort_table(self) -> FrozenDict[KSort, frozenset[KSort]]:
+        """Return a mapping from sorts to all their proper subsorts."""
+        poset = POSet(subsort for prod in self.productions if (subsort := prod.as_subsort) is not None)
+        return poset.image
 
-    def _compute_subsorts(self, sort: KSort) -> list[KSort]:
-        _subsorts = []
+    def subsorts(self, sort: KSort) -> frozenset[KSort]:
+        """Return all subsorts of a given `KSort` by inspecting the definition."""
+        return self.subsort_table.get(sort, frozenset())
+
+    @cached_property
+    def symbols(self) -> FrozenDict[str, KProduction]:
+        symbols: dict[str, KProduction] = {}
         for prod in self.productions:
-            if prod.sort == sort and len(prod.items) == 1 and type(prod.items[0]) is KNonTerminal:
-                _subsort = prod.items[0].sort
-                _subsorts.extend([_subsort] + self.subsorts(prod.items[0].sort))
-        return list(set(_subsorts))
+            if not prod.klabel:
+                continue
+            symbol = prod.klabel.name
+            if symbol in symbols:  # Check if duplicate
+                other = symbols[symbol]
+                if prod.let(att=prod.att.drop_source()) != other.let(att=prod.att.drop_source()):
+                    prods = [other, prod]
+                    raise AssertionError(f'Found multiple productions for {symbol}: {prods}')
+                continue
+            symbols[symbol] = prod
+        return FrozenDict(symbols)
+
+    @cached_property
+    def overloads(self) -> FrozenDict[str, frozenset[str]]:
+        """Return a mapping from symbols to the sets of symbols that overload them."""
+
+        def lt(overloader: KProduction, overloaded: KProduction) -> bool:
+            assert overloader.klabel
+            assert overloaded.klabel
+            assert overloader.klabel.name != overloaded.klabel.name
+            assert Atts.OVERLOAD in overloader.att
+            assert Atts.OVERLOAD in overloaded.att
+            assert overloader.att[Atts.OVERLOAD] == overloaded.att[Atts.OVERLOAD]
+            overloader_sorts = [overloader.sort] + overloader.argument_sorts
+            overloaded_sorts = [overloaded.sort] + overloaded.argument_sorts
+            if len(overloader_sorts) != len(overloaded_sorts):
+                return False
+            less = False
+            for overloader_sort, overloaded_sort in zip(overloader_sorts, overloaded_sorts, strict=True):
+                if overloader_sort == overloaded_sort:
+                    continue
+                if overloader_sort in self.subsorts(overloaded_sort):
+                    less = True
+                    continue
+                return False
+            return less
+
+        symbols_by_overload: dict[str, list[str]] = {}
+        for symbol in self.symbols:
+            prod = self.symbols[symbol]
+            if Atts.OVERLOAD in prod.att:
+                symbols_by_overload.setdefault(prod.att[Atts.OVERLOAD], []).append(symbol)
+
+        overloads: dict[str, list[str]] = {}
+        for _, symbols in symbols_by_overload.items():
+            for overloader in symbols:
+                for overloaded in symbols:
+                    if overloader == overloaded:
+                        continue
+                    if lt(overloader=self.symbols[overloader], overloaded=self.symbols[overloaded]):
+                        # Index by overloaded symbol, this way it is easy to look them up
+                        overloads.setdefault(overloaded, []).append(overloader)
+        return FrozenDict({key: frozenset(values) for key, values in overloads.items()})
+
+    @cached_property
+    def priorities(self) -> FrozenDict[str, frozenset[str]]:
+        """Return a mapping from symbols to the sets of symbols with lower priority."""
+        syntax_priorities = (
+            sent for module in self.modules for sent in module.sentences if isinstance(sent, KSyntaxPriority)
+        )
+        relation = tuple(
+            pair
+            for syntax_priority in syntax_priorities
+            for highers, lowers in pairwise(syntax_priority.priorities)
+            for pair in product(highers, lowers)
+        )
+        return POSet(relation).image
 
     def sort(self, kast: KInner) -> KSort | None:
         """Computes the sort of a given term using best-effort simple sorting algorithm, returns `None` on algorithm failure."""
@@ -1174,7 +1299,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             case KSequence(_):
                 return KSort('K')
             case KApply(label, _):
-                prod = self.production_for_klabel(label)
+                prod = self.symbols[label.name]
                 if prod.sort not in prod.params:
                     return prod.sort
                 elif len(prod.params) == len(label.params):
@@ -1229,7 +1354,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             if type(_kast) is not KApply:
                 return _kast
 
-            prod = self.production_for_klabel(_kast.label)
+            prod = self.symbols[_kast.label.name]
             return KApply(
                 _kast.label,
                 [
@@ -1294,7 +1419,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
                     del occurrences[var.name]
                     return (Subst(subst)(term), occurrences)
                 else:
-                    prod = self.production_for_klabel(term.label)
+                    prod = self.symbols[term.label.name]
                     if len(prod.params) == 0:
                         for t, a in zip(prod.argument_sorts, term.args, strict=True):
                             if type(a) is KVariable:
@@ -1322,7 +1447,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         def _add_sort_params(_k: KInner) -> KInner:
             if type(_k) is KApply:
-                prod = self.production_for_klabel(_k.label)
+                prod = self.symbols[_k.label.name]
                 if len(_k.label.params) == 0 and len(prod.params) > 0:
                     sort_dict: dict[KSort, KSort] = {}
                     for psort, asort in zip(prod.argument_sorts, map(self.sort, _k.args), strict=True):
@@ -1403,7 +1528,7 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             cell_prod = self.production_for_cell_sort(_sort)
             cell_klabel = cell_prod.klabel
             assert cell_klabel is not None
-            production = self.production_for_klabel(cell_klabel)
+            production = self.symbols[cell_klabel.name]
             args: list[KInner] = []
             num_nonterminals = 0
             num_freshvars = 0
@@ -1426,8 +1551,8 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         def _cell_vars_to_labels(_kast: KInner) -> KInner:
             if type(_kast) is KApply and _kast.is_cell:
-                production = self.production_for_klabel(_kast.label)
-                production_arity = [prod_item.sort for prod_item in production.items if type(prod_item) is KNonTerminal]
+                production = self.symbols[_kast.label.name]
+                production_arity = [item.sort for item in production.non_terminals]
                 new_args = []
                 for sort, arg in zip(production_arity, _kast.args, strict=True):
                     if sort.name.endswith('Cell') and type(arg) is KVariable:

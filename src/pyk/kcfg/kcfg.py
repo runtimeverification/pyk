@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Container
 from dataclasses import dataclass, field
+from functools import reduce
 from threading import RLock
-from typing import TYPE_CHECKING, List, Union, cast, final
+from typing import TYPE_CHECKING, Final, List, Union, cast, final
 
 from ..cterm import CSubst, CTerm, cterm_build_claim, cterm_build_rule
 from ..kast import EMPTY_ATT
@@ -21,10 +23,10 @@ from ..kast.manip import (
 )
 from ..kast.outer import KFlatModule
 from ..prelude.kbool import andBool
-from ..utils import ensure_dir_path
+from ..utils import ensure_dir_path, not_none, single
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Mapping, MutableMapping
+    from collections.abc import Callable, Iterable, Mapping, MutableMapping
     from pathlib import Path
     from types import TracebackType
     from typing import Any
@@ -35,7 +37,20 @@ if TYPE_CHECKING:
     from ..kast.inner import KInner
     from ..kast.outer import KClaim, KDefinition, KImport, KRuleLike
 
+
 NodeIdLike = int | str
+
+_LOGGER: Final = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class NodeAttr:
+    value: str
+
+
+class KCFGNodeAttr(NodeAttr):
+    VACUOUS = NodeAttr('vacuous')
+    STUCK = NodeAttr('stuck')
 
 
 class KCFGStore:
@@ -61,18 +76,45 @@ class KCFGStore:
         self, dct: dict[str, Any], deleted_nodes: Iterable[int] = (), created_nodes: Iterable[int] = ()
     ) -> None:
         node_dict = {node_dct['id']: node_dct for node_dct in dct['nodes']}
+        vacuous_nodes = [
+            node_id for node_id in node_dict.keys() if KCFGNodeAttr.VACUOUS.value in node_dict[node_id]['attrs']
+        ]
+        stuck_nodes = [
+            node_id for node_id in node_dict.keys() if KCFGNodeAttr.STUCK.value in node_dict[node_id]['attrs']
+        ]
+        dct['vacuous'] = vacuous_nodes
+        dct['stuck'] = stuck_nodes
         for node_id in deleted_nodes:
             self.kcfg_node_path(node_id).unlink(missing_ok=True)
         for node_id in created_nodes:
+            del node_dict[node_id]['attrs']
             self.kcfg_node_path(node_id).write_text(json.dumps(node_dict[node_id]))
         dct['nodes'] = list(node_dict.keys())
         self.kcfg_json_path.write_text(json.dumps(dct))
 
     def read_cfg_data(self) -> dict[str, Any]:
         dct = json.loads(self.kcfg_json_path.read_text())
-        nodes = [json.loads(self.kcfg_node_path(node_id).read_text()) for node_id in dct.get('nodes') or []]
+        nodes = [self.read_node_data(node_id) for node_id in dct.get('nodes') or []]
         dct['nodes'] = nodes
+
+        new_nodes = []
+        for node in dct['nodes']:
+            attrs = []
+            if node['id'] in dct['vacuous']:
+                attrs.append(KCFGNodeAttr.VACUOUS.value)
+            if node['id'] in dct['stuck']:
+                attrs.append(KCFGNodeAttr.STUCK.value)
+            new_nodes.append({'id': node['id'], 'cterm': node['cterm'], 'attrs': attrs})
+
+        dct['nodes'] = new_nodes
+
+        del dct['vacuous']
+        del dct['stuck']
+
         return dct
+
+    def read_node_data(self, node_id: int) -> dict[str, Any]:
+        return json.loads(self.kcfg_node_path(node_id).read_text())
 
 
 class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
@@ -81,13 +123,39 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     class Node:
         id: int
         cterm: CTerm
+        attrs: frozenset[NodeAttr]
+
+        def __init__(self, id: int, cterm: CTerm, attrs: Iterable[NodeAttr] = ()) -> None:
+            object.__setattr__(self, 'id', id)
+            object.__setattr__(self, 'cterm', cterm)
+            object.__setattr__(self, 'attrs', frozenset(attrs))
 
         def to_dict(self) -> dict[str, Any]:
-            return {'id': self.id, 'cterm': self.cterm.to_dict()}
+            return {'id': self.id, 'cterm': self.cterm.to_dict(), 'attrs': [attr.value for attr in self.attrs]}
 
         @staticmethod
         def from_dict(dct: dict[str, Any]) -> KCFG.Node:
-            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']))
+            return KCFG.Node(dct['id'], CTerm.from_dict(dct['cterm']), [NodeAttr(attr) for attr in dct['attrs']])
+
+        def add_attr(self, attr: NodeAttr) -> KCFG.Node:
+            return KCFG.Node(self.id, self.cterm, list(self.attrs) + [attr])
+
+        def remove_attr(self, attr: NodeAttr) -> KCFG.Node:
+            if attr not in self.attrs:
+                raise ValueError(f'Node {self.id} does not have attribute {attr.value}')
+            return KCFG.Node(self.id, self.cterm, self.attrs.difference([attr]))
+
+        def discard_attr(self, attr: NodeAttr) -> KCFG.Node:
+            return KCFG.Node(self.id, self.cterm, self.attrs.difference([attr]))
+
+        def let(self, cterm: CTerm | None = None, attrs: Iterable[KCFGNodeAttr] | None = None) -> KCFG.Node:
+            new_cterm = cterm if cterm is not None else self.cterm
+            new_attrs = attrs if attrs is not None else self.attrs
+            return KCFG.Node(self.id, new_cterm, new_attrs)
+
+        @property
+        def free_vars(self) -> frozenset[str]:
+            return frozenset(self.cterm.free_vars)
 
     class Successor(ABC):
         source: KCFG.Node
@@ -98,30 +166,33 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return self.source < other.source
 
         @property
+        def source_vars(self) -> frozenset[str]:
+            return frozenset(self.source.free_vars)
+
+        @property
         @abstractmethod
-        def targets(self) -> tuple[KCFG.Node, ...]:
-            ...
+        def targets(self) -> tuple[KCFG.Node, ...]: ...
 
         @property
         def target_ids(self) -> list[int]:
             return sorted(target.id for target in self.targets)
 
-        @abstractmethod
-        def replace_source(self, node: KCFG.Node) -> KCFG.Successor:
-            ...
+        @property
+        def target_vars(self) -> frozenset[str]:
+            return frozenset(set.union(set(), *(target.free_vars for target in self.targets)))
 
         @abstractmethod
-        def replace_target(self, node: KCFG.Node) -> KCFG.Successor:
-            ...
+        def replace_source(self, node: KCFG.Node) -> KCFG.Successor: ...
 
         @abstractmethod
-        def to_dict(self) -> dict[str, Any]:
-            ...
+        def replace_target(self, node: KCFG.Node) -> KCFG.Successor: ...
+
+        @abstractmethod
+        def to_dict(self) -> dict[str, Any]: ...
 
         @staticmethod
         @abstractmethod
-        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.Successor:
-            ...
+        def from_dict(dct: dict[str, Any], nodes: Mapping[int, KCFG.Node]) -> KCFG.Successor: ...
 
     class EdgeLike(Successor):
         source: KCFG.Node
@@ -214,8 +285,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return (self.source, self.target_ids) < (other.source, other.target_ids)
 
         @abstractmethod
-        def with_single_target(self, target: KCFG.Node) -> KCFG.MultiEdge:
-            ...
+        def with_single_target(self, target: KCFG.Node) -> KCFG.MultiEdge: ...
 
     @final
     @dataclass(frozen=True)
@@ -317,7 +387,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             return KCFG.NDBranch(self.source, tuple(new_targets), self.rules)
 
     _node_id: int
-    _nodes: MutableMapping[int, Node]
+    _nodes: MutableMapping[int, KCFG.Node]
 
     _created_nodes: set[int]
     _deleted_nodes: set[int]
@@ -326,8 +396,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     _covers: dict[int, Cover]
     _splits: dict[int, Split]
     _ndbranches: dict[int, NDBranch]
-    _vacuous: set[int]
-    _stuck: set[int]
     _aliases: dict[str, int]
     _lock: RLock
 
@@ -347,8 +415,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._covers = {}
         self._splits = {}
         self._ndbranches = {}
-        self._vacuous = set()
-        self._stuck = set()
         self._aliases = {}
         self._lock = RLock()
         if cfg_dir is not None:
@@ -383,31 +449,31 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return False
 
     @property
-    def nodes(self) -> list[Node]:
+    def nodes(self) -> list[KCFG.Node]:
         return list(self._nodes.values())
 
     @property
-    def root(self) -> list[Node]:
+    def root(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if self.is_root(node.id)]
 
     @property
-    def vacuous(self) -> list[Node]:
-        return [node for node in self.nodes if node.id in self._vacuous]
+    def vacuous(self) -> list[KCFG.Node]:
+        return [node for node in self.nodes if self.is_vacuous(node.id)]
 
     @property
-    def stuck(self) -> list[Node]:
-        return [node for node in self.nodes if node.id in self._stuck]
+    def stuck(self) -> list[KCFG.Node]:
+        return [node for node in self.nodes if self.is_stuck(node.id)]
 
     @property
-    def leaves(self) -> list[Node]:
+    def leaves(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if self.is_leaf(node.id)]
 
     @property
-    def covered(self) -> list[Node]:
+    def covered(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if self.is_covered(node.id)]
 
     @property
-    def uncovered(self) -> list[Node]:
+    def uncovered(self) -> list[KCFG.Node]:
         return [node for node in self.nodes if not self.is_covered(node.id)]
 
     @staticmethod
@@ -483,8 +549,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         splits = [split.to_dict() for split in self.splits()]
         ndbranches = [ndbranch.to_dict() for ndbranch in self.ndbranches()]
 
-        vacuous = sorted(self._vacuous)
-        stuck = sorted(self._stuck)
         aliases = dict(sorted(self._aliases.items()))
 
         res = {
@@ -494,8 +558,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             'covers': covers,
             'splits': splits,
             'ndbranches': ndbranches,
-            'vacuous': vacuous,
-            'stuck': stuck,
             'aliases': aliases,
         }
         return {k: v for k, v in res.items() if v}
@@ -526,12 +588,6 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         for ndbranch_dict in dct.get('ndbranches') or []:
             ndbranch = KCFG.NDBranch.from_dict(ndbranch_dict, cfg._nodes)
             cfg.add_successor(ndbranch)
-
-        for vacuous_id in dct.get('vacuous') or []:
-            cfg.add_vacuous(vacuous_id)
-
-        for stuck_id in dct.get('stuck') or []:
-            cfg.add_stuck(stuck_id)
 
         for alias, node_id in dct.get('aliases', {}).items():
             cfg.add_alias(alias=alias, node_id=node_id)
@@ -585,26 +641,26 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
             raise ValueError(f'Unknown node: {id_like}')
         return match
 
-    def node(self, node_id: NodeIdLike) -> Node:
+    def node(self, node_id: NodeIdLike) -> KCFG.Node:
         node_id = self._resolve(node_id)
         return self._nodes[node_id]
 
-    def get_node(self, node_id: NodeIdLike) -> Node | None:
+    def get_node(self, node_id: NodeIdLike) -> KCFG.Node | None:
         resolved_id = self._resolve_or_none(node_id)
         if resolved_id is None:
             return None
         return self._nodes[resolved_id]
 
-    def contains_node(self, node: Node) -> bool:
+    def contains_node(self, node: KCFG.Node) -> bool:
         return bool(self.get_node(node.id))
 
-    def add_node(self, node: Node) -> None:
+    def add_node(self, node: KCFG.Node) -> None:
         if node.id in self._nodes:
             raise ValueError(f'Node with id already exists: {node.id}')
         self._nodes[node.id] = node
         self._created_nodes.add(node.id)
 
-    def create_node(self, cterm: CTerm) -> Node:
+    def create_node(self, cterm: CTerm) -> KCFG.Node:
         node = KCFG.Node(self._node_id, cterm)
         self._node_id += 1
         self._nodes[node.id] = node
@@ -624,18 +680,11 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._splits = {k: s for k, s in self._splits.items() if k != node_id and node_id not in s.target_ids}
         self._ndbranches = {k: b for k, b in self._ndbranches.items() if k != node_id and node_id not in b.target_ids}
 
-        self._vacuous.discard(node_id)
-        self._stuck.discard(node_id)
-
         for alias in [alias for alias, id in self._aliases.items() if id == node_id]:
             self.remove_alias(alias)
 
-    def replace_node(self, node_id: NodeIdLike, cterm: CTerm) -> None:
-        node_id = self._resolve(node_id)
-        node = KCFG.Node(node_id, cterm)
-        self._nodes[node_id] = node
-        self._created_nodes.add(node.id)
-
+    def _update_refs(self, node_id: int) -> None:
+        node = self.node(node_id)
         for succ in self.successors(node_id):
             new_succ = succ.replace_source(node)
             if type(new_succ) is KCFG.Edge:
@@ -657,6 +706,33 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
                 self._splits[new_pred.source.id] = new_pred
             if type(new_pred) is KCFG.NDBranch:
                 self._ndbranches[new_pred.source.id] = new_pred
+
+    def remove_attr(self, node_id: NodeIdLike, attr: NodeAttr) -> None:
+        node = self.node(node_id)
+        new_node = node.remove_attr(attr)
+        self.replace_node(new_node)
+
+    def discard_attr(self, node_id: NodeIdLike, attr: NodeAttr) -> None:
+        node = self.node(node_id)
+        new_node = node.discard_attr(attr)
+        self.replace_node(new_node)
+
+    def add_attr(self, node_id: NodeIdLike, attr: NodeAttr) -> None:
+        node = self.node(node_id)
+        new_node = node.add_attr(attr)
+        self.replace_node(new_node)
+
+    def let_node(
+        self, node_id: NodeIdLike, cterm: CTerm | None = None, attrs: Iterable[KCFGNodeAttr] | None = None
+    ) -> None:
+        node = self.node(node_id)
+        new_node = node.let(cterm=cterm, attrs=attrs)
+        self.replace_node(new_node)
+
+    def replace_node(self, node: KCFG.Node) -> None:
+        self._nodes[node.id] = node
+        self._created_nodes.add(node.id)
+        self._update_refs(node.id)
 
     def successors(self, source_id: NodeIdLike) -> list[Successor]:
         out_edges: Iterable[KCFG.Successor] = self.edges(source_id=source_id)
@@ -784,30 +860,22 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         )
 
     def add_vacuous(self, node_id: NodeIdLike) -> None:
-        self._vacuous.add(self._resolve(node_id))
+        self.add_attr(node_id, KCFGNodeAttr.VACUOUS)
 
     def remove_vacuous(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        if node_id not in self._vacuous:
-            raise ValueError(f'Node is not vacuous: {node_id}')
-        self._vacuous.remove(node_id)
+        self.remove_attr(node_id, KCFGNodeAttr.VACUOUS)
 
     def discard_vacuous(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._vacuous.discard(node_id)
+        self.discard_attr(node_id, KCFGNodeAttr.VACUOUS)
 
     def add_stuck(self, node_id: NodeIdLike) -> None:
-        self._stuck.add(self._resolve(node_id))
+        self.add_attr(node_id, KCFGNodeAttr.STUCK)
 
     def remove_stuck(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        if node_id not in self._stuck:
-            raise ValueError(f'Node is not stuck: {node_id}')
-        self._stuck.remove(node_id)
+        self.remove_attr(node_id, KCFGNodeAttr.STUCK)
 
     def discard_stuck(self, node_id: NodeIdLike) -> None:
-        node_id = self._resolve(node_id)
-        self._stuck.discard(node_id)
+        self.discard_attr(node_id, KCFGNodeAttr.STUCK)
 
     def splits(self, *, source_id: NodeIdLike | None = None, target_id: NodeIdLike | None = None) -> list[Split]:
         source_id = self._resolve(source_id) if source_id is not None else None
@@ -819,7 +887,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         ]
 
     def contains_split(self, split: Split) -> bool:
-        return split in self._splits
+        return split in self._splits.values()
 
     def create_split(self, source_id: NodeIdLike, splits: Iterable[tuple[NodeIdLike, CSubst]]) -> KCFG.Split:
         source_id = self._resolve(source_id)
@@ -850,9 +918,210 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
     def split_on_constraints(self, source_id: NodeIdLike, constraints: Iterable[KInner]) -> list[int]:
         source = self.node(source_id)
         branch_node_ids = [self.create_node(source.cterm.add_constraint(c)).id for c in constraints]
-        csubsts = [CSubst(constraints=flatten_label('#And', constraint)) for constraint in constraints]
+        csubsts = [not_none(source.cterm.match_with_constraint(self.node(id).cterm)) for id in branch_node_ids]
+        csubsts = [
+            reduce(CSubst.add_constraint, flatten_label('#And', constraint), csubst)
+            for (csubst, constraint) in zip(csubsts, constraints, strict=True)
+        ]
         self.create_split(source.id, zip(branch_node_ids, csubsts, strict=True))
         return branch_node_ids
+
+    def lift_edge(self, b_id: NodeIdLike) -> None:
+        """Lift an edge up another edge directly preceding it.
+
+        Input:
+            -   b_id: the identifier of the central node `B` of a sequence of edges `A --> B --> C`.
+
+        Effect: `A --M steps--> B --N steps--> C` becomes `A --(M + N) steps--> C`. Node `B` is removed.
+
+        Output: None
+
+        Raises: An `AssertionError` if the edges in question are not in place.
+        """
+
+        # Obtain edges `A -> B`, `B -> C`
+        a_to_b = single(self.edges(target_id=b_id))
+        b_to_c = single(self.edges(source_id=b_id))
+        # Remove the node `B`, effectively removing the entire initial structure
+        self.remove_node(b_id)
+        # Create edge `A -> C`
+        self.create_edge(a_to_b.source.id, b_to_c.target.id, a_to_b.depth + b_to_c.depth, a_to_b.rules + b_to_c.rules)
+
+    def lift_edges(self) -> bool:
+        """Perform all possible edge lifts across the KCFG.
+
+        Given the KCFG design, it is not possible for one edge lift to either disallow another or
+        allow another that was not previously possible. Therefore, this function is guaranteed to
+        lift all possible edges without having to loop.
+
+        Input: None
+
+        Effect: The KCFG is transformed to an equivalent in which no further edge lifts are possible.
+
+        Output:
+            -   bool: An indicator of whether or not at least one edge lift was performed.
+        """
+
+        edges_to_lift = sorted(
+            [
+                node.id
+                for node in self.nodes
+                if len(self.edges(source_id=node.id)) > 0 and len(self.edges(target_id=node.id)) > 0
+            ]
+        )
+        for node_id in edges_to_lift:
+            self.lift_edge(node_id)
+        return len(edges_to_lift) > 0
+
+    def lift_split_edge(self, b_id: NodeIdLike) -> None:
+        """Lift a split up an edge directly preceding it.
+
+        Input:
+            -   b_id: the identifier of the central node `B` of the structure `A --> B --> [C_1, ..., C_N]`.
+
+        Effect:
+            `A --M steps--> B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]` becomes
+            `A --[cond_1, ..., cond_N]--> [A #And cond_1 --M steps--> C_1, ..., A #And cond_N --M steps--> C_N]`.
+            Node `B` is removed.
+
+        Output: None
+
+        Raises:
+            -   `AssertionError`, if the structure in question is not in place.
+            -   `AssertionError`, if any of the `cond_i` contain variables not present in `A`.
+        """
+
+        # Obtain edge `A -> B`, split `[cond_I, C_I | I = 1..N ]`
+        a_to_b = single(self.edges(target_id=b_id))
+        a = a_to_b.source
+        split_from_b = single(self.splits(source_id=b_id))
+        ci, csubsts = list(split_from_b.splits.keys()), list(split_from_b.splits.values())
+        # Ensure split can be lifted soundly (i.e., that it does not introduce fresh variables)
+        assert (
+            len(split_from_b.source_vars.difference(a.free_vars)) == 0
+            and len(split_from_b.target_vars.difference(split_from_b.source_vars)) == 0
+        )
+        # Create CTerms and CSubsts corresponding to the new targets of the split
+        new_cterms_with_constraints = [
+            (CTerm(a.cterm.config, a.cterm.constraints + csubst.constraints), csubst.constraint) for csubst in csubsts
+        ]
+        # Generate substitutions for new targets, which all exist by construction
+        new_csubsts = [
+            not_none(a.cterm.match_with_constraint(cterm)).add_constraint(constraint)
+            for (cterm, constraint) in new_cterms_with_constraints
+        ]
+        # Remove the node `B`, effectively removing the entire initial structure
+        self.remove_node(b_id)
+        # Create the nodes `[ A #And cond_I | I = 1..N ]`.
+        ai: list[NodeIdLike] = [self.create_node(cterm).id for (cterm, _) in new_cterms_with_constraints]
+        # Create the edges `[A #And cond_1 --M steps--> C_I | I = 1..N ]`
+        for i in range(len(ai)):
+            self.create_edge(ai[i], ci[i], a_to_b.depth, a_to_b.rules)
+        # Create the split `A --[cond_1, ..., cond_N]--> [A #And cond_1, ..., A #And cond_N]
+        self.create_split(a.id, zip(ai, new_csubsts, strict=True))
+
+    def lift_split_split(self, b_id: NodeIdLike) -> None:
+        """Lift a split up a split directly preceding it, joining them into a single split.
+
+        Input:
+            -   b_id: the identifier of the node `B` of the structure
+                `A --[..., cond_B, ...]--> [..., B, ...]` with `B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]`
+
+        Effect:
+            `A --[..., cond_B, ...]--> [..., B, ...]` with `B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]` becomes
+            `A --[..., cond_B #And cond_1, ..., cond_B #And cond_N, ...]--> [..., C_1, ..., C_N, ...]`.
+            Node `B` is removed.
+
+        Output: None
+
+        Raises:
+            -   `AssertionError`, if the structure in question is not in place.
+        """
+        # Obtain splits `A --[..., cond_B, ...]--> [..., B, ...]` and
+        # `B --[cond_1, ..., cond_N]--> [C_1, ..., C_N]-> [C_1, ..., C_N]`
+        split_from_a, split_from_b = single(self.splits(target_id=b_id)), single(self.splits(source_id=b_id))
+        splits_from_a, splits_from_b = split_from_a.splits, split_from_b.splits
+        a = split_from_a.source
+        ci = list(splits_from_b.keys())
+        # Ensure split can be lifted soundly (i.e., that it does not introduce fresh variables)
+        assert (
+            len(split_from_b.source_vars.difference(a.free_vars)) == 0
+            and len(split_from_b.target_vars.difference(split_from_b.source_vars)) == 0
+        )
+        # Get the substitution for `B`, at the same time removing 'B' from the targets of `A`.
+        csubst_b = splits_from_a.pop(self._resolve(b_id))
+        # Generate substitutions for additional targets `C_I`, which all exist by construction;
+        # the constraints are cumulative, resulting in `cond_B #And cond_I`
+        additional_csubsts = [
+            not_none(a.cterm.match_with_constraint(self.node(ci).cterm))
+            .add_constraint(csubst.constraint)
+            .add_constraint(csubst_b.constraint)
+            for ci, csubst in splits_from_b.items()
+        ]
+        # Create the targets of the new split
+        ci = list(splits_from_b.keys())
+        new_splits = zip(
+            list(splits_from_a.keys()) + ci, list(splits_from_a.values()) + additional_csubsts, strict=True
+        )
+        # Remove the node `B`, thereby removing the two splits as well
+        self.remove_node(b_id)
+        # Create the new split `A --[..., cond_B #And cond_1, ..., cond_B #And cond_N, ...]--> [..., C_1, ..., C_N, ...]`
+        self.create_split(a.id, new_splits)
+
+    def lift_splits(self) -> bool:
+        """Perform all possible split liftings.
+
+        Input: None
+
+        Effect: The KCFG is transformed to an equivalent in which no further split lifts are possible.
+
+        Output:
+            -   bool: An indicator of whether or not at least one split lift was performed.
+        """
+
+        def _lift_split(finder: Callable, lifter: Callable) -> bool:
+            result = False
+            while True:
+                splits_to_lift = sorted(
+                    [
+                        node.id
+                        for node in self.nodes
+                        if (splits := self.splits(source_id=node.id)) != []
+                        and (sources := finder(target_id=node.id)) != []
+                        and (source := single(sources).source)
+                        and (split := single(splits))
+                        and len(split.source_vars.difference(source.free_vars)) == 0
+                        and len(split.target_vars.difference(split.source_vars)) == 0
+                    ]
+                )
+                for id in splits_to_lift:
+                    lifter(id)
+                    result = True
+                if len(splits_to_lift) == 0:
+                    break
+            return result
+
+        def _fold_lift(result: bool, finder_lifter: tuple[Callable, Callable]) -> bool:
+            return _lift_split(finder_lifter[0], finder_lifter[1]) or result
+
+        return reduce(_fold_lift, [(self.edges, self.lift_split_edge), (self.splits, self.lift_split_split)], False)
+
+    def minimize(self) -> None:
+        """Minimize KCFG by repeatedly performing the lifting transformations.
+
+        The loop is designed so that each transformation is performed once in each iteration.
+
+        Input: None
+
+        Effect: The KCFG is transformed to an equivalent in which no further lifting transformations are possible.
+
+        Output: None
+        """
+
+        repeat = True
+        while repeat:
+            repeat = self.lift_edges()
+            repeat = self.lift_splits() or repeat
 
     def add_alias(self, alias: str, node_id: NodeIdLike) -> None:
         if '@' in alias:
@@ -872,12 +1141,10 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         return len(self.predecessors(node_id)) == 0
 
     def is_vacuous(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return node_id in self._vacuous
+        return KCFGNodeAttr.VACUOUS in self.node(node_id).attrs
 
     def is_stuck(self, node_id: NodeIdLike) -> bool:
-        node_id = self._resolve(node_id)
-        return node_id in self._stuck
+        return KCFGNodeAttr.STUCK in self.node(node_id).attrs
 
     def is_split(self, node_id: NodeIdLike) -> bool:
         node_id = self._resolve(node_id)
@@ -991,7 +1258,7 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
 
         return paths
 
-    def reachable_nodes(self, source_id: NodeIdLike, *, reverse: bool = False) -> set[Node]:
+    def reachable_nodes(self, source_id: NodeIdLike, *, reverse: bool = False) -> set[KCFG.Node]:
         visited: set[KCFG.Node] = set()
         worklist: list[KCFG.Node] = [self.node(source_id)]
 
@@ -1019,27 +1286,29 @@ class KCFG(Container[Union['KCFG.Node', 'KCFG.Successor']]):
         self._created_nodes.clear()
 
     @staticmethod
-    def read_cfg_data(cfg_dir: Path, id: str) -> KCFG:
+    def read_cfg_data(cfg_dir: Path) -> KCFG:
         store = KCFGStore(cfg_dir)
         cfg = KCFG.from_dict(store.read_cfg_data())
         cfg._kcfg_store = store
         return cfg
 
+    @staticmethod
+    def read_node_data(cfg_dir: Path, node_id: int) -> KCFG.Node:
+        store = KCFGStore(cfg_dir)
+        return KCFG.Node.from_dict(store.read_node_data(node_id))
 
-class KCFGExtendResult(ABC):
-    ...
 
-
-@final
-@dataclass(frozen=True)
-class Vacuous(KCFGExtendResult):
-    ...
+class KCFGExtendResult(ABC): ...
 
 
 @final
 @dataclass(frozen=True)
-class Stuck(KCFGExtendResult):
-    ...
+class Vacuous(KCFGExtendResult): ...
+
+
+@final
+@dataclass(frozen=True)
+class Stuck(KCFGExtendResult): ...
 
 
 @final

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import cache
 from itertools import chain
 from pathlib import Path
+from typing import ClassVar  # noqa: TC003
 from typing import TYPE_CHECKING, Any, Generic, TypeVar, final, overload
 
 from ..utils import FrozenDict
@@ -26,16 +28,13 @@ _LOGGER: Final = logging.getLogger(__name__)
 
 class AttType(Generic[T], ABC):
     @abstractmethod
-    def from_dict(self, obj: Any) -> T:
-        ...
+    def from_dict(self, obj: Any) -> T: ...
 
     @abstractmethod
-    def to_dict(self, value: T) -> Any:
-        ...
+    def to_dict(self, value: T) -> Any: ...
 
     @abstractmethod
-    def pretty(self, value: T) -> str | None:
-        ...
+    def pretty(self, value: T) -> str | None: ...
 
 
 class NoneType(AttType[None]):
@@ -151,12 +150,55 @@ class PathType(AttType[Path]):
         return f'"{value}"'
 
 
+@final
+@dataclass(frozen=True)
+class Format:
+    tokens: tuple[str, ...]
+
+    _pattern: ClassVar[re.Pattern] = re.compile(r'%\D|%\d+|[^%]+')
+
+    def __init__(self, tokens: Iterable[str] = ()):
+        object.__setattr__(self, 'tokens', tuple(tokens))
+
+    @classmethod
+    def parse(cls, s: str) -> Format:
+        matches = list(cls._pattern.finditer(s))
+
+        matched_len: int
+        if not matches:
+            matched_len = 0
+        else:
+            _, matched_len = matches[-1].span()
+
+        if matched_len != len(s):
+            assert s and s[-1] == '%'
+            raise ValueError(f'Incomplete escape sequence at the end of format string: {s}')
+
+        return Format(m[0] for m in matches)
+
+    def unparse(self) -> str:
+        return ''.join(self.tokens)
+
+
+class FormatType(AttType[Format]):
+    def from_dict(self, obj: Any) -> Format:
+        assert isinstance(obj, str)
+        return Format.parse(obj)
+
+    def to_dict(self, value: Format) -> Any:
+        return value.unparse()
+
+    def pretty(self, value: Format) -> str:
+        return f'"{value.unparse}"'
+
+
 _NONE: Final = NoneType()
 _ANY: Final = AnyType()
 _INT: Final = IntType()
 _STR: Final = StrType()
 _LOCATION: Final = LocationType()
 _PATH: Final = PathType()
+_FORMAT: Final = FormatType()
 
 
 @final
@@ -181,6 +223,7 @@ class Atts:
     ALIAS_REC: Final = AttKey('alias-rec', type=_NONE)
     ANYWHERE: Final = AttKey('anywhere', type=_NONE)
     ASSOC: Final = AttKey('assoc', type=_NONE)
+    BRACKET: Final = AttKey('bracket', type=_NONE)
     CIRCULARITY: Final = AttKey('circularity', type=_NONE)
     CELL: Final = AttKey('cell', type=_NONE)
     CELL_COLLECTION: Final = AttKey('cellCollection', type=_NONE)
@@ -195,7 +238,8 @@ class Atts:
     DEPENDS: Final = AttKey('depends', type=_ANY)
     DIGEST: Final = AttKey('digest', type=_ANY)
     ELEMENT: Final = AttKey('element', type=_ANY)
-    FORMAT: Final = AttKey('format', type=_ANY)
+    FORMAT: Final = AttKey('format', type=_FORMAT)
+    FRESH_GENERATOR: Final = AttKey('freshGenerator', type=_NONE)
     FUNCTION: Final = AttKey('function', type=_NONE)
     FUNCTIONAL: Final = AttKey('functional', type=_NONE)
     GROUP: Final = AttKey('group', type=_STR)
@@ -208,29 +252,32 @@ class Atts:
     INJECTIVE: Final = AttKey('injective', type=_NONE)
     KLABEL: Final = AttKey('klabel', type=_ANY)
     LABEL: Final = AttKey('label', type=_ANY)
-    LEFT: Final = AttKey('left', type=_NONE)
+    LEFT: Final = AttKey('left', type=_ANY)  # LEFT and LEFT_INTERNAL on the Frontend
     LOCATION: Final = AttKey('org.kframework.attributes.Location', type=_LOCATION)
     MACRO: Final = AttKey('macro', type=_NONE)
     MACRO_REC: Final = AttKey('macro-rec', type=_NONE)
     MAINCELL: Final = AttKey('maincell', type=_NONE)
+    OVERLOAD: Final = AttKey('overload', type=_STR)
     OWISE: Final = AttKey('owise', type=_NONE)
     PREDICATE: Final = AttKey('predicate', type=_ANY)
     PREFER: Final = AttKey('prefer', type=_NONE)
     PRIORITY: Final = AttKey('priority', type=_ANY)
+    PRIORITIES: Final = AttKey('priorities', type=_ANY)  # only in KORE output
     PRIVATE: Final = AttKey('private', type=_NONE)
     PRODUCTION: Final = AttKey('org.kframework.definition.Production', type=_ANY)
     PROJECTION: Final = AttKey('projection', type=_NONE)
-    RIGHT: Final = AttKey('right', type=_NONE)
+    RIGHT: Final = AttKey('right', type=_ANY)  # RIGHT and RIGHT_INTERNAL on the Frontend
     SIMPLIFICATION: Final = AttKey('simplification', type=_ANY)
     SEQSTRICT: Final = AttKey('seqstrict', type=_NONE)
     SORT: Final = AttKey('org.kframework.kore.Sort', type=_ANY)
     SOURCE: Final = AttKey('org.kframework.attributes.Source', type=_PATH)
     STRICT: Final = AttKey('strict', type=_ANY)
     SYMBOL: Final = AttKey('symbol', type=OptionalType(_STR))
+    TERMINALS: Final = AttKey('terminals', type=_STR)
     TOKEN: Final = AttKey('token', type=_NONE)
     TOTAL: Final = AttKey('total', type=_NONE)
     TRUSTED: Final = AttKey('trusted', type=_NONE)
-    UNIT: Final = AttKey('unit', type=_ANY)
+    UNIT: Final = AttKey('unit', type=_STR)
     UNIQUE_ID: Final = AttKey('UNIQUE_ID', type=_ANY)
     UNPARSE_AVOID: Final = AttKey('unparseAvoid', type=_NONE)
     USER_LIST: Final = AttKey('userList', type=_ANY)
@@ -264,12 +311,10 @@ class KAtt(KAst, Mapping[AttKey, Any]):
         return self.atts[key]
 
     @overload
-    def get(self, key: AttKey[T], /) -> T | None:
-        ...
+    def get(self, key: AttKey[T], /) -> T | None: ...
 
     @overload
-    def get(self, key: AttKey[T], /, default: U) -> T | U:
-        ...
+    def get(self, key: AttKey[T], /, default: U) -> T | U: ...
 
     def get(self, *args: Any, **kwargs: Any) -> Any:
         return self.atts.get(*args, **kwargs)
@@ -321,8 +366,7 @@ class WithKAtt(ABC):
     att: KAtt
 
     @abstractmethod
-    def let_att(self: W, att: KAtt) -> W:
-        ...
+    def let_att(self: W, att: KAtt) -> W: ...
 
     def map_att(self: W, f: Callable[[KAtt], KAtt]) -> W:
         return self.let_att(att=f(self.att))

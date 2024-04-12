@@ -2,17 +2,20 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, NamedTuple
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, NamedTuple, final
 
 from ..cterm import CSubst, CTerm
 from ..kast.inner import KApply, KLabel, KRewrite, KVariable, Subst
-from ..kast.manip import flatten_label, free_vars
+from ..kast.manip import flatten_label, sort_ac_collections
+from ..kast.pretty import PrettyPrinter
 from ..konvert import kast_to_kore, kore_to_kast
 from ..kore.rpc import (
     AbortedResult,
     KoreClient,
     KoreExecLogFormat,
     SatResult,
+    SmtSolverError,
     StopReason,
     TransportType,
     UnknownResult,
@@ -53,6 +56,14 @@ class CTermImplies(NamedTuple):
     logs: tuple[LogEntry, ...]
 
 
+@final
+@dataclass
+class CTermSMTError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+
+
 class CTermSymbolic:
     _kore_client: KoreClient
     _definition: KDefinition
@@ -88,17 +99,20 @@ class CTermSymbolic:
     ) -> CTermExecute:
         _LOGGER.debug(f'Executing: {cterm}')
         kore = self.kast_to_kore(cterm.kast)
-        response = self._kore_client.execute(
-            kore,
-            max_depth=depth,
-            cut_point_rules=cut_point_rules,
-            terminal_rules=terminal_rules,
-            module_name=module_name,
-            log_successful_rewrites=True,
-            log_failed_rewrites=self._trace_rewrites,
-            log_successful_simplifications=self._trace_rewrites,
-            log_failed_simplifications=self._trace_rewrites,
-        )
+        try:
+            response = self._kore_client.execute(
+                kore,
+                max_depth=depth,
+                cut_point_rules=cut_point_rules,
+                terminal_rules=terminal_rules,
+                module_name=module_name,
+                log_successful_rewrites=True,
+                log_failed_rewrites=self._trace_rewrites,
+                log_successful_simplifications=self._trace_rewrites,
+                log_failed_simplifications=self._trace_rewrites,
+            )
+        except SmtSolverError as err:
+            raise self._smt_solver_error(err) from err
 
         if isinstance(response, AbortedResult):
             unknown_predicate = response.unknown_predicate.text if response.unknown_predicate else None
@@ -127,14 +141,22 @@ class CTermSymbolic:
     def kast_simplify(self, kast: KInner, module_name: str | None = None) -> tuple[KInner, tuple[LogEntry, ...]]:
         _LOGGER.debug(f'Simplifying: {kast}')
         kore = self.kast_to_kore(kast)
-        kore_simplified, logs = self._kore_client.simplify(kore, module_name=module_name)
+        try:
+            kore_simplified, logs = self._kore_client.simplify(kore, module_name=module_name)
+        except SmtSolverError as err:
+            raise self._smt_solver_error(err) from err
+
         kast_simplified = self.kore_to_kast(kore_simplified)
         return kast_simplified, logs
 
     def get_model(self, cterm: CTerm, module_name: str | None = None) -> Subst | None:
         _LOGGER.info(f'Getting model: {cterm}')
         kore = self.kast_to_kore(cterm.kast)
-        result = self._kore_client.get_model(kore, module_name=module_name)
+        try:
+            result = self._kore_client.get_model(kore, module_name=module_name)
+        except SmtSolverError as err:
+            raise self._smt_solver_error(err) from err
+
         if type(result) is UnknownResult:
             _LOGGER.debug('Result is Unknown')
             return None
@@ -164,8 +186,7 @@ class CTermSymbolic:
     ) -> CTermImplies:
         _LOGGER.debug(f'Checking implication: {antecedent} #Implies {consequent}')
         _consequent = consequent.kast
-        fv_antecedent = free_vars(antecedent.kast)
-        unbound_consequent = [v for v in free_vars(_consequent) if v not in fv_antecedent]
+        unbound_consequent = [v for v in consequent.free_vars if v not in antecedent.free_vars]
         if len(unbound_consequent) > 0:
             bind_text, bind_label = ('existentially', '#Exists')
             if bind_universally:
@@ -175,7 +196,11 @@ class CTermSymbolic:
                 _consequent = KApply(KLabel(bind_label, [GENERATED_TOP_CELL]), [KVariable(uc), _consequent])
         antecedent_kore = self.kast_to_kore(antecedent.kast)
         consequent_kore = self.kast_to_kore(_consequent)
-        result = self._kore_client.implies(antecedent_kore, consequent_kore, module_name=module_name)
+        try:
+            result = self._kore_client.implies(antecedent_kore, consequent_kore, module_name=module_name)
+        except SmtSolverError as err:
+            raise self._smt_solver_error(err) from err
+
         if not result.satisfiable:
             if result.substitution is not None:
                 _LOGGER.debug(f'Received a non-empty substitution for unsatisfiable implication: {result.substitution}')
@@ -195,8 +220,8 @@ class CTermSymbolic:
                 if config_match is None:
                     curr_cell_match = Subst({})
                     for cell in antecedent.cells:
-                        antecedent_cell = antecedent.cell(cell)
-                        consequent_cell = consequent.cell(cell)
+                        antecedent_cell = sort_ac_collections(antecedent.cell(cell))
+                        consequent_cell = sort_ac_collections(consequent.cell(cell))
                         cell_match = consequent_cell.match(antecedent_cell)
                         if cell_match is not None:
                             _curr_cell_match = curr_cell_match.union(cell_match)
@@ -241,6 +266,11 @@ class CTermSymbolic:
         kast_simplified, logs = self.kast_simplify(kast, module_name=module_name)
         _LOGGER.debug(f'Definedness condition computed: {kast_simplified}')
         return cterm.add_constraint(kast_simplified)
+
+    def _smt_solver_error(self, err: SmtSolverError) -> CTermSMTError:
+        kast = self.kore_to_kast(err.pattern)
+        pretty_pattern = PrettyPrinter(self._definition).print(kast)
+        return CTermSMTError(pretty_pattern)
 
 
 @contextmanager

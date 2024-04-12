@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from pyk.cli.pyk import ProveOptions
 from pyk.kast.inner import KApply, KSequence, KVariable
 from pyk.kcfg.semantics import KCFGSemantics
 from pyk.prelude.kbool import BOOL, notBool
@@ -23,7 +24,6 @@ if TYPE_CHECKING:
     from pyk.cterm import CTerm
     from pyk.kast.inner import KInner
     from pyk.kast.outer import KDefinition
-    from pyk.ktool.kprint import SymbolTable
     from pyk.ktool.kprove import KProve
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -169,15 +169,10 @@ PROVE_TEST_DATA: Iterable[tuple[str, Path, str, str, ProofStatus]] = (
 
 
 class TestImpProve(KProveTest):
-    DISABLE_BOOSTER = True
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
 
     def semantics(self, definition: KDefinition) -> KCFGSemantics:
         return ImpSemantics(definition)
-
-    @staticmethod
-    def _update_symbol_table(symbol_table: SymbolTable) -> None:
-        symbol_table['.List{"_,_"}_Ids'] = lambda: '.Ids'
 
     @pytest.mark.parametrize(
         'test_id,spec_file,spec_module,claim_id,proof_status',
@@ -195,7 +190,14 @@ class TestImpProve(KProveTest):
     ) -> None:
         proof = single(
             kprove.prove_rpc(
-                Path(spec_file), spec_module, claim_labels=[claim_id], kcfg_semantics=ImpSemantics(kprove.definition)
+                ProveOptions(
+                    {
+                        'spec_file': Path(spec_file),
+                        'spec_module': spec_module,
+                    }
+                ),
+                claim_labels=[claim_id],
+                kcfg_semantics=ImpSemantics(kprove.definition),
             )
         )
         assert proof.status == proof_status
