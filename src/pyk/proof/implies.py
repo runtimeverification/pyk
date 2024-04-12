@@ -404,7 +404,9 @@ class ImpliesProver(Prover):
         super().__init__(kcfg_explore)
         self.proof = proof
 
-    def step_proof(self) -> Iterable[StepResult]:
+    def step_proof(self, proof: Proof) -> Iterable[StepResult]:
+        assert isinstance(proof, ImpliesProof)
+
         proof_type = type(self.proof).__name__
         _LOGGER.info(f'Attempting {proof_type} {self.proof.id}')
 
@@ -448,6 +450,6 @@ class ImpliesProver(Prover):
             )
         ]
 
-    def failure_info(self) -> FailureInfo:
+    def failure_info(self, proof: Proof) -> FailureInfo:
         # TODO add implementation
         return FailureInfo()
