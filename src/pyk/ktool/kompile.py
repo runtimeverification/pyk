@@ -127,8 +127,7 @@ class Kompile(ABC):
 
     @property
     @abstractmethod
-    def backend(self) -> KompileBackend:
-        ...
+    def backend(self) -> KompileBackend: ...
 
     def __call__(
         self,
@@ -178,6 +177,7 @@ class Kompile(ABC):
                 err.stdout,
                 err.stderr,
                 err.returncode,
+                err,
             ) from err
 
         if proc_res.stdout:
@@ -192,8 +192,7 @@ class Kompile(ABC):
         return definition_dir
 
     @abstractmethod
-    def args(self) -> list[str]:
-        ...
+    def args(self) -> list[str]: ...
 
 
 @final
@@ -353,6 +352,7 @@ class KompileArgs:
     bison_lists: bool
     warnings: Warnings | None
     warning_to_error: bool
+    no_exc_wrap: bool
 
     def __init__(
         self,
@@ -373,6 +373,7 @@ class KompileArgs:
         bison_lists: bool = False,
         warnings: str | Warnings | None = None,
         warning_to_error: bool = False,
+        no_exc_wrap: bool = False,
     ):
         main_file = Path(main_file)
         include_dirs = tuple(sorted(Path(include_dir) for include_dir in include_dirs))
@@ -395,6 +396,7 @@ class KompileArgs:
         object.__setattr__(self, 'bison_lists', bison_lists)
         object.__setattr__(self, 'warnings', warnings)
         object.__setattr__(self, 'warning_to_error', warning_to_error)
+        object.__setattr__(self, 'no_exc_wrap', no_exc_wrap)
 
     def args(self) -> list[str]:
         args = [str(self.main_file)]
@@ -443,6 +445,9 @@ class KompileArgs:
 
         if self.warning_to_error:
             args += ['-w2e']
+
+        if self.no_exc_wrap:
+            args += ['--no-exc-wrap']
 
         return args
 

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from ..prelude.k import DOTS, GENERATED_TOP_CELL
 from ..prelude.kbool import FALSE, TRUE, andBool, impliesBool, notBool, orBool
-from ..prelude.ml import mlAnd, mlEqualsTrue, mlOr
+from ..prelude.ml import mlAnd, mlEqualsTrue, mlImplies, mlOr
 from ..utils import find_common_items, hash_str
 from .att import EMPTY_ATT, Atts, KAtt, WithKAtt
 from .inner import (
@@ -255,8 +255,8 @@ def count_vars(term: KInner) -> Counter[str]:
     return counter
 
 
-def free_vars(kast: KInner) -> list[str]:
-    return list(count_vars(kast).keys())
+def free_vars(kast: KInner) -> frozenset[str]:
+    return frozenset(count_vars(kast).keys())
 
 
 def propagate_up_constraints(k: KInner) -> KInner:
@@ -530,9 +530,7 @@ def minimize_rule(rule: RL, keep_vars: Iterable[str] = ()) -> RL:
     ensures = andBool(flatten_label('_andBool_', ensures))
     ensures = simplify_bool(ensures)
 
-    constrained_vars = list(keep_vars)
-    constrained_vars = constrained_vars + free_vars(requires)
-    constrained_vars = constrained_vars + free_vars(ensures)
+    constrained_vars = set(keep_vars) | free_vars(requires) | free_vars(ensures)
     body = minimize_term(body, keep_vars=constrained_vars)
 
     return rule.let(body=body, requires=requires, ensures=ensures)
@@ -563,12 +561,6 @@ def remove_generated_cells(term: KInner) -> KInner:
 
 def is_anon_var(kast: KInner) -> bool:
     return type(kast) is KVariable and kast.name.startswith('_')
-
-
-def get_cell(constrained_term: KInner, cell_variable: str) -> KInner:
-    state, _ = split_config_and_constraints(constrained_term)
-    _, subst = split_config_from(state)
-    return subst[cell_variable]
 
 
 def set_cell(constrained_term: KInner, cell_variable: str, cell_value: KInner) -> KInner:
@@ -794,3 +786,40 @@ def build_rule(
     rule = rule.update_atts([Atts.LABEL(rule_id)])
 
     return (rule, Subst(vremap_subst))
+
+
+def replace_rewrites_with_implies(kast: KInner) -> KInner:
+    def _replace_rewrites_with_implies(_kast: KInner) -> KInner:
+        if type(_kast) is KRewrite:
+            return mlImplies(_kast.lhs, _kast.rhs)
+        return _kast
+
+    return bottom_up(_replace_rewrites_with_implies, kast)
+
+
+def no_cell_rewrite_to_dots(term: KInner) -> KInner:
+    """
+    Transforms a given term by replacing the contents of each cell with dots if the LHS and RHS are the same.
+
+    This function recursively traverses the cells in a term. When it finds a cell whose left-hand side (LHS) is identical to its right-hand side (RHS),
+    it replaces the cell's contents with a predefined DOTS.
+
+    Parameters:
+    - term (KInner): The term to be transformed.
+
+    Returns:
+    - KInner: The transformed term, where specific cell contents have been replaced with dots.
+    """
+
+    def _no_cell_rewrite_to_dots(_term: KInner) -> KInner:
+        if type(_term) is KApply and _term.is_cell:
+            lhs = extract_lhs(_term)
+            rhs = extract_rhs(_term)
+            if lhs == rhs:
+                return KApply(_term.label, [DOTS])
+        return _term
+
+    config, _subst = split_config_from(term)
+    subst = Subst({cell_name: _no_cell_rewrite_to_dots(cell_contents) for cell_name, cell_contents in _subst.items()})
+
+    return subst(config)

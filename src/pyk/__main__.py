@@ -34,7 +34,7 @@ from .ktool.krun import KRun
 from .prelude.k import GENERATED_TOP_CELL
 from .prelude.ml import is_top, mlAnd, mlOr
 from .proof.reachability import APRFailureInfo
-from .utils import check_file_path, ensure_dir_path
+from .utils import check_file_path, ensure_dir_path, exit_with_process_error
 
 if TYPE_CHECKING:
     from typing import Any, Final
@@ -277,6 +277,7 @@ def exec_kompile(options: KompileCommandOptions) -> None:
         'bison_lists': options.bison_lists,
         'warnings': options.warnings,
         'warning_to_error': options.warning_to_error,
+        'no_exc_wrap': options.no_exc_wrap,
     }
     if options.backend == KompileBackend.LLVM:
         kompile_dict['ccopts'] = options.ccopts
@@ -301,10 +302,14 @@ def exec_kompile(options: KompileCommandOptions) -> None:
             f'Option `--llvm-proof-hint-intrumentation` requires `--backend llvm`, not: --backend {options.backend.value}'
         )
 
-    Kompile.from_dict(kompile_dict)(
-        output_dir=kompiled_directory,
-        type_inference_mode=options.type_inference_mode,
-    )
+    try:
+        Kompile.from_dict(kompile_dict)(
+            output_dir=kompiled_directory,
+            type_inference_mode=options.type_inference_mode,
+        )
+    except RuntimeError as err:
+        _, _, _, _, cpe = err.args
+        exit_with_process_error(cpe)
 
 
 def exec_run(options: RunOptions) -> None:

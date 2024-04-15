@@ -98,12 +98,10 @@ class PrintInput(Enum):
     KAST_JSON = 'kast-json'
 
 
-class JsonToKoreOptions(LoggingOptions):
-    ...
+class JsonToKoreOptions(LoggingOptions): ...
 
 
-class KoreToJsonOptions(LoggingOptions):
-    ...
+class KoreToJsonOptions(LoggingOptions): ...
 
 
 class CoverageOptions(DefinitionOptions, OutputFileOptions, LoggingOptions):

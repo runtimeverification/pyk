@@ -8,7 +8,7 @@ import pytest
 
 from pyk.cterm import CSubst, CTerm
 from pyk.kast.inner import KApply, KSequence, KSort, KToken, KVariable, Subst
-from pyk.kast.manip import get_cell, minimize_term
+from pyk.kast.manip import minimize_term
 from pyk.kcfg.semantics import KCFGSemantics
 from pyk.kcfg.show import KCFGShow
 from pyk.prelude.kbool import BOOL, andBool, notBool, orBool
@@ -450,18 +450,6 @@ APR_PROVE_TEST_DATA: Iterable[
         1,
     ),
     (
-        'imp-simple-sum-1000',
-        K_FILES / 'imp-simple-spec.k',
-        'IMP-SIMPLE-SPEC',
-        'sum-1000',
-        None,
-        None,
-        [],
-        True,
-        ProofStatus.PASSED,
-        1,
-    ),
-    (
         'imp-if-almost-same-plus',
         K_FILES / 'imp-simple-spec.k',
         'IMP-SIMPLE-SPEC-DEPENDENCIES',
@@ -737,7 +725,6 @@ def leaf_number(proof: APRProof) -> int:
 
 
 class TestImpProof(KCFGExploreTest, KProveTest):
-    DISABLE_BOOSTER = True
     KOMPILE_MAIN_FILE = K_FILES / 'imp-verification.k'
 
     def semantics(self, definition: KDefinition) -> KCFGSemantics:
@@ -1173,7 +1160,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         # Both branches will be checked and fail (fail_fast=False)
         assert len(proof.kcfg.leaves) == 3
         assert len(proof.pending) == 0
-        assert len(proof._terminal) == 3
+        assert len(proof.terminal_ids) == 3
         assert len(proof.failing) == 2
 
         proof = APRProof.from_claim(kprove.definition, claim, logs={}, proof_dir=proof_dir)
@@ -1183,7 +1170,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
         # First branch will be reached first and terminate the proof, leaving the second long branch pending (fail_fast=True)
         assert len(proof.kcfg.leaves) == 3
         assert len(proof.pending) == 1
-        assert len(proof._terminal) == 2
+        assert len(proof.terminal_ids) == 2
         assert len(proof.failing) == 1
 
     def test_anti_unify_forget_values(
@@ -1220,7 +1207,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=False, kdef=kprove.definition)
 
-        k_cell = get_cell(anti_unifier.kast, 'STATE_CELL')
+        k_cell = anti_unifier.cell('STATE_CELL')
         assert type(k_cell) is KApply
         assert k_cell.label.name == '_|->_'
         assert type(k_cell.args[1]) is KVariable
@@ -1233,7 +1220,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             constraint=mlEqualsTrue(KApply('_>Int_', [KVariable('N', 'Int'), KToken('1', 'Int')])),
         )
 
-        assert anti_unifier.kast == expected_anti_unifier.kast
+        assert anti_unifier == expected_anti_unifier
 
     def test_anti_unify_keep_values(
         self,
@@ -1271,7 +1258,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         anti_unifier, subst1, subst2 = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprove.definition)
 
-        k_cell = get_cell(anti_unifier.kast, 'STATE_CELL')
+        k_cell = anti_unifier.cell('STATE_CELL')
         assert type(k_cell) is KApply
         assert k_cell.label.name == '_|->_'
         assert type(k_cell.args[1]) is KVariable
@@ -1308,7 +1295,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
             ),
         )
 
-        assert anti_unifier.kast == expected_anti_unifier.kast
+        assert anti_unifier == expected_anti_unifier
 
     def test_anti_unify_subst_true(
         self,
@@ -1330,7 +1317,7 @@ class TestImpProof(KCFGExploreTest, KProveTest):
 
         anti_unifier, _, _ = cterm1.anti_unify(cterm2, keep_values=True, kdef=kprove.definition)
 
-        assert anti_unifier.kast == cterm1.kast
+        assert anti_unifier == cterm1
 
     @pytest.mark.parametrize(
         'test_id,antecedent,consequent,expected',

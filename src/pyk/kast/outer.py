@@ -10,7 +10,8 @@ from dataclasses import InitVar  # noqa: TC003
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, final
+from itertools import pairwise, product
+from typing import TYPE_CHECKING, final, overload
 
 from ..prelude.kbool import TRUE
 from ..prelude.ml import ML_QUANTIFIERS
@@ -33,10 +34,11 @@ from .inner import (
 from .kast import kast_term
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Callable, Iterator, Mapping
     from os import PathLike
     from typing import Any, Final, TypeVar
 
+    S = TypeVar('S', bound='KSentence')
     RL = TypeVar('RL', bound='KRuleLike')
 
 _LOGGER: Final = logging.getLogger(__name__)
@@ -287,6 +289,8 @@ class KProduction(KSentence):
     @cached_property
     def as_subsort(self) -> tuple[KSort, KSort] | None:
         """Return a pair `(supersort, subsort)` if `self` is a subsort production, and `None` otherwise."""
+        if self.klabel:
+            return None
         if len(self.items) != 1:
             return None
         item = self.items[0]
@@ -629,8 +633,7 @@ class KRuleLike(KSentence):
         requires: KInner | None = None,
         ensures: KInner | None = None,
         att: KAtt | None = None,
-    ) -> RL:
-        ...
+    ) -> RL: ...
 
 
 @final
@@ -899,6 +902,18 @@ class KFlatModule(KOuter, WithKAtt, Iterable[KSentence]):
     @cached_property
     def sentence_by_unique_id(self) -> dict[str, KSentence]:
         return {sent.unique_id: sent for sent in self.sentences if sent.unique_id is not None}
+
+    @overload
+    def map_sentences(self, f: Callable[[S], S], *, of_type: type[S]) -> KFlatModule: ...
+
+    @overload
+    def map_sentences(self, f: Callable[[KSentence], KSentence], *, of_type: None = None) -> KFlatModule: ...
+
+    # Uses overload instead of default argument as a workaround: https://github.com/python/mypy/issues/3737
+    def map_sentences(self, f: Callable, *, of_type: Any = None) -> KFlatModule:
+        if of_type is None:
+            of_type = KSentence
+        return self.let(sentences=tuple(f(sent) if isinstance(sent, of_type) else sent for sent in self.sentences))
 
     @staticmethod
     def from_dict(d: Mapping[str, Any]) -> KFlatModule:
@@ -1225,17 +1240,15 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
             assert Atts.OVERLOAD in overloader.att
             assert Atts.OVERLOAD in overloaded.att
             assert overloader.att[Atts.OVERLOAD] == overloaded.att[Atts.OVERLOAD]
-            arg_sorts1 = overloader.argument_sorts
-            arg_sorts2 = overloaded.argument_sorts
-            if len(arg_sorts1) != len(arg_sorts2):
-                return False
-            if overloader.sort not in self.subsorts(overloaded.sort):
+            overloader_sorts = [overloader.sort] + overloader.argument_sorts
+            overloaded_sorts = [overloaded.sort] + overloaded.argument_sorts
+            if len(overloader_sorts) != len(overloaded_sorts):
                 return False
             less = False
-            for sort1, sort2 in zip(arg_sorts1, arg_sorts2, strict=True):
-                if sort1 == sort2:
+            for overloader_sort, overloaded_sort in zip(overloader_sorts, overloaded_sorts, strict=True):
+                if overloader_sort == overloaded_sort:
                     continue
-                if sort1 in self.subsorts(sort2):
+                if overloader_sort in self.subsorts(overloaded_sort):
                     less = True
                     continue
                 return False
@@ -1249,14 +1262,28 @@ class KDefinition(KOuter, WithKAtt, Iterable[KFlatModule]):
 
         overloads: dict[str, list[str]] = {}
         for _, symbols in symbols_by_overload.items():
-            for s1 in symbols:
-                for s2 in symbols:
-                    if s1 == s2:
+            for overloader in symbols:
+                for overloaded in symbols:
+                    if overloader == overloaded:
                         continue
-                    if lt(overloader=self.symbols[s1], overloaded=self.symbols[s2]):
+                    if lt(overloader=self.symbols[overloader], overloaded=self.symbols[overloaded]):
                         # Index by overloaded symbol, this way it is easy to look them up
-                        overloads.setdefault(s2, []).append(s1)
+                        overloads.setdefault(overloaded, []).append(overloader)
         return FrozenDict({key: frozenset(values) for key, values in overloads.items()})
+
+    @cached_property
+    def priorities(self) -> FrozenDict[str, frozenset[str]]:
+        """Return a mapping from symbols to the sets of symbols with lower priority."""
+        syntax_priorities = (
+            sent for module in self.modules for sent in module.sentences if isinstance(sent, KSyntaxPriority)
+        )
+        relation = tuple(
+            pair
+            for syntax_priority in syntax_priorities
+            for highers, lowers in pairwise(syntax_priority.priorities)
+            for pair in product(highers, lowers)
+        )
+        return POSet(relation).image
 
     def sort(self, kast: KInner) -> KSort | None:
         """Computes the sort of a given term using best-effort simple sorting algorithm, returns `None` on algorithm failure."""

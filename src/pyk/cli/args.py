@@ -155,6 +155,7 @@ class KompileOptions(Options):
     gen_bison_parser: bool
     gen_glr_bison_parser: bool
     bison_lists: bool
+    no_exc_wrap: bool
 
     @staticmethod
     def default() -> dict[str, Any]:
@@ -177,6 +178,7 @@ class KompileOptions(Options):
             'gen_bison_parser': False,
             'gen_glr_bison_parser': False,
             'bison_lists': False,
+            'no_exc_wrap': False,
         }
 
     @staticmethod
@@ -402,6 +404,13 @@ class KCLIArgs:
             default=False,
             action='store_true',
             help='Enable proof hint generation in LLVM backend kompilation.',
+        )
+        args.add_argument(
+            '--no-exc-wrap',
+            dest='no_exc_wrap',
+            default=False,
+            action='store_true',
+            help='Do not wrap the output on the CLI.',
         )
         return args
 
