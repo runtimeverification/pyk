@@ -31,6 +31,7 @@ class LoggingOptions(Options):
             'v': 'verbose',
         }
 
+
 class WarningOptions(Options):
     warnings: Warnings | None
     warning_to_error: bool
